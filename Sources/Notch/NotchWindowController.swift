@@ -697,13 +697,13 @@ final class NotchWindowController {
         guard model.isExpanded, foldWork == nil, !model.isPinned else { return }
         // Pinned is settled above; what is left to decide is whether "Always
         // show" holds it, and only a frontmost full-screen app overrules that.
-        let ignoresAlwaysOn = model.staysOpen && ignoreAlwaysOn()
-        guard ignoresAlwaysOn || !model.staysOpen else { return }
+        let ignoresAlwaysOn = model.isAlwaysOn && ignoreAlwaysOn()
+        guard ignoresAlwaysOn || !model.isAlwaysOn else { return }
         let work = DispatchWorkItem { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.foldWork = nil
-                let stillHoldsOpen = ignoresAlwaysOn ? self.model.isPinned : self.model.staysOpen
+                let stillHoldsOpen = self.model.isPinned || (self.model.isAlwaysOn && !ignoresAlwaysOn)
                 guard !stillHoldsOpen else { return }
                 withAnimation(NotchMotion.unfold) {
                     self.model.isExpanded = false
@@ -1099,7 +1099,8 @@ final class NotchWindowController {
                 guard let self, let panel = self.panel else { return }
                 self.peekWork = nil
                 self.peekUntil = nil
-                guard !self.model.staysOpen else { return }
+                let stillHoldsOpen = self.model.isPinned || (self.model.isAlwaysOn && !(self.foldsForFullScreen && self.isFullScreenActive()))
+                guard !stillHoldsOpen else { return }
                 // Left open if the peek did its job and the pointer is already
                 // there; the ordinary hover fold takes it from here.
                 guard !self.liveRect.contains(self.localCursor(in: panel.frame)) else { return }
