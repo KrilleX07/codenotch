@@ -25,6 +25,7 @@ final class NotchFleet {
     private(set) var scope: NotchScreenScope
     private var edge: NotchEdge
     private var visibility: NotchVisibility = .onHover
+    private var pinned: Bool = false
     private var snapshots: [ProviderSnapshot] = []
     private(set) var thinkingModels: [String: Date] = [:]
     /// Per source, the way the view model keeps them: the Ollama relay and
@@ -146,6 +147,13 @@ final class NotchFleet {
         self.visibility = visibility
         for controller in controllers.values {
             controller.apply(visibility)
+        }
+    }
+
+    func applyPinned(_ pinned: Bool) {
+        self.pinned = pinned
+        for controller in controllers.values {
+            controller.model.isPinned = pinned
         }
     }
 
@@ -427,6 +435,7 @@ final class NotchFleet {
         controller.model.surfaceStyle = surfaceStyle
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled
         controller.model.deepSeekPricingSchedule = deepSeekPricingSchedule
+        controller.model.isPinned = pinned
         controller.onRefresh = onRefresh
         controller.onRefreshProvider = onRefreshProvider
         controller.onOpenSettings = onOpenSettings

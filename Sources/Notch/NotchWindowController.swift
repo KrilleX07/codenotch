@@ -127,7 +127,7 @@ final class NotchWindowController {
     /// When a full-screen app is active on the current space, auto-folds the notch.
     /// When returning to a desktop space with `isAlwaysOn`, restores the unfolded state.
     func handleActiveSpaceOrAppChange() {
-        if foldsForFullScreen && isFullScreenActive() {
+        if foldsForFullScreen && isFullScreenActive() && !model.isPinned {
             if let panel {
                 let local = localCursor(in: panel.frame)
                 let overTooltip = model.hoveredIndex
@@ -138,7 +138,7 @@ final class NotchWindowController {
                 }
             }
             foldForFullScreen()
-        } else if model.isAlwaysOn && !model.isExpanded {
+        } else if (model.isAlwaysOn || model.isPinned) && !model.isExpanded {
             withAnimation(NotchMotion.unfold) {
                 model.isExpanded = true
             }
@@ -151,7 +151,6 @@ final class NotchWindowController {
         if let peekUntil, peekUntil > Date() { return }
         foldWork?.cancel()
         foldWork = nil
-        model.isPinned = false
         guard model.isExpanded else { return }
         withAnimation(NotchMotion.unfold) {
             model.isExpanded = false
@@ -628,8 +627,7 @@ final class NotchWindowController {
         // handleActiveSpaceOrAppChange: left ungated, the hover fold out-votes
         // "Always show" under a full-screen app while the other path keeps
         // restoring it — the notch ends up folding on every poll.
-        setExpanded(liveRect.contains(local) || overTooltip,
-                    ignoreAlwaysOn: foldsForFullScreen && isFullScreenActive())
+        setExpanded(liveRect.contains(local) || overTooltip)
 
         var target: Int?
         if model.isExpanded, notchRect.contains(local) {
@@ -1039,17 +1037,17 @@ final class NotchWindowController {
         case .onHover:
             if !Runtime.isUnderTest { panel?.orderFrontRegardless() }
             model.isAlwaysOn = false
-            model.isPinned = false
             // Fold now rather than waiting for the pointer to leave: it may
             // already be somewhere else, in which case nothing would arrive to
             // close it and "on hover" would look exactly like "always show".
-            withAnimation(NotchMotion.unfold) {
-                model.isExpanded = false
-                model.hoveredIndex = nil
+            if !model.isPinned {
+                withAnimation(NotchMotion.unfold) {
+                    model.isExpanded = false
+                    model.hoveredIndex = nil
+                }
             }
         case .hidden:
             model.isAlwaysOn = false
-            model.isPinned = false
             model.isExpanded = false
             model.hoveredIndex = nil
             // Ordered out rather than made transparent. An invisible panel that
@@ -1210,7 +1208,7 @@ final class NotchWindowController {
         let keepOpen = NSMenuItem(
             title: L10n.t("Keep open"),
             action: #selector(MenuActions.togglePinned(_:)),
-            keyEquivalent: model.isAlwaysOn ? "✓" : ""
+            keyEquivalent: model.isPinned ? "✓" : ""
         )
         keepOpen.keyEquivalentModifierMask = []
         keepOpen.target = menuActions

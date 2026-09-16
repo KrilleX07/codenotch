@@ -702,7 +702,7 @@ final class AlwaysShowTests: XCTestCase {
         controller.apply(.alwaysShow)
 
         controller.togglePinned()   // a click on the bar
-        XCTAssertTrue(controller.model.isPinned,
+        XCTAssertTrue(controller.model.isAlwaysOn,
                       "a click downgraded Always show to hover")
         XCTAssertTrue(controller.model.isExpanded)
     }
@@ -713,7 +713,7 @@ final class AlwaysShowTests: XCTestCase {
         let controller = NotchWindowController()
         controller.apply(.alwaysShow)
         for _ in 0..<5 { controller.togglePinned() }
-        XCTAssertTrue(controller.model.isPinned)
+        XCTAssertTrue(controller.model.isAlwaysOn)
     }
 
     /// The transient pin still works where it is the only thing holding the
@@ -729,24 +729,14 @@ final class AlwaysShowTests: XCTestCase {
         XCTAssertFalse(controller.model.isPinned, "clicking no longer unpins")
     }
 
-    /// Switching to hover has to clear a pin left over from before, or the
-    /// notch stays open and the new choice looks ignored.
-    func testSwitchingToHoverClearsAStalePin() {
-        let controller = NotchWindowController()
-        controller.apply(.onHover)
-        controller.togglePinned()
-        controller.apply(.onHover)
-        XCTAssertFalse(controller.model.isPinned)
-    }
-
     /// And so does hiding — a pinned notch that is ordered out still counts as
     /// held open, and would refuse to fold if it came back.
     func testHidingClearsBothHolds() {
         let controller = NotchWindowController()
         controller.apply(.alwaysShow)
         controller.apply(.hidden)
-        XCTAssertFalse(controller.model.isPinned)
         XCTAssertFalse(controller.model.isExpanded)
+        XCTAssertFalse(controller.model.isAlwaysOn)
     }
 
     /// Coming back from hover to always-on, with a stale pin in between.
@@ -756,7 +746,7 @@ final class AlwaysShowTests: XCTestCase {
         controller.togglePinned()      // pinned by hand
         controller.apply(.alwaysShow)  // then chosen in Settings
         controller.togglePinned()      // and clicked again
-        XCTAssertTrue(controller.model.isPinned)
+        XCTAssertTrue(controller.model.isAlwaysOn)
     }
 }
 
