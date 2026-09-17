@@ -80,7 +80,12 @@ final class Preferences: ObservableObject {
 
     /// How much of itself the notch shows at rest.
     @Published var notchVisibility: NotchVisibility {
-        didSet { defaults.set(notchVisibility.rawValue, forKey: Keys.visibility) }
+        didSet {
+            defaults.set(notchVisibility.rawValue, forKey: Keys.visibility)
+            if notchVisibility != oldValue {
+                notchPinned = false
+            }
+        }
     }
 
     /// Whether the notch is pinned open by the user.

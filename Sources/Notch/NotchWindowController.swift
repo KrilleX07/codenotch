@@ -627,7 +627,8 @@ final class NotchWindowController {
         // handleActiveSpaceOrAppChange: left ungated, the hover fold out-votes
         // "Always show" under a full-screen app while the other path keeps
         // restoring it — the notch ends up folding on every poll.
-        setExpanded(liveRect.contains(local) || overTooltip)
+        setExpanded(liveRect.contains(local) || overTooltip,
+                    ignoreAlwaysOn: foldsForFullScreen && isFullScreenActive())
 
         var target: Int?
         if model.isExpanded, notchRect.contains(local) {
@@ -1028,9 +1029,6 @@ final class NotchWindowController {
         case .alwaysShow:
             if !Runtime.isUnderTest { panel?.orderFrontRegardless() }
             model.isAlwaysOn = true
-            // Any pin made by hand is subsumed by the setting; leaving it set
-            // would outlive a later switch back to hover.
-            model.isPinned = false
             foldWork?.cancel()
             foldWork = nil
             withAnimation(NotchMotion.unfold) { model.isExpanded = true }
@@ -1059,6 +1057,13 @@ final class NotchWindowController {
     }
 
     // MARK: - Peeking
+
+    func unfoldForPin() {
+        foldWork?.cancel()
+        foldWork = nil
+        withAnimation(NotchMotion.unfold) { model.isExpanded = true }
+        updateInteractiveRects()
+    }
 
     /// Open the notch by itself for a moment, because something happened.
     ///

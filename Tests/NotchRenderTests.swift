@@ -698,55 +698,85 @@ final class EdgeArrivalTests: XCTestCase {
 @MainActor
 final class AlwaysShowTests: XCTestCase {
     func testClickingTheNotchDoesNotUndoAlwaysShow() {
+        let prefs = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        prefs.notchVisibility = .alwaysShow
+        
         let controller = NotchWindowController()
         controller.apply(.alwaysShow)
+        controller.onToggleKeepOpen = { prefs.notchPinned.toggle() }
 
         controller.togglePinned()   // a click on the bar
-        XCTAssertTrue(controller.model.isAlwaysOn,
+        XCTAssertEqual(prefs.notchVisibility, .alwaysShow,
                       "a click downgraded Always show to hover")
         XCTAssertTrue(controller.model.isExpanded)
+        XCTAssertTrue(prefs.notchPinned) // The model tracks it independently now
     }
 
     /// However many times. The report said "sometimes", which is what a toggle
     /// looks like from outside.
     func testItSurvivesRepeatedClicks() {
+        let prefs = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        prefs.notchVisibility = .alwaysShow
+        
         let controller = NotchWindowController()
         controller.apply(.alwaysShow)
+        controller.onToggleKeepOpen = { prefs.notchPinned.toggle() }
+        
         for _ in 0..<5 { controller.togglePinned() }
-        XCTAssertTrue(controller.model.isAlwaysOn)
+        XCTAssertEqual(prefs.notchVisibility, .alwaysShow)
     }
 
     /// The transient pin still works where it is the only thing holding the
     /// notch open — that is what clicking is *for* in hover mode.
     func testAPinInHoverModeIsStillATogggle() {
+        let prefs = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        prefs.notchVisibility = .onHover
+        
         let controller = NotchWindowController()
         controller.apply(.onHover)
-        XCTAssertFalse(controller.model.isPinned)
+        controller.onToggleKeepOpen = { prefs.notchPinned.toggle() }
+        
+        XCTAssertFalse(prefs.notchPinned)
 
         controller.togglePinned()
-        XCTAssertTrue(controller.model.isPinned, "clicking no longer pins")
+        XCTAssertTrue(prefs.notchPinned, "clicking no longer pins")
         controller.togglePinned()
-        XCTAssertFalse(controller.model.isPinned, "clicking no longer unpins")
+        XCTAssertFalse(prefs.notchPinned, "clicking no longer unpins")
     }
 
     /// And so does hiding — a pinned notch that is ordered out still counts as
     /// held open, and would refuse to fold if it came back.
     func testHidingClearsBothHolds() {
+        let prefs = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        prefs.notchVisibility = .alwaysShow
+        
         let controller = NotchWindowController()
         controller.apply(.alwaysShow)
+        controller.onToggleKeepOpen = { prefs.notchPinned.toggle() }
+        
+        controller.togglePinned()
+        prefs.notchVisibility = .hidden
         controller.apply(.hidden)
+        
         XCTAssertFalse(controller.model.isExpanded)
-        XCTAssertFalse(controller.model.isAlwaysOn)
+        XCTAssertFalse(prefs.notchPinned)
     }
 
     /// Coming back from hover to always-on, with a stale pin in between.
     func testAlwaysShowOutlastsAPinAndAnUnpin() {
+        let prefs = Preferences(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        prefs.notchVisibility = .onHover
+        
         let controller = NotchWindowController()
         controller.apply(.onHover)
+        controller.onToggleKeepOpen = { prefs.notchPinned.toggle() }
+        
         controller.togglePinned()      // pinned by hand
-        controller.apply(.alwaysShow)  // then chosen in Settings
+        prefs.notchVisibility = .alwaysShow // then chosen in Settings
+        controller.apply(.alwaysShow)
         controller.togglePinned()      // and clicked again
-        XCTAssertTrue(controller.model.isAlwaysOn)
+        
+        XCTAssertEqual(prefs.notchVisibility, .alwaysShow)
     }
 }
 

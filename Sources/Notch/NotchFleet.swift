@@ -154,6 +154,9 @@ final class NotchFleet {
         self.pinned = pinned
         for controller in controllers.values {
             controller.model.isPinned = pinned
+            if pinned && !controller.model.isExpanded {
+                controller.unfoldForPin()
+            }
         }
     }
 
