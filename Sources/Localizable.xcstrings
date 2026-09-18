@@ -20483,6 +20483,12 @@
             "state": "translated",
             "value": "Дозволити телефони в цій мережі"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许此网络上的手机"
+          }
         }
       }
     },
@@ -20499,6 +20505,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Телефон читає дані про використання з цього Mac через ваш Wi-Fi. Нічого не виходить за межі мережі."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手机通过 Wi-Fi 读取这台 Mac 的用量。什么都不会离开你的网络。"
           }
         }
       }
@@ -20517,6 +20529,12 @@
             "state": "translated",
             "value": "Запуск…"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在启动…"
+          }
         }
       }
     },
@@ -20533,6 +20551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Працює на %@:%d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已在 %@:%d 就绪"
           }
         }
       }
@@ -20551,6 +20575,12 @@
             "state": "translated",
             "value": "Цей Mac не в локальній мережі"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这台 Mac 不在本地网络上"
+          }
         }
       }
     },
@@ -20567,6 +20597,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Підключити телефон…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接手机…"
           }
         }
       }
@@ -20585,6 +20621,12 @@
             "state": "translated",
             "value": "Спарені телефони"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已配对的手机"
+          }
         }
       }
     },
@@ -20601,6 +20643,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Поки що немає телефонів."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有手机。"
           }
         }
       }
@@ -20619,6 +20667,12 @@
             "state": "translated",
             "value": "Активний зараз"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前在线"
+          }
         }
       }
     },
@@ -20635,6 +20689,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Спарено %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已配对 %@"
           }
         }
       }
@@ -20653,6 +20713,12 @@
             "state": "translated",
             "value": "Видалити «%@»?"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要移除「%@」吗？"
+          }
         }
       }
     },
@@ -20669,6 +20735,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Щоб підключитися знову, телефон має відсканувати новий код."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再次连接需要扫描新的配对码。"
           }
         }
       }
@@ -20687,6 +20759,12 @@
             "state": "translated",
             "value": "%@ підключено"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 已连接"
+          }
         }
       }
     },
@@ -20703,6 +20781,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Готово"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
           }
         }
       }
@@ -20721,6 +20805,12 @@
             "state": "translated",
             "value": "Підключити ще один телефон"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接另一部手机"
+          }
         }
       }
     },
@@ -20737,6 +20827,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Підключення телефона"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接你的手机"
           }
         }
       }
@@ -20755,6 +20851,12 @@
             "state": "translated",
             "value": "Відскануйте цей код застосунком Codenotch на телефоні."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用手机上的 Codenotch 应用扫描此码。"
+          }
         }
       }
     },
@@ -20771,6 +20873,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Спливає через %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 后过期"
           }
         }
       }
@@ -20789,6 +20897,12 @@
             "state": "translated",
             "value": "Скопійовано ✓"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制 ✓"
+          }
         }
       }
     },
@@ -20805,6 +20919,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Копіювати посилання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制链接"
           }
         }
       }
@@ -20823,6 +20943,12 @@
             "state": "translated",
             "value": "1. Відкрийте Codenotch на телефоні"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. 在手机上打开 Codenotch"
+          }
         }
       }
     },
@@ -20839,6 +20965,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "2. Натисніть «Сканувати QR-код»"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. 点「扫描 QR Code」"
           }
         }
       }
@@ -20857,6 +20989,12 @@
             "state": "translated",
             "value": "3. Наведіть телефон на цей код"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. 把手机对准此码"
+          }
         }
       }
     },
@@ -20873,6 +21011,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Телефон має бути в тій самій мережі Wi-Fi, що й цей Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手机必须和这台 Mac 在同一个 Wi-Fi。"
           }
         }
       }
@@ -21929,6 +22073,12 @@
             "state": "translated",
             "value": "Підключити телефон…"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接手机…"
+          }
         }
       }
     },
@@ -21945,6 +22095,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Наступне скидання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次重置"
           }
         }
       }
@@ -21963,6 +22119,12 @@
             "state": "translated",
             "value": "Ліміт доступний (0% використано)"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "额度可用（已用 0%）"
+          }
         }
       }
     },
@@ -21979,6 +22141,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скидання о"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重置于"
           }
         }
       }
@@ -21997,6 +22165,12 @@
             "state": "translated",
             "value": "Ліміт сесії вичерпано (100% використано)"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会话额度已用尽（已用 100%）"
+          }
         }
       }
     },
@@ -22013,6 +22187,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тижневий ліміт вичерпано (100% використано)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周额度已用尽（已用 100%）"
           }
         }
       }
@@ -22031,6 +22211,12 @@
             "state": "translated",
             "value": "Генерує"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在生成"
+          }
         }
       }
     },
@@ -22047,6 +22233,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Промпт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提示词"
           }
         }
       }
@@ -22065,6 +22257,12 @@
             "state": "translated",
             "value": "Читає промпт"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取提示词"
+          }
         }
       }
     },
@@ -22081,6 +22279,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Увійдіть у DeepSeek Platform, щоб бачити використання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录 DeepSeek Platform 以读取用量"
           }
         }
       }
@@ -22099,6 +22303,12 @@
             "state": "translated",
             "value": "Увійдіть через kiro-cli, щоб бачити використання"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用 kiro-cli 登录以读取用量"
+          }
         }
       }
     },
@@ -22115,6 +22325,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запустіть сервер LM Studio, щоб відстежувати локальні моделі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动 LM Studio 的服务器以监控本地模型"
           }
         }
       }
@@ -22133,6 +22349,12 @@
             "state": "translated",
             "value": "Закріплено біля нижнього краю екрана. Перетягування з Option рухає ліворуч чи праворуч."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "贴在屏幕下边缘。按住 ⌥ 拖动可左右移动。"
+          }
         }
       }
     },
@@ -22149,6 +22371,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Закріплено біля лівого краю екрана. Перетягування з Option рухає вгору чи вниз."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "贴在屏幕左边缘。按住 ⌥ 拖动可上下移动。"
           }
         }
       }
@@ -22167,6 +22395,12 @@
             "state": "translated",
             "value": "Закріплено біля правого краю екрана. Перетягування з Option рухає вгору чи вниз."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "贴在屏幕右边缘。按住 ⌥ 拖动可上下移动。"
+          }
         }
       }
     },
@@ -22183,6 +22417,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Створити новий код"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成新配对码"
           }
         }
       }
@@ -22201,6 +22441,12 @@
             "state": "translated",
             "value": "Термін дії коду минув"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配对码已过期"
+          }
         }
       }
     },
@@ -22217,6 +22463,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Повторити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
           }
         }
       }
@@ -22235,6 +22487,12 @@
             "state": "translated",
             "value": "Перевірка коду"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代码审查"
+          }
         }
       }
     },
@@ -22248,6 +22506,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spark"
+          }
+        },
+        "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Spark"
@@ -22269,6 +22533,12 @@
             "state": "translated",
             "value": "Запустіть `devin auth login` у терміналі, щоб увійти."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 `devin auth login` 以登录。"
+          }
         }
       }
     },
@@ -22285,6 +22555,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Додаткове використання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "额外用量"
           }
         }
       }
@@ -22303,6 +22579,12 @@
             "state": "translated",
             "value": "Баланс додаткового використання"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "额外用量余额"
+          }
         }
       }
     },
@@ -22319,6 +22601,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Тижневий ліміт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周额度"
           }
         }
       }
@@ -22337,6 +22625,12 @@
             "state": "translated",
             "value": "На цьому акаунті немає тарифу Kimi Code"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此账号没有 Kimi Code 套餐"
+          }
         }
       }
     },
@@ -22353,6 +22647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запустіть kimi і увійдіть через /login — так записується й оновлюється токен, який читає Codenotch."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行 kimi 并用 /login 登录 — 它会写入并刷新这里读取的令牌。"
           }
         }
       }
@@ -22371,6 +22671,12 @@
             "state": "translated",
             "value": "На цьому акаунті немає лімітів Kimi Code"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此账号没有 Kimi Code 用量限额"
+          }
         }
       }
     },
@@ -22387,6 +22693,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Кредити"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "积分"
           }
         }
       }
@@ -22405,6 +22717,12 @@
             "state": "translated",
             "value": "Kiro CLI не встановлено"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未安装 Kiro CLI"
+          }
         }
       }
     },
@@ -22421,6 +22739,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Понад ліміт"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "超额"
           }
         }
       }
@@ -22439,6 +22763,12 @@
             "state": "translated",
             "value": "Запустіть kiro-cli login — так записується й оновлюється сесія, яку читає Codenotch."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行 kiro-cli login — 它会写入并刷新这里读取的会话。"
+          }
         }
       }
     },
@@ -22455,6 +22785,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Бонус"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "奖励"
           }
         }
       }
@@ -22473,6 +22809,12 @@
             "state": "translated",
             "value": "Kiro CLI не повернув даних про використання"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro CLI 没有返回用量"
+          }
         }
       }
     },
@@ -22489,6 +22831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Китай"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中国"
           }
         }
       }
@@ -22507,6 +22855,12 @@
             "state": "translated",
             "value": "Міжнародний"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "国际"
+          }
         }
       }
     },
@@ -22523,6 +22877,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "MiniMax не повернув вікон використання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MiniMax 没有返回任何用量窗口"
           }
         }
       }
@@ -22541,6 +22901,12 @@
             "state": "translated",
             "value": "Вставте ключ Coding Plan у налаштуваннях або увійдіть у MiniMax."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在设置里粘贴 Coding Plan 密钥，或登录 MiniMax。"
+          }
         }
       }
     },
@@ -22557,6 +22923,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Підключення…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在连接…"
           }
         }
       }
@@ -22575,6 +22947,12 @@
             "state": "translated",
             "value": "Згортати для повноекранних застосунків"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全屏应用时收起"
+          }
         }
       }
     },
@@ -22591,6 +22969,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Материковий Китай"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中国大陆"
           }
         }
       }
@@ -22609,6 +22993,12 @@
             "state": "translated",
             "value": "Codenotch читає використання з інструментів, у які вже виконано вхід на цьому Mac, і ніколи не питає ваш пароль. Установіть будь-який з них — Claude Code (термінальний інструмент, не застосунок Claude), Cursor (редактор або cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro чи ключ Gemini API (через Gemini CLI, OpenCode або Hermes) — і увійдіть: його кільце зʼявиться у вирізі."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 读取这台 Mac 上已经登录的工具的用量 — 从不问你的密码。安装并登录 Claude Code（终端工具，不是 Claude 应用）、Cursor（编辑器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro 或 Gemini API 密钥（经由 Gemini CLI、OpenCode 或 Hermes）中的任意一个，刘海里就会出现对应的圆环。"
+          }
         }
       }
     },
@@ -22626,6 +23016,12 @@
             "state": "translated",
             "value": "Заголовок Cookie (необовʼязково)"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cookie 请求头（可选）"
+          }
         }
       }
     },
@@ -22639,6 +23035,12 @@
           }
         },
         "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cookie: …"
+          }
+        },
+        "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Cookie: …"
@@ -22660,6 +23062,12 @@
             "state": "translated",
             "value": "Ключ MiniMax Coding Plan"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MiniMax Coding Plan 密钥"
+          }
         }
       }
     },
@@ -22676,6 +23084,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дані моделі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型数据"
           }
         }
       }
@@ -22694,6 +23108,12 @@
             "state": "translated",
             "value": "Більшість показників беруться з інструмента, який уже тримає цей акаунт. Винятки — DeepSeek і MiniMax: натискання «Увійти» відкриває вікно Codenotch для цього акаунта, а вихід тут очищає лише цю сесію та її збережений показник."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大多数读数借自已经持有该账号的工具。DeepSeek 和 MiniMax 是例外：点「登录」会打开该账号的 Codenotch 窗口，在这里退出只会清掉这次会话和已保存的读数。"
+          }
         }
       }
     },
@@ -22710,6 +23130,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Телефон"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手机"
           }
         }
       }
@@ -22728,6 +23154,12 @@
             "state": "translated",
             "value": "Після оновлення підключіть телефон заново"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新后请重新配对手机"
+          }
         }
       }
     },
@@ -22744,6 +23176,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Регіон"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地区"
           }
         }
       }
@@ -22762,6 +23200,12 @@
             "state": "translated",
             "value": "Показувати Spark і перевірку коду"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示 Spark 和代码审查"
+          }
         }
       }
     },
@@ -22778,6 +23222,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показувати маркер переміщення"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示移动手柄"
           }
         }
       }
@@ -22796,6 +23246,12 @@
             "state": "translated",
             "value": "Увійдіть у MiniMax просто в Codenotch або вставте ключ Coding Plan. Заголовок Cookie можна не вказувати. Codenotch ніколи не читає кукі браузера."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Codenotch 里登录 MiniMax，或粘贴 Coding Plan 密钥。Cookie 请求头可选。Codenotch 从不读取浏览器的 Cookie。"
+          }
         }
       }
     },
@@ -22812,6 +23268,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дуга над вирізом. Утримуйте її, щоб перенести виріз на інший край — те саме робить «Край» вище."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刘海上的弧。按住它可以把刘海拖到另一条边 — 上面的「边缘」也一样。"
           }
         }
       }
@@ -22830,6 +23292,12 @@
             "state": "translated",
             "value": "Виріз згортається, поки попереду повноекранний застосунок, і повертається, коли ви його залишите. Вимкнено — виріз лишається поверх повноекранних застосунків."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全屏应用在最前时，刘海会收起，离开后再回来。关闭则全屏时也留在原处。"
+          }
         }
       }
     },
@@ -22847,6 +23315,12 @@
             "state": "translated",
             "value": "Кільце й далі стежить за основним вікном ліміту Codex. Spark і перевірка коду лишаються в картці при наведенні."
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "圆环仍跟着 Codex 的主窗口。Spark 和代码审查留在提示卡里。"
+          }
         }
       }
     },
@@ -22857,6 +23331,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пороги використання"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用量阈值"
           }
         }
       }
@@ -22869,6 +23349,12 @@
             "state": "translated",
             "value": "Поріг уваги"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关注阈值"
+          }
         }
       }
     },
@@ -22879,6 +23365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Критичний поріг"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "危急阈值"
           }
         }
       }
@@ -22891,6 +23383,12 @@
             "state": "translated",
             "value": "Відновити типові значення"
           }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复默认"
+          }
         }
       }
     },
@@ -22901,6 +23399,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пунктирне тижневе кільце"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "虚线每周圆环"
           }
         }
       }

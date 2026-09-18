@@ -61,6 +61,29 @@ final class CatalogCoverageTests: XCTestCase {
         }
     }
 
+    func testSimplifiedChineseCoreCopyIsTranslated() throws {
+        let catalog = try loadCatalog().json
+        let expected = [
+            "just now": "刚刚",
+            "Resets in %lld min": "%lld 分钟后重置",
+            "%lld%% Used · %lld%% left": "%lld%% 已用 · %lld%% 剩余",
+            "Always show": "始终显示",
+            "Settings…": "设置…",
+            "Sign in to %@": "登录 %@",
+            "%lld%% of its %@ limit used.": "已用其 %2$@ 额度的 %1$lld%%。",
+            "Ready on %@:%d": "已在 %@:%d 就绪",
+            "Expires in %@": "%@ 后过期"
+        ]
+
+        for (key, value) in expected {
+            XCTAssertEqual(
+                catalog.strings[key]?.localizations?["zh-Hans"]?.stringUnit?.value,
+                value,
+                "missing Simplified Chinese translation for \(key)"
+            )
+        }
+    }
+
     /// There is deliberately no "language X covers every key" test.
     ///
     /// The rule at the top of this file is that a missing translation falls
