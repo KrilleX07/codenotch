@@ -27156,17 +27156,111 @@
         }
       }
     },
-    "7-day limit": {
-      "extractionState": "manual",
-      "localizations": {}
-    },
     "QianwenAI reported no Token Plan usage": {
       "extractionState": "manual",
-      "localizations": {}
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI hat keine Token-Plan-Nutzung gemeldet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI n'a signalé aucune utilisation du Token Plan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI から Token Plan の使用量が報告されませんでした"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O QianwenAI não informou uso do Token Plan"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI не сообщил об использовании Token Plan"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI не повідомив про використання Token Plan"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI 未报告 Token Plan 用量"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI 未回報 Token Plan 用量"
+          }
+        }
+      }
     },
     "Sign in to QianwenAI to read your Token Plan usage": {
       "extractionState": "manual",
-      "localizations": {}
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melde dich bei QianwenAI an, um deine Token-Plan-Nutzung zu lesen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connectez-vous à QianwenAI pour lire votre utilisation du Token Plan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token Plan の使用量を読み取るには QianwenAI にサインインしてください"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre no QianwenAI para ler seu uso do Token Plan"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите в QianwenAI, чтобы увидеть использование Token Plan"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увійдіть у QianwenAI, щоб побачити використання Token Plan"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录 QianwenAI 以读取 Token Plan 用量"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登入 QianwenAI 以讀取 Token Plan 用量"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

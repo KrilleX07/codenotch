@@ -56,7 +56,7 @@ enum QianwenUsage {
 
         return [LimitWindow(
             id: "week",
-            label: L10n.t("7-day limit"),
+            label: L10n.t("Weekly limit"),
             usedFraction: usedFraction,
             remaining: remaining,
             used: used,

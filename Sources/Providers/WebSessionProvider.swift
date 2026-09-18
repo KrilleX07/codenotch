@@ -92,6 +92,14 @@ final class WebSessionProvider: NSObject, UsageProvider {
         /// `origin.host`. MiniMax's session is created on the platform origin
         /// and used on www, so both have to go; DeepSeek has none.
         let associatedHosts: [String]
+        /// Whether the sign-in window asks the probe every 1.5 s while it is
+        /// open, and closes itself once signed in.
+        ///
+        /// Off unless a site asks for it. DeepSeek and MiniMax confirm once, when
+        /// the window closes (#172): their probes are real API calls to
+        /// endpoints that have throttled this app, and polling them while
+        /// someone types a password is how that happened.
+        let pollsDuringSignIn: Bool
         /// Runs in the page as an async function body. Must return a JSON string
         /// `{ "status": Int, "body": String }`.
         let script: String
@@ -103,6 +111,7 @@ final class WebSessionProvider: NSObject, UsageProvider {
              script: String, fidelity: Fidelity = .official,
              authProbeScript: String? = nil,
              associatedHosts: [String] = [],
+             pollsDuringSignIn: Bool = false,
              detailParse: ((String) throws -> ProviderUsageDetail?)? = nil,
              parse: @escaping (String) throws -> [LimitWindow]) {
             self.id = id
@@ -113,6 +122,7 @@ final class WebSessionProvider: NSObject, UsageProvider {
             self.fidelity = fidelity
             self.authProbeScript = authProbeScript
             self.associatedHosts = associatedHosts
+            self.pollsDuringSignIn = pollsDuringSignIn
             self.detailParse = detailParse
             self.parse = parse
         }
@@ -320,7 +330,10 @@ final class WebSessionProvider: NSObject, UsageProvider {
         }
 
         // Recorded verbatim so a parser can be written against the real thing.
-        if site.id == "deepseek" {
+        // Not for sites whose response carries account details beyond the
+        // numbers: DeepSeek's, and QianwenAI's console envelope, whose other
+        // fields are undocumented.
+        if ["deepseek", "qianwenai"].contains(site.id) {
             Log.usage.notice("\(self.site.id, privacy: .public) usage response received")
         } else {
             Log.usage.notice("\(self.site.id, privacy: .public) usage -> \(body.prefix(1200), privacy: .public)")
@@ -487,7 +500,7 @@ final class WebSessionProvider: NSObject, UsageProvider {
         signInProbeTask?.cancel()
         signInProbeTask = nil
         lastProbedURL = nil
-        guard site.authProbeScript != nil else { return }
+        guard site.pollsDuringSignIn, site.authProbeScript != nil else { return }
         signInProbeTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)

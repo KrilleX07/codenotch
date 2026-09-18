@@ -72,7 +72,7 @@ final class QianwenUsageTests: XCTestCase {
         ).first)
 
         XCTAssertEqual(window.id, "week")
-        XCTAssertEqual(window.label, "7-day limit")
+        XCTAssertEqual(window.label, "Weekly limit")
         XCTAssertEqual(window.duration, 7 * 86_400)
         XCTAssertEqual(window.usedFraction ?? -1, 0.42, accuracy: 0.0001)
         XCTAssertNil(window.resetsAt, "this payload names no reset")
@@ -213,10 +213,10 @@ final class QianwenUsageTests: XCTestCase {
         XCTAssertEqual(site.fidelity, .derived)
         XCTAssertEqual(site.associatedHosts,
                        ["platform-home.qianwenai.com", "cs-data.qianwenai.com",
-                        "account.qianwenai.com"])
+                        "account.qianwenai.com", "account.aliyun.com"])
         XCTAssertEqual(WebSessionProvider.websiteDataHosts(for: site),
                        ["platform.qianwenai.com", "platform-home.qianwenai.com",
-                        "cs-data.qianwenai.com", "account.qianwenai.com"])
+                        "cs-data.qianwenai.com", "account.qianwenai.com", "account.aliyun.com"])
     }
 
     func testTheScriptPostsTheTokenPlanCallToTheGateway() {

@@ -224,8 +224,13 @@ enum Sites {
         // Sign-out has to take the gateway hosts and the platform's own account
         // host with it: the session cookie that answers all of them lives on
         // `account.qianwenai.com`, and `origin.host` is added by `signOut()`.
+        // The Aliyun SSO step leaves its own cookie on `account.aliyun.com`; left
+        // behind, the next sign-in would go straight through as the old account.
         associatedHosts: ["platform-home.qianwenai.com", "cs-data.qianwenai.com",
-                          "account.qianwenai.com"],
+                          "account.qianwenai.com", "account.aliyun.com"],
+        // The only site that polls while its sign-in window is open (see
+        // `pollsDuringSignIn`): its probe is the console's own session check.
+        pollsDuringSignIn: true,
         parse: { try QianwenUsage.windows(fromJSON: $0) }
     )
 
