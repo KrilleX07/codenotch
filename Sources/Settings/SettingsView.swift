@@ -527,6 +527,8 @@ struct SettingsView: View {
                 // The pane sits directly on the window's own dark ground; the
                 // form's sections draw as the raised cards.
                 .scrollContentBackground(.hidden)
+                // Every button in the pane answers the pointer the same way.
+                .buttonStyle(SettingsButtonStyle())
         }
     }
 
@@ -799,8 +801,7 @@ struct SettingsView: View {
                             systemImage: didRecentre ? "checkmark" : "arrow.counterclockwise"
                         )
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .buttonStyle(SettingsButtonStyle(kind: .prominent))
                 }
 
                 // The arc above the notch. Hiding it loses nothing that cannot
@@ -1320,6 +1321,7 @@ private struct AccentColorSwatch: View {
     let select: () -> Void
 
     @Environment(\.codenotchReduceTransparency) private var reduceTransparency
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: select) {
@@ -1327,6 +1329,9 @@ private struct AccentColorSwatch: View {
                 Circle()
                     .fill(choice.color)
                     .frame(width: 16, height: 16)
+                    // Grows a little under the pointer, so the one about to be
+                    // chosen is clear before the click.
+                    .scaleEffect(isHovered && !isSelected ? 1.15 : 1)
                     .overlay {
                         Circle().strokeBorder(.primary.opacity(reduceTransparency ? 0.35 : 0.18), lineWidth: 1)
                     }
@@ -1344,6 +1349,9 @@ private struct AccentColorSwatch: View {
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+        }
         .help(choice.title)
         .accessibilityLabel(choice.title)
         .accessibilityValue(isSelected ? L10n.t("Selected") : L10n.t("Not selected"))
@@ -1379,7 +1387,7 @@ private struct SoundRow: View {
             } label: {
                 Image(systemName: "play.circle")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(SettingsIconButtonStyle())
             .help(L10n.t("Play \(name)"))
         }
     }
@@ -1501,7 +1509,7 @@ private struct AccountRow: View {
                             .font(.system(size: 11))
                             .foregroundStyle(isMuted ? .tertiary : .secondary)
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(SettingsIconButtonStyle())
                     .help(isMuted
                           ? L10n.t("Alerts for \(provider.name) are muted. Click to unmute.")
                           : L10n.t("Alert when \(provider.name) crosses 80% and 100% of a limit."))
@@ -1844,7 +1852,7 @@ private struct AccountRow: View {
                         .textSelection(.enabled)
                     if canOpenSignIn {
                         Button(L10n.t("Switch…")) { _ = switchAccount(provider.id) }
-                            .buttonStyle(.link)
+                            .buttonStyle(SettingsLinkButtonStyle())
                             .help(provider.signIn.switchHint)
                     }
                 }
@@ -2039,7 +2047,7 @@ struct PhoneSettingsPane: View {
                     }
                     PhoneLinkWindowController.shared.show(pairing: pairing, registry: registry, port: preferences.phoneLinkPort, serverStatus: serverStatus)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(SettingsButtonStyle(kind: .prominent))
                 .controlSize(.large)
             }
             
