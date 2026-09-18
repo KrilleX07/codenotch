@@ -459,17 +459,17 @@ struct SettingsView: View {
     /// then a hairline across the whole pane.
     private func pane(for section: SettingsSection) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(section.title)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(.white)
                 Text(section.subtitle)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(.white.opacity(0.5))
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 34)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 24)
+            // The same above as below, so the block sits in the middle of its band.
+            .padding(.vertical, 20)
             .frame(maxWidth: .infinity, alignment: .leading)
 
             SettingsPalette.hairline.frame(height: 1)
