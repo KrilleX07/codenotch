@@ -203,9 +203,63 @@ private struct SettingsSidebarRow: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onTapGesture(perform: select)
-        .onHover { isHovered = $0 }
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+/// Quit, at the foot of the sidebar: quieter than the sections above it,
+/// with the same hover pill, and a red that only shows once the pointer is on
+/// it — the one row here that does something irreversible.
+private struct SettingsQuitRow: View {
+    let quit: () -> Void
+    @State private var isHovered = false
+
+    private static let hoverRed = Color(red: 1, green: 0.42, blue: 0.4)
+
+    var body: some View {
+        Button(action: quit) {
+            HStack(spacing: 10) {
+                Image(systemName: "power")
+                    .font(.system(size: 12, weight: .regular))
+                    .frame(width: 18)
+                Text(L10n.t("Quit Codenotch"))
+                    .font(.system(size: 13, weight: .regular))
+            }
+            .foregroundStyle(isHovered ? Self.hoverRed : Color.white.opacity(0.55))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isHovered ? SettingsPalette.hovered : Color.clear)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+        }
+    }
+}
+
+/// Switching panes: the old one softens out of focus as the new one sharpens in.
+private struct BlurFade: ViewModifier {
+    let radius: CGFloat
+    let opacity: Double
+
+    func body(content: Content) -> some View {
+        content.blur(radius: radius).opacity(opacity)
+    }
+}
+
+private extension AnyTransition {
+    static var blurFade: AnyTransition {
+        .modifier(active: BlurFade(radius: 10, opacity: 0),
+                  identity: BlurFade(radius: 0, opacity: 1))
     }
 }
 
@@ -277,6 +331,7 @@ struct SettingsView: View {
     var previewSessionLimitAlert: (() -> Void)? = nil
     var previewWeeklyLimitAlert: (() -> Void)? = nil
     @Environment(\.codenotchReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         // A plain HStack rather than `NavigationSplitView`: the sidebar here
@@ -288,10 +343,18 @@ struct SettingsView: View {
         // pane gets the same look with no toggle to remove.
         HStack(spacing: 0) {
             sidebar
-            pane(for: selection)
-                // A fixed subject per window, not a document — nothing here
-                // is titled the way a sidebar of documents would be.
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Stacked, so the pane leaving and the one arriving cross in the
+            // same place rather than being laid out side by side.
+            ZStack {
+                pane(for: selection)
+                    .id(selection)
+                    .transition(reduceMotion ? .opacity : .blurFade)
+                    // A fixed subject per window, not a document — nothing here
+                    // is titled the way a sidebar of documents would be.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .animation(.easeOut(duration: reduceMotion ? 0.12 : 0.24), value: selection)
+            .clipped()
         }
         // Rebuild the whole pane when the language changes.
         //
@@ -412,21 +475,7 @@ struct SettingsView: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .leading, spacing: 6) {
-                Button(action: quit) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "power")
-                            .font(.system(size: 12, weight: .regular))
-                            .frame(width: 18)
-                        Text(L10n.t("Quit Codenotch"))
-                            .font(.system(size: 13, weight: .regular))
-                    }
-                    .foregroundStyle(.white.opacity(0.55))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                SettingsQuitRow(quit: quit)
                 if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
                     Text("Codenotch \(version)")
                         .font(.system(size: 11, weight: .regular))
