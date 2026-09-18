@@ -184,6 +184,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         // instead of showing black wedges outside the curve.
         window.isOpaque = false
         window.backgroundColor = .clear
+        // The panel is always drawn dark (see `SettingsView.body`); AppKit's
+        // own controls inside it — pickers, switches, menus — follow suit.
+        window.appearance = NSAppearance(named: .darkAqua)
         window.hasShadow = true
         window.delegate = self
         window.contentView = NSHostingView(
