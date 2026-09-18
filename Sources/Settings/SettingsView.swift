@@ -33,6 +33,16 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         allCases.filter { $0 != .phone || PhoneLink.isAvailable }
     }
 
+    /// Providers with a pane of their own. They are accounts too, so the
+    /// sidebar nests them under Accounts rather than listing them beside
+    /// Appearance and General, where they read as app-wide settings.
+    static let providerPanes: [SettingsSection] = [.deepseek, .ollama, .lmstudio]
+
+    /// The sidebar's own rows: everything visible that is not nested.
+    static var topLevel: [SettingsSection] {
+        visible.filter { !providerPanes.contains($0) }
+    }
+
     var id: String { rawValue }
 
     var title: String {
@@ -153,6 +163,9 @@ struct SettingsView: View {
     @State private var accounts: [ProviderSummary] = []
     @State private var displays: [DisplayOption] = []
     @State private var selection: SettingsSection = .accounts
+    /// Whether Accounts shows its provider panes. Remembered, so someone who
+    /// folds the group away finds it folded next time.
+    @AppStorage("settingsAccountsExpanded") private var accountsExpanded = true
     /// The provider being dragged right now.
     ///
     /// Held here rather than read off the drop, because the rows have to move
@@ -302,21 +315,42 @@ struct SettingsView: View {
     /// everywhere instead of only on the one side facing the pane. The
     /// traffic lights land inside it, which is why the rows start a clear
     /// `trafficLightClearance` below the top rather than at it.
+    private func sidebarRow(_ section: SettingsSection) -> some View {
+        Label {
+            Text(section.title)
+        } icon: {
+            SidebarIcon(systemName: section.icon, tint: section.tint)
+        }
+        // System Settings' row rhythm: a 32pt pitch, and the badge close
+        // to the left edge of its selection pill. The list adds an inset
+        // of its own inside the row, so this stays small — 10pt here put
+        // the badge some 20pt into the pill, which read as a column of
+        // icons floating in the middle of the sidebar.
+        .padding(.vertical, 4)
+        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
+        .tag(section)
+    }
+
     private var sidebar: some View {
-        List(SettingsSection.visible, selection: $selection) { section in
-            Label {
-                Text(section.title)
-            } icon: {
-                SidebarIcon(systemName: section.icon, tint: section.tint)
+        List(selection: $selection) {
+            ForEach(SettingsSection.topLevel) { section in
+                if section == .accounts {
+                    // The provider panes sit under Accounts, folding away with
+                    // its disclosure arrow. Accounts itself stays selectable.
+                    DisclosureGroup(isExpanded: $accountsExpanded) {
+                        ForEach(SettingsSection.providerPanes) { sidebarRow($0) }
+                    } label: {
+                        sidebarRow(section)
+                    }
+                } else {
+                    sidebarRow(section)
+                }
             }
-            // System Settings' row rhythm: a 32pt pitch, and the badge close
-            // to the left edge of its selection pill. The list adds an inset
-            // of its own inside the row, so this stays small — 10pt here put
-            // the badge some 20pt into the pill, which read as a column of
-            // icons floating in the middle of the sidebar.
-            .padding(.vertical, 4)
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-            .tag(section)
+        }
+        // Opening a provider's pane from elsewhere must not land on a row
+        // that is folded out of sight.
+        .onChange(of: selection) { section in
+            if SettingsSection.providerPanes.contains(section) { accountsExpanded = true }
         }
         .listStyle(.sidebar)
         .environment(\.defaultMinListRowHeight, 24)
