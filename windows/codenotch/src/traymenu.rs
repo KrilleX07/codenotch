@@ -47,6 +47,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
     match lang {
         "ru" => format!("Использовано {used}% · осталось {left}%"),
         "zh" => format!("已用 {used}% · 剩余 {left}%"),
+        "zh-Hant" => format!("已用 {used}% · 剩餘 {left}%"),
         "ja" => format!("{used}% 使用 · 残り {left}%"),
         "uk" => format!("Використано {used}% · Лишилось {left}%"),
         _ => format!("{used}% Used · {left}% left"),
@@ -60,6 +61,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         return match lang {
             "ru" => "Сброс…",
             "zh" => "正在重置…",
+            "zh-Hant" => "正在重置…",
             "ja" => "リセット中…",
             "uk" => "Скидання…",
             _ => "Resetting…",
@@ -73,6 +75,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         return match lang {
             "ru" => format!("Сброс через {m} мин"),
             "zh" => format!("{m} 分钟后重置"),
+            "zh-Hant" => format!("{m} 分鐘後重置"),
             "ja" => format!("{m} 分後にリセット"),
             "uk" => format!("Скидання через {m} хв"),
             _ => format!("Resets in {m} min"),
@@ -83,6 +86,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         return match lang {
             "ru" => format!("Сброс через {h} ч {m} мин"),
             "zh" => format!("{h} 小时 {m} 分钟后重置"),
+            "zh-Hant" => format!("{h} 小時 {m} 分鐘後重置"),
             "ja" => format!("{h} 時間 {m} 分後にリセット"),
             "uk" => format!("Скидання через {h} год {m} хв"),
             _ => format!("Resets in {h}h {m}m"),
@@ -93,6 +97,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         return match lang {
             "ru" => format!("Сброс через {d} дн. {h} ч"),
             "zh" => format!("{d} 天 {h} 小时后重置"),
+            "zh-Hant" => format!("{d} 天 {h} 小時後重置"),
             "ja" => format!("{d} 日 {h} 時間後にリセット"),
             "uk" => format!("Скидання через {d} дн {h} год"),
             _ if d == 1 => format!("Resets in {d} Day {h}h"),
@@ -103,6 +108,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     match lang {
         "ru" => format!("Сброс: {when}"),
         "zh" => format!("{when} 重置"),
+        "zh-Hant" => format!("{when} 重置"),
         "ja" => format!("{when} にリセット"),
         "uk" => format!("Скидання {when}"),
         _ => format!("Resets {when}"),
@@ -116,6 +122,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
         match lang {
             "ru" => format!("{minutes} мин"),
             "zh" => format!("{minutes} 分钟"),
+            "zh-Hant" => format!("{minutes} 分鐘"),
             "ja" => format!("{minutes} 分"),
             "uk" => format!("{minutes} хв"),
             _ => format!("{minutes}m"),
@@ -125,6 +132,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
         match lang {
             "ru" => format!("{h} ч"),
             "zh" => format!("{h} 小时"),
+            "zh-Hant" => format!("{h} 小時"),
             "ja" => format!("{h} 時間"),
             "uk" => format!("{h} год"),
             _ => format!("{h}h"),
@@ -133,6 +141,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
     match lang {
         "ru" => format!("{span} назад"),
         "zh" => format!("{span}前"),
+        "zh-Hant" => format!("{span}前"),
         "ja" => format!("{span}前"),
         "uk" => format!("{span} тому"),
         _ => format!("{span} ago"),
@@ -161,6 +170,15 @@ pub fn label(name: &str, lang: &str) -> String {
         ("zh", "5-hour Limit" | "5-Hour Limit") => "5 小时限额",
         ("zh", "Included usage") => "包含用量",
         ("zh", "API usage") => "API 用量",
+        ("zh-Hant", "Current session") => "目前會話",
+        ("zh-Hant", "Weekly (all models)") => "每週（全部模型）",
+        ("zh-Hant", "Weekly (Opus)") => "每週（Opus）",
+        ("zh-Hant", "Weekly (model-scoped)") => "每週（指定模型）",
+        ("zh-Hant", "Weekly limit" | "Weekly Limit") => "每週限額",
+        ("zh-Hant", "Monthly limit" | "Monthly Limit") => "每月限額",
+        ("zh-Hant", "5-hour Limit" | "5-Hour Limit") => "5 小時限額",
+        ("zh-Hant", "Included usage") => "包含用量",
+        ("zh-Hant", "API usage") => "API 用量",
         ("ja", "Current session") => "現在のセッション",
         ("ja", "Weekly (all models)") => "週間 (すべてのモデル)",
         ("ja", "Weekly (Opus)") => "週間 (Opus)",
