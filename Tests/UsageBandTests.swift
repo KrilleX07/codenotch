@@ -85,7 +85,12 @@ final class PaletteAppearanceTests: XCTestCase {
 
     func testReadableLiquidGlassDimStaysDarkAndTranslucent() {
         guard let dim = resolve(Palette.liquidGlassTooltipDim, .darkAqua) else { return }
-        XCTAssertEqual(dim.whiteComponent, 0, accuracy: 1.0 / 255)
+        // `resolve` deliberately returns sRGB. `whiteComponent` is undefined
+        // for that colour space and raises an AppKit exception, so assert the
+        // three channels directly just as `assertOpaque` does above.
+        XCTAssertEqual(dim.redComponent, 0, accuracy: 1.0 / 255)
+        XCTAssertEqual(dim.greenComponent, 0, accuracy: 1.0 / 255)
+        XCTAssertEqual(dim.blueComponent, 0, accuracy: 1.0 / 255)
         XCTAssertEqual(dim.alphaComponent, 0.60, accuracy: 1.0 / 255)
     }
 
