@@ -14,15 +14,18 @@ struct SettingsButtonStyle: ButtonStyle {
     }
 
     var kind: Kind = .standard
+    /// Smaller type and padding, for a button beside small text.
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
-        SettingsButtonBody(configuration: configuration, kind: kind)
+        SettingsButtonBody(configuration: configuration, kind: kind, compact: compact)
     }
 }
 
 private struct SettingsButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let kind: SettingsButtonStyle.Kind
+    let compact: Bool
 
     @Environment(\.isEnabled) private var isEnabled
     @State private var isHovered = false
@@ -49,10 +52,10 @@ private struct SettingsButtonBody: View {
 
     var body: some View {
         configuration.label
-            .font(.system(size: 12, weight: .medium))
+            .font(.system(size: compact ? 11 : 12, weight: compact ? .semibold : .medium))
             .foregroundStyle(foreground)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
+            .padding(.horizontal, compact ? 9 : 12)
+            .padding(.vertical, compact ? 3 : 5)
             .background(Capsule().fill(fill))
             .overlay {
                 if kind == .standard {

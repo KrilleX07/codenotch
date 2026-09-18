@@ -476,12 +476,23 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 SettingsQuitRow(quit: quit)
-                if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-                    Text("Codenotch \(version)")
+                HStack(spacing: 8) {
+                    Text("Codenotch \(updater.currentVersion)")
                         .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(.white.opacity(0.32))
-                        .padding(.horizontal, 10)
+                    Spacer(minLength: 0)
+                    // Only once a check has found a newer version. Sparkle
+                    // downloads it in the background either way; this is for
+                    // someone who would rather have it now than on next launch.
+                    if case .found(let newer) = updater.outcome {
+                        Button(L10n.t("Update")) { updater.checkNow() }
+                            .buttonStyle(SettingsButtonStyle(kind: .prominent, compact: true))
+                            .help(L10n.t("Version \(newer) is available"))
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    }
                 }
+                .animation(.easeOut(duration: 0.2), value: updater.outcome)
+                .padding(.horizontal, 10)
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 16)
