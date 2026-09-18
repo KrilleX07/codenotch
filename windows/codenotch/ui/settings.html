@@ -171,7 +171,8 @@
             <select id="lang" aria-label="Language">
               <option value="auto">Follow system</option>
               <option value="en">English</option>
-              <option value="zh">&#20013;&#25991;</option>
+              <option value="zh">简体中文</option>
+              <option value="zh-Hant">繁體中文</option>
               <option value="ja">&#26085;&#26412;&#35486;</option>
               <option value="ko">&#54620;&#44397;&#50612;</option>
               <option value="ru">Русский</option>
@@ -332,6 +333,85 @@ const ZH_STATIC = {
   'Close':'关闭',
   'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'系统托盘中无图标。请从“开始”菜单再次打开 Codenotch 以恢复这些设置。',
   'Model data':'模型数据'
+};
+const ZH_HANT_STATIC = {
+  'Settings sections':'設定部分',
+  'Accounts':'帳號',
+  'Appearance':'外觀',
+  'General':'通用',
+  'Quit Codenotch':'退出 Codenotch',
+  'Connected':'已連接',
+  'Not connected':'未連接',
+  'These have no ring to place. Switch one on and it joins the end of the list above.':'這些沒有圓環可放。開啟其中一個，它會接到上面列表的末尾。',
+  'One provider always stays ticked, so the pill is never empty.':'始終保持選中一個服務，因此膠囊不會為空。',
+  'At least one provider stays on the notch':'瀏海上至少保留一個服務',
+  'Notch reads':'瀏海顯示',
+  'Automatic':'自動',
+  '5-Hour Limit':'5 小時額度',
+  'Weekly Limit':'每週額度',
+  'Gemini Models':'Gemini 模型',
+  'Claude and GPT models':'Claude 和 GPT 模型',
+  'Let Claude Code notify Codenotch':'允許 Claude Code 通知 Codenotch',
+  'Turning this on adds a few lines to your Claude Code settings file so that Claude Code sends Codenotch a short message when a session starts, when it is working, when it is waiting for your answer, and when it finishes. That is what makes the ring spin and the amber ring pulse.':'開啟此選項會在你的 Claude Code 設定檔中加入幾行程式碼，以便 Claude Code 在會話開始、處理中、等待你回答以及完成時向 Codenotch 發送簡短訊息。這就是圓環旋轉和琥珀色圓環閃爍的原因。',
+  'Notch':'瀏海',
+  'Show':'顯示',
+  'Always show':'始終顯示',
+  'Hide':'隱藏',
+  'Size':'大小',
+  'Small':'小',
+  'Medium':'中',
+  'Large':'大',
+  'Takes the least room on the edge. Readable, but not from across the desk.':'邊緣上佔得最少。能讀，但隔著桌子就不行。',
+  'The size the notch was drawn at.':'瀏海繪製時的尺寸。',
+  'Easier to read at a glance, and harder to ignore.':'一眼更好讀，也更難忽視。',
+  'Weekly ring':'每週圓環',
+  'Off':'關閉',
+  'Inside':'內側',
+  'Outside':'外側',
+  'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'每個服務一個圓環，顯示主額度。每週額度仍在提示卡裡。',
+  'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'一條更細的每週額度圓環，畫在主環內側。和工作指示共用那個空隙。',
+  'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'一條更細的每週額度圓環，畫在主環外側，圓環和瀏海邊緣之間的空隙裡。',
+  'The notch stays open with every reading visible.':'瀏海保持展開，所有讀數都看得見。',
+  'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'螢幕右側邊緣的黑色膠囊，每個工具對應一個圓環。關閉它後膠囊會消失；無論哪種情況，Codenotch 都會繼續統計你的使用情況。',
+  'Recentre':'重新置中',
+  'The pill can also be dragged: pick it up and drop it anywhere, and it snaps to the nearest edge of the screen you dropped it on. Recentre puts it back in the middle of the edge it is on, or on the main screen\'s right-hand edge if the screen it was on has been unplugged.':'懸浮窗也可以拖動：將其拖放到任何地方，它會自動吸附到你放下它時所在螢幕的最近邊緣。「重新置中」會將它放回目前所在邊緣的中間；如果它所在的螢幕已拔除，則會放回主螢幕的右側邊緣。',
+  'The notch is back in the middle':'瀏海已回到中間',
+  'App':'應用',
+  'App icon':'應用圖示',
+  'Neither':'都不顯示',
+  'The small icon down by the clock. Right-clicking it opens this window, refreshes the readings, or quits Codenotch.':'時鐘旁邊的小圖示。在它上面按右鍵可開啟此視窗、重新整理讀數或退出 Codenotch。',
+  'Held on: the notch is hidden, so this icon is the only way left to reach Codenotch. Switch the notch back on first if you want to hide it.':'強制開啟：瀏海已被隱藏，因此該圖示是前往 Codenotch 的唯一方式。如果你想隱藏此圖示，請先重新開啟瀏海。',
+  'The taskbar icon has been kept on. With the notch hidden it is the only way left to open this window or to quit Codenotch, so Codenotch will not let both of them be switched off at the same time.':'工作列圖示已保持開啟。在瀏海隱藏的情況下，它是開啟此視窗或退出 Codenotch 的唯一方式，因此 Codenotch 不允許同時關閉兩者。',
+  'Language':'語言',
+  'Follow system':'跟隨系統',
+  'Sets the language used by Codenotch. “Follow system” uses the language Windows itself is set to.':'設定 Codenotch 使用的語言。「跟隨系統」會使用 Windows 本身的語言設定。',
+  'Open Codenotch at login':'登入時開啟 Codenotch',
+  'Codenotch opens by itself every time you sign in to this computer, and waits quietly in the background until a coding session starts. Turn it off and you have to open Codenotch yourself.':'每次登入這部電腦時，Codenotch 都會自動開啟，並在背景靜默等待，直到編碼會話開始。關閉此選項後，你需要手動開啟 Codenotch。',
+  'Version':'版本',
+  'Data folder':'資料資料夾',
+  'Open folder':'開啟資料夾',
+  'Everything Codenotch remembers lives in one folder: your settings, its log file, and the "glyphs" folder where you can drop your own icons. Opens in File Explorer.':'Codenotch 記住的所有內容都保存在一個資料夾中：你的設定、它的日誌檔，以及你可以放入自訂圖示的「glyphs」資料夾。在檔案總管中開啟。',
+  'App designed and developed by':'應用設計與開發',
+  'Saved':'已儲存',
+  'System tray':'系統匣',
+  'Close':'關閉',
+  'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'系統匣中無圖示。請從「開始」功能表再次開啟 Codenotch 以恢復這些設定。',
+  'Model data':'模型資料',
+  'Show move handle':'顯示移動手柄',
+  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'瀏海上的弧。按住它可以把瀏海拖到另一條邊 — 上面的「邊緣」也一樣。',
+  'Edge':'邊緣',
+  'Left':'左側',
+  'Right':'右側',
+  'Top':'頂部',
+  'Bottom':'底部',
+  'Screen':'螢幕',
+  'Main':'主螢幕',
+  'Stands upright on the left-hand edge, with the card opening to its right.':'豎立在螢幕左邊緣，提示卡向右開啟。',
+  'Stands upright on the right-hand edge, the side it was drawn for.':'豎立在螢幕右邊緣，也就是它本來畫的那一側。',
+  'Lies flat along the top edge, with the card opening below it.':'橫貼在螢幕上邊緣，提示卡向下開啟。',
+  'Lies flat along the bottom edge, with the card opening above it.':'橫貼在螢幕下邊緣，提示卡向上開啟。',
+  'Which screen the notch lives on. Dragging it onto another screen sets this too.':'瀏海所在的螢幕。拖到另一塊螢幕上也會改這裡。',
+  'this screen cannot be remembered by name':'這塊螢幕無法按名稱記住'
 };
 const JA_STATIC = {
   'Show move handle':'移動ハンドルを表示',
@@ -554,11 +634,12 @@ const UK_STATIC = {
   'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'Значка в області сповіщень немає. Відкрийте Codenotch знову з меню «Пуск», щоб повернути ці налаштування.',
   'Model data':'Дані моделі'
 };
-const STATIC_TEXT = { ru: RU_STATIC, zh: ZH_STATIC, ja: JA_STATIC, ko: KO_STATIC, uk: UK_STATIC };
+const STATIC_TEXT = { ru: RU_STATIC, zh: ZH_STATIC, 'zh-Hant': ZH_HANT_STATIC, ja: JA_STATIC, ko: KO_STATIC, uk: UK_STATIC };
 const STATUS_TEXT = {
   en:{ ok:'', stale:'last reading is old', needsAuth:'not signed in', absent:'not installed', none:'nothing to report', error:'not reachable' },
   ru:{ ok:'', stale:'данные устарели', needsAuth:'не выполнен вход', absent:'не установлен', none:'нет данных', error:'недоступен' },
   zh:{ ok:'', stale:'上次读数已过期', needsAuth:'未登录', absent:'未安装', none:'暂无报告', error:'无法连接' },
+  'zh-Hant':{ ok:'', stale:'上次讀數已過期', needsAuth:'未登入', absent:'未安裝', none:'暫無報告', error:'無法連線' },
   ja:{ ok:'', stale:'最後の読み取りが古いです', needsAuth:'サインインしていません', absent:'インストールされていません', none:'報告するものがありません', error:'到達できません' },
   ko:{ ok:'', stale:'마지막 읽기가 오래되었습니다', needsAuth:'로그인되지 않음', absent:'설치되지 않음', none:'보고할 내용 없음', error:'연결할 수 없음' },
   uk:{ ok:'', stale:'останній показник застарів', needsAuth:'не виконано вхід', absent:'не встановлено', none:'немає даних', error:'недоступний' }
@@ -590,10 +671,18 @@ function applyStaticUi(){
   }
 }
 function setUiLanguage(lang){
-  const pick = lang === 'auto' ? (navigator.language || '').slice(0, 2).toLowerCase() : lang;
+  let pick = lang || '';
+  if (pick === 'auto') {
+    const nav = (navigator.language || '').toLowerCase();
+    if (nav.startsWith('zh-tw') || nav.startsWith('zh-hant') || nav.startsWith('zh-hk') || nav.startsWith('zh-mo')) pick = 'zh-Hant';
+    else if (nav.startsWith('zh')) pick = 'zh';
+    else pick = nav.slice(0, 2);
+  } else if (pick.toLowerCase() === 'zh-hant') {
+    pick = 'zh-Hant';
+  }
   uiLang = STATIC_TEXT[pick] ? pick : 'en';
   // Chinese and Japanese share code points but not glyph shapes; the lang attribute picks the font
-  document.documentElement.lang = uiLang === 'zh' ? 'zh-Hans' : uiLang;
+  document.documentElement.lang = uiLang === 'zh' ? 'zh-Hans' : uiLang === 'zh-Hant' ? 'zh-Hant' : uiLang;
   applyStaticUi();
   renderAll();
 }
@@ -1060,7 +1149,7 @@ document.getElementById('btn-recentre').addEventListener('click', () => {
 });
 
 /* ---- Appearance: language ------------------------------------------------ */
-const LANGS = ['auto', 'en', 'zh', 'ja', 'ko', 'ru', 'uk'];
+const LANGS = ['auto', 'en', 'zh', 'zh-Hant', 'ja', 'ko', 'ru', 'uk'];
 document.getElementById('lang').addEventListener('change', e => {
   const previous = e.target.dataset.previous || 'auto';
   const v = LANGS.indexOf(e.target.value) >= 0 ? e.target.value : 'auto';
