@@ -90,6 +90,8 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .cursor: return GlyphOutline.cursor
         case .antigravity: return GlyphOutline.antigravity
         case .geminiSpark: return GlyphOutline.gemini
+        // Fallbacks only: glyph-glm, glyph-opencode, glyph-commandcode and
+        // glyph-kimi in the asset catalogue are drawn instead.
         case .glm:    return GlyphOutline.glm
         case .devin, .qwen, .gemma, .meta, .deepseek, .mistral, .lmstudio,
              .qianwenAI: return []
@@ -99,6 +101,7 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .copilot: return GlyphOutline.copilot
         case .kimi:   return GlyphOutline.kimi
         case .kiro:   return GlyphOutline.kiro
+        // A fallback only: glyph-minimax in the asset catalogue is drawn instead.
         case .minimax: return GlyphOutline.minimax
         case .ollama, .ollamaLocal: return GlyphOutline.ollama
         }
