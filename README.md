@@ -270,7 +270,10 @@ Appearance also carries the ring's accent colour. The device accent is the
 default; fixed presets are available for pink, red, orange, yellow, green,
 teal, blue, indigo, purple and off-white.
 
-The app itself can show a Dock icon, a menu bar icon, or neither.
+The app itself can show a Dock icon, a menu bar item, or neither. The menu bar
+item shows each five-hour limit at a glance — the provider's mark, the share
+used and the time until it resets, like `72% · 2h 18m` — and its menu has the
+full readings.
 
 ## Updates
 
