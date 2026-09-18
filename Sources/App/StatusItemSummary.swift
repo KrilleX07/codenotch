@@ -1,8 +1,8 @@
 import AppKit
 
-/// What the menu bar item says in place of its icon: for each provider with a
-/// five-hour limit, its mark, how much of that window is spent, and how long
-/// until it resets — "72% · 2h 18m".
+/// What the menu bar item says in place of its icon, once Settings asks it to:
+/// for each chosen provider with a five-hour limit, its mark, how much of that
+/// window is spent, and how long until it resets — "72% · 2h 18m".
 ///
 /// Built from the same snapshots as the menu under it, never from a reading of
 /// its own. Pure, so everything the bar can say, down to "—", can be tested
@@ -45,16 +45,26 @@ struct StatusItemSummary: Equatable {
 
     var isCompact: Bool { entries.count > Self.fullEntryLimit }
 
-    /// Every provider that meters a five-hour window, in the order the notch
-    /// shows them. Claude and Codex are summarised even before they have a
-    /// reading: their headline limit *is* that window, so a missing figure is
-    /// worth a dash rather than a silent gap. Anyone else joins once they
-    /// report one.
+    /// Whether the bar has anything to say about this provider: it meters a
+    /// five-hour window, or it is Claude or Codex, whose headline limit *is*
+    /// that window — so a missing figure is worth a dash rather than a silent
+    /// gap. Anyone else qualifies once they report one.
+    ///
+    /// Settings lists exactly these, so it never offers a provider the bar
+    /// would not draw.
+    static func canSummarise(_ snapshot: ProviderSnapshot) -> Bool {
+        snapshot.kind == .usage && (snapshot.fiveHourWindow != nil || isFiveHourFamily(snapshot.id))
+    }
+
+    /// The chosen providers the bar can summarise, in the order the notch shows
+    /// them. None at all while the feature is off — or when nothing chosen has
+    /// a limit to show — which gives the item its icon back.
     @MainActor
-    static func make(from snapshots: [ProviderSnapshot], now: Date) -> StatusItemSummary {
+    static func make(from snapshots: [ProviderSnapshot], showing limits: MenuBarLimits,
+                     now: Date) -> StatusItemSummary {
+        guard limits.isOn else { return StatusItemSummary(entries: [], nextChange: nil) }
         let summarised = snapshots.filter { snapshot in
-            snapshot.kind == .usage
-                && (snapshot.fiveHourWindow != nil || isFiveHourFamily(snapshot.id))
+            canSummarise(snapshot) && limits.isChosen(snapshot.id)
         }.prefix(entryLimit)
         var marks: [ProviderGlyph: Int] = [:]
         for snapshot in summarised { marks[snapshot.glyph, default: 0] += 1 }
@@ -152,12 +162,18 @@ struct StatusItemArtwork {
     private enum Mark {
         case glyph(ProviderGlyph, NSRect)
         case text(String, NSPoint)
+        /// The upright rule between two providers' readings.
+        case rule(NSRect)
     }
 
     private var separator: String { " · " }
     private var glyphSize: CGFloat { (font.pointSize * 1.1).rounded() }
     private var glyphGap: CGFloat { (font.pointSize * 0.3).rounded() }
-    private var entryGap: CGFloat { (font.pointSize * 0.8).rounded() }
+    /// Either side of the rule between two readings.
+    private var entryGap: CGFloat { (font.pointSize * 0.55).rounded() }
+    /// Lighter than the figures on either side of it: it divides, it does not
+    /// say anything.
+    private var ruleAlpha: CGFloat { 0.35 }
 
     /// The widest either figure gets in the ordinary run of a window, measured
     /// in the current language. Each is given at least this much room, so the
@@ -194,7 +210,15 @@ struct StatusItemArtwork {
             x += width(string)
         }
         for (index, entry) in summary.entries.enumerated() {
-            if index > 0 { x += entryGap }
+            if index > 0 {
+                // "72% · 2h 18m | 41% · 4h 05m": without the rule, two readings
+                // run together into one line of figures. As tall as the marks,
+                // and on whole points so it stays one crisp line.
+                x = (x + entryGap).rounded()
+                marks.append((.rule(NSRect(x: x, y: middle - glyphSize / 2, width: 1, height: glyphSize)),
+                              ruleAlpha))
+                x += 1 + entryGap
+            }
             let alpha: CGFloat = entry.isStale ? 0.5 : 1
             let box = NSRect(x: x, y: middle - glyphSize / 2, width: glyphSize, height: glyphSize)
             marks.append((.glyph(entry.glyph, box), alpha))
@@ -233,6 +257,10 @@ struct StatusItemArtwork {
             // Without `.usesLineFragmentOrigin` the rect's origin is the baseline.
             NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: ink])
                 .draw(with: NSRect(origin: origin, size: .zero), options: [], context: nil)
+        case .rule(let rect):
+            ink.setFill()
+            // Composited like everything else here; plain `fill()` copies.
+            rect.fill(using: .sourceOver)
         case .glyph(let glyph, let box):
             let inset = box.width * (1 - glyph.opticalScale) / 2
             let rect = box.insetBy(dx: inset, dy: inset)

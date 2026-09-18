@@ -10,9 +10,10 @@ import AppKit
 /// hidden stays usable: with the notch off screen the menu is where the
 /// percentages, resets and stale ages live.
 ///
-/// The item itself shows each five-hour window at a glance — "72% · 2h 18m"
-/// beside the provider's mark — and is the plain icon again only when no
-/// monitored provider meters such a window. See `StatusItemSummary`.
+/// The item itself is the plain icon unless Settings switches on limits in
+/// the menu bar. Then it shows each chosen provider's five-hour window at a
+/// glance — "72% · 2h 18m" beside the provider's mark — and is the icon again
+/// whenever none of them has such a window to show. See `StatusItemSummary`.
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
     private var item: NSStatusItem?
@@ -27,6 +28,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// item's own summary is redrawn from them as they land.
     var snapshots: [ProviderSnapshot] = [] {
         didSet { updateButton() }
+    }
+    /// Whether the item shows limits at all, and whose — from Settings. Only
+    /// the item's face follows it: the menu still lists every provider read.
+    ///
+    /// Redrawn at once from the readings already here, so answering it never
+    /// waits for, or asks for, a fetch.
+    var limits: MenuBarLimits = .off {
+        didSet {
+            guard limits != oldValue else { return }
+            updateButton()
+        }
     }
     /// What the item shows now, so a publication that changes nothing on it —
     /// a local runtime is re-read every second — redraws nothing.
@@ -80,9 +92,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// Nothing here reads or refreshes usage: the store owns that, and it
     /// already re-reads on its first tick after a window resets. When the
     /// countdown reaches zero the item shows a dash until that reading lands.
+    /// With limits off there is no countdown, so nothing is left to wake it.
     private func updateButton(now: Date = Date()) {
         guard let item, let button = item.button else { return }
-        let next = StatusItemSummary.make(from: snapshots, now: now)
+        let next = StatusItemSummary.make(from: snapshots, showing: limits, now: now)
         scheduleCountdown(at: next.nextChange)
         guard next != summary else { return }
         summary = next

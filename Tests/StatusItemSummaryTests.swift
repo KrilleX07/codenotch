@@ -52,8 +52,18 @@ final class StatusItemSummaryTests: XCTestCase {
                          status: status, windows: [])
     }
 
-    private func summary(_ snapshots: [ProviderSnapshot]) -> StatusItemSummary {
-        StatusItemSummary.make(from: snapshots, now: now)
+    /// Everything it is given, chosen, unless told otherwise: most of these
+    /// tests are about what the bar says, not about who asked for it.
+    private func summary(_ snapshots: [ProviderSnapshot],
+                         limits: MenuBarLimits? = nil) -> StatusItemSummary {
+        StatusItemSummary.make(
+            from: snapshots,
+            showing: limits ?? MenuBarLimits(isOn: true, chosen: Set(snapshots.map(\.id))),
+            now: now)
+    }
+
+    private func on(_ chosen: Set<String>?) -> MenuBarLimits {
+        MenuBarLimits(isOn: true, chosen: chosen)
     }
 
     // MARK: - Which providers
@@ -162,6 +172,100 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertTrue(entry.detail.hasPrefix("Codex — Monthly limit: 12% Used"), entry.detail)
     }
 
+    // MARK: - What Settings chose
+
+    /// Off is the icon every earlier version drew, whatever the readings say,
+    /// and nothing is left counting down to wake the item.
+    func testWithLimitsOffTheItemIsTheIcon() {
+        let result = summary([claude(0.72, resetIn: 2 * hour), codex(0.41, resetIn: 4 * hour)], limits: .off)
+        XCTAssertTrue(result.entries.isEmpty)
+        XCTAssertNil(result.nextChange)
+    }
+
+    func testOnlyTheChosenProvidersAreShown() {
+        let readings = [claude(0.72, resetIn: 2 * hour), codex(0.41, resetIn: 4 * hour)]
+        XCTAssertEqual(summary(readings, limits: on(["claude"])).entries.map(\.id), ["claude"])
+        XCTAssertEqual(summary(readings, limits: on(["codex"])).entries.map(\.id), ["codex"])
+        XCTAssertEqual(summary(readings, limits: on(["claude", "codex"])).entries.map(\.id), ["claude", "codex"])
+    }
+
+    /// Choosing never reorders: the bar keeps the notch's order, which is the
+    /// one the user dragged the rings into.
+    func testTheChosenKeepTheNotchsOrder() {
+        let readings = [codex(0.41, resetIn: 4 * hour), claude(0.72, resetIn: 2 * hour)]
+        XCTAssertEqual(summary(readings, limits: on(["claude", "codex"])).entries.map(\.id), ["codex", "claude"])
+    }
+
+    /// None chosen is a choice. It gives the icon back rather than an empty,
+    /// invisible item — and never a provider picked on the user's behalf.
+    func testChoosingNoneGivesTheIconBack() {
+        let result = summary([claude(0.72, resetIn: 2 * hour), codex(0.41, resetIn: 4 * hour)], limits: on([]))
+        XCTAssertTrue(result.entries.isEmpty)
+        XCTAssertNil(result.nextChange)
+    }
+
+    /// Switched off keeps the choice, so on again brings back exactly that.
+    func testSwitchingOffAndOnKeepsTheChoice() {
+        let readings = [claude(0.72, resetIn: 2 * hour), codex(0.41, resetIn: 4 * hour)]
+        var limits = MenuBarLimits(isOn: false, chosen: ["codex"])
+        XCTAssertTrue(summary(readings, limits: limits).entries.isEmpty)
+        limits.isOn = true
+        XCTAssertEqual(summary(readings, limits: limits).entries.map(\.id), ["codex"])
+    }
+
+    /// Before anyone chooses, the bar is for Claude and Codex, whose headline
+    /// is the five-hour window. Another provider with such a window waits to
+    /// be chosen rather than turning up by itself.
+    func testNeverChosenMeansClaudeAndCodex() {
+        let readings = [claude(0.72, resetIn: 2 * hour), other("glm", glyph: .glm, length: 5 * hour),
+                        codex(0.41, resetIn: 4 * hour)]
+        XCTAssertEqual(summary(readings, limits: on(nil)).entries.map(\.id), ["claude", "codex"])
+        XCTAssertEqual(summary(readings, limits: on(["glm"])).entries.map(\.id), ["glm"])
+    }
+
+    /// The bar draws only what it is handed, and the store hands it only what
+    /// is being read: a chosen provider that is switched off shows nothing,
+    /// and choosing it starts no reading.
+    func testAChosenProviderThatIsNotReadIsNotShown() {
+        XCTAssertTrue(summary([codex(0.41, resetIn: 4 * hour)], limits: on(["claude"])).entries.isEmpty)
+    }
+
+    /// Chosen but without a figure yet is the same dash as ever — never a 0%
+    /// nobody measured.
+    func testAChosenProviderWithoutAReadingShowsADashNotZero() throws {
+        let entry = try XCTUnwrap(summary([waiting("claude", "Claude", glyph: .claude)],
+                                          limits: on(["claude"])).entries.first)
+        XCTAssertTrue(entry.isBlank)
+        XCTAssertEqual(entry.percent, "—")
+        XCTAssertEqual(entry.countdown, "—")
+    }
+
+    /// The room in the bar goes to the chosen alone: leaving providers out
+    /// makes way for the ones that are in.
+    func testTheBarsRoomGoesToTheChosen() {
+        let many = [claude(0.72, resetIn: hour), codex(0.41, resetIn: hour),
+                    other("glm", glyph: .glm, length: 5 * hour), other("kimi", glyph: .kimi, length: 5 * hour),
+                    other("opencode", glyph: .opencode, length: 5 * hour)]
+        XCTAssertEqual(summary(many, limits: on(["codex", "kimi", "opencode"])).entries.map(\.id),
+                       ["codex", "kimi", "opencode"])
+        let two = summary(many, limits: on(["kimi", "opencode"]))
+        XCTAssertEqual(two.entries.map(\.id), ["kimi", "opencode"])
+        XCTAssertFalse(two.isCompact, "two chosen keep their countdowns")
+    }
+
+    /// What Settings may offer: exactly what the bar can draw.
+    func testWhatTheBarCanSummarise() {
+        XCTAssertTrue(StatusItemSummary.canSummarise(claude(0.72, resetIn: hour)))
+        XCTAssertTrue(StatusItemSummary.canSummarise(waiting("codex", "Codex", glyph: .openai)),
+                      "Codex before its first reading")
+        XCTAssertTrue(StatusItemSummary.canSummarise(other("glm", glyph: .glm, length: 5 * hour)))
+        XCTAssertFalse(StatusItemSummary.canSummarise(other("cursor", glyph: .cursor, length: 30 * 86400)),
+                       "a monthly limit has no five-hour figure to show")
+        XCTAssertFalse(StatusItemSummary.canSummarise(waiting("cursor", "Cursor", glyph: .cursor)))
+        XCTAssertFalse(StatusItemSummary.canSummarise(
+            other("ollama-local", glyph: .ollamaLocal, length: 5 * hour, kind: .localRuntime)))
+    }
+
     // MARK: - What each figure says
 
     func testPercentagesAreWholeAndNeverRoundToAFigureThatDidNotHappen() {
@@ -266,5 +370,66 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertTrue(image.isTemplate)
         XCTAssertEqual(image.size.height, 22)
         XCTAssertGreaterThan(image.size.width, 0)
+    }
+
+    /// "72% · 2h 18m | 41% · 4h 05m": a second reading costs its own width
+    /// and a rule between the two, and nothing more.
+    func testASecondReadingSitsBesideTheFirstPastARule() {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        func width(_ snapshots: [ProviderSnapshot]) -> CGFloat {
+            StatusItemArtwork(summary: summary(snapshots), font: font, height: 22).size.width
+        }
+        let one = width([claude(0.72, resetIn: 2 * hour)])
+        let two = width([claude(0.72, resetIn: 2 * hour), codex(0.41, resetIn: 4 * hour)])
+        XCTAssertGreaterThan(two, one * 2, "the rule and its gaps sit between the readings")
+        XCTAssertLessThan(two, one * 2 + 20, "and take no more room than that")
+    }
+}
+
+/// The menu bar choice on its own: what "never chosen" means, and how the
+/// first choice gets written down.
+final class MenuBarLimitsTests: XCTestCase {
+    /// Before anyone chooses, the bar is for the providers whose headline is
+    /// the five-hour window — every profile of them.
+    func testNeverChosenReadsAsEveryClaudeAndCodexProfile() {
+        let limits = MenuBarLimits(isOn: true, chosen: nil)
+        for id in ["claude", "claude-work", "codex", "codex-side"] {
+            XCTAssertTrue(limits.isChosen(id), id)
+        }
+        for id in ["gemini", "glm", "kimi", "cursor"] {
+            XCTAssertFalse(limits.isChosen(id), id)
+        }
+    }
+
+    /// The first choice writes down everything that was on screen, ticked as
+    /// it was showing — so what is stored is what the user saw.
+    func testTheFirstChoiceWritesDownWhatWasShowing() {
+        let listed = ["claude", "codex", "gemini"]
+        let never = MenuBarLimits(isOn: true, chosen: nil)
+        XCTAssertEqual(never.choosing(true, "gemini", among: listed).chosen, ["claude", "codex", "gemini"])
+        XCTAssertEqual(never.choosing(false, "claude", among: listed).chosen, ["codex"])
+    }
+
+    /// Once written down, a Claude profile that turns up later is not put in
+    /// the bar behind anyone's back.
+    func testAProfileThatTurnsUpLaterWaitsToBeChosen() {
+        let chosen = MenuBarLimits(isOn: true, chosen: nil).choosing(false, "codex", among: ["claude", "codex"])
+        XCTAssertTrue(chosen.isChosen("claude"))
+        XCTAssertFalse(chosen.isChosen("claude-work"))
+    }
+
+    /// Taking the last one out leaves an empty choice, not a forgotten one:
+    /// the bar goes back to its icon instead of back to the default.
+    func testTakingTheLastOneOutIsNotTheSameAsNeverChoosing() {
+        let none = MenuBarLimits(isOn: true, chosen: ["claude"]).choosing(false, "claude", among: ["claude"])
+        XCTAssertEqual(none.chosen, [])
+        XCTAssertFalse(none.isChosen("claude"))
+    }
+
+    /// Choosing a provider is about that provider; the switch stays as it was.
+    func testChoosingLeavesTheSwitchAlone() {
+        let off = MenuBarLimits(isOn: false, chosen: ["claude"])
+        XCTAssertFalse(off.choosing(true, "codex", among: ["claude", "codex"]).isOn)
+        XCTAssertTrue(MenuBarLimits(isOn: true, chosen: nil).choosing(false, "codex", among: ["codex"]).isOn)
     }
 }

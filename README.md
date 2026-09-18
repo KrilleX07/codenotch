@@ -271,9 +271,12 @@ default; fixed presets are available for pink, red, orange, yellow, green,
 teal, blue, indigo, purple and off-white.
 
 The app itself can show a Dock icon, a menu bar item, or neither. The menu bar
-item shows each five-hour limit at a glance — the provider's mark, the share
-used and the time until it resets, like `72% · 2h 18m` — and its menu has the
-full readings.
+item is the Codenotch icon until you switch on **Show limit information in
+menu bar** under Settings → Appearance → App; then it shows the five-hour
+limits of the providers you choose there — the provider's mark, the share used
+and the time until it resets, like `72% · 2h 18m | 41% · 4h 05m`. Choosing
+what the bar shows never changes what Codenotch reads, and with nothing chosen
+the icon comes back. Its menu has the full readings either way.
 
 ## Updates
 
