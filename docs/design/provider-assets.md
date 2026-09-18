@@ -21,6 +21,26 @@ mark was isolated on a transparent background and stored as
 `devin.png`. The image set is marked as a template so
 `ProviderGlyphView` tints it like the other provider glyphs.
 
+## QianwenAI
+
+`Sources/Assets.xcassets/glyph-qianwenai.imageset/qianwenai.svg` is the
+QianwenAI console's own favicon, taken from the `<link rel="icon">` of
+`https://platform.qianwenai.com/home` and retrieved on 2026-09-18 from
+`https://img.alicdn.com/imgextra/i4/O1CN01W9GrLX1GOnvqd6zGw_!!6000000000613-55-tps-28-28.svg`.
+The mark is the vendor's own, used here to identify the vendor, as Ollama's
+is — and it is a different emblem from the Lobe Icons `.qwen` the local model
+cells draw, so a platform ring is not mistaken for a model.
+
+The favicon's white mark sits on a blue gradient rounded square, and
+`ProviderGlyphView` tints everything it draws, so the plate and the mark would
+come out the same colour — the solid-square trap recorded above for the local
+brand marks. The plate, its gradient, the `clipPath` and the `mix-blend-mode`
+styles were therefore dropped, along with one exactly duplicated path; the
+path geometry is otherwise untouched. The `viewBox` was cropped to the mark's
+own ink box (`3.9645 3.9655 20.071 20.071`) so the mark fills its frame the
+way the other assets do, with the root at `fill="#000"` and numeric
+`width="24"` / `height="24"` for native template rendering.
+
 ## LM Studio
 
 `Sources/Assets.xcassets/glyph-lmstudio.imageset/lmstudio.svg` is Lobe Icons'

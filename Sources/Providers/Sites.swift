@@ -132,6 +132,103 @@ enum Sites {
         }
     )
 
+    /// QianwenAI publishes model-call APIs but no usage or quota API, so the
+    /// Token Plan is only readable through the console's own RPC gateway, and
+    /// the session that authorizes it is the cookie on
+    /// `platform-home.qianwenai.com`. `sec_token` is fetched
+    /// fresh on every call rather than read from the console's
+    /// `window.__QWEN_CONSOLE_SHARED_SEC_TOKEN__` cache — that call is the
+    /// session liveness check anyway, and a token that had silently aged out
+    /// would leave the usage call failing for a reason the app could not name.
+    static let qianwen = WebSessionProvider.Site(
+        id: "qianwenai",
+        displayName: "QianwenAI",
+        glyph: .qianwenAI,
+        origin: URL(string: "https://platform.qianwenai.com/")!,
+        script: #"""
+        const infoResponse = await fetch('https://platform-home.qianwenai.com/tool/user/info.json', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        let secToken = null;
+        try {
+            const info = JSON.parse(await infoResponse.text());
+            const payload = info && info.payload ? info.payload : info;
+            if (payload && String(payload.code) === '200' && payload.data && payload.data.secToken) {
+                secToken = payload.data.secToken;
+            }
+        } catch (_) {}
+        // Signed out is HTTP 200 on this platform, and the *body* is what says
+        // so — `{"code":"ConsoleNeedLogin"}`. Only the envelope can decide
+        // this, so the transport status is never the answer.
+        if (!secToken) {
+            return JSON.stringify({ status: 401, body: '{"code":"ConsoleNeedLogin"}' });
+        }
+        const params = JSON.stringify({
+            Api: 'zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage',
+            Data: {},
+            V: '1.0'
+        });
+        const form = new URLSearchParams();
+        form.set('product', 'sfm_bailian');
+        form.set('action', 'BroadScopeAspnGateway');
+        form.set('sec_token', secToken);
+        form.set('region', 'cn-beijing');
+        form.set('params', params);
+        const response = await fetch('https://cs-data.qianwenai.com/data/api.json', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: form.toString()
+        });
+        const body = await response.text();
+        let status = response.status;
+        try {
+            // Only the console's own not-signed-in answer becomes 401. Every
+            // other failure — a 500, a malformed envelope — keeps its status and
+            // its body, so the parser is what rejects it: the store renders that
+            // as an error and *keeps* the last reading, where 401 would discard
+            // it and tell a signed-in user to sign in about a server fault that
+            // is not theirs. A dead session is caught at the token call above
+            // anyway; this marker only covers one that expires in between.
+            const envelope = JSON.parse(body);
+            if (String(envelope.code) === 'ConsoleNeedLogin') status = 401;
+        } catch (_) {}
+        return JSON.stringify({ status: status, body: body });
+        """#,
+        fidelity: .derived,
+        authProbeScript: #"""
+        try {
+            const response = await fetch('https://platform-home.qianwenai.com/tool/user/info.json', {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (response.status < 200 || response.status >= 300) {
+                return JSON.stringify({ authenticated: false });
+            }
+            const info = JSON.parse(await response.text());
+            const payload = info && info.payload ? info.payload : info;
+            if (!payload || String(payload.code) !== '200' || !payload.data
+                || !payload.data.secToken) {
+                return JSON.stringify({ authenticated: false });
+            }
+            // The digest, not the token: this is the session identity a switch
+            // has to see change, and the raw session stays in the page.
+            const bytes = new TextEncoder().encode(payload.data.secToken);
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            const fingerprint = Array.from(new Uint8Array(digest))
+                .map(byte => byte.toString(16).padStart(2, '0')).join('');
+            return JSON.stringify({ authenticated: true, fingerprint });
+        } catch (_) { return JSON.stringify({ authenticated: false }); }
+        """#,
+        // Sign-out has to take the gateway hosts and the platform's own account
+        // host with it: the session cookie that answers all of them lives on
+        // `account.qianwenai.com`, and `origin.host` is added by `signOut()`.
+        associatedHosts: ["platform-home.qianwenai.com", "cs-data.qianwenai.com",
+                          "account.qianwenai.com"],
+        parse: { try QianwenUsage.windows(fromJSON: $0) }
+    )
+
     /// MiniMax is signed into from Codenotch's own WKWebView, the same way
     /// DeepSeek is. Login lives on the regional platform origin; coding-plan
     /// remains is a www host, so the fetch is absolute and sign-out has to

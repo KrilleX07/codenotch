@@ -27155,6 +27155,18 @@
           }
         }
       }
+    },
+    "7-day limit": {
+      "extractionState": "manual",
+      "localizations": {}
+    },
+    "QianwenAI reported no Token Plan usage": {
+      "extractionState": "manual",
+      "localizations": {}
+    },
+    "Sign in to QianwenAI to read your Token Plan usage": {
+      "extractionState": "manual",
+      "localizations": {}
     }
   },
   "version": "1.0"
