@@ -164,19 +164,19 @@ private struct SettingsSidebarRow: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Image(systemName: section.icon)
-                .font(.system(size: indent ? 13 : 15, weight: .medium))
-                .frame(width: 20)
-                .foregroundStyle(.white.opacity(isSelected ? 1 : 0.7))
+                .font(.system(size: indent ? 12 : 13, weight: .regular))
+                .frame(width: 18)
+                .foregroundStyle(.white.opacity(isSelected ? 0.95 : 0.6))
             Text(section.title)
-                .font(.system(size: indent ? 14 : 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(isSelected ? 1 : 0.86))
+                .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(.white.opacity(isSelected ? 0.95 : 0.78))
                 .lineLimit(1)
             Spacer(minLength: 4)
             if let count {
                 Text("\(count)")
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.42))
             }
             if let disclosure {
@@ -193,15 +193,15 @@ private struct SettingsSidebarRow: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.leading, indent ? 30 : 10)
-        .padding(.trailing, 10)
-        .padding(.vertical, indent ? 7 : 9)
+        .padding(.leading, indent ? 28 : 10)
+        .padding(.trailing, 8)
+        .padding(.vertical, 6)
         .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? SettingsPalette.selected
                       : isHovered ? SettingsPalette.hovered : .clear)
         }
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onTapGesture(perform: select)
         .onHover { isHovered = $0 }
         .accessibilityElement(children: .combine)
@@ -377,9 +377,9 @@ struct SettingsView: View {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 22, height: 22)
                 Text("Codenotch")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, 18)
@@ -413,25 +413,25 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Button(action: quit) {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         Image(systemName: "power")
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(width: 20)
+                            .font(.system(size: 12, weight: .regular))
+                            .frame(width: 18)
                         Text(L10n.t("Quit Codenotch"))
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 13, weight: .regular))
                     }
                     .foregroundStyle(.white.opacity(0.55))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
                     Text("Codenotch \(version)")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(.white.opacity(0.32))
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 10)
                 }
             }
             .padding(.horizontal, 10)
@@ -1093,7 +1093,7 @@ struct SettingsView: View {
     /// it, not so much that it reads as a separate panel that came adrift.
     static let sidebarInset: CGFloat = 4
     static let sidebarCornerRadius: CGFloat = 14
-    static let sidebarWidth: CGFloat = 236
+    static let sidebarWidth: CGFloat = 220
 
     /// The sidebar plus a detail pane wide enough for an account row's name,
     /// buttons and switch without crowding.
