@@ -23,23 +23,36 @@ mark was isolated on a transparent background and stored as
 
 ## QianwenAI
 
-`Sources/Assets.xcassets/glyph-qianwenai.imageset/qianwenai.svg` is the
-QianwenAI console's own favicon, taken from the `<link rel="icon">` of
-`https://platform.qianwenai.com/home` and retrieved on 2026-09-18 from
-`https://img.alicdn.com/imgextra/i4/O1CN01W9GrLX1GOnvqd6zGw_!!6000000000613-55-tps-28-28.svg`.
-The mark is the vendor's own, used here to identify the vendor, as Ollama's
-is — and it is a different emblem from the Lobe Icons `.qwen` the local model
-cells draw, so a platform ring is not mistaken for a model.
+`Sources/Assets.xcassets/glyph-qianwenai.imageset/qianwenai.png` is the
+QianwenAI / Qwen star, supplied by the maintainer on 2026-09-18 as a colour
+PNG (a purple star crossed by three white bands). `ProviderGlyphView` tints
+everything it draws in one colour, so the colour art cannot be used as is:
+the purple was kept as the mark and the white bands became cut-outs,
+thresholded on saturation so the anti-aliased edges stay soft. The result
+was centred in a 512 px transparent square and stored as a template PNG
+(no vector tracer was available). The earlier favicon-derived SVG it
+replaces is in the git history.
 
-The favicon's white mark sits on a blue gradient rounded square, and
-`ProviderGlyphView` tints everything it draws, so the plate and the mark would
-come out the same colour — the solid-square trap recorded above for the local
-brand marks. The plate, its gradient, the `clipPath` and the `mix-blend-mode`
-styles were therefore dropped, along with one exactly duplicated path; the
-path geometry is otherwise untouched. The `viewBox` was cropped to the mark's
-own ink box (`3.9645 3.9655 20.071 20.071`) so the mark fills its frame the
-way the other assets do, with the root at `fill="#000"` and numeric
-`width="24"` / `height="24"` for native template rendering.
+## MiniMax
+
+`Sources/Assets.xcassets/glyph-minimax.imageset/minimax.svg` is Lobe Icons'
+monochrome MiniMax mark, supplied by the maintainer on 2026-09-18, adapted the
+same way as the other marks: `fill="#000"`, numeric `width="24"` /
+`height="24"`, the title and web-only style removed. It is drawn in place of
+the geometric `GlyphOutline.minimax`, which stays as the fallback.
+
+## Z.ai (GLM), Kimi, OpenCode and Command Code
+
+`glyph-glm.imageset/zai.svg`, `glyph-kimi.imageset/kimi.svg` and
+`glyph-opencode.imageset/opencode.svg` are Lobe Icons' monochrome Z.ai, Kimi
+and OpenCode marks, supplied by the maintainer on 2026-09-18 and
+adapted like MiniMax's. `glyph-commandcode.imageset/commandcode.svg` is taken
+from Command Code's own "Logo Mark – Light" (via zonalogo.com): only its ⌘
+path is kept — the black rounded plate and the thin white ring round its edge
+are dropped, since `ProviderGlyphView` tints everything one colour and the
+plate would come out as a solid square — with the `viewBox` cropped to the ⌘
+(`26.18 26.18 84.64 84.64`). The traced `GlyphOutline` shapes stay as
+fallbacks for all four.
 
 ## LM Studio
 

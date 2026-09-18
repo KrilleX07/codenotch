@@ -58,6 +58,17 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    /// The provider's own logo, for the sections that are one provider's
+    /// settings; nil for the app's own sections, which use a symbol.
+    var logo: ProviderGlyph? {
+        switch self {
+        case .deepseek: return .deepseek
+        case .ollama:   return .ollama
+        case .lmstudio: return .lmstudio
+        default:        return nil
+        }
+    }
+
     /// The line under the pane's title.
     var subtitle: String {
         switch self {
@@ -156,58 +167,140 @@ private enum SettingsPalette {
 private struct SettingsSidebarRow: View {
     let section: SettingsSection
     let isSelected: Bool
+    /// Shared by every row, so the selection pill is one shape that slides
+    /// from the old row to the new one rather than blinking between them.
+    let selectionSpace: Namespace.ID
     var indent = false
     var count: Int? = nil
     var disclosure: Binding<Bool>? = nil
     let select: () -> Void
 
     @State private var isHovered = false
+    @State private var isPressed = false
+    /// Bumped each time the row becomes selected, to play the icon's bounce once.
+    @State private var bounce = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let pill = RoundedRectangle(cornerRadius: 8, style: .continuous)
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: section.icon)
-                .font(.system(size: indent ? 12 : 13, weight: .regular))
+            icon
                 .frame(width: 18)
-                .foregroundStyle(.white.opacity(isSelected ? 0.95 : 0.6))
+                .foregroundStyle(.white.opacity(isSelected ? 0.95 : isHovered ? 0.85 : 0.6))
+                // Leans toward the pointer's row a hair, and pops once on selection.
+                .offset(x: isHovered && !isSelected && !reduceMotion ? 1.5 : 0)
             Text(section.title)
                 .font(.system(size: 13, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(.white.opacity(isSelected ? 0.95 : 0.78))
+                .foregroundStyle(.white.opacity(isSelected ? 0.95 : isHovered ? 0.92 : 0.78))
                 .lineLimit(1)
             Spacer(minLength: 4)
             if let count {
                 Text("\(count)")
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.42))
+                    .foregroundStyle(.white.opacity(isHovered || isSelected ? 0.55 : 0.42))
+                    .contentTransition(.numericText())
             }
             if let disclosure {
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) { disclosure.wrappedValue.toggle() }
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.45))
-                        .rotationEffect(.degrees(disclosure.wrappedValue ? 90 : 0))
-                        .frame(width: 18, height: 18)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                DisclosureChevron(isExpanded: disclosure)
             }
         }
         .padding(.leading, indent ? 28 : 10)
         .padding(.trailing, 8)
         .padding(.vertical, 6)
         .background {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? SettingsPalette.selected
-                      : isHovered ? SettingsPalette.hovered : .clear)
+            ZStack {
+                if isHovered && !isSelected {
+                    Self.pill.fill(SettingsPalette.hovered)
+                        .transition(.opacity)
+                }
+                if isSelected {
+                    Self.pill
+                        .fill(SettingsPalette.selected)
+                        .overlay {
+                            // A hairline lit from above, so the pill reads as raised.
+                            Self.pill.strokeBorder(
+                                LinearGradient(colors: [.white.opacity(0.10), .white.opacity(0.02)],
+                                               startPoint: .top, endPoint: .bottom),
+                                lineWidth: 0.5)
+                        }
+                        .matchedGeometryEffect(id: "selection", in: selectionSpace)
+                }
+            }
         }
-        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .onTapGesture(perform: select)
+        .contentShape(Self.pill)
+        .scaleEffect(isPressed && !reduceMotion ? 0.97 : 1)
+        .animation(.spring(response: 0.22, dampingFraction: 0.6), value: isPressed)
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+            withAnimation(.easeOut(duration: 0.14)) { isHovered = hovering }
+        }
+        // Pressed on touch-down, released on lift: the row answers the finger,
+        // not only the click.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in if !isPressed { isPressed = true } }
+                .onEnded { value in
+                    isPressed = false
+                    if abs(value.translation.width) < 6, abs(value.translation.height) < 6 { select() }
+                }
+        )
+        .onChange(of: isSelected) { selected in
+            if selected { bounce += 1 }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { select() }
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        if let logo = section.logo {
+            ProviderGlyphView(glyph: logo, size: 14)
+                .keyframeAnimator(initialValue: 1.0, trigger: bounce) { content, scale in
+                    content.scaleEffect(scale)
+                } keyframes: { _ in
+                    SpringKeyframe(1.18, duration: 0.14)
+                    SpringKeyframe(1.0, duration: 0.3, spring: .bouncy)
+                }
+        } else {
+            Image(systemName: section.icon)
+                .font(.system(size: indent ? 12 : 13, weight: .regular))
+                .symbolEffect(.bounce, value: bounce)
+        }
+    }
+}
+
+/// The arrow that folds Accounts' providers away: brighter under the pointer,
+/// a soft disc behind it, and a springy turn.
+private struct DisclosureChevron: View {
+    @Binding var isExpanded: Bool
+    @State private var isHovered = false
+
+    var body: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { isExpanded.toggle() }
+        } label: {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white.opacity(isHovered ? 0.85 : 0.45))
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .frame(width: 18, height: 18)
+                .background(Circle().fill(.white.opacity(isHovered ? 0.08 : 0)))
+                .contentShape(Circle())
+        }
+        .buttonStyle(SettingsPressStyle())
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+        }
+    }
+}
+
+/// A press that dips and springs back, for the sidebar's plain buttons.
+private struct SettingsPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.spring(response: 0.22, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -239,9 +332,9 @@ private struct SettingsQuitRow: View {
             }
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SettingsPressStyle())
         .onHover { hovering in
-            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+            withAnimation(.easeOut(duration: 0.14)) { isHovered = hovering }
         }
     }
 }
@@ -286,6 +379,7 @@ struct SettingsView: View {
     /// Whether Accounts shows its provider panes. Remembered, so someone who
     /// folds the group away finds it folded next time.
     @AppStorage("settingsAccountsExpanded") private var accountsExpanded = true
+    @Namespace private var selectionSpace
     /// The provider being dragged right now.
     ///
     /// Held here rather than read off the drop, because the rows have to move
@@ -454,16 +548,18 @@ struct SettingsView: View {
                         SettingsSidebarRow(
                             section: section,
                             isSelected: selection == section,
+                            selectionSpace: selectionSpace,
                             count: section == .accounts ? connectedCount : nil,
                             disclosure: section == .accounts ? $accountsExpanded : nil,
-                            select: { selection = section }
+                            select: { selectSection(section) }
                         )
                         if section == .accounts, accountsExpanded {
                             ForEach(SettingsSection.providerPanes) { child in
                                 SettingsSidebarRow(section: child,
                                                    isSelected: selection == child,
+                                                   selectionSpace: selectionSpace,
                                                    indent: true,
-                                                   select: { selection = child })
+                                                   select: { selectSection(child) })
                             }
                         }
                     }
@@ -476,12 +572,23 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 SettingsQuitRow(quit: quit)
-                if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-                    Text("Codenotch \(version)")
+                HStack(spacing: 8) {
+                    Text("Codenotch \(updater.currentVersion)")
                         .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(.white.opacity(0.32))
-                        .padding(.horizontal, 10)
+                    Spacer(minLength: 0)
+                    // Only once a check has found a newer version. Sparkle
+                    // downloads it in the background either way; this is for
+                    // someone who would rather have it now than on next launch.
+                    if case .found(let newer) = updater.outcome {
+                        Button(L10n.t("Update")) { updater.checkNow() }
+                            .buttonStyle(SettingsButtonStyle(kind: .prominent, compact: true))
+                            .help(L10n.t("Version \(newer) is available"))
+                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    }
                 }
+                .animation(.easeOut(duration: 0.2), value: updater.outcome)
+                .padding(.horizontal, 10)
             }
             .padding(.horizontal, 10)
             .padding(.bottom, 16)
@@ -497,6 +604,14 @@ struct SettingsView: View {
         .overlay(alignment: .trailing) {
             SettingsPalette.hairline.frame(width: 1)
         }
+    }
+
+    /// The pill slides on a spring; the pane itself crossfades on its own.
+    private func selectSection(_ section: SettingsSection) {
+        guard section != selection else { return }
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) { selection = section }
+        // A pane opens the way the window does: nothing being typed in.
+        if let window = NSApp.keyWindow { SettingsWindowController.startUnfocused(window) }
     }
 
     /// How many providers are switched on, beside Accounts in the sidebar.
