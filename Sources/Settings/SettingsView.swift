@@ -1914,15 +1914,17 @@ struct PhoneSettingsPane: View {
     private func lastSeenText(for device: PairedDevice) -> String {
         let diff = Date().timeIntervalSince(device.lastSeenAt)
         if diff < 60 {
-            return "Active now"
+            return L10n.t("Active now")
         }
         if device.lastSeenAt == device.pairedAt {
             let df = DateFormatter()
+            df.locale = L10n.locale
             df.dateStyle = .medium
             df.timeStyle = .none
-            return "Paired \(df.string(from: device.pairedAt))"
+            return L10n.t("Paired \(df.string(from: device.pairedAt))")
         }
         let rf = RelativeDateTimeFormatter()
+        rf.locale = L10n.locale
         rf.unitsStyle = .full
         return "Last seen \(rf.localizedString(for: device.lastSeenAt, relativeTo: Date()))"
     }
