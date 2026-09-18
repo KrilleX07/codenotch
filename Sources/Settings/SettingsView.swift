@@ -67,7 +67,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .lmstudio:      return "cpu"
         case .appearance:    return "paintbrush.fill"
         case .notifications: return "bell.badge.fill"
-        case .general:       return "gearshape.fill"
+        case .general:       return "gear"
         }
     }
 
@@ -129,16 +129,35 @@ private struct SidebarIcon: View {
     let systemName: String
     let tint: Color
 
-    /// System Settings' own badge: 20pt square, rounded to a little over a
-    /// quarter of its side, with the symbol at 12pt inside it.
+    /// System Settings' badge as macOS 27 draws it: the colour moved off the
+    /// tile and onto the symbol. A near-black continuous-corner tile, lighter
+    /// at the top than the bottom, with a hairline rim lit from above and a
+    /// soft shadow under it; the symbol large inside it in the section's
+    /// colour. Measured off System Settings' own panel icons, whose tile
+    /// runs from about #1E1E1E to #121212, in light and dark alike.
+    private static let tileTop = Color(red: 0.118, green: 0.118, blue: 0.122)
+    private static let tileBottom = Color(red: 0.071, green: 0.071, blue: 0.071)
+
     var body: some View {
-        RoundedRectangle(cornerRadius: 5.5, style: .continuous)
-            .fill(tint.gradient)
+        let tile = RoundedRectangle(cornerRadius: 5.5, style: .continuous)
+        tile
+            .fill(LinearGradient(colors: [Self.tileTop, Self.tileBottom],
+                                 startPoint: .top, endPoint: .bottom))
+            .overlay {
+                // The rim: brightest along the top edge, nearly gone at the foot.
+                tile.strokeBorder(
+                    LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.05)],
+                                   startPoint: .top, endPoint: .bottom),
+                    lineWidth: 0.5
+                )
+            }
             .frame(width: 20, height: 20)
+            .shadow(color: .black.opacity(0.35), radius: 1, y: 0.5)
             .overlay {
                 Image(systemName: systemName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    // Lit from above, like the tile.
+                    .foregroundStyle(tint.gradient)
             }
     }
 }
