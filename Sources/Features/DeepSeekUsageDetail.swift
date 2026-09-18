@@ -144,7 +144,7 @@ private struct DeepSeekMetric: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: NotchLayout.moneyStatGap) {
-            Text(label).foregroundStyle(Palette.textSecondary).lineLimit(1)
+            Text(label).foregroundStyle(Palette.tooltipTextSecondary).lineLimit(1)
             Text(value).foregroundStyle(Palette.textPrimary).monospacedDigit().lineLimit(1)
         }
         .font(Typography.cardBody)
@@ -169,7 +169,7 @@ private struct DeepSeekUsageChart: View {
                 Text(title).foregroundStyle(Palette.textPrimary)
                 Spacer(minLength: 0)
                 Text(L10n.t("peak \(formatter(values.max() ?? 0))"))
-                    .foregroundStyle(Palette.textSecondary)
+                    .foregroundStyle(Palette.tooltipTextSecondary)
                     .lineLimit(1)
             }
             .font(Typography.cardBody)
@@ -179,7 +179,7 @@ private struct DeepSeekUsageChart: View {
                 HStack(alignment: .bottom, spacing: NotchLayout.usageDetailBarGap) {
                     ForEach(Array(values.enumerated()), id: \.offset) { index, value in
                         RoundedRectangle(cornerRadius: Design.px(4), style: .continuous)
-                            .fill(index == values.count - 1 ? Palette.textPrimary : Palette.textSecondary)
+                            .fill(index == values.count - 1 ? Palette.textPrimary : Palette.tooltipTextSecondary)
                             .frame(width: barWidth,
                                    height: value > 0 ? max(Design.px(4), NotchLayout.usageDetailChartHeight * value / maximum) : 0)
                     }

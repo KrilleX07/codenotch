@@ -56,12 +56,37 @@ final class PaletteAppearanceTests: XCTestCase {
     func testTheLightAppearanceHasItsOwnInk() {
         assertOpaque(Palette.textPrimary, .aqua, is: 0x000000)
         assertOpaque(Palette.textSecondary, .aqua, is: 0x6B6B6B)
+        assertOpaque(Palette.tooltipTextSecondary, .aqua, is: 0x6B6B6B)
         assertOpaque(Palette.ample, .aqua, is: 0x00A356)
         assertOpaque(Palette.watch, .aqua, is: 0xB08800)
         assertOpaque(Palette.critical, .aqua, is: 0xFF3F00)
 
         assertTrack(Palette.ringTrack, .aqua, white: 0, alpha: 0.16)
         assertTrack(Palette.barTrack, .aqua, white: 0, alpha: 0.15)
+    }
+
+    /// Secondary tooltip copy needs to survive a dark Appearance whose
+    /// adaptive Liquid Glass has become pale from the desktop behind it.
+    /// The ordinary palette remains frame-accurate for the solid notch.
+    func testTooltipGetsDedicatedHighContrastDarkInk() {
+        assertOpaque(Palette.tooltipTextSecondary, .darkAqua, is: 0xC2C2C2)
+    }
+
+    func testOnlyDarkSystemLiquidGlassGetsTheReadableDim() {
+        XCTAssertTrue(TooltipGlassContrast.needsReadableDim(surfaceStyle: .glass,
+                                                            colorScheme: .dark))
+        XCTAssertFalse(TooltipGlassContrast.needsReadableDim(surfaceStyle: .glass,
+                                                             colorScheme: .light))
+        XCTAssertFalse(TooltipGlassContrast.needsReadableDim(surfaceStyle: .darkGlass,
+                                                             colorScheme: .dark))
+        XCTAssertFalse(TooltipGlassContrast.needsReadableDim(surfaceStyle: .solid,
+                                                             colorScheme: .dark))
+    }
+
+    func testReadableLiquidGlassDimStaysDarkAndTranslucent() {
+        guard let dim = resolve(Palette.liquidGlassTooltipDim, .darkAqua) else { return }
+        XCTAssertEqual(dim.whiteComponent, 0, accuracy: 1.0 / 255)
+        XCTAssertEqual(dim.alphaComponent, 0.60, accuracy: 1.0 / 255)
     }
 
     // MARK: -

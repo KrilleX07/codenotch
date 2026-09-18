@@ -47,8 +47,16 @@ enum Palette {
     /// to be `solid`.
     static let darkGlassDim = Color.black.opacity(0.60)
 
+    /// Standard Liquid Glass follows the desktop behind it. In dark mode that
+    /// material can still resolve to a pale grey, where the frame's #808080
+    /// secondary ink disappears. Tooltip copy gets its own brighter secondary
+    /// ink and this matching dim beneath the glass; the main notch remains the
+    /// untouched system material the user chose.
+    static let liquidGlassTooltipDim = Color.black.opacity(0.60)
+
     static let textPrimary   = Color(dark: .white, light: .black)
     static let textSecondary = Color(dark: NSColor(hex: 0x808080), light: NSColor(hex: 0x6B6B6B))
+    static let tooltipTextSecondary = Color(dark: NSColor(hex: 0xC2C2C2), light: NSColor(hex: 0x6B6B6B))
 }
 
 extension Color {
@@ -117,4 +125,3 @@ extension EnvironmentValues {
         set { self[CodenotchHeadlessGlassKey.self] = newValue }
     }
 }
-
