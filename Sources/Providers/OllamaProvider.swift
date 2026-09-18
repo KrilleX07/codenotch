@@ -39,6 +39,7 @@ actor OllamaProvider: UsageProvider {
         guard let key = OllamaCredentials.load() else { throw UsageProviderError.needsAuth }
 
         var request = URLRequest(url: endpoint)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15

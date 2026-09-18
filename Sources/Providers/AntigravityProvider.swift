@@ -20,6 +20,8 @@ actor AntigravityProvider: UsageProvider {
     // choice, and changing it would silently discard both.
     nonisolated let displayName = "Antigravity"
     nonisolated let glyph = ProviderGlyph.antigravity
+    /// A missing bridge requires ps/lsof discovery and remote fallback calls.
+    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     /// The production host. Antigravity itself also calls a `daily-` variant,
     /// which answers 403 to this token — so it is not a fallback, it is a
@@ -251,6 +253,7 @@ actor AntigravityProvider: UsageProvider {
     /// A free or personal account answers 403 #3501, "You do not have a valid
     private func quota(token: String, project: String? = nil) async throws -> [LimitWindow]? {
         var request = URLRequest(url: quotaEndpoint)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

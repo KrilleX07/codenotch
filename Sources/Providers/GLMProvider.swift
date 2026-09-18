@@ -12,6 +12,8 @@ actor GLMProvider: UsageProvider {
     nonisolated let id = "glm"
     nonisolated let displayName = "GLM"
     nonisolated let glyph = ProviderGlyph.glm
+    /// The monitor endpoint is known to throttle; keep its normal request cadence.
+    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     private let session: URLSession
     private let archive: UsageArchive
@@ -107,6 +109,7 @@ actor GLMProvider: UsageProvider {
     private func fetch(credentials: GLMCredentials.Credential) async throws -> Data {
         let url = credentials.baseURL.appendingPathComponent("api/monitor/usage/quota/limit")
         var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         // The monitor takes the key raw — no "Bearer" scheme. Prefixing it is
         // exactly what an auth failure looks like from here.
         request.setValue(credentials.token, forHTTPHeaderField: "Authorization")

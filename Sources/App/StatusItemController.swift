@@ -27,8 +27,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// these every time it opens, so reset countdowns and ages are fresh; the
     /// item's own summary is redrawn from them as they land.
     var snapshots: [ProviderSnapshot] = [] {
-        didSet { updateButton() }
+        didSet {
+            updateButton()
+            updateOpenMenu()
+        }
     }
+    private weak var openMenu: NSMenu?
     /// Whether the item shows limits at all, and whose — from Settings. Only
     /// the item's face follows it: the menu still lists every provider read.
     ///
@@ -77,6 +81,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     func hide() {
         guard let item else { return }
+        openMenu?.cancelTracking()
+        openMenu = nil
         countdownTimer?.invalidate()
         countdownTimer = nil
         summary = nil
@@ -135,11 +141,36 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     // MARK: - Menu
 
-    /// Rebuilt on every open rather than on every fetch: a menu built at fetch
-    /// time would freeze "Resets in 51 min" and "20 hr ago" until the next
-    /// reading lands.
+    /// Show remembered readings immediately, then ask the shared store for new
+    /// ones. No synchronous fetch or separate menu polling loop.
     func menuWillOpen(_ menu: NSMenu) {
         rebuild(menu: menu, now: Date())
+        openMenu = menu
+        onRefreshAll?()
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        openMenu = nil
+    }
+
+    private func updateOpenMenu() {
+        guard let menu = openMenu else { return }
+        let updated = NSMenu()
+        rebuild(menu: updated, now: Date())
+        // Most refreshes only change figures. Keep those NSMenuItems in place
+        // so a highlighted provider or command keeps its target and action.
+        if menu.items.count == updated.items.count,
+           zip(menu.items, updated.items).allSatisfy({ old, new in
+               old.action == new.action && old.isSeparatorItem == new.isSeparatorItem
+                   && (old.representedObject as? String) == (new.representedObject as? String)
+           }) {
+            for (old, new) in zip(menu.items, updated.items) {
+                old.title = new.title
+                old.image = new.image
+            }
+        } else {
+            rebuild(menu: menu, now: Date())
+        }
     }
 
     /// Exposed for tests: what the menu says without needing a status item.
@@ -153,8 +184,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             let cells = cells()
             for snapshot in snapshots {
                 menu.addItem(headerItem(for: snapshot, now: now))
-                for line in Self.detailLines(for: snapshot, cells: cells, activity: activity, now: now) {
+                let models = cells.filter { $0.providerID == snapshot.id && $0.localModel != nil }
+                for (index, line) in Self.detailLines(for: snapshot, cells: cells, activity: activity, now: now).enumerated() {
                     let row = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+                    if snapshot.kind == .localRuntime, models.indices.contains(index) {
+                        Self.setProviderImage(models[index].glyph, on: row)
+                    }
                     row.isEnabled = false
                     row.indentationLevel = 1
                     menu.addItem(row)
@@ -224,7 +259,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let header = NSMenuItem(title: title, action: #selector(refreshProvider(_:)), keyEquivalent: "")
         header.target = self
         header.representedObject = snapshot.id
+        Self.setProviderImage(snapshot.glyph, on: header)
         return header
+    }
+
+    private static func setProviderImage(_ glyph: ProviderGlyph, on item: NSMenuItem) {
+        item.image = glyph.image()
+        // macOS 27 hides menu images under the default .automatic policy.
+        // These marks identify the provider, so explicitly keep them visible.
+        if #available(macOS 27.0, *) {
+            // Objective-C access also supports builds with the macOS 26 SDK.
+            // NSMenuItem.ImageVisibility.visible has the raw value 1.
+            item.setValue(1, forKey: "preferredImageVisibility")
+        }
     }
 
     /// A runtime has no headline figure of its own; its models have. The row

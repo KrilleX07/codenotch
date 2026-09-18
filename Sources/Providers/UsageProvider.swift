@@ -13,6 +13,9 @@ protocol UsageProvider {
     /// Enough to draw the cell even when a fetch has never succeeded.
     var displayName: String { get }
     var glyph: ProviderGlyph { get }
+    /// A floor for scheduled reads of expensive or throttled sources. Explicit
+    /// refreshes still ask immediately, subject to the source's own safeguards.
+    var minimumBackgroundRefreshInterval: TimeInterval { get }
     func fetchSnapshot() async throws -> ProviderSnapshot
     /// Whose readings these are. Declared here rather than only in an extension:
     /// a method that exists solely in a protocol extension is dispatched
@@ -62,6 +65,7 @@ extension UsageProvider {
     func presentAccountSwitch() { presentSignIn() }
 
     var isVisibleWhenAbsent: Bool { true }
+    var minimumBackgroundRefreshInterval: TimeInterval { 0 }
 }
 
 extension UsageProvider {

@@ -279,6 +279,20 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(StubEndpoint.requestCount, 1)
     }
 
+    func testShippedFreshnessDoesNotHideLiveUsageBehindATwoMinuteOldDesktopCache() async throws {
+        StubEndpoint.reset([.init(status: 200, body: Self.usagePayload)])
+        let source = CredentialSource(readable: true)
+        let defaults = UserDefaults(suiteName: "ClaudeFreshnessTests.\(UUID().uuidString)")!
+        // Do not pass desktopFreshness: this checks the actual shipped default.
+        let provider = ClaudeOAuthProvider(profile: desktopProfile(), session: StubEndpoint.session(),
+                                           archive: UsageArchive(defaults: defaults),
+                                           loadCredentials: { try source.read() }, cli: nil,
+                                           desktopCache: desktopCache(age: 120))
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.usedFraction, 0.42, "The endpoint is newer than Desktop's 30%")
+        XCTAssertEqual(StubEndpoint.requestCount, 1)
+    }
+
     /// Claude Desktop is signed into one account; Codenotch draws a ring per
     /// Claude Code profile. A profile whose organization does not match the
     /// cached URL gets nothing from Desktop — the alternative is the personal

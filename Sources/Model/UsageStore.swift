@@ -86,26 +86,22 @@ final class UsageStore: ObservableObject {
         ProviderOrder.arrange(providers, by: order, id: \.id)
     }
 
-    /// Whether any provider is actively being used right now. Your usage cannot
-    /// move while nothing is running, so polling hard through a quiet afternoon
-    /// spends rate-limit budget to re-read a number that has not changed.
+    /// Activity can accelerate a custom idle schedule. Shipped defaults read
+    /// every 10s even when these local monitors cannot see work on another host.
     var isBusy: () -> Bool = { false }
 
     private let refreshInterval: TimeInterval
     private let localRefreshInterval: TimeInterval
     /// How long a snapshot stays believable after its last successful fetch.
     ///
-    /// Comfortably above `idleRefreshInterval`, on purpose. With the two equal,
-    /// a ring dimmed the instant the *first* idle refresh attempt failed —
-    /// which reads as "nothing is being read any more" when what actually
-    /// happened is one attempt, five minutes ago, out of what will keep being
-    /// tried every five minutes after. The margin buys room for a couple of
-    /// those attempts to have genuinely failed before the ring says so; it
-    /// must never fire merely because the idle schedule hasn't come round yet.
+    /// Separate from polling cadence: one failed attempt should not dim a
+    /// recent valid reading. A sustained outage eventually shows its age.
     private let staleAfter: TimeInterval
     /// How often to look when nothing is running.
     private let idleRefreshInterval: TimeInterval
     private var lastAttempt: Date?
+    private var providerAttempts: [String: Date] = [:]
+    private var retryNotBefore: [String: Date] = [:]
     private let pollingNow: () -> Date
 
     private let archive: UsageArchive
@@ -118,6 +114,7 @@ final class UsageStore: ObservableObject {
     /// Set synchronously before the task exists, so "is one already running"
     /// never depends on when the task body happens to start.
     private var isRefreshing = false
+    private var refreshGeneration = 0
     private var wakeObserver: NSObjectProtocol?
     private var languageObserver: NSObjectProtocol?
 
@@ -144,9 +141,9 @@ final class UsageStore: ObservableObject {
 
     init(
         providers: [UsageProvider],
-        refreshInterval: TimeInterval = 60,
+        refreshInterval: TimeInterval = 10,
         localRefreshInterval: TimeInterval = 1,
-        idleRefreshInterval: TimeInterval = 5 * 60,
+        idleRefreshInterval: TimeInterval = 10,
         staleAfter: TimeInterval = 15 * 60,
         // Thirty times a normal pass, which is a second or two. High enough
         // never to fire on a slow network, low enough that a wedged read costs
@@ -237,6 +234,7 @@ final class UsageStore: ObservableObject {
     }
 
     func start() {
+        guard timer == nil else { return }
         refreshNow()
 
         let timer = Timer(timeInterval: refreshInterval, repeats: true) { [weak self] _ in
@@ -272,6 +270,7 @@ final class UsageStore: ObservableObject {
     }
 
     func stop() {
+        refreshGeneration += 1
         timer?.invalidate()
         timer = nil
         localTimer?.invalidate()
@@ -296,13 +295,13 @@ final class UsageStore: ObservableObject {
     private func tick() {
         let now = pollingNow()
         let waited = lastAttempt.map { now.timeIntervalSince($0) } ?? .greatestFiniteMagnitude
-        guard Self.shouldRefresh(
+        guard idleRefreshInterval <= refreshInterval || Self.shouldRefresh(
             isBusy: isBusy(),
             sinceLastAttempt: waited,
             idleInterval: idleRefreshInterval,
             resetDue: Self.hasWindowRolledOver(in: snapshots, since: lastAttempt, at: now)
         ) else { return }
-        refreshNow()
+        refreshNow(background: true)
     }
 
     /// True when a window's `resetsAt` fell between the last attempt and now.
@@ -338,15 +337,22 @@ final class UsageStore: ObservableObject {
     }
 
     func refreshNow() {
+        refreshNow(background: false)
+    }
+
+    private func refreshNow(background: Bool) {
         guard !isRefreshing else {
             Log.usage.notice("refresh skipped: one already in flight")
             return
         }
         isRefreshing = true
+        refreshGeneration += 1
+        let generation = refreshGeneration
         lastAttempt = pollingNow()
         refreshTask = Task { [weak self] in
-            await self?.refresh()
-            self?.finish()
+            await self?.refresh(background: background)
+            guard let self, self.refreshGeneration == generation else { return }
+            self.finish()
         }
         armDeadline()
     }
@@ -412,10 +418,28 @@ final class UsageStore: ObservableObject {
         isRefreshing = false
     }
 
-    func refresh() async {
+    func refresh(background: Bool = false) async {
         // The provider tasks below do not inherit this task's cancellation.
         guard !Task.isCancelled else { return }
-        let tasks = orderedProviders.filter { !disconnected.contains($0.id) }.map {
+        let now = pollingNow()
+        let tasks = orderedProviders.filter { provider in
+            guard !disconnected.contains(provider.id) else { return false }
+            if fetchTasks[provider.id] != nil {
+                // Explicit async callers can await an active read. Scheduled
+                // passes and reads abandoned at the deadline must step over it.
+                return !background && refreshing.contains(provider.id)
+            }
+            guard background else { return true }
+            // Local runtimes already have their faster shared schedule.
+            guard provider.kind == .usage else { return false }
+            if Self.hasWindowRolledOver(in: snapshots.filter { $0.id == provider.id },
+                                       since: providerAttempts[provider.id], at: now) { return true }
+            let interval = max(refreshInterval, provider.minimumBackgroundRefreshInterval)
+            // Timer jitter should not turn a 10s cadence into alternating 20s
+            // waits. The allowance is at most a tenth of a second.
+            let slack = min(0.1, interval * 0.01)
+            return providerAttempts[provider.id].map { now.timeIntervalSince($0) + slack >= interval } ?? true
+        }.map {
             beginRefresh($0)
         }
         for task in tasks { await task.value }
@@ -431,7 +455,6 @@ final class UsageStore: ObservableObject {
         guard let provider = providers.first(where: { $0.id == providerID }),
               !disconnected.contains(providerID) else { return nil }
         if let task = fetchTasks[providerID] { return task }
-        if provider.kind == .usage { lastAttempt = pollingNow() }
         return beginRefresh(provider, holdIndicator: true)
     }
 
@@ -465,6 +488,9 @@ final class UsageStore: ObservableObject {
 
     private func beginRefresh(_ provider: UsageProvider, holdIndicator: Bool = false) -> Task<Void, Never> {
         if let task = fetchTasks[provider.id] { return task }
+        let now = pollingNow()
+        if let retry = retryNotBefore[provider.id], retry > now { return Task {} }
+        providerAttempts[provider.id] = now
         let generation = generations[provider.id, default: 0]
         refreshing.insert(provider.id)
         let task = Task { [weak self] in
@@ -487,6 +513,8 @@ final class UsageStore: ObservableObject {
         generations[providerID, default: 0] += 1
         fetchTasks.removeValue(forKey: providerID)?.cancel()
         refreshing.remove(providerID)
+        providerAttempts.removeValue(forKey: providerID)
+        retryNotBefore.removeValue(forKey: providerID)
     }
 
     private func publish(_ snapshot: ProviderSnapshot) {
@@ -623,6 +651,7 @@ final class UsageStore: ObservableObject {
         do {
             let fresh = try await provider.fetchSnapshot()
             guard acceptsResult(from: provider, generation: generation) else { return nil }
+            retryNotBefore.removeValue(forKey: provider.id)
             // Model residency becomes untrue as soon as a server stops. It must
             // never use quota's last-good cache or survive an app relaunch.
             if provider.kind == .usage {
@@ -638,6 +667,17 @@ final class UsageStore: ObservableObject {
             return fresh
         } catch {
             guard acceptsResult(from: provider, generation: generation) else { return nil }
+            // Some adapters own persisted/source-specific backoff already;
+            // this also honours retry hints from adapters without one.
+            let delay: TimeInterval?
+            switch error {
+            case UsageProviderError.rateLimited(let retryAfter): delay = retryAfter
+            case UsageProviderError.badResponse(status: 429): delay = 60
+            default: delay = nil
+            }
+            if let delay, delay.isFinite {
+                retryNotBefore[provider.id] = pollingNow().addingTimeInterval(max(refreshInterval, delay))
+            }
             if provider.kind == .localRuntime {
                 var empty = Self.placeholder(provider)
                 empty.status = .error(error.localizedDescription)
@@ -656,13 +696,13 @@ final class UsageStore: ObservableObject {
     /// A failed fetch never invents a number: it either re-shows the last good
     /// one marked stale, or shows the cell with no reading at all.
     private func degraded(provider: UsageProvider, error: Error) -> ProviderSnapshot? {
-        if !provider.isVisibleWhenAbsent {
+        let status = Self.status(for: error)
+        if !provider.isVisibleWhenAbsent,
+           lastGood[provider.id] == nil || Self.supersedesHistory(status) {
             lastGood[provider.id] = nil
             archive.save(lastGood)
             return nil
         }
-
-        let status = Self.status(for: error)
 
         // Remembered apart from the snapshot on purpose. The snapshot answers
         // "how good are the numbers I am showing", and for a refusal the honest
@@ -732,6 +772,7 @@ final class UsageStore: ObservableObject {
     var isRefreshingForTesting: Bool { isRefreshing }
     var inFlightForTesting: Set<String> { Set(fetchTasks.keys) }
     var idleRefreshIntervalForTesting: TimeInterval { idleRefreshInterval }
+    var refreshIntervalForTesting: TimeInterval { refreshInterval }
 
     private static func status(for error: Error) -> ProviderStatus {
         switch error {

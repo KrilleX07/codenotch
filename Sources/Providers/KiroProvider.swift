@@ -12,6 +12,8 @@ actor KiroProvider: UsageProvider {
     nonisolated let id = "kiro"
     nonisolated let displayName = "Kiro"
     nonisolated let glyph = ProviderGlyph.kiro
+    /// Each reading launches kiro-cli and may spend up to 20 seconds in that process.
+    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     private let session: URLSession
     private let archive: UsageArchive

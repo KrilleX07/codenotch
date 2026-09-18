@@ -28,6 +28,8 @@ actor ClaudeOAuthProvider: UsageProvider {
     nonisolated let id: String
     nonisolated let displayName: String
     nonisolated let glyph = ProviderGlyph.claude
+    /// CLI launches and the unpublished OAuth endpoint are expensive/throttled.
+    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
     /// This profile's token, behind its own cache — see `ClaudeKeychain`.
     nonisolated private let keychain: ClaudeKeychain
 
@@ -69,20 +71,13 @@ actor ClaudeOAuthProvider: UsageProvider {
     nonisolated private let desktopCache: ClaudeDesktopUsageCache?
     /// How recent a Desktop snapshot has to be to stand in for a live reading.
     ///
-    /// Thirty minutes, from watching a real cache: while Claude Desktop is open it
-    /// rewrites this entry every five to fifteen minutes, with the occasional
-    /// half-hour gap when it is left in the background. So thirty minutes rides
-    /// out an ordinary gap without ever presenting a number that could be far
-    /// wrong — the session window moved eleven points in fifteen minutes on the
-    /// day this was measured, which is why it is not an hour.
-    ///
-    /// Past it the source simply drops through, and `UsageStore` does the rest: it
-    /// re-shows the last good reading, undimmed for its own fifteen minutes and
-    /// dimmed and dated after that. Nothing here has to re-implement any of it.
+    /// Desktop rewrites this cache only every five to fifteen minutes. Accept
+    /// it for one normal provider interval, then ask the CLI/token source so a
+    /// faster store schedule cannot keep presenting that old cache as live.
     private let desktopFreshness: TimeInterval
     /// Stamped whenever a Desktop read came up short. Without it, a machine with
     /// no Claude Desktop — or one whose Desktop has gone quiet — pays for a scan
-    /// of a few thousand directory entries on every 60s tick, forever. The same
+    /// of a few thousand directory entries on every tick, forever. The same
     /// reason `lastCLIAttempt` exists. A working source never sees this: every
     /// successful read scans (the scan is cheap and always accurate; see
     /// `ClaudeDesktopUsageCache.read`), and only a miss ever sets it.
@@ -90,9 +85,8 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// How long a miss suppresses the next scan.
     private let desktopRescanInterval: TimeInterval
 
-    /// A subprocess is far more expensive than an HTTP call, and `UsageStore`
-    /// polls every 60s while a session is busy. The windows barely move in a
-    /// minute, so the last answer is reused in between.
+    /// A subprocess can take 20 seconds. Reuse its answer for at most one
+    /// normal provider interval rather than launching a process every 10s.
     private let cliRefreshInterval: TimeInterval
     private var lastCLIWindows: (windows: [LimitWindow], at: Date)?
     /// The named tier the last `/usage` print named, if it named one.
@@ -106,10 +100,10 @@ actor ClaudeOAuthProvider: UsageProvider {
          archive: UsageArchive = UsageArchive(),
          loadCredentials: (@Sendable () throws -> ClaudeCredentials)? = nil,
          cli: ClaudeUsageCLI? = ClaudeUsageCLI.locate(),
-         cliRefreshInterval: TimeInterval = 5 * 60,
+         cliRefreshInterval: TimeInterval = 60,
          desktopCache: ClaudeDesktopUsageCache? = ClaudeDesktopUsageCache(),
-         desktopFreshness: TimeInterval = 30 * 60,
-         desktopRescanInterval: TimeInterval = 5 * 60) {
+         desktopFreshness: TimeInterval = 60,
+         desktopRescanInterval: TimeInterval = 60) {
         self.cli = cli
         self.cliRefreshInterval = cliRefreshInterval
         self.desktopCache = desktopCache
@@ -349,6 +343,7 @@ actor ClaudeOAuthProvider: UsageProvider {
         let token = try currentToken()
 
         var request = URLRequest(url: endpoint)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         request.timeoutInterval = 15

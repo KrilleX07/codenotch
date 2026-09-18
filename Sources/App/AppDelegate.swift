@@ -198,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
             relay.$thinkingModels
-                .receive(on: RunLoop.main)
+                .receive(on: DispatchQueue.main)
                 .sink { [weak fleet, weak store] models in
                     let previous = fleet?.thinkingModels ?? [:]
                     fleet?.setThinkingModels(models)
@@ -207,7 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .store(in: &cancellables)
 
             relay.$performances
-                .receive(on: RunLoop.main)
+                .receive(on: DispatchQueue.main)
                 .sink { [weak fleet, weak store] measurements in
                     fleet?.setPerformances(measurements)
                     if !measurements.isEmpty { store?.refresh(providerID: "ollama-local") }
@@ -233,18 +233,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
             lmstudio.$activities
-                .receive(on: RunLoop.main)
+                .receive(on: DispatchQueue.main)
                 .sink { [weak fleet] in fleet?.setLocalActivities($0) }
                 .store(in: &cancellables)
             lmstudio.$performances
-                .receive(on: RunLoop.main)
+                .receive(on: DispatchQueue.main)
                 .sink { [weak fleet, weak store] measurements in
                     fleet?.setPerformances(measurements, source: LMStudioMetrics.providerID)
                     if !measurements.isEmpty { store?.refresh(providerID: LMStudioMetrics.providerID) }
                 }
                 .store(in: &cancellables)
             lmstudio.$ledger
-                .receive(on: RunLoop.main)
+                .receive(on: DispatchQueue.main)
                 .sink { [weak fleet] in fleet?.setLedger($0) }
                 .store(in: &cancellables)
 
@@ -627,7 +627,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // toggle redraws at once, without a fetch.
             store.$notchSnapshots
                 .combineLatest(preferences.$claudeDailyPaceRing)
-                .receive(on: RunLoop.main)
+                .receive(on: DispatchQueue.main)
                 .sink { [weak fleet] snapshots, paced in
                     fleet?.setSnapshots(DailyPace.apply(to: snapshots, enabled: paced))
                 }
@@ -635,7 +635,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             store.$snapshots
                 .combineLatest(preferences.$claudeDailyPaceRing)
-                .receive(on: RunLoop.main)
+                // Dispatch also delivers while AppKit is tracking the menu.
+                .receive(on: DispatchQueue.main)
                 .sink { [weak statusItem] snapshots, paced in
                     let snapshots = DailyPace.apply(to: snapshots, enabled: paced)
                     statusItem?.snapshots = snapshots
@@ -726,9 +727,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             refresher.start()
             tokenRefresher = refresher
         }
+        var busyProviders: Set<String> = []
         let activity = ActivityCoordinator(monitors: monitors) { [weak self, weak fleet] id, sessions in
             guard let fleet else { return }
             fleet.setSessions(providerID: id, sessions: sessions)
+            let busy = sessions.contains { $0.state == .busy }
+            let wasBusy = busyProviders.contains(id)
+            if busy { busyProviders.insert(id) } else { busyProviders.remove(id) }
+            // Existing monitor events request a reading when work starts or
+            // ends. Every session publication would duplicate unchanged work.
+            if busy != wasBusy { self?.store?.refresh(providerID: id) }
             self?.announceCompletions(sessions: fleet.sessions)
         }
         self.activityCoordinator = activity

@@ -52,6 +52,7 @@ actor KimiProvider: UsageProvider {
 
     private func fetch(token: String) async throws -> String {
         var request = URLRequest(url: KimiUsage.endpoint)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15

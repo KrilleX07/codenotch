@@ -227,6 +227,7 @@ final class UsageRefreshDeadlineTests: XCTestCase {
 
         blocked.release()                         // pass 1's old hang resolves now
         await settle(0.3)
+        XCTAssertTrue(store.isRefreshingForTesting, "the late pass must not release pass 2's guard")
         XCTAssertEqual(store.refreshing, ["slow"],
                        "pass 1 finishing late must not touch pass 2's spinner")
 

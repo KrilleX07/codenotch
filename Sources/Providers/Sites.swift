@@ -9,7 +9,7 @@ enum Sites {
         origin: URL(string: "https://www.perplexity.ai/")!,
         script: """
         const response = await fetch('/rest/rate-limit/all', {
-            credentials: 'include',
+            credentials: 'include', cache: 'no-store',
             headers: { 'Accept': 'application/json' }
         });
         const text = await response.text();
@@ -60,7 +60,7 @@ enum Sites {
         const timeZoneSeconds = -now.getTimezoneOffset() * 60;
         const query = 'start=' + startSeconds + '&end=' + endSeconds + '&tz=' + timeZoneSeconds;
         const get = async (path) => {
-            const response = await fetch(path, { credentials: 'include', headers });
+            const response = await fetch(path, { credentials: 'include', cache: 'no-store', headers });
             return { status: response.status, body: await response.text() };
         };
         const [summary, amount, cost] = await Promise.all([
@@ -94,7 +94,7 @@ enum Sites {
             const token = extract(JSON.parse(raw)) || raw.trim();
             if (!token) return false;
             const response = await fetch('/api/v0/users/get_user_summary', {
-                credentials: 'include', headers: {
+                credentials: 'include', cache: 'no-store', headers: {
                     'Accept': 'application/json',
                     'x-client-platform': 'web',
                     'Authorization': token.startsWith('Bearer ') ? token : 'Bearer ' + token
@@ -147,7 +147,7 @@ enum Sites {
         origin: URL(string: "https://platform.qianwenai.com/")!,
         script: #"""
         const infoResponse = await fetch('https://platform-home.qianwenai.com/tool/user/info.json', {
-            credentials: 'include',
+            credentials: 'include', cache: 'no-store',
             headers: { 'Accept': 'application/json' }
         });
         let secToken = null;
@@ -177,7 +177,7 @@ enum Sites {
         form.set('params', params);
         const response = await fetch('https://cs-data.qianwenai.com/data/api.json', {
             method: 'POST',
-            credentials: 'include',
+            credentials: 'include', cache: 'no-store',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: form.toString()
         });
@@ -200,7 +200,7 @@ enum Sites {
         authProbeScript: #"""
         try {
             const response = await fetch('https://platform-home.qianwenai.com/tool/user/info.json', {
-                credentials: 'include',
+                credentials: 'include', cache: 'no-store',
                 headers: { 'Accept': 'application/json' }
             });
             if (response.status < 200 || response.status >= 300) {
@@ -247,7 +247,7 @@ enum Sites {
         // stays signed in.
         let readRemains = """
         const response = await fetch('\(remains)', {
-            credentials: 'include',
+            credentials: 'include', cache: 'no-store',
             headers: { 'Accept': 'application/json' }
         });
         let status = response.status;
