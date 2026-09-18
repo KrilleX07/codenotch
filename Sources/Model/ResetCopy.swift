@@ -54,6 +54,13 @@ enum ResetCopy {
             return L10n.t("Resets in \(max(1, minutes)) min", locale: locale)
         }
 
+        return L10n.t("Resets \(dateValue(for: resetsAt, now: now, calendar: calendar, locale: locale))", locale: locale)
+    }
+
+    /// The existing date representation, shared by the detailed copy and the
+    /// compact menu bar value without removing words from a translated string.
+    private static func dateValue(for resetsAt: Date, now: Date, calendar: Calendar,
+                                  locale: Locale) -> String {
         let formatter = formatter(for: calendar)
         formatter.locale = locale
 
@@ -65,7 +72,7 @@ enum ResetCopy {
             // Day and month only, matching how the vendors write it. A time
             // that far out is noise: nobody plans around 3:55 PM in four weeks.
             formatter.setLocalizedDateFormatFromTemplate("MMM d")
-            return L10n.t("Resets \(formatter.string(from: resetsAt))", locale: locale)
+            return formatter.string(from: resetsAt)
         }
 
         // `j`, not `h`: a literal hour symbol in a template pins the clock to
@@ -76,7 +83,42 @@ enum ResetCopy {
         // switch in System Settings. Regions that write AM/PM keep it, so
         // English is still "Thu 12:00 AM".
         formatter.setLocalizedDateFormatFromTemplate("E j:mm")
-        return L10n.t("Resets \(formatter.string(from: resetsAt))", locale: locale)
+        return formatter.string(from: resetsAt)
+    }
+
+    enum MenuBarContext {
+        case compact, detail
+    }
+
+    /// All menu bar surfaces use the same timestamp and mode. The date detail
+    /// delegates to `text` to retain its rounding and under-an-hour wording.
+    static func menuBarText(for resetsAt: Date?, now: Date = Date(),
+                            format: ResetTimeFormat = .automatic,
+                            context: MenuBarContext, calendar: Calendar = .current,
+                            locale: Locale = L10n.locale) -> String? {
+        guard let resetsAt, validInterval(to: resetsAt, now: now) != nil else { return nil }
+        guard resetsAt > now else {
+            return context == .detail ? L10n.t("Resetting…", locale: locale) : nil
+        }
+        if format == .remaining {
+            guard let duration = countdown(to: resetsAt, now: now, locale: locale) else { return nil }
+            return context == .detail ? L10n.t("Resets in \(duration)", locale: locale) : duration
+        }
+        if context == .detail {
+            return text(for: resetsAt, now: now, calendar: calendar, locale: locale)
+        }
+        return dateValue(for: resetsAt, now: now, calendar: calendar, locale: locale)
+    }
+
+    /// Reject non-finite and unrepresentable dates before either DateFormatter
+    /// or an integer conversion sees them.
+    private static func validInterval(to resetsAt: Date, now: Date) -> TimeInterval? {
+        let seconds = resetsAt.timeIntervalSince(now)
+        guard seconds.isFinite,
+              (Date.distantPast...Date.distantFuture).contains(resetsAt),
+              (Date.distantPast...Date.distantFuture).contains(now)
+        else { return nil }
+        return seconds
     }
 
     /// The time left before a reset, as short as the menu bar needs it: "2h 05m",
@@ -88,11 +130,12 @@ enum ResetCopy {
     /// minute, and "1h 00m" is gone the moment the hour is.
     static func countdown(to resetsAt: Date, now: Date = Date(),
                           locale: Locale = L10n.locale) -> String? {
-        let seconds = resetsAt.timeIntervalSince(now)
-        guard seconds > 0 else { return nil }
+        guard let seconds = validInterval(to: resetsAt, now: now), seconds > 0 else { return nil }
         let minutes = Int(seconds / 60)
         if minutes < 1 { return L10n.t("<1m", locale: locale) }
         if minutes < 60 { return L10n.t("\(minutes)m", locale: locale) }
+        let hours = minutes / 60
+        if hours >= 24 { return L10n.t("\(hours / 24)d \(hours % 24)h", locale: locale) }
         // Two digits, so "2h 05m" is as wide as "2h 50m" and whatever sits
         // beside it in the menu bar does not shuffle as the minutes tick over.
         let padded = String(format: "%02d", minutes % 60)
@@ -102,8 +145,7 @@ enum ResetCopy {
     /// When `countdown` next reads differently — the next whole minute of time
     /// left, or the reset itself in the last minute. Nil once it has passed.
     static func nextCountdownChange(to resetsAt: Date, now: Date = Date()) -> Date? {
-        let seconds = resetsAt.timeIntervalSince(now)
-        guard seconds > 0 else { return nil }
+        guard let seconds = validInterval(to: resetsAt, now: now), seconds > 0 else { return nil }
         return resetsAt.addingTimeInterval(-(seconds / 60).rounded(.down) * 60)
     }
 

@@ -386,6 +386,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // delivers a run loop turn later, and the item would otherwise go
             // up as one thing and then change its mind.
             statusItem.limits = preferences.menuBarLimits
+            statusItem.resetTimeFormat = preferences.menuBarResetTimeFormat
 
             preferences.$appPresence
                 .receive(on: RunLoop.main)
@@ -404,6 +405,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .removeDuplicates()
                 .receive(on: RunLoop.main)
                 .sink { [weak statusItem] in statusItem?.limits = $0 }
+                .store(in: &cancellables)
+
+            preferences.$menuBarResetTimeFormat
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak statusItem] in statusItem?.resetTimeFormat = $0 }
                 .store(in: &cancellables)
 
             preferences.$notchVisibility

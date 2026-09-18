@@ -181,6 +181,10 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(resetTimeFormat.rawValue, forKey: Keys.resetTimeFormat) }
     }
 
+    @Published var menuBarResetTimeFormat: ResetTimeFormat {
+        didSet { defaults.set(menuBarResetTimeFormat.rawValue, forKey: Keys.menuBarResetTimeFormat) }
+    }
+
     @Published var showUsagePace: Bool {
         didSet { defaults.set(showUsagePace, forKey: Self.showUsagePaceKey) }
     }
@@ -459,6 +463,7 @@ final class Preferences: ObservableObject {
         static let customSize = "customNotchScale"
         static let display = "notchDisplay"
         static let resetTimeFormat = "resetTimeFormat"
+        static let menuBarResetTimeFormat = "menuBarResetTimeFormat"
         static let scope = "notchScope"
         static let accentColor = "accentColor"
         // A new key, so there is nothing under the old app name to migrate.
@@ -704,6 +709,8 @@ final class Preferences: ObservableObject {
         self.displayPreference = defaults.string(forKey: Keys.display)
             .map(DisplayPreference.display) ?? .followActiveWindow
         self.resetTimeFormat = defaults.string(forKey: Keys.resetTimeFormat)
+            .flatMap(ResetTimeFormat.init(rawValue:)) ?? .automatic
+        self.menuBarResetTimeFormat = defaults.string(forKey: Keys.menuBarResetTimeFormat)
             .flatMap(ResetTimeFormat.init(rawValue:)) ?? .automatic
         self.showUsagePace = defaults.bool(forKey: Self.showUsagePaceKey)
         // Off by default: it swaps what Claude's ring means, and that is a

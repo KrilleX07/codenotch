@@ -1,6 +1,27 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Menu Bar": {
+      "extractionState": "manual"
+    },
+    "Reset display": {
+      "extractionState": "manual"
+    },
+    "Reset Date": {
+      "extractionState": "manual"
+    },
+    "Time Remaining": {
+      "extractionState": "manual"
+    },
+    "How usage resets appear in the menu bar and its menu.": {
+      "extractionState": "manual"
+    },
+    "Resets in %@": {
+      "extractionState": "manual"
+    },
+    "%lldd %lldh": {
+      "extractionState": "manual"
+    },
     "just now": {
       "extractionState": "manual",
       "localizations": {

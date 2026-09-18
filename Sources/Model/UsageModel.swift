@@ -216,8 +216,15 @@ struct UsageBlock: Equatable {
 
     /// The line the tooltip leads with.
     func summary(now: Date = Date(), calendar: Calendar = .current,
-                 locale: Locale = L10n.locale) -> String {
+                 locale: Locale = L10n.locale, format: ResetTimeFormat = .automatic) -> String {
         guard let resetsAt, resetsAt > now else { return reason }
+        guard ResetCopy.menuBarText(for: resetsAt, now: now, context: .compact,
+                                   calendar: calendar, locale: locale) != nil else { return reason }
+        if format == .remaining,
+           let reset = ResetCopy.menuBarText(for: resetsAt, now: now, format: format,
+                                            context: .detail, calendar: calendar, locale: locale) {
+            return "\(reason) · \(reset)"
+        }
         let formatter = ResetCopy.formatter(for: calendar)
         formatter.locale = locale
         // The same clock the vendor's own banner uses — "4:13 PM" — rather

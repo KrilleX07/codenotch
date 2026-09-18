@@ -274,7 +274,10 @@ The app itself can show a Dock icon, a menu bar item, or neither. The menu bar
 item is the Codenotch icon until you switch on **Show limit information in
 menu bar** under Settings → Appearance → App; then it shows the five-hour
 limits of the providers you choose there — the provider's mark, the share used
-and the time until it resets, like `72% · 2h 18m | 41% · 4h 05m`. Choosing
+and its reset. **Settings → Appearance → Menu Bar → Reset display** chooses
+**Reset Date** (the default) or **Time Remaining**, such as
+`72% · 2h 18m | 41% · 4h 05m`. The choice also applies to every reset in the
+opened menu; countdowns update locally without extra provider requests. Choosing
 what the bar shows never changes what Codenotch reads, and with nothing chosen
 the icon comes back. Its menu has the full readings either way.
 

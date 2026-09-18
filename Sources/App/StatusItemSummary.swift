@@ -2,7 +2,7 @@ import AppKit
 
 /// What the menu bar item says in place of its icon, once Settings asks it to:
 /// for each chosen provider with a five-hour limit, its mark, how much of that
-/// window is spent, and how long until it resets — "72% · 2h 18m".
+/// window is spent, and its reset date or time remaining.
 ///
 /// Built from the same snapshots as the menu under it, never from a reading of
 /// its own. Pure, so everything the bar can say, down to "—", can be tested
@@ -16,8 +16,8 @@ struct StatusItemSummary: Equatable {
         let label: String?
         /// "72%", or `unknown` when there is no current five-hour reading.
         let percent: String
-        /// "2h 18m", or `unknown` when the reset is unknown or already past.
-        let countdown: String
+        /// A reset date or "2h 18m", or `unknown` when unavailable or already past.
+        let resetText: String
         /// A remembered reading rather than a fresh one, dimmed the way the
         /// notch dims its ring.
         let isStale: Bool
@@ -27,12 +27,11 @@ struct StatusItemSummary: Equatable {
         static let unknown = "—"
 
         /// Nothing to show at all, so it is drawn as the mark and one dash.
-        var isBlank: Bool { percent == Self.unknown && countdown == Self.unknown }
+        var isBlank: Bool { percent == Self.unknown && resetText == Self.unknown }
     }
 
     let entries: [Entry]
-    /// When the first countdown on show next reads differently. Nil when
-    /// nothing is counting down, so nothing needs to wake up for it.
+    /// The next countdown change or, in date mode, the reset itself.
     let nextChange: Date?
 
     /// Two readings sit side by side comfortably. Past that each keeps its mark
@@ -61,7 +60,7 @@ struct StatusItemSummary: Equatable {
     /// a limit to show — which gives the item its icon back.
     @MainActor
     static func make(from snapshots: [ProviderSnapshot], showing limits: MenuBarLimits,
-                     now: Date) -> StatusItemSummary {
+                     now: Date, format: ResetTimeFormat = .automatic) -> StatusItemSummary {
         guard limits.isOn else { return StatusItemSummary(entries: [], nextChange: nil) }
         let summarised = snapshots.filter { snapshot in
             canSummarise(snapshot) && limits.isChosen(snapshot.id)
@@ -69,11 +68,15 @@ struct StatusItemSummary: Equatable {
         var marks: [ProviderGlyph: Int] = [:]
         for snapshot in summarised { marks[snapshot.glyph, default: 0] += 1 }
         let entries = summarised.map { snapshot in
-            entry(for: snapshot, sharesMark: marks[snapshot.glyph, default: 0] > 1, now: now)
+            entry(for: snapshot, sharesMark: marks[snapshot.glyph, default: 0] > 1, now: now, format: format)
         }
         let nextChange = summarised
             .compactMap { $0.fiveHourWindow?.resetsAt }
-            .compactMap { ResetCopy.nextCountdownChange(to: $0, now: now) }
+            .compactMap { reset in
+                format == .remaining
+                    ? ResetCopy.nextCountdownChange(to: reset, now: now)
+                    : (ResetCopy.menuBarText(for: reset, now: now, context: .compact) == nil ? nil : reset)
+            }
             .min()
         return StatusItemSummary(entries: entries, nextChange: nextChange)
     }
@@ -84,7 +87,7 @@ struct StatusItemSummary: Equatable {
 
     @MainActor
     private static func entry(for snapshot: ProviderSnapshot, sharesMark: Bool,
-                              now: Date) -> Entry {
+                              now: Date, format: ResetTimeFormat) -> Entry {
         let window = snapshot.fiveHourWindow
         // Past its reset a reading describes a window that is over. The store
         // re-reads on its first tick after a reset; until that lands the honest
@@ -94,7 +97,7 @@ struct StatusItemSummary: Equatable {
         if !isOver, let fraction = window?.usedFraction, fraction.isFinite {
             percent = Percent.whole(for: fraction) + "%"
         }
-        let countdown = window?.resetsAt.flatMap { ResetCopy.countdown(to: $0, now: now) }
+        let resetText = ResetCopy.menuBarText(for: window?.resetsAt, now: now, format: format, context: .compact)
         let label = sharesMark
             ? ClaudeProfile.slug(fromProviderID: snapshot.id) ?? CodexProfile.slug(fromProviderID: snapshot.id)
             : nil
@@ -103,29 +106,29 @@ struct StatusItemSummary: Equatable {
             glyph: snapshot.glyph,
             label: label,
             percent: percent,
-            countdown: countdown ?? Entry.unknown,
+            resetText: resetText ?? Entry.unknown,
             isStale: snapshot.status.isStale && percent != Entry.unknown,
             detail: detail(for: snapshot, window: window, isOver: isOver,
-                           countdown: countdown, now: now)
+                           resetText: resetText, now: now, format: format)
         )
     }
 
     /// The bar's figures with the words it has no room for: whose they are,
-    /// which window, and what is left. The countdown is the bar's own, so the
+    /// which window, and its reset. The value is the bar's own, so the
     /// two never disagree by the minute that rounding would put between them.
     @MainActor
     private static func detail(for snapshot: ProviderSnapshot, window: LimitWindow?,
-                               isOver: Bool, countdown: String?, now: Date) -> String {
+                               isOver: Bool, resetText: String?, now: Date, format: ResetTimeFormat) -> String {
         let reading: String
         if let window {
             let figures = isOver
                 ? [L10n.t("Resetting…")]
-                : [window.summary] + [countdown].compactMap { $0 }
+                : [window.summary] + [resetText].compactMap { $0 }
             reading = "\(window.label): \(figures.joined(separator: " · "))"
         } else if let headline = snapshot.headline {
             // What the account does meter, so a dash in the bar is explained
             // rather than merely shown.
-            reading = StatusItemController.windowLine(for: headline, now: now, format: .remaining)
+            reading = StatusItemController.windowLine(for: headline, now: now, format: format)
         } else {
             reading = snapshot.statusMessage ?? L10n.t("No reading")
         }
@@ -238,7 +241,7 @@ struct StatusItemArtwork {
             guard !summary.isCompact else { continue }
             text(separator, alpha: alpha)
             let start = x
-            text(entry.countdown, alpha: alpha)
+            text(entry.resetText, alpha: alpha)
             x = max(x, start + countdownRoom)
         }
         return (x.rounded(.up), marks)
