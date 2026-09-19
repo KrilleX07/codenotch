@@ -27,6 +27,9 @@ final class GrokActivityMonitor: ObservableObject, AgentActivityMonitor {
     private let interval: TimeInterval
     private let staleAfter: TimeInterval
     private var timer: Timer?
+    /// One scan at a time: a slow one is not stacked on by the next tick.
+    private var isScanning = false
+    private static let scanQueue = DispatchQueue(label: "codenotch.grok-activity", qos: .utility)
 
     init(
         activeURL: URL = GrokActivity.activeURL,
@@ -54,11 +57,25 @@ final class GrokActivityMonitor: ObservableObject, AgentActivityMonitor {
         timer = nil
     }
 
+    /// Off the main thread. Finding headless `grok -p` runs lists every
+    /// process on the Mac and asks the kernel about each — hundreds of calls a
+    /// tick — which is not work to put between the notch and its next frame.
     private func rescan() {
-        let found = GrokActivity.read(activeURL: activeURL, sessionsRoot: sessionsRoot,
-                                      staleAfter: staleAfter)
-        guard found != sessions else { return }
-        sessions = found
+        guard !isScanning else { return }
+        isScanning = true
+        let activeURL = activeURL, sessionsRoot = sessionsRoot, staleAfter = staleAfter
+        Self.scanQueue.async { [weak self] in
+            let found = GrokActivity.read(activeURL: activeURL, sessionsRoot: sessionsRoot,
+                                          staleAfter: staleAfter)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.isScanning = false
+                    guard found != self.sessions else { return }
+                    self.sessions = found
+                }
+            }
+        }
     }
 }
 
