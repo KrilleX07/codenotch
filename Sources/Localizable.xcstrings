@@ -1091,7 +1091,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "為某個編程工具配置 GLM Coding Plan 密鑰以讀取用量"
+            "value": "為某個程式設計工具設定 GLM Coding Plan 金鑰以讀取用量"
           }
         },
         "ru": {
@@ -1250,7 +1250,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 未能讀取 %@ 已保存的登入資訊。點擊這個圓環再試一次，並選擇「始終允許」。"
+            "value": "Codenotch 未能讀取 %@ 已儲存的登入資訊。點按這個圓環再試一次，並選擇「始終允許」。"
           }
         },
         "ru": {
@@ -1415,7 +1415,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "當前會話"
+            "value": "目前工作階段"
           }
         },
         "de": {
@@ -2740,7 +2740,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日請求 · 未公佈額度"
+            "value": "今日要求 · 未公佈額度"
           }
         },
         "de": {
@@ -2793,7 +2793,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日暫無請求"
+            "value": "今日暫無要求"
           }
         },
         "de": {
@@ -2846,7 +2846,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日約 %lld 次請求"
+            "value": "今日約 %lld 次要求"
           }
         },
         "de": {
@@ -2899,7 +2899,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日約 %lld 次請求"
+            "value": "今日約 %lld 次要求"
           }
         },
         "de": {
@@ -3800,7 +3800,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "螢幕邊緣一顆小膠囊，指針移過去就會展開。"
+            "value": "螢幕邊緣一顆小膠囊，游標移過去就會展開。"
           }
         },
         "de": {
@@ -4065,7 +4065,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 運行時，程式塢裡有一個普通應用圖示。"
+            "value": "Codenotch 執行時，程式塢裡有一個普通 App 圖示。"
           }
         },
         "de": {
@@ -4536,7 +4536,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "頂部一條橫欄，讀數並排。有硬件瀏海的 Mac 上會貼上去，看起來像同一塊。"
+            "value": "頂部一條橫欄，讀數並排。有硬體瀏海的 Mac 上會貼上去，看起來像同一塊。"
           }
         },
         "ru": {
@@ -4754,7 +4754,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "通用"
+            "value": "一般"
           }
         },
         "de": {
@@ -4913,7 +4913,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "應用圖示"
+            "value": "App 圖示"
           }
         },
         "de": {
@@ -5125,7 +5125,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "應用設計與開發"
+            "value": "App 設計與開發"
           }
         },
         "de": {
@@ -5178,7 +5178,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接一個助手以開始使用"
+            "value": "連線一個助手以開始使用"
           }
         },
         "de": {
@@ -5225,7 +5225,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 從不自己登入 — 每條讀數都借自已經持有該帳號的工具。在這裡退出只會停止讀取憑證並忘掉數字，你在那個工具裡仍然是登入狀態。macOS 每種工具第一次會問一次，換帳號再登入時還會再問；選「始終允許」就不會再打擾。"
+            "value": "Codenotch 從不自己登入 — 每條讀數都借自已經持有該帳號的工具。在這裡登出只會停止讀取憑證並忘掉數字，你在那個工具裡仍然是登入狀態。macOS 每種工具第一次會問一次，換帳號再登入時還會再問；選「始終允許」就不會再打擾。"
           }
         },
         "ru": {
@@ -5278,7 +5278,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 讀取這台 Mac 上已經登入的工具的用量 — 從不問你的密碼。安裝並登入 Claude Code（終端工具，不是 Claude 應用）、Cursor、Codex、Antigravity、GLM、Grok 或 OpenCode 中的任意一個，瀏海裡就會出現對應的圓環。"
+            "value": "Codenotch 讀取這台 Mac 上已經登入的工具的用量 — 從不問你的密碼。安裝並登入 Claude Code（終端工具，不是 Claude App）、Cursor、Codex、Antigravity、GLM、Grok 或 OpenCode 中的任意一個，瀏海裡就會出現對應的圓環。"
           }
         },
         "ru": {
@@ -5331,7 +5331,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS 會詢問一次，是否允許讀取 Claude Code 和 Antigravity 已保存的登入資訊。請選「始終允許」— 只選「允許」的話，每次都會再問。"
+            "value": "macOS 會詢問一次，是否允許讀取 Claude Code 和 Antigravity 已儲存的登入資訊。請選「始終允許」— 只選「允許」的話，每次都會再問。"
           }
         },
         "ru": {
@@ -5437,7 +5437,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已退出 — 不再讀取，也不再保存讀數。"
+            "value": "已登出 — 不再讀取，也不再儲存讀數。"
           }
         },
         "ru": {
@@ -5490,7 +5490,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "允許訪問…"
+            "value": "允許取用…"
           }
         },
         "ru": {
@@ -5596,7 +5596,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "再次向 macOS 請求 %@ 已保存的登入資訊。選「始終允許」就不會再問。"
+            "value": "再次向 macOS 要求 %@ 已儲存的登入資訊。選「始終允許」就不會再問。"
           }
         },
         "ru": {
@@ -5755,7 +5755,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 沒有讀取 %@ 保存的登入資訊。請在上方選擇“允許訪問…”，然後選擇“允許”。"
+            "value": "Codenotch 沒有讀取 %@ 儲存的登入資訊。請在上方選擇“允許取用…”，然後選擇“允許”。"
           }
         },
         "ru": {
@@ -6503,7 +6503,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在 %@ 視窗裡退出，才能換另一個帳號。"
+            "value": "在 %@ 視窗裡登出，才能換另一個帳號。"
           }
         },
         "de": {
@@ -6662,7 +6662,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "會退出 %@ — 這個會話屬於 Codenotch。"
+            "value": "會登出 %@ — 這個工作階段屬於 Codenotch。"
           }
         },
         "de": {
@@ -6715,7 +6715,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "你在 %@ 裡仍然是登入狀態 — 要結束會話，去 %@ 裡操作。"
+            "value": "你在 %@ 裡仍然是登入狀態 — 要結束工作階段，去 %@ 裡操作。"
           }
         },
         "de": {
@@ -6921,7 +6921,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "運行 grok login — 它會登入並重新整理這裡讀取的令牌。"
+            "value": "執行 grok login — 它會登入並重新整理這裡讀取的權杖。"
           }
         },
         "ru": {
@@ -6974,7 +6974,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用量走的是 OpenCode 登入時保存的 opencode-go 密鑰 — 在 OpenCode 裡接通 Go（`opencode auth login`），瀏海就會讀到。"
+            "value": "用量走的是 OpenCode 登入時儲存的 opencode-go 金鑰 — 在 OpenCode 裡連上 Go（`opencode auth login`），瀏海就會讀到。"
           }
         },
         "ru": {
@@ -7027,7 +7027,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用量走的是某個編程工具裡的 Z.ai GLM Coding Plan 密鑰 — Claude Code 的 settings.json、ZCode 或 OpenCode。在那邊配好，瀏海就會讀到。"
+            "value": "用量走的是某個程式設計工具裡的 Z.ai GLM Coding Plan 金鑰 — Claude Code 的 settings.json、ZCode 或 OpenCode。在那邊配好，瀏海就會讀到。"
           }
         },
         "ru": {
@@ -7080,7 +7080,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "先運行一次 `%@` — 它會登入並重新整理這裡讀取的令牌。要換帳號，在那裡用 /login。"
+            "value": "先執行一次 `%@` — 它會登入並重新整理這裡讀取的權杖。要換帳號，在那裡用 /login。"
           }
         },
         "ru": {
@@ -7292,7 +7292,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "這個密鑰上沒有 OpenCode Go 訂閱"
+            "value": "這個金鑰上沒有 OpenCode Go 訂閱"
           }
         },
         "ru": {
@@ -7457,7 +7457,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "退出 Codenotch"
+            "value": "結束 Codenotch"
           }
         },
         "de": {
@@ -7822,7 +7822,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連不上更新服務器。Codenotch 會自己再試 — 這份安裝沒有問題。"
+            "value": "連不上更新伺服器。Codenotch 會自己再試 — 這份安裝沒有問題。"
           }
         },
         "ru": {
@@ -7981,7 +7981,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "SuperGrok 的每週 Grok Build 額度，讀取 CLI 所用的同一個計費接口，會話來自 ~/.grok/auth.json。"
+            "value": "SuperGrok 的每週 Grok Build 額度，讀取 CLI 所用的同一個計費介面，工作階段來自 ~/.grok/auth.json。"
           }
         },
         "ru": {
@@ -8087,7 +8087,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用 OpenCode 登入時自己存下的密鑰讀取 Go 方案官方用量接口 — 不用再登一次。"
+            "value": "用 OpenCode 登入時自己存下的金鑰讀取 Go 方案官方用量端點 — 不用再登一次。"
           }
         },
         "ru": {
@@ -8193,7 +8193,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codex 的實時讀數只認 5 小時和 7 天視窗。免費方案帳號真正的額度是 30 天，被悄悄漏掉，一個確實在計量的帳號顯示成沒有可計量的額度。"
+            "value": "Codex 的即時讀數只認 5 小時和 7 天視窗。免費方案帳號真正的額度是 30 天，被悄悄漏掉，一個確實在計量的帳號顯示成沒有可計量的額度。"
           }
         },
         "ru": {
@@ -8352,7 +8352,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "貢獻者可以在沒有證書的情況下構建"
+            "value": "貢獻者可以在沒有憑證的情況下建置"
           }
         },
         "ru": {
@@ -8564,7 +8564,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "剛睡醒的一小段時間裡 macOS 還不允許鑰匙串提示，這被誤當成已退出 — 讀數被抹掉，螢幕上只剩「正在等待首次讀數」。現在會讓數字變舊而不是扔掉，並自己恢復。"
+            "value": "剛睡醒的一小段時間裡 macOS 還不允許鑰匙串提示，這被誤當成已登出 — 讀數被抹掉，螢幕上只剩「正在等待首次讀數」。現在會讓數字變舊而不是扔掉，並自行復原。"
           }
         },
         "ru": {
@@ -8617,7 +8617,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "又多了兩個帳號，四個社區修復，以及誠實的重復項。"
+            "value": "又多了兩個帳號，四個社群修復，以及誠實的重複項。"
           }
         },
         "ru": {
@@ -8829,7 +8829,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Z.ai 的 Coding Plan 現在也實時讀取，密鑰借自已經持有它的那個工具。"
+            "value": "Z.ai 的 Coding Plan 現在也即時讀取，金鑰借自已經持有它的那個工具。"
           }
         },
         "ru": {
@@ -8882,7 +8882,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "卡住的 Claude 圓環會自己恢復"
+            "value": "卡住的 Claude 圓環會自行復原"
           }
         },
         "ru": {
@@ -8935,7 +8935,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "一次短暫失敗 — 多半是 Mac 從睡眠喚醒 — 以前會把圓環鎖死直到重啟應用。現在下次檢查會自己解開。"
+            "value": "一次短暫失敗 — 多半是 Mac 從睡眠喚醒 — 以前會把圓環鎖死直到重新啟動 App。現在下次檢查會自己解開。"
           }
         },
         "ru": {
@@ -8988,7 +8988,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cursor 會話不再把已經結束的工作報成還在進行"
+            "value": "Cursor 工作階段不再把已經結束的工作報成還在進行"
           }
         },
         "ru": {
@@ -9041,7 +9041,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "崩潰或棄掉的對話可能一整天都顯示「仍在工作」。現在會發現寫入其實已經停了。"
+            "value": "當機或棄掉的對話可能一整天都顯示「仍在工作」。現在會發現寫入其實已經停了。"
           }
         },
         "ru": {
@@ -9094,7 +9094,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "幾個月前的重復項再也搶不贏"
+            "value": "幾個月前的重複項再也搶不贏"
           }
         },
         "ru": {
@@ -9147,7 +9147,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude Code 每次輪換令牌都會寫一條新的鑰匙串。登入較久的帳號可能隨機拿到過期的那條，然後永遠顯示「正在等待首次讀數」。"
+            "value": "Claude Code 每次輪換權杖都會寫一條新的鑰匙串。登入較久的帳號可能隨機拿到過期的那條，然後永遠顯示「正在等待首次讀數」。"
           }
         },
         "ru": {
@@ -9306,7 +9306,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codex 改為實時讀取，「始終顯示」會保持開啟。"
+            "value": "Codex 改為即時讀取，「始終顯示」會保持開啟。"
           }
         },
         "ru": {
@@ -9359,7 +9359,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codex 改為實時讀取，而不再讀日誌"
+            "value": "Codex 改為即時讀取，而不再讀日誌"
           }
         },
         "ru": {
@@ -9465,7 +9465,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codex 圓環會注意到桌面應用"
+            "value": "Codex 圓環會注意到桌面 App"
           }
         },
         "ru": {
@@ -9518,7 +9518,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "以前只盯 CLI 和 VS Code 擴展寫的檔案，桌面應用裡的工作從不會讓它轉起來。"
+            "value": "以前只盯 CLI 和 VS Code 擴充功能寫的檔案，桌面 App裡的工作從不會讓它轉起來。"
           }
         },
         "ru": {
@@ -9624,7 +9624,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "點擊瀏海會撥動設定用的同一個開關，一次誤點就會悄悄變回懸停時顯示。"
+            "value": "點按瀏海會撥動設定用的同一個開關，一次誤點就會悄悄變回懸停時顯示。"
           }
         },
         "ru": {
@@ -9730,7 +9730,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "令牌一過期，每次檢查都回到鑰匙串 — 一分鐘彈一次。現在只在所屬應用改過密鑰時才讀，並且不會按定時器重試一次拒絕。"
+            "value": "權杖一過期，每次檢查都回到鑰匙串 — 一分鐘彈一次。現在只在所屬App改過金鑰時才讀，並且不會按定時器重試一次拒絕。"
           }
         },
         "ru": {
@@ -9995,7 +9995,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "每一個會話，以及一張能放進螢幕的提示卡。"
+            "value": "每一個工作階段，以及一張能放進螢幕的提示卡。"
           }
         },
         "ru": {
@@ -10154,7 +10154,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "螢幕能放下多少會話就顯示多少"
+            "value": "螢幕能放下多少工作階段就顯示多少"
           }
         },
         "ru": {
@@ -10472,7 +10472,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Google 不會直接回答 Codenotch，所以改問 Antigravity 自己的語言服務器 — 也就是 Antigravity 用量面板取數字的地方。"
+            "value": "Google 不會直接回答 Codenotch，所以改問 Antigravity 自己的語言伺服器 — 也就是 Antigravity 用量面板取數字的地方。"
           }
         },
         "ru": {
@@ -10684,7 +10684,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "拒絕不再看起來像已退出，「允許訪問…」會再問一次 macOS。"
+            "value": "拒絕不再看起來像已登出，「允許取用…」會再問一次 macOS。"
           }
         },
         "ru": {
@@ -11161,7 +11161,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "放在頂部時會採用硬件的形狀，兩者讀起來是一塊，而不是停在下面的一條。"
+            "value": "放在頂部時會採用硬體的形狀，兩者讀起來是一塊，而不是停在下面的一條。"
           }
         },
         "ru": {
@@ -11797,7 +11797,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "沒有需要登入的地方：次數是從 Gemini CLI、OpenCode 和 Hermes 自己記錄的調用加總的。不會讀取你的 API 密鑰。"
+            "value": "沒有需要登入的地方：次數是從 Gemini CLI、OpenCode 和 Hermes 自己記錄的呼叫加總的。不會讀取你的 API 金鑰。"
           }
         },
         "ru": {
@@ -11850,7 +11850,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "沒有找到 Gemini CLI、OpenCode 或 Hermes 會話"
+            "value": "沒有找到 Gemini CLI、OpenCode 或 Hermes 工作階段"
           }
         },
         "ru": {
@@ -11903,7 +11903,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "先運行一次 `%@` — 它會登入，讀數就來自那裡。要換帳號，在那裡用 /login。"
+            "value": "先執行一次 `%@` — 它會登入，讀數就來自那裡。要換帳號，在那裡用 /login。"
           }
         },
         "ru": {
@@ -12539,7 +12539,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "螢幕上什麼都沒有。應用圖示選「選單列」時，讀數仍在選單列選單裡。否則，從「應用程式」再開啟 Codenotch，才能回到這些設定。"
+            "value": "螢幕上什麼都沒有。App 圖示選「選單列」時，讀數仍在選單列選單裡。否則，從「應用程式」再開啟 Codenotch，才能回到這些設定。"
           }
         },
         "ru": {
@@ -13016,7 +13016,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "夠讀完會話名稱並伸手過去。"
+            "value": "夠讀完工作階段名稱並伸手過去。"
           }
         },
         "ru": {
@@ -13175,7 +13175,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已連接"
+            "value": "已連線"
           }
         },
         "ru": {
@@ -13228,7 +13228,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "未連接"
+            "value": "未連線"
           }
         },
         "ru": {
@@ -13387,7 +13387,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "沒有已連接的服務，瀏海裡沒有圓環可畫。"
+            "value": "沒有已連線的服務，瀏海裡沒有圓環可畫。"
           }
         },
         "ru": {
@@ -13864,7 +13864,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "應用"
+            "value": "App"
           }
         },
         "ru": {
@@ -13970,7 +13970,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "會話結束時"
+            "value": "工作階段結束時"
           }
         },
         "ru": {
@@ -15348,7 +15348,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 的提醒已靜音。點擊取消靜音。"
+            "value": "%@ 的提醒已靜音。點按取消靜音。"
           }
         },
         "ru": {
@@ -15454,7 +15454,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "按你設定的上限填充圓環；Google 不為 API 密鑰公佈額度。"
+            "value": "按你設定的上限填充圓環；Google 不為 API 金鑰公佈額度。"
           }
         },
         "ru": {
@@ -15507,7 +15507,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 讀取這台 Mac 上已經登入的工具的用量 — 從不問你的密碼。安裝並登入 Claude Code（終端工具，不是 Claude 應用）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、GitHub Copilot 或 Gemini API 密鑰（經由 Gemini CLI、OpenCode 或 Hermes）中的任意一個，瀏海裡就會出現對應的圓環。"
+            "value": "Codenotch 讀取這台 Mac 上已經登入的工具的用量 — 從不問你的密碼。安裝並登入 Claude Code（終端工具，不是 Claude App）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、GitHub Copilot 或 Gemini API 金鑰（經由 Gemini CLI、OpenCode 或 Hermes）中的任意一個，瀏海裡就會出現對應的圓環。"
           }
         },
         "ru": {
@@ -15560,7 +15560,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 讀取 Claude Code、Antigravity 或 cursor-agent 保存的登入資訊前，macOS 可能會先詢問。背景重新整理從不彈出這個詢問；只有點擊“允許訪問…”時才會出現，選擇“拒絕”後，在你再次請求之前 Codenotch 不會讀取該登入資訊。"
+            "value": "Codenotch 讀取 Claude Code、Antigravity 或 cursor-agent 儲存的登入資訊前，macOS 可能會先詢問。背景重新整理從不彈出這個詢問；只有點按“允許取用…”時才會出現，選擇“拒絕”後，在你再次要求之前 Codenotch 不會讀取該登入資訊。"
           }
         },
         "ru": {
@@ -15719,7 +15719,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定分成「已連接」和「未連接」；拖動已連接行的手柄，即可改變瀏海繪製順序。"
+            "value": "設定分成「已連線」和「未連線」；拖動已連線行的手柄，即可改變瀏海繪製順序。"
           }
         },
         "ru": {
@@ -16037,7 +16037,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用這台 Mac 上已有的 GitHub CLI 會話讀取 Copilot 配額接口。"
+            "value": "用這台 Mac 上已有的 GitHub CLI 工作階段讀取 Copilot 配額端點。"
           }
         },
         "ru": {
@@ -16090,7 +16090,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "會話結束時會告訴你"
+            "value": "工作階段結束時會告訴你"
           }
         },
         "ru": {
@@ -16143,7 +16143,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "助手停止工作或開始等你時，瀏海會自己開啟幾秒並響一聲；點擊會跳過去。"
+            "value": "助手停止工作或開始等你時，瀏海會自己開啟幾秒並響一聲；點按會跳過去。"
           }
         },
         "ru": {
@@ -16249,7 +16249,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "把它挪開，避開釘在同一位置的其他選單列應用；按邊緣記住。"
+            "value": "把它挪開，避開釘在同一位置的其他選單列 App；按邊緣記住。"
           }
         },
         "ru": {
@@ -16673,7 +16673,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude 先讀自己 CLI 的 /usage，只有退路才碰鑰匙串；Antigravity 會先問它的語言服務器。"
+            "value": "Claude 先讀自己 CLI 的 /usage，只有退路才碰鑰匙串；Antigravity 會先問它的語言伺服器。"
           }
         },
         "ru": {
@@ -16832,7 +16832,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "貢獻者可以在沒有 Xcode 簽名的情況下構建"
+            "value": "貢獻者可以在沒有 Xcode 簽名的情況下建置"
           }
         },
         "ru": {
@@ -16885,7 +16885,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "維護者證書不在時，make build 和 make test 會自動簽名；CI 現在會在每次 push 和 pull request 上跑測試套件。"
+            "value": "維護者憑證不在時，make build 和 make test 會自動簽名；CI 現在會在每次 push 和 pull request 上跑測試套件。"
           }
         },
         "ru": {
@@ -17945,7 +17945,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用 Command Code 應用登入以讀取用量"
+            "value": "用 Command Code App登入以讀取用量"
           }
         },
         "ru": {
@@ -17998,7 +17998,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在設定裡填寫 Ollama API 密鑰，或導出 OLLAMA_API_KEY"
+            "value": "在設定裡填寫 Ollama API 金鑰，或匯出 OLLAMA_API_KEY"
           }
         },
         "ru": {
@@ -18104,7 +18104,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在下方填寫 Ollama API 密鑰，或在 shell 裡導出 OLLAMA_API_KEY。"
+            "value": "在下方填寫 Ollama API 金鑰，或在 shell 裡匯出 OLLAMA_API_KEY。"
           }
         },
         "ru": {
@@ -18157,7 +18157,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用 Command Code 應用登入 — 它會寫入 ~/.commandcode/auth.json，瀏海會讀它。"
+            "value": "用 Command Code App登入 — 它會寫入 ~/.commandcode/auth.json，瀏海會讀它。"
           }
         },
         "ru": {
@@ -18316,7 +18316,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "會話用量"
+            "value": "工作階段用量"
           }
         },
         "ru": {
@@ -18528,7 +18528,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 讀取這台 Mac 上已經登入的工具的用量 — 從不問你的密碼。安裝並登入 Claude Code（終端工具，不是 Claude 應用）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot 或 Gemini API 密鑰（經由 Gemini CLI、OpenCode 或 Hermes）中的任意一個，瀏海裡就會出現對應的圓環。"
+            "value": "Codenotch 讀取這台 Mac 上已經登入的工具的用量 — 從不問你的密碼。安裝並登入 Claude Code（終端工具，不是 Claude App）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot 或 Gemini API 金鑰（經由 Gemini CLI、OpenCode 或 Hermes）中的任意一個，瀏海裡就會出現對應的圓環。"
           }
         },
         "ru": {
@@ -18692,7 +18692,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "本機會話"
+            "value": "本機工作階段"
           }
         },
         "ru": {
@@ -18774,7 +18774,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "請先運行 Antigravity IDE，才能讀取此帳號。"
+            "value": "請先執行 Antigravity IDE，才能讀取此帳號。"
           }
         },
         "ru": {
@@ -19184,7 +19184,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "週額度有了自己的圓環，液態玻璃，法語，以及直接從 Claude Desktop 自己的緩存讀取用量。"
+            "value": "週額度有了自己的圓環，液態玻璃，法語，以及直接從 Claude Desktop 自己的快取讀取用量。"
           }
         },
         "ru": {
@@ -19266,7 +19266,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "第二條弧，畫在主環內側或外側，給同時公佈每週額度和會話額度的服務。預設關閉；外觀裡有開關。"
+            "value": "第二條弧，畫在主環內側或外側，給同時公佈每週額度和工作階段額度的服務。預設關閉；外觀裡有開關。"
           }
         },
         "ru": {
@@ -19430,7 +19430,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude Desktop 用量，從它自己的緩存讀取"
+            "value": "Claude Desktop 用量，從它自己的快取讀取"
           }
         },
         "ru": {
@@ -19471,7 +19471,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "讀取 Claude 帳號的第三條路徑，在 CLI 和令牌答不上來時使用。什麼都不會發出去：緩存就在這台 Mac 上，只做解壓。"
+            "value": "讀取 Claude 帳號的第三條路徑，在 CLI 和權杖答不上來時使用。什麼都不會發出去：快取就在這台 Mac 上，只做解壓。"
           }
         },
         "ru": {
@@ -19553,7 +19553,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "nvm、Volta 或 pnpm 下的安裝也會被找到，這些安裝的背景登入續期也一並恢復。"
+            "value": "nvm、Volta 或 pnpm 下的安裝也會被找到，這些安裝的背景登入續期也一併復原。"
           }
         },
         "ru": {
@@ -19635,7 +19635,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "以前每次輪詢 Claude 用量都在一個新目錄裡跑，Claude Code 會給每一次建一個 transcript 資料夾。現在固定在一處、以 print 模式運行，不再寫任何會話。"
+            "value": "以前每次輪詢 Claude 用量都在一個新目錄裡跑，Claude Code 會給每一次建一個 transcript 資料夾。現在固定在一處、以 print 模式執行，不再寫任何工作階段。"
           }
         },
         "ru": {
@@ -19758,7 +19758,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "結束的會話會標明"
+            "value": "結束的工作階段會標明"
           }
         },
         "ru": {
@@ -19799,7 +19799,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "助手會話帶有完成狀態，已經跑完的和還在進行的看起來不一樣。"
+            "value": "助手工作階段帶有完成狀態，已經跑完的和還在進行的看起來不一樣。"
           }
         },
         "ru": {
@@ -19922,7 +19922,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "只有硬件瀏海才會喚醒貼上去的瀏海"
+            "value": "只有硬體瀏海才會喚醒貼上去的瀏海"
           }
         },
         "ru": {
@@ -19963,7 +19963,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "和攝像頭凹槽合在一起的瀏海，不再被整條上邊緣任意位置的指針喚醒。"
+            "value": "和相機凹槽合在一起的瀏海，不再被整條上邊緣任意位置的游標喚醒。"
           }
         },
         "ru": {
@@ -20414,7 +20414,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在終端運行 %@ 以登入 %@。"
+            "value": "在終端執行 %@ 以登入 %@。"
           }
         },
         "ru": {
@@ -20455,7 +20455,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日請求 · 上次使用 %@"
+            "value": "今日要求 · 上次使用 %@"
           }
         },
         "ru": {
@@ -20947,7 +20947,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接"
+            "value": "連線"
           }
         },
         "ru": {
@@ -21152,7 +21152,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ollama API 密鑰"
+            "value": "Ollama API 金鑰"
           }
         },
         "ru": {
@@ -21193,7 +21193,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "粘貼密鑰"
+            "value": "貼上金鑰"
           }
         },
         "ru": {
@@ -21240,7 +21240,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存"
+            "value": "儲存"
           }
         },
         "de": {
@@ -21281,7 +21281,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已保存"
+            "value": "已儲存"
           }
         },
         "de": {
@@ -21316,7 +21316,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 用量需要重新登入 — 在終端裡運行一次 `claude`。"
+            "value": "%@ 用量需要重新登入 — 在終端裡執行一次 `claude`。"
           }
         },
         "ru": {
@@ -21398,7 +21398,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已從瀏海隱藏 · 仍加載在 Ollama"
+            "value": "已從瀏海隱藏 · 仍載入在 Ollama"
           }
         },
         "ru": {
@@ -21439,7 +21439,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在瀏海裡顯示或隱藏此模型。它仍加載在 Ollama 中。"
+            "value": "在瀏海裡顯示或隱藏此模型。它仍載入在 Ollama 中。"
           }
         },
         "ru": {
@@ -21521,7 +21521,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ · 本地"
+            "value": "%@ · 本機"
           }
         },
         "ru": {
@@ -21855,7 +21855,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "當某家服務的主額度越過 80% 時發一條系統通知，100% 時再發一次 — 每次越過只發一次，要等額度視窗滾動過後才會再發。可在「帳號」裡該行旁邊的鈴鐺上靜音。"
+            "value": "當某家服務的主額度越過 80% 時發一條系統通知，100% 時再發一次 — 每次越過只發一次，要等額度視窗結束後才會再發。可在「帳號」裡該行旁邊的鈴鐺上靜音。"
           }
         },
         "uk": {
@@ -21890,7 +21890,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Codenotch 已經知道助手何時停下來、或停下來問你。瀏海展開時點一下，會把那個會話的應用帶到前台 — 是應用，不是標籤頁：只有部分終端允許外部選定標籤，所以提示裡會寫會話名稱。"
+            "value": "Codenotch 已經知道助手何時停下來、或停下來問你。瀏海展開時點一下，會把那個工作階段的 App 帶到前景 — 是 App，不是分頁：只有部分終端允許外部選定標籤，所以提示裡會寫工作階段名稱。"
           }
         },
         "uk": {
@@ -21925,7 +21925,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "聲音走普通輸出，不是界面音效通道 — 所以在系統設定 → 聲音裡關掉「播放用戶界面聲音效果」之後仍然聽得見。"
+            "value": "聲音走普通輸出，不是介面音效通道 — 所以在系統設定 → 聲音裡關掉「播放使用者介面聲音效果」之後仍然聽得見。"
           }
         },
         "uk": {
@@ -21960,7 +21960,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "大多數讀數借自已經持有該帳號的工具。DeepSeek 是例外：點「登入」會開啟 Codenotch 自己的 WebView，在這裡退出只會清掉這次會話和已保存的讀數。"
+            "value": "大多數讀數借自已經持有該帳號的工具。DeepSeek 是例外：點「登入」會開啟 Codenotch 自己的 WebView，在這裡登出只會清掉這次工作階段和已儲存的讀數。"
           }
         },
         "uk": {
@@ -22100,7 +22100,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "當前連續"
+            "value": "目前連續"
           }
         },
         "uk": {
@@ -22485,7 +22485,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "請求"
+            "value": "要求"
           }
         },
         "uk": {
@@ -22520,7 +22520,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "API 密鑰"
+            "value": "API 金鑰"
           }
         },
         "uk": {
@@ -22800,7 +22800,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "服務器地址"
+            "value": "伺服器地址"
           }
         },
         "uk": {
@@ -22835,7 +22835,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "檢查連接"
+            "value": "檢查連線"
           }
         },
         "uk": {
@@ -22870,7 +22870,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "應用"
+            "value": "App"
           }
         },
         "uk": {
@@ -22905,7 +22905,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "API 令牌"
+            "value": "API 權杖"
           }
         },
         "uk": {
@@ -23010,7 +23010,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在連接 LM Studio…"
+            "value": "正在連線 LM Studio…"
           }
         },
         "uk": {
@@ -23080,7 +23080,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在連接 Ollama…"
+            "value": "正在連線 Ollama…"
           }
         },
         "uk": {
@@ -23115,7 +23115,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已加載的模型會出現在「帳號 → 已連接」，每秒檢查一次。不顯示嵌入模型。"
+            "value": "已載入的模型會出現在「帳號 → 已連線」，每秒檢查一次。不顯示嵌入模型。"
           }
         },
         "uk": {
@@ -23150,7 +23150,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已保存令牌，每次請求都會帶上。"
+            "value": "已儲存權杖，每次要求都會帶上。"
           }
         },
         "uk": {
@@ -23185,7 +23185,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "僅當 LM Studio 服務器要求令牌時才需要（開發者 → 服務器設定）。不填則請求不帶 Authorization 頭。"
+            "value": "僅當 LM Studio 伺服器要求權杖時才需要（開發人員 → 伺服器設定）。不填則要求不帶 Authorization 標頭。"
           }
         },
         "uk": {
@@ -23220,7 +23220,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "檢測到的模型會出現在「帳號 → 已連接」。模型加載和卸載每秒檢查一次。"
+            "value": "偵測到的模型會出現在「帳號 → 已連線」。模型載入與卸載每秒檢查一次。"
           }
         },
         "uk": {
@@ -23470,7 +23470,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接手機…"
+            "value": "連線手機…"
           }
         }
       }
@@ -23644,7 +23644,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "再次連接時需要掃描新的代碼。"
+            "value": "再次連線時需要掃描新的配對碼。"
           }
         }
       }
@@ -23673,7 +23673,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 已連接"
+            "value": "%@ 已連線"
           }
         }
       }
@@ -23731,7 +23731,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接另一支手機"
+            "value": "連線另一支手機"
           }
         }
       }
@@ -23760,7 +23760,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接你的手機"
+            "value": "連線你的手機"
           }
         }
       }
@@ -23789,7 +23789,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "用手機上的 Codenotch App 掃描此代碼。"
+            "value": "用手機上的 Codenotch App 掃描此配對碼。"
           }
         }
       }
@@ -23963,7 +23963,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "3. 將手機對準此代碼"
+            "value": "3. 將手機對準此配對碼"
           }
         }
       }
@@ -24218,7 +24218,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在 DeepSeek 用量卡片上顯示當前計價階段和下次峰谷切換時間。"
+            "value": "在 DeepSeek 用量卡片上顯示目前計價階段和下次峰谷切換時間。"
           }
         },
         "uk": {
@@ -24276,7 +24276,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "由於無法可靠地從官方接口讀取，這個規則由本地維護。以下時間為 UTC；卡片會將下次切換轉換為你的當地時間。"
+            "value": "由於無法可靠地從官方端點讀取，這個規則由本機維護。以下時間為 UTC；卡片會將下次切換轉換為你的當地時間。"
           }
         },
         "uk": {
@@ -24624,7 +24624,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加高峰時段"
+            "value": "新增高峰時段"
           }
         },
         "uk": {
@@ -24769,7 +24769,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "恢復當前預設規則"
+            "value": "還原目前預設規則"
           }
         },
         "uk": {
@@ -24827,7 +24827,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "會話額度用盡時顯示通知"
+            "value": "工作階段額度用盡時顯示通知"
           }
         },
         "uk": {
@@ -24914,7 +24914,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "預覽會話額度提醒"
+            "value": "預覽工作階段額度提醒"
           }
         },
         "uk": {
@@ -24972,7 +24972,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "當某家服務的會話或週額度用盡時，瀏海側面滑出一張通知卡片。"
+            "value": "當某家服務的工作階段或週額度用盡時，瀏海側面滑出一張通知卡片。"
           }
         },
         "uk": {
@@ -25117,7 +25117,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "當某家服務的額度視窗滾動過後，瀏海側面滑出一張通知卡片。"
+            "value": "當某家服務的額度視窗結束後，瀏海側面滑出一張通知卡片。"
           }
         },
         "uk": {
@@ -25276,7 +25276,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude 的主圓環顯示今日在每週限額中的份額（自每週重置起每天七分之一），而不是會話。會話移至細圓環和卡片；提醒跟隨每日圓環。"
+            "value": "Claude 的主圓環顯示今日在每週限額中的份額（自每週重置起每天七分之一），而不是工作階段。工作階段移至細圓環和卡片；提醒跟隨每日圓環。"
           }
         },
         "uk": {
@@ -25311,7 +25311,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接手機…"
+            "value": "連線手機…"
           }
         }
       }
@@ -25746,7 +25746,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "產生新代碼"
+            "value": "產生新配對碼"
           }
         }
       }
@@ -25775,7 +25775,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "配對代碼已過期"
+            "value": "配對碼已過期"
           }
         }
       }
@@ -26384,7 +26384,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "連接中…"
+            "value": "連線中…"
           }
         }
       }
@@ -27045,7 +27045,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "再次向 macOS 請求 %@ 保存的登入資訊。選擇“拒絕”後，在你再次請求之前 Codenotch 不會讀取它。"
+            "value": "再次向 macOS 要求 %@ 儲存的登入資訊。選擇“拒絕”後，在你再次要求之前 Codenotch 不會讀取它。"
           }
         }
       }
@@ -27151,7 +27151,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claude 已響應，但沒有列出此帳戶的用量限額。部分 Enterprise 和團隊方案不會提供這些資料。"
+            "value": "Claude 已回應，但沒有列出此帳號的用量限額。部分 Enterprise 和團隊方案不會提供這些資料。"
           }
         }
       }

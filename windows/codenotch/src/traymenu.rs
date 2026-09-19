@@ -170,7 +170,7 @@ pub fn label(name: &str, lang: &str) -> String {
         ("zh", "5-hour Limit" | "5-Hour Limit") => "5 小时限额",
         ("zh", "Included usage") => "包含用量",
         ("zh", "API usage") => "API 用量",
-        ("zh-Hant", "Current session") => "目前會話",
+        ("zh-Hant", "Current session") => "目前工作階段",
         ("zh-Hant", "Weekly (all models)") => "每週（全部模型）",
         ("zh-Hant", "Weekly (Opus)") => "每週（Opus）",
         ("zh-Hant", "Weekly (model-scoped)") => "每週（指定模型）",
