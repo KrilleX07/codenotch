@@ -164,9 +164,23 @@ enum Sites {
         if (!secToken) {
             return JSON.stringify({ status: 401, body: '{"code":"ConsoleNeedLogin"}' });
         }
+        // `cornerstoneParam` is what the gateway's own validation asks for:
+        // without it the platform answers 200 with
+        // `{"data":{"success":false,"errorCode":"BadRequest"}}` and never
+        // reaches the business layer at all. Only its presence is checked —
+        // an empty object passes — but the fields are the ones the console's
+        // own client fills, minus `switchAgent`, which its usage call skips.
+        const cornerstoneParam = {
+            domain: window.location.hostname,
+            consoleSite: 'QIANWENAI',
+            console: 'ONE_CONSOLE',
+            xsp_lang: (window.ALIYUN_CONSOLE_CONFIG || {}).LOCALE || 'zh-CN',
+            protocol: 'V2',
+            productCode: 'p_efm'
+        };
         const params = JSON.stringify({
             Api: 'zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage',
-            Data: {},
+            Data: { cornerstoneParam: cornerstoneParam },
             V: '1.0'
         });
         const form = new URLSearchParams();
@@ -184,15 +198,22 @@ enum Sites {
         const body = await response.text();
         let status = response.status;
         try {
-            // Only the console's own not-signed-in answer becomes 401. Every
-            // other failure — a 500, a malformed envelope — keeps its status and
-            // its body, so the parser is what rejects it: the store renders that
-            // as an error and *keeps* the last reading, where 401 would discard
-            // it and tell a signed-in user to sign in about a server fault that
-            // is not theirs. A dead session is caught at the token call above
-            // anyway; this marker only covers one that expires in between.
+            // The platform's own session-failure codes — the set the console's
+            // own bundle keys its "session expired" dialogue off. All of them
+            // ride under HTTP 200, and the gateway names the failure in
+            // `data.errorCode`: the wrapper's `code` stays "200" straight
+            // through a business failure, so both fields have to be read or
+            // the marker never matches. Anything else — BadRequest, a 500, a
+            // malformed envelope — keeps its status and its body, so the
+            // parser is what rejects it.
             const envelope = JSON.parse(body);
-            if (String(envelope.code) === 'ConsoleNeedLogin') status = 401;
+            const data = (envelope && envelope.data) || {};
+            const named = [envelope.code, data.errorCode, data.code];
+            const signedOut = ['ConsoleNeedLogin', 'BailianGateway.Login.NotLogined', 'NO_LOGIN'];
+            if (named.some((value) => signedOut.some(
+                (marker) => String(value || '').trim().toLowerCase() === marker.toLowerCase()))) {
+                status = 401;
+            }
         } catch (_) {}
         return JSON.stringify({ status: status, body: body });
         """#,
@@ -231,6 +252,10 @@ enum Sites {
         // The only site that polls while its sign-in window is open (see
         // `pollsDuringSignIn`): its probe is the console's own session check.
         pollsDuringSignIn: true,
+        // The console's SPA only serves under `/home`, and its own route table
+        // maps this plan page to `analytics/token-plan/individual` — the
+        // default `origin/usage` answers 404 here.
+        managePath: "home/analytics/token-plan/individual",
         parse: { try QianwenUsage.windows(fromJSON: $0) }
     )
 
