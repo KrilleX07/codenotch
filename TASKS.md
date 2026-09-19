@@ -1705,6 +1705,27 @@ The dim is the one part of the style a headless render can see, so
 a panel size of its own, because the hand-me-down above would otherwise hand
 this test's dim to the folded-pill test that sorts right before it.
 
+## The local model's ring
+
+### A small context is an arc, not a dot
+
+A local-runtime cell (LM Studio, Ollama) draws its outer arc as the last
+request's prompt tokens over the loaded instance's context length, in the
+colour of the last response's speed band. When the last prompt filled only a
+few percent of the context, the trimmed arc was shorter than its own round
+caps and rendered as a single dot, which read as a status light ("green =
+fine") rather than a context reading.
+
+The fix is `NotchLayout.localArcMinimumSweep` (0.06 of the circle, ≈20px of
+body at the ring's radius plus the caps, so it is unmistakably an arc, and
+below 0.1 so the floor cannot be mistaken for a real reading);
+`ProviderRing.localSweep(for:)` applies it only when a reading exists, `nil`
+still draws the full ring as Ollama always did. The floor is a drawing
+decision only — `ringFraction`, the tooltip's "Context used" and the
+VoiceOver text keep the true number. Pinned by
+`testASmallContextStillReadsAsAnArc` and `testTheMinimumArcIsLongerThanItsCaps`
+in `NotchLayoutTests`.
+
 ## Decisions needed
 - [ ] Final app name (`Codenotch` is a placeholder)
 - [x] ~~Which service is the third glyph in the mockup?~~ Perplexity — its mark,
