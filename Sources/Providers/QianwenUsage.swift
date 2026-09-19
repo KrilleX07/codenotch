@@ -127,14 +127,21 @@ enum QianwenUsage {
         // wrapper and `success` on the data, and a failure that flipped only
         // one of them would otherwise look like a happy empty answer.
         if root["successResponse"] as? Bool == false || data["success"] as? Bool == false {
-            guard let name = failureName(root: root, data: data) else {
-                // A failure that names nothing is only the shape it looks like.
-                throw UsageProviderError.badResponse(status: 0)
-            }
-            if sessionCodes.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) {
+            let message = name(data["errorMsg"])
+            if let signedOut = failureName(root: root, data: data) ?? message,
+               sessionCodes.contains(where: { $0.caseInsensitiveCompare(signedOut) == .orderedSame }) {
                 throw UsageProviderError.needsAuth
             }
-            throw UsageProviderError.apiError(name)
+            if let code = failureName(root: root, data: data) {
+                throw UsageProviderError.apiError(code)
+            }
+            // `errorMsg` is the server's own prose: never shown or logged as is
+            // (the store logs failures publicly), only a line of our own.
+            if message != nil {
+                throw UsageProviderError.apiError(L10n.t("QianwenAI refused the request."))
+            }
+            // A failure that names nothing is only the shape it looks like.
+            throw UsageProviderError.badResponse(status: 0)
         }
 
         guard int(root["code"]) == 200,
@@ -151,14 +158,14 @@ enum QianwenUsage {
                                        "BailianGateway.Login.NotLogined",
                                        "NO_LOGIN"]
 
-    /// Where this dialect puts a failure's name, in its own order of authority:
+    /// Where this dialect puts a failure's code, in its own order of authority:
     /// the gateway's `errorCode`, then the data's `code`, then the wrapper's
-    /// `code` when it is not a success, then the human-readable `errorMsg`.
+    /// `code` when it is not a success. Codes only — `errorMsg` is free text.
     private static func failureName(root: [String: Any], data: [String: Any]) -> String? {
         if let name = name(data["errorCode"]) { return name }
         if let name = name(data["code"]) { return name }
         if int(root["code"]) != 200, let name = name(root["code"]) { return name }
-        return name(data["errorMsg"])
+        return nil
     }
 
     /// A name has to be text to be worth showing, and an empty one names

@@ -308,8 +308,9 @@ final class QianwenUsageTests: XCTestCase {
              "SOME_FAILURE"),
             (#"{"code":"200","successResponse":true,"data":{"success":false,"errorCode":"BadRequest","errorMsg":"ignored"}}"#,
              "BadRequest"),
+            // Free text from the server is never passed through, only our own line.
             (#"{"code":"200","successResponse":true,"data":{"success":false,"errorMsg":"plan not subscribed"}}"#,
-             "plan not subscribed"),
+             "QianwenAI refused the request."),
             (#"{"code":"503","successResponse":false,"data":{}}"#, "503")
         ] {
             XCTAssertThrowsError(try QianwenUsage.windows(fromJSON: body)) { error in
