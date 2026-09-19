@@ -106,6 +106,16 @@ impl Screen {
             work: (wa.position.x, wa.position.y, wa.size.width as i32, wa.size.height as i32),
         }
     }
+    /// Where the notch may sit. Falls back to the whole monitor if the platform reports no usable
+    /// work area, which would otherwise pin the notch to (0, 0) with no span to move along.
+    fn area(&self) -> (i32, i32, i32, i32) {
+        let (x, y, w, h) = self.work;
+        if w > 0 && h > 0 {
+            (x, y, w, h)
+        } else {
+            (self.x, self.y, self.w, self.h)
+        }
+    }
     fn contains(&self, x: i32, y: i32) -> bool {
         x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
     }
@@ -150,22 +160,28 @@ fn target_screen(app: &AppHandle) -> Option<Screen> {
 
 /// The window's top-left corner for an edge, a position ratio along it and a measured window size.
 /// `ratio` is the *centre* of the notch along the edge, so 0.5 is the middle whatever the size.
+/// The work area, not the monitor: a notch on the edge the taskbar is docked to would otherwise be
+/// covered by it. The Mac places against `frame` rather than `visibleFrame` on purpose, but what it
+/// overlaps there is the menu bar, which macOS lets a notch cover; the taskbar wins the z-order
+/// among topmost windows and is a click target of its own, so it is room lost.
 fn edge_origin(s: &Screen, edge: &str, ww: i32, wh: i32, ratio: f64) -> (i32, i32) {
+    let (ax, ay, aw, ah) = s.area();
     let along = |span: i32, len: i32| -> i32 {
         let v = (span as f64 * ratio - len as f64 / 2.0).round() as i32;
         v.clamp(0, (span - len).max(0))
     };
     match edge {
-        "left" => (s.x, s.y + along(s.h, wh)),
-        "top" => (s.x + along(s.w, ww), s.y),
-        "bottom" => (s.x + along(s.w, ww), s.y + s.h - wh),
-        _ => (s.x + s.w - ww, s.y + along(s.h, wh)),
+        "left" => (ax, ay + along(ah, wh)),
+        "top" => (ax + along(aw, ww), ay),
+        "bottom" => (ax + along(aw, ww), ay + ah - wh),
+        _ => (ax + aw - ww, ay + along(ah, wh)),
     }
 }
 
 /// How far the taskbar (or anything else outside the work area) covers each side of a window at
-/// (x, y, ww, wh), in physical pixels: top, right, bottom, left. The pill keeps its place against
-/// the screen edge; only the hover card, which the page can move, is kept clear of these.
+/// (x, y, ww, wh), in physical pixels: top, right, bottom, left. `edge_origin` keeps the pill itself
+/// out of the taskbar, so what is left here is the window's other three sides — an upright notch is
+/// taller than the work area is on a short screen — and the hover card is what the page moves.
 fn work_insets(s: &Screen, x: i32, y: i32, ww: i32, wh: i32) -> [i32; 4] {
     let (wx, wy, waw, wah) = s.work;
     [
@@ -267,6 +283,37 @@ pub fn place_notch(app: &AppHandle) {
     }
 }
 
+/// How often the work area is re-read. It only changes by hand — the taskbar moved to another edge,
+/// resized, or switched to auto-hide — so a second late is not noticeable.
+const WORK_AREA_POLL_MS: u64 = 1000;
+
+/// Puts the notch back on its edge when the work area moves under it.
+///
+/// Nothing hands us `WM_SETTINGCHANGE`, and the notch is placed against the work area now, so
+/// moving the taskbar to another edge would otherwise leave the notch a taskbar's width from the
+/// edge it is pinned to, floating in the gap the old taskbar left. Polled rather than hooked,
+/// because hooking it means subclassing a window we do not own to catch something that happens
+/// once in a session.
+fn start_work_area_watch(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut last = target_screen(&app).map(|s| s.work);
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(WORK_AREA_POLL_MS));
+            // Mid-drag the notch is following the pointer, and placing it again would fight that.
+            if DRAGGING.load(std::sync::atomic::Ordering::SeqCst) {
+                continue;
+            }
+            let now = target_screen(&app).map(|s| s.work);
+            if now == last {
+                continue;
+            }
+            applog(&format!("work area changed: {last:?} -> {now:?}"));
+            last = now;
+            place_notch(&app);
+        }
+    });
+}
+
 /// Older entry point name still used by tray.rs. Recentre puts the notch in the middle of the edge it
 /// is on, and only sends it home to the primary monitor's right edge when the screen it was on is
 /// gone — which is the case the button exists for, and the one where its own edge means nothing.
@@ -350,9 +397,13 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
         };
         // The overlay is at the monitor's own scale; the notch page is that scale times its size
         let size = ui_scale(&app);
+        // Every figure here is the work area's, to match the overlay window and the notch itself:
+        // the zone drawn on the taskbar's edge has to sit where the notch will, and the edge the
+        // pointer picks has to be read against the same rectangle the zones are drawn in.
+        let (ax, ay, aw, ah) = mon.area();
         let mut zones = dropzones::Zones {
-            w: mon.w as f64 / mon.scale,
-            h: mon.h as f64 / mon.scale,
+            w: aw as f64 / mon.scale,
+            h: ah as f64 / mon.scale,
             depth: depth * size,
             length: length * size,
             target: from.clone(),
@@ -361,7 +412,7 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
         let mut target = from.clone();
         while left_button_down() {
             if let Ok(cur) = app.cursor_position() {
-                let next = edge_at(cur.x - mon.x as f64, cur.y - mon.y as f64, mon.w as f64, mon.h as f64);
+                let next = edge_at(cur.x - ax as f64, cur.y - ay as f64, aw as f64, ah as f64);
                 if next != target {
                     target = next.to_string();
                     zones.target = target.clone();
@@ -448,10 +499,13 @@ fn drag_begin(app: AppHandle) {
                 ("bottom", (mon.y + mon.h - cy).max(0)),
             ];
             let edge = d.iter().min_by_key(|(_, v)| *v).map(|(e, _)| *e).unwrap_or("right");
+            // Measured against the work area, because that is the span `edge_origin` reads the ratio
+            // back against: on the monitor's, a drop next to the taskbar landed short of the pointer.
+            let (ax, ay, aw, ah) = mon.area();
             let ratio = if config::edge_is_vertical(edge) {
-                ((cy - mon.y) as f64 / mon.h.max(1) as f64).clamp(0.0, 1.0)
+                ((cy - ay) as f64 / ah.max(1) as f64).clamp(0.0, 1.0)
             } else {
-                ((cx - mon.x) as f64 / mon.w.max(1) as f64).clamp(0.0, 1.0)
+                ((cx - ax) as f64 / aw.max(1) as f64).clamp(0.0, 1.0)
             };
             {
                 let st = app.state::<AppState>();
@@ -1556,6 +1610,7 @@ fn main() {
             let gh = handle.clone();
             std::thread::spawn(move || reload_glyphs(&gh));
             start_pointer_watchdog(handle.clone());
+            start_work_area_watch(handle.clone());
             // Seen-clears-it scan
             let acker = handle.clone();
             std::thread::spawn(move || {
@@ -1623,6 +1678,26 @@ mod tests {
         // A taskbar on the left
         let s = Screen { work: (72, 0, 3128, 2000), ..s };
         assert_eq!(work_insets(&s, 0, 700, 432, 624), [0, 0, 0, 72]);
+    }
+
+    /// A notch on the edge the taskbar is docked to used to sit under it.
+    #[test]
+    fn the_notch_is_placed_inside_the_work_area() {
+        // 3200 × 2000 with a 72 px taskbar along the bottom
+        let s = Screen { name: None, x: 0, y: 0, w: 3200, h: 2000, scale: 1.5, work: (0, 0, 3200, 1928) };
+        for edge in ["left", "right", "top", "bottom"] {
+            let (ww, wh) = if crate::config::edge_is_vertical(edge) { (432, 624) } else { (624, 624) };
+            let (x, y) = super::edge_origin(&s, edge, ww, wh, 0.5);
+            assert!(y + wh <= 1928, "{edge}: ({x},{y}) {ww}x{wh} reaches into the taskbar");
+            assert_eq!(work_insets(&s, x, y, ww, wh), [0; 4], "{edge}: nothing covers it");
+        }
+        // A taskbar on the left moves the left edge in, and leaves the right one where it was
+        let s = Screen { work: (72, 0, 3128, 2000), ..s };
+        assert_eq!(super::edge_origin(&s, "left", 432, 624, 0.5).0, 72);
+        assert_eq!(super::edge_origin(&s, "right", 432, 624, 0.5).0, 3200 - 432);
+        // Nothing usable reported: the whole monitor, as before
+        let s = Screen { work: (0, 0, 0, 0), ..s };
+        assert_eq!(super::edge_origin(&s, "bottom", 624, 624, 1.0), (3200 - 624, 2000 - 624));
     }
 
     #[test]
