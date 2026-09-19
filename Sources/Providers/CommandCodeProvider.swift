@@ -10,8 +10,6 @@ actor CommandCodeProvider: UsageProvider {
     nonisolated let id = "commandcode"
     nonisolated let displayName = "Command Code"
     nonisolated let glyph = ProviderGlyph.commandcode
-    /// The quota endpoint throttles; retain the existing cadence.
-    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     private let session: URLSession
     private let archive: UsageArchive
@@ -119,7 +117,6 @@ actor CommandCodeProvider: UsageProvider {
 
     private func body(from url: URL, token: String) async throws -> String {
         var request = URLRequest(url: url)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("command-code-desktop", forHTTPHeaderField: "User-Agent")
         request.setValue("desktop", forHTTPHeaderField: "x-command-code-version")

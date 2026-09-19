@@ -6,8 +6,6 @@ actor GitHubCopilotProvider: UsageProvider {
     nonisolated let id = "copilot"
     nonisolated let displayName = "GitHub Copilot"
     nonisolated let glyph = ProviderGlyph.copilot
-    /// Credential fallback can launch gh; this is an internal quota endpoint.
-    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     private let endpoint = URL(string: "https://api.github.com/copilot_internal/user")!
     private let session: URLSession
@@ -30,7 +28,6 @@ actor GitHubCopilotProvider: UsageProvider {
     func fetchSnapshot() async throws -> ProviderSnapshot {
         let credentials = try loadCredentials()
         var request = URLRequest(url: endpoint)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(credentials.token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")

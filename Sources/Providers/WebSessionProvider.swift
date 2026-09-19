@@ -131,8 +131,6 @@ final class WebSessionProvider: NSObject, UsageProvider {
     nonisolated let id: String
     nonisolated let displayName: String
     nonisolated let glyph: ProviderGlyph
-    /// Console scripts can make several browser requests per reading.
-    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
     /// A browser-session provider is the one kind that really can sign you in:
     /// the session lives in its own WebView, so it can open one and clear one.
     nonisolated var signInRoute: SignInRoute { .modal(name: displayName) }

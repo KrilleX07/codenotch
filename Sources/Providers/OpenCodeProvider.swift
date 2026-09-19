@@ -17,8 +17,6 @@ actor OpenCodeProvider: UsageProvider {
     nonisolated let id = "opencode"
     nonisolated let displayName = "OpenCode"
     nonisolated let glyph = ProviderGlyph.opencode
-    /// The quota endpoint is known to throttle; retain the existing cadence.
-    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     private let session: URLSession
     private let archive: UsageArchive
@@ -101,7 +99,6 @@ actor OpenCodeProvider: UsageProvider {
 
     private func fetch(token: String) async throws -> Data {
         var request = URLRequest(url: OpenCodeUsage.endpoint)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15

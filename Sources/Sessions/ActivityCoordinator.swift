@@ -34,7 +34,7 @@ final class ActivityCoordinator {
             guard let monitor = monitors[id] else { continue }
             activeIDs.insert(id)
             subscriptions[id] = monitor.sessionsPublisher
-                .receive(on: DispatchQueue.main)
+                .receive(on: RunLoop.main)
                 .sink { [weak self] sessions in
                     guard let self, self.activeIDs.contains(id) else { return }
                     self.onSessions(id, sessions)

@@ -43,7 +43,6 @@ actor CursorLocalProvider: UsageProvider {
         let credentials = try CursorCredentials.load()
 
         var request = URLRequest(url: endpoint)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue(credentials.sessionCookie, forHTTPHeaderField: "Cookie")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15

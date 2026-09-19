@@ -55,10 +55,6 @@ final class StatusItemLocalRuntimeTests: XCTestCase {
         XCTAssertEqual(header.representedObject as? String, "lmstudio")
         XCTAssertNotNil(header.action)
         XCTAssertNil(try XCTUnwrap(menu.items.first { $0.title.hasPrefix("qwen3.8-27b") }).action)
-        XCTAssertNotNil(header.image)
-        let modelRow = try XCTUnwrap(menu.items.first { $0.title.hasPrefix("qwen3.8-27b") })
-        XCTAssertNotNil(modelRow.image, "Loaded models use their existing brand glyph too")
-        XCTAssertEqual(modelRow.image?.size, NSSize(width: 16, height: 16))
 
         // A hidden model has no cell, so it has no line; the count still counts it.
         fleet.setSnapshots([cloud, ollama, runtime])

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Which mark a provider cell draws.
-enum ProviderGlyph: String, Codable, Equatable, CaseIterable {
+enum ProviderGlyph: String, Codable, Equatable {
     case claude
     case devin
     case openai
@@ -105,55 +105,6 @@ enum ProviderGlyph: String, Codable, Equatable, CaseIterable {
         case .minimax: return GlyphOutline.minimax
         case .ollama, .ollamaLocal: return GlyphOutline.ollama
         }
-    }
-}
-
-extension ProviderGlyph {
-    /// Native menu artwork, using the same asset, outline and optical sizing
-    /// as the SwiftUI cells. AppKit tints the template for the current appearance.
-    func image(size: CGFloat = 16,
-               assetLookup: (String) -> NSImage? = { NSImage(named: $0) }) -> NSImage? {
-        let asset = assetLookup(assetName)
-        let usable = asset.flatMap { $0.size.width > 0 && $0.size.height > 0 ? $0 : nil }
-        guard usable != nil || !outline.isEmpty else { return nil }
-        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
-            draw(in: rect, alpha: 1, asset: usable)
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }
-
-    /// Shared by the menu header and the status item's composed readings.
-    func draw(in box: NSRect, alpha: CGFloat) {
-        draw(in: box, alpha: alpha, asset: NSImage(named: assetName))
-    }
-
-    private func draw(in box: NSRect, alpha: CGFloat, asset: NSImage?) {
-        let inset = box.width * (1 - opticalScale) / 2
-        let rect = box.insetBy(dx: inset, dy: inset)
-        if let asset, asset.size.width > 0, asset.size.height > 0 {
-            let scale = min(rect.width / asset.size.width, rect.height / asset.size.height)
-            let fitted = NSSize(width: asset.size.width * scale, height: asset.size.height * scale)
-            asset.draw(in: NSRect(x: rect.midX - fitted.width / 2, y: rect.midY - fitted.height / 2,
-                                 width: fitted.width, height: fitted.height),
-                       from: .zero, operation: .sourceOver, fraction: alpha)
-            return
-        }
-        let path = NSBezierPath()
-        path.windingRule = .evenOdd
-        // Outlines are traced top-down; native image coordinates run bottom-up.
-        func point(_ p: CGPoint) -> NSPoint {
-            NSPoint(x: rect.minX + p.x * rect.width, y: rect.maxY - p.y * rect.height)
-        }
-        for loop in outline {
-            guard let first = loop.first else { continue }
-            path.move(to: point(first))
-            for p in loop.dropFirst() { path.line(to: point(p)) }
-            path.close()
-        }
-        NSColor.black.withAlphaComponent(alpha).setFill()
-        path.fill()
     }
 }
 

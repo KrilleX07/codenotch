@@ -262,7 +262,32 @@ struct StatusItemArtwork {
             // Composited like everything else here; plain `fill()` copies.
             rect.fill(using: .sourceOver)
         case .glyph(let glyph, let box):
-            glyph.draw(in: box, alpha: alpha)
+            let inset = box.width * (1 - glyph.opticalScale) / 2
+            let rect = box.insetBy(dx: inset, dy: inset)
+            // The same preference as the notch: a bundled asset over the trace,
+            // fitted rather than stretched, since not every mark is square.
+            if let asset = NSImage(named: glyph.assetName), asset.size.width > 0, asset.size.height > 0 {
+                let scale = min(rect.width / asset.size.width, rect.height / asset.size.height)
+                let fitted = NSSize(width: asset.size.width * scale, height: asset.size.height * scale)
+                asset.draw(in: NSRect(x: rect.midX - fitted.width / 2, y: rect.midY - fitted.height / 2,
+                                      width: fitted.width, height: fitted.height),
+                           from: .zero, operation: .sourceOver, fraction: alpha)
+                return
+            }
+            let path = NSBezierPath()
+            path.windingRule = .evenOdd
+            // Outlines are traced top-down in a unit box; the image is not flipped.
+            func point(_ p: CGPoint) -> NSPoint {
+                NSPoint(x: rect.minX + p.x * rect.width, y: rect.maxY - p.y * rect.height)
+            }
+            for loop in glyph.outline {
+                guard let first = loop.first else { continue }
+                path.move(to: point(first))
+                for p in loop.dropFirst() { path.line(to: point(p)) }
+                path.close()
+            }
+            ink.setFill()
+            path.fill()
         }
     }
 }

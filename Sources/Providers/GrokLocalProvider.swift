@@ -46,7 +46,6 @@ actor GrokLocalProvider: UsageProvider {
 
     private func body(from url: URL, token: String) async throws -> String {
         var request = URLRequest(url: url)
-        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("xai-grok-cli", forHTTPHeaderField: "X-XAI-Token-Auth")
         request.setValue("application/json", forHTTPHeaderField: "Accept")

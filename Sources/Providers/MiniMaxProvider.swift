@@ -25,8 +25,6 @@ actor MiniMaxProvider: UsageProvider {
     nonisolated let id = "minimax"
     nonisolated let displayName = "MiniMax"
     nonisolated let glyph = ProviderGlyph.minimax
-    /// The plan endpoints are known to throttle; retain the existing cadence.
-    nonisolated var minimumBackgroundRefreshInterval: TimeInterval { 60 }
 
     /// Re-read on every fetch so a region change in Settings applies without
     /// a restart. Tests pin a value; production reads `UserDefaults`.
