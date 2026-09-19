@@ -76,6 +76,14 @@ final class UsageResetWatcherTests: XCTestCase {
         XCTAssertTrue(alerts.isEmpty)
     }
 
+    /// The window's deadline passed and the fresh reading carries no reset
+    /// date of its own: the drop is the only evidence, and it is enough.
+    func testAlertsWhenTheDeadlinePassedAndTheNewWindowHasNoDate() {
+        watcher.observe([snapshot("claude", "Claude", 0.80, resetsAt: Date(timeIntervalSince1970: 900))])
+        watcher.observe([snapshot("claude", "Claude", 0.04, resetsAt: nil)])
+        XCTAssertEqual(alerts.count, 1)
+    }
+
     func testNoAlertForNegligibleFluctuation() {
         watcher.observe([snapshot("claude", "Claude", 0.05)])
         watcher.observe([snapshot("claude", "Claude", 0.01)])

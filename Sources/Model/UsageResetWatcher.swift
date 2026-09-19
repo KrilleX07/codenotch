@@ -103,12 +103,13 @@ final class UsageResetWatcher {
 
         let hadSignificantUsage = previous.peakFraction >= 0.15
 
-        // A percentage-only fallback is useful for providers that give no reset
-        // timestamp at all. Where a timestamp exists, a lower reading before
-        // that deadline is a correction or fluctuation, not a reset.
-        let canInferResetFromDrop = previous.resetsAt == nil
-            && headline.resetsAt == nil
-            && droppedSignificantly
+        // A percentage-only fallback, for providers that give no reset
+        // timestamp at all, and for the reading after a deadline has passed
+        // whose new window comes back without one (a CLI line that did not
+        // parse, a window that reports null until first used). Before a known
+        // deadline, a lower reading is a correction or fluctuation, not a reset.
+        let canInferResetFromDrop = droppedSignificantly
+            && (previous.resetsAt == nil || previousWindowElapsed)
 
         if (isDateRolled || canInferResetFromDrop) && hadSignificantUsage && !isMuted(snapshot.id) {
             let event = UsageResetEvent(
