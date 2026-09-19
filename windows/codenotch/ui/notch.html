@@ -946,16 +946,25 @@ function fitZoom(){
   document.documentElement.style.zoom=(Math.abs(z-1)>0.02)?String(z):'';
   return z;
 }
-function reportDpr(){
+// `settled` only from the end of a burst of resizes, which is what a landing waits for (land_on_another_screen)
+function reportDpr(settled){
   const z=fitZoom();
   jslog(`dpr=${window.devicePixelRatio} inner=${innerWidth}x${innerHeight} cssZoom=${z.toFixed(3)}`);
-  callq('report_dpr',{dpr:window.devicePixelRatio||1,w:innerWidth,h:innerHeight}).catch(()=>{});
+  callq('report_dpr',{dpr:window.devicePixelRatio||1,w:innerWidth,h:innerHeight,settled:settled===true}).catch(()=>{});
 }
 // Not measured yet: the width to measure against depends on the edge, and only Rust knows it. The
 // ask is at the bottom of this file and answers in a round trip; measuring first would zoom a flat
 // window by 520/360 for that moment.
-window.addEventListener('resize',()=>{clearTimeout(window._dprT);window._dprT=setTimeout(()=>{reportDpr();reportHot();},120);});
-matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',reportDpr);
+window.addEventListener('resize',()=>{clearTimeout(window._dprT);window._dprT=setTimeout(()=>{reportDpr(true);reportHot();},120);});
+matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener('change',()=>reportDpr());
+// A landing on a screen at another scale: empty the page, which leaves the transparent window
+// invisible while it is resized and re-zoomed, and say so once that has painted — hiding the window
+// itself would pause the page, and the re-zoom would then happen in plain view
+listen('notch_landing',()=>{
+  document.documentElement.style.visibility='hidden';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>invoke('notch_hidden').catch(()=>{})));
+}).catch(()=>{});
+listen('notch_reveal',()=>{ document.documentElement.style.visibility=''; }).catch(()=>{});
 
 /* Collapse test: no trust in element-level mouseenter/mouseleave/e.target at all —
    pure geometry: is the cursor (clientX/Y) inside pill rect ∪ card rect ∪ their bounding box?

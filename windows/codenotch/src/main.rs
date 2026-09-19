@@ -175,6 +175,60 @@ fn edge_origin(s: &Screen, edge: &str, ww: i32, wh: i32, ratio: f64) -> (i32, i3
     }
 }
 
+/// The landing whose pill is being kept out of sight, or 0. Numbered so a fallback timer from one
+/// landing can never reveal the next one early.
+static LANDING: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static LANDING_SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// The landing the page has confirmed it has painted empty for.
+static LANDING_HIDDEN: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// Longest a landing stays out of sight if the page never reports a settled layout.
+const LANDING_FALLBACK_MS: u64 = 700;
+
+/// Places the notch on a screen at another scale without the change of scale showing.
+///
+/// Arriving there, Windows resizes the window by the ratio of the two scales before `place_notch`
+/// puts it right, and the page then re-zooms itself for the new pixel ratio a debounce later, which
+/// can bring one more zoom correction from `report_dpr`. All of that played out on screen as the
+/// notch jumping sizes as it landed. Hiding the window did not help: a hidden WebView2 stops painting
+/// and throttles its timers, so the page only caught up once it was shown again, in plain view.
+///
+/// So the window stays up and the page empties itself instead — the window is transparent, so an
+/// empty page is an invisible notch — while the WebView keeps doing its layout. It is revealed when
+/// the page reports a layout that has stopped changing (`report_dpr` with `settled`), not after a
+/// guessed delay. At the same scale nothing is resized on arrival, so there is nothing to hide.
+fn land_on_another_screen(app: &AppHandle, from_scale: f64, to_scale: f64) {
+    if (from_scale - to_scale).abs() < 0.01 {
+        return place_notch(app);
+    }
+    use std::sync::atomic::Ordering::SeqCst;
+    let gen = LANDING_SEQ.fetch_add(1, SeqCst) + 1;
+    LANDING.store(gen, SeqCst);
+    let _ = app.emit_to("notch", "notch_landing", ());
+    // Moved before the page has painted itself empty, the jump would show after all
+    for _ in 0..40 {
+        if LANDING_HIDDEN.load(SeqCst) == gen {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    place_notch(app);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(LANDING_FALLBACK_MS));
+        if LANDING.compare_exchange(gen, 0, SeqCst, SeqCst).is_ok() {
+            applog("notch landing: no settled layout reported, shown anyway");
+            let _ = app.emit_to("notch", "notch_reveal", ());
+        }
+    });
+}
+
+/// The page has painted itself empty for the landing in progress.
+#[tauri::command]
+fn notch_hidden() {
+    use std::sync::atomic::Ordering::SeqCst;
+    LANDING_HIDDEN.store(LANDING.load(SeqCst), SeqCst);
+}
+
 /// The screen the pointer is over, for a carry that can cross between them. None in the gap a
 /// smaller screen leaves beside a larger one, where the carry stays on the screen it was last over.
 fn screen_at(list: &[Screen], x: f64, y: f64) -> Option<&Screen> {
@@ -467,7 +521,11 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
                 c.notch_monitor = mon.name.clone();
                 config::save(&c);
             }
-            place_notch(&app);
+            if crossed {
+                land_on_another_screen(&app, start.scale, mon.scale);
+            } else {
+                place_notch(&app);
+            }
         }
         done(&app);
     });
@@ -761,8 +819,11 @@ pub fn applog(line: &str) {
 /// the designed 340 and every coordinate conversion was off (the watchdog misfired and the card
 /// flashed away). Fix: the page reports its DPR, and when it differs from the primary monitor's
 /// scale, set_zoom pulls the effective DPR back to that scale, restoring the 340 px width.
+///
+/// `settled` is true when the report comes at the end of a burst of resizes rather than partway
+/// through one, which is what a landing on another screen waits for before it shows the notch.
 #[tauri::command]
-fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64) {
+fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64, settled: Option<bool>) {
     let Some(win) = app.get_webview_window("notch") else { return };
     let want = target_screen(&app)
         .map(|s| s.scale)
@@ -778,6 +839,7 @@ fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64) {
     ));
     // Oscillation guard: at most three corrections per process (if the DPR does not follow the zoom, stop chasing it)
     static APPLIED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let mut corrected = false;
     if (dpr - want).abs() > 0.02
         && (target - *z).abs() > 0.01
         && (0.25..=4.0).contains(&target)
@@ -786,10 +848,16 @@ fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64) {
         match win.set_zoom(target) {
             Ok(()) => {
                 *z = target;
+                corrected = true;
                 applog(&format!("dpr correction: set_zoom({target:.3}) ok"));
             }
             Err(e) => applog(&format!("dpr correction failed: {e}")),
         }
+    }
+    // A correction resizes the page once more, and its own settled report follows; the landing is
+    // shown on the first settled report that needed none
+    if settled == Some(true) && !corrected && LANDING.swap(0, std::sync::atomic::Ordering::SeqCst) != 0 {
+        let _ = app.emit_to("notch", "notch_reveal", ());
     }
 }
 
@@ -1563,6 +1631,7 @@ fn main() {
             notchmenu::show_notch_menu,
             set_hot,
             report_dpr,
+            notch_hidden,
             log_js,
             focus_session,
             dismiss_session,
