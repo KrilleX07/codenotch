@@ -56,7 +56,6 @@ final class PaletteAppearanceTests: XCTestCase {
     func testTheLightAppearanceHasItsOwnInk() {
         assertOpaque(Palette.textPrimary, .aqua, is: 0x000000)
         assertOpaque(Palette.textSecondary, .aqua, is: 0x6B6B6B)
-        assertOpaque(Palette.tooltipTextSecondary, .aqua, is: 0x6B6B6B)
         assertOpaque(Palette.ample, .aqua, is: 0x00A356)
         assertOpaque(Palette.watch, .aqua, is: 0xB08800)
         assertOpaque(Palette.critical, .aqua, is: 0xFF3F00)
@@ -65,11 +64,16 @@ final class PaletteAppearanceTests: XCTestCase {
         assertTrack(Palette.barTrack, .aqua, white: 0, alpha: 0.15)
     }
 
-    /// Secondary tooltip copy needs to survive a dark Appearance whose
-    /// adaptive Liquid Glass has become pale from the desktop behind it.
-    /// The ordinary palette remains frame-accurate for the solid notch.
-    func testTooltipGetsDedicatedHighContrastDarkInk() {
-        assertOpaque(Palette.tooltipTextSecondary, .darkAqua, is: 0xC2C2C2)
+    func testOnlyDarkStandardLiquidGlassGetsReadableSecondaryInk() {
+        assertOpaque(TooltipGlassContrast.secondaryInk(surfaceStyle: .glass, colorScheme: .dark),
+                     .darkAqua, is: 0xC2C2C2)
+        assertOpaque(TooltipGlassContrast.secondaryInk(surfaceStyle: .darkGlass, colorScheme: .dark),
+                     .darkAqua, is: 0x808080)
+        assertOpaque(TooltipGlassContrast.secondaryInk(surfaceStyle: .solid, colorScheme: .dark),
+                     .darkAqua, is: 0x808080)
+        assertOpaque(TooltipGlassContrast.secondaryInk(surfaceStyle: .glass, colorScheme: .dark,
+                                                        reduceTransparency: true),
+                     .darkAqua, is: 0x808080)
     }
 
     func testOnlyDarkSystemLiquidGlassGetsTheReadableDim() {
@@ -81,6 +85,9 @@ final class PaletteAppearanceTests: XCTestCase {
                                                              colorScheme: .dark))
         XCTAssertFalse(TooltipGlassContrast.needsReadableDim(surfaceStyle: .solid,
                                                              colorScheme: .dark))
+        XCTAssertFalse(TooltipGlassContrast.needsReadableDim(surfaceStyle: .glass,
+                                                              colorScheme: .dark,
+                                                              reduceTransparency: true))
     }
 
     func testReadableLiquidGlassDimStaysDarkAndTranslucent() {
@@ -91,7 +98,14 @@ final class PaletteAppearanceTests: XCTestCase {
         XCTAssertEqual(dim.redComponent, 0, accuracy: 1.0 / 255)
         XCTAssertEqual(dim.greenComponent, 0, accuracy: 1.0 / 255)
         XCTAssertEqual(dim.blueComponent, 0, accuracy: 1.0 / 255)
-        XCTAssertEqual(dim.alphaComponent, 0.60, accuracy: 1.0 / 255)
+        XCTAssertEqual(dim.alphaComponent, 0.35, accuracy: 1.0 / 255)
+
+        guard let darkGlassDim = TooltipGlassContrast.dim(surfaceStyle: .darkGlass,
+                                                           colorScheme: .dark)
+                .flatMap({ resolve($0, .darkAqua) }) else { return }
+        XCTAssertEqual(darkGlassDim.alphaComponent, 0.80, accuracy: 1.0 / 255)
+        guard let notchDim = resolve(Palette.darkGlassDim, .darkAqua) else { return }
+        XCTAssertEqual(notchDim.alphaComponent, 0.60, accuracy: 1.0 / 255)
     }
 
     // MARK: -

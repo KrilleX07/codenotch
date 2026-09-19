@@ -47,16 +47,21 @@ enum Palette {
     /// to be `solid`.
     static let darkGlassDim = Color.black.opacity(0.60)
 
-    /// Standard Liquid Glass follows the desktop behind it. In dark mode that
-    /// material can still resolve to a pale grey, where the frame's #808080
-    /// secondary ink disappears. Tooltip copy gets its own brighter secondary
-    /// ink and this matching dim beneath the glass; the main notch remains the
-    /// untouched system material the user chose.
-    static let liquidGlassTooltipDim = Color.black.opacity(0.60)
+    /// Tooltip copy retains the frame's #808080 secondary ink in Dark glass.
+    /// It needs a deeper local backing than the notch itself when a light
+    /// desktop is visible through `Glass.clear`, otherwise the two greys merge.
+    static let darkGlassTooltipDim = Color.black.opacity(0.80)
+
+    /// A tooltip-only wash for standard Liquid Glass in dark appearance. It is
+    /// intentionally weaker than `darkGlassDim`: regular glass stays visibly
+    /// distinct from the user-selected always-dark surface.
+    static let liquidGlassTooltipDim = Color.black.opacity(0.35)
 
     static let textPrimary   = Color(dark: .white, light: .black)
     static let textSecondary = Color(dark: NSColor(hex: 0x808080), light: NSColor(hex: 0x6B6B6B))
-    static let tooltipTextSecondary = Color(dark: NSColor(hex: 0xC2C2C2), light: NSColor(hex: 0x6B6B6B))
+    /// Used only by dark, standard Liquid Glass tooltips. Other surfaces keep
+    /// `textSecondary`, including their frame-accurate #808080 dark ink.
+    static let readableTooltipTextSecondary = Color(dark: NSColor(hex: 0xC2C2C2), light: NSColor(hex: 0x6B6B6B))
 }
 
 extension Color {
@@ -106,6 +111,19 @@ extension EnvironmentValues {
 
 private struct CodenotchHeadlessGlassKey: EnvironmentKey {
     static let defaultValue: Bool = false
+}
+
+private struct TooltipSecondaryInkKey: EnvironmentKey {
+    static let defaultValue = Palette.textSecondary
+}
+
+extension EnvironmentValues {
+    /// Secondary ink resolved for the current tooltip surface. This stays
+    /// frame-accurate unless ordinary dark Liquid Glass needs extra contrast.
+    var tooltipSecondaryInk: Color {
+        get { self[TooltipSecondaryInkKey.self] }
+        set { self[TooltipSecondaryInkKey.self] = newValue }
+    }
 }
 
 extension EnvironmentValues {
