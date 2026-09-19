@@ -32,6 +32,32 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.15.0",
+                headline: L10n.t("QianwenAI reads again, fewer false alerts, and a steadier Windows notch."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("QianwenAI reads again"),
+                        detail: L10n.t("The ring no longer answers \"HTTP 0\" on every refresh, and says so plainly when QianwenAI refuses a request.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Only real resets"),
+                        detail: L10n.t("A countdown that drifts by a few seconds no longer announces a reset, while a real one still does.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Grok, even headless"),
+                        detail: L10n.t("Grok shows as working during grok -p runs, not only in its own window.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The Windows notch stays clear of the taskbar"),
+                        detail: L10n.t("It sits inside the work area and finds its edge again when the taskbar moves, and its rings dim when a reading is old, with rounded ends, as on the Mac.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Smaller fixes"),
+                        detail: L10n.t("Checking for updates can no longer hang on \"Checking…\", a small context reading still draws an arc, Claude's account file is only read again when it changes, and the Traditional Chinese uses Taiwan's own words.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.14.0",
                 headline: L10n.t("A new Settings, QianwenAI, Traditional Chinese, and a Windows notch you can carry to any edge."),
                 changes: [
