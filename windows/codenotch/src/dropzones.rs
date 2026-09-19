@@ -35,10 +35,13 @@ pub fn show(app: &AppHandle, screen: &crate::Screen, zones: &Zones) {
         let _ = w.show();
         return;
     }
+    // The work area, not the monitor: the zones are welded to this window's own edges, so sizing it
+    // to where the notch may actually land is what keeps a zone's promise true on the taskbar's edge.
+    let (ax, ay, aw, ah) = screen.area();
     let builder = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("dropzones.html".into()))
         .title("Codenotch drop zones")
-        .position(screen.x as f64, screen.y as f64)
-        .inner_size(screen.w as f64 / screen.scale, screen.h as f64 / screen.scale)
+        .position(ax as f64 / screen.scale, ay as f64 / screen.scale)
+        .inner_size(aw as f64 / screen.scale, ah as f64 / screen.scale)
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -48,6 +51,12 @@ pub fn show(app: &AppHandle, screen: &crate::Screen, zones: &Zones) {
         .resizable(false);
     match builder.build() {
         Ok(w) => {
+            // The builder's figures are logical, and Windows converts them with whichever monitor it
+            // decides the window belongs to — which is how a taskbar anywhere but the bottom left the
+            // overlay short of the work area's corner and hanging off the far edge by the same amount.
+            // The work area is physical and absolute, so it is pinned again here, as `place_notch` does.
+            let _ = w.set_position(tauri::PhysicalPosition::new(ax, ay));
+            let _ = w.set_size(tauri::PhysicalSize::new(aw.max(1) as u32, ah.max(1) as u32));
             let _ = w.set_ignore_cursor_events(true);
             // The page asks for the zones itself once it is listening; this covers the other order
             let _ = w.emit_to(LABEL, "zones", zones);

@@ -170,7 +170,7 @@ pub fn label(name: &str, lang: &str) -> String {
         ("zh", "5-hour Limit" | "5-Hour Limit") => "5 小时限额",
         ("zh", "Included usage") => "包含用量",
         ("zh", "API usage") => "API 用量",
-        ("zh-Hant", "Current session") => "目前會話",
+        ("zh-Hant", "Current session") => "目前工作階段",
         ("zh-Hant", "Weekly (all models)") => "每週（全部模型）",
         ("zh-Hant", "Weekly (Opus)") => "每週（Opus）",
         ("zh-Hant", "Weekly (model-scoped)") => "每週（指定模型）",
@@ -248,8 +248,9 @@ pub fn provider_lines(snap: &UsageSnapshot, now: u64, lang: &str) -> Vec<String>
 }
 
 /// When the reading is old enough to say so: the page draws the same cell dimmed on the same rule.
+/// Fifteen minutes, matching `staleOf` in notch.html and the Mac's `UsageStore.staleAfter`.
 pub fn stale_since(snap: &UsageSnapshot, now: u64) -> Option<u64> {
-    let old = snap.fetched_at > 0 && now.saturating_sub(snap.fetched_at) > 5 * 60 * 1000;
+    let old = snap.fetched_at > 0 && now.saturating_sub(snap.fetched_at) > 15 * 60 * 1000;
     (snap.status == "stale" || old).then_some(snap.fetched_at).filter(|t| *t > 0)
 }
 
@@ -376,7 +377,9 @@ mod tests {
     fn a_fresh_reading_is_not_called_stale() {
         let fresh = UsageSnapshot { status: "ok".into(), fetched_at: 1, ..Default::default() };
         assert_eq!(stale_since(&fresh, 2 * MIN), None);
-        assert_eq!(stale_since(&fresh, 10 * MIN), Some(1));
+        // Ten minutes is inside the Mac's fifteen: a provider polled at 1 and 5 is not stale here
+        assert_eq!(stale_since(&fresh, 10 * MIN), None);
+        assert_eq!(stale_since(&fresh, 20 * MIN), Some(1));
         let flagged = UsageSnapshot { status: "stale".into(), fetched_at: 1, ..Default::default() };
         assert_eq!(stale_since(&flagged, 2), Some(1));
     }

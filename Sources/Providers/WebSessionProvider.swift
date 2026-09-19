@@ -100,6 +100,12 @@ final class WebSessionProvider: NSObject, UsageProvider {
         /// endpoints that have throttled this app, and polling them while
         /// someone types a password is how that happened.
         let pollsDuringSignIn: Bool
+        /// The page under `origin` where this account's plan or usage can be
+        /// seen — what the settings row's manage link opens. A path rather
+        /// than a whole URL because it is always a page on the site the user
+        /// signed into, and not always the obvious one: QianwenAI's console
+        /// serves its SPA only under `/home`, so `origin/usage` is a 404.
+        let managePath: String
         /// Runs in the page as an async function body. Must return a JSON string
         /// `{ "status": Int, "body": String }`.
         let script: String
@@ -112,6 +118,7 @@ final class WebSessionProvider: NSObject, UsageProvider {
              authProbeScript: String? = nil,
              associatedHosts: [String] = [],
              pollsDuringSignIn: Bool = false,
+             managePath: String = "usage",
              detailParse: ((String) throws -> ProviderUsageDetail?)? = nil,
              parse: @escaping (String) throws -> [LimitWindow]) {
             self.id = id
@@ -123,6 +130,7 @@ final class WebSessionProvider: NSObject, UsageProvider {
             self.authProbeScript = authProbeScript
             self.associatedHosts = associatedHosts
             self.pollsDuringSignIn = pollsDuringSignIn
+            self.managePath = managePath
             self.detailParse = detailParse
             self.parse = parse
         }
@@ -145,7 +153,7 @@ final class WebSessionProvider: NSObject, UsageProvider {
             label: nil,
             plan: nil,
             source: displayName,
-            manageURL: site.origin.appendingPathComponent("usage")
+            manageURL: site.origin.appendingPathComponent(site.managePath)
         )
     }
 

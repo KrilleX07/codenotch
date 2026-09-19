@@ -40,7 +40,7 @@
   .cell{display:flex;flex-direction:column;align-items:center;gap:6px}
   .ringwrap{position:relative;width:56px;height:56px;transition:transform .3s cubic-bezier(.34,1.4,.64,1)}
   .ringwrap.pressed{transform:scale(.93)}
-  .ringwrap > svg.ring,.ringwrap > svg.reading{position:absolute;inset:0;overflow:visible} /* pins only the ring itself; an inline logo svg must not match this or it ends up in the top-left corner */
+  .ringwrap > svg.ring,.ringwrap > svg.reading,.ringwrap > svg.activity{position:absolute;inset:0;overflow:visible} /* pins only the ring itself; an inline logo svg must not match this or it ends up in the top-left corner */
   .glyph{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     font-size:20px;font-weight:700;color:#e8e8ea;letter-spacing:-.5px;
@@ -56,6 +56,11 @@
   .c-head .mark svg{width:16px;height:16px;fill:currentColor}
   .pct{font-size:15px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
   .dim{opacity:.55}
+  /* A stale reading dims the reading only. The track, the week and the glyph are all saying the same
+     old thing, but whether an agent is running right now is current either way, so the activity arc
+     keeps its strength — the Mac puts its own ActivityArc outside the opacity it gives the stale
+     stack (ProviderRing), and TASKS.md says it outright: dimming applies to the usage reading. */
+  .ringwrap.stale > svg.ring,.ringwrap.stale > svg.reading,.ringwrap.stale > .glyph{opacity:.55}
   /* Session arc animation */
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
@@ -398,7 +403,7 @@ const TEXT={
     'API usage':'API 用量',
     'On demand':'按需用量',
     'Usage':'用量',
-    'Current session':'目前會話',
+    'Current session':'目前工作階段',
     'Weekly (all models)':'每週（全部模型）',
     'Weekly (Opus)':'每週（Opus）',
     'Weekly (model-scoped)':'每週（指定模型）',
@@ -411,7 +416,7 @@ const TEXT={
     'Monthly limit':'每月限額',
     'Monthly Limit':'每月限額',
     'Longer window':'更長的週期',
-    'Requests today · no limit published':'今日請求數 · 未公布限額',
+    'Requests today · no limit published':'今日要求數 · 未公布限額',
     'Updated':'更新於',
     'Resetting…':'正在重置…',
     'Resets at':'重置於',
@@ -421,9 +426,9 @@ const TEXT={
     'Streaming (network)':'正在傳輸（網路）',
     'Rate limited, retrying in':'已限流，稍後重試',
     'Rate limited — retrying in':'已限流 — 稍後重試',
-    'request today':'次請求（今日）',
-    'requests today':'次請求（今日）',
-    'no requests today':'今日沒有請求',
+    'request today':'次要求（今日）',
+    'requests today':'次要求（今日）',
+    'no requests today':'今日沒有要求',
     'Waiting for first reading…':'正在等待第一次讀數…',
     'Sign in to Claude Code to see usage.':'請登入 Claude Code 以查看用量。',
     'Sign in to Cursor to see usage.':'請登入 Cursor 以查看用量。',
@@ -710,13 +715,21 @@ function weeklyOf(snap,id){
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
   return tightestOf(lanes.filter(w=>laneIs(w,'weekly')));
 }
-function staleOf(snap){ if(snap.status==='stale') return true; return snap.fetched_at>0 && (Date.now()-snap.fetched_at)>5*60*1000; }
+// 15 minutes, the Mac's `UsageStore.staleAfter`. At 5 a reading went grey between two polls of a
+// provider that is answering perfectly well, which made "stale" mean "recently fetched" rather than
+// "old enough not to trust". A provider that knows its own reading is stale still says so in status.
+function staleOf(snap){ if(snap.status==='stale') return true; return snap.fetched_at>0 && (Date.now()-snap.fetched_at)>15*60*1000; }
 let stateSnap={sessions:[],agg:'idle'};
 
 function svgArc(r,frac,color,width,extra=''){
+  // Nothing at all at zero: a zero-length dash still paints a dot once the caps are round, where the
+  // Mac's `trim(from: 0, to: 0)` draws nothing. A reading small enough that its two caps meet does
+  // draw as a dot, on both platforms — `ProviderRing.sweep` has no floor. Upstream #260 argues that
+  // is wrong, for the local model's arc; if it lands, the same floor belongs here.
+  if(!(frac>0)) return '';
   const C=2*Math.PI*r;
   return `<circle cx="28" cy="28" r="${r}" fill="none" stroke="${color}" stroke-width="${width}"
-    stroke-dasharray="${(C*frac).toFixed(2)} ${C.toFixed(2)}" stroke-linecap="butt"
+    stroke-dasharray="${(C*frac).toFixed(2)} ${C.toFixed(2)}" stroke-linecap="round"
     transform="rotate(-90 28 28)" ${extra}/>`;
 }
 
@@ -726,13 +739,13 @@ function renderRing(){
   const want=ps.map(p=>p.id+':'+(glyphs[p.id]?glyphs[p.id].kind:'-')).join(',');
   if(pill.dataset.cells!==want){
     pill.innerHTML=ps.map(p=>`<div class="cell" data-p="${p.id}">
-      <div class="ringwrap"><svg class="ring" viewBox="0 0 56 56"></svg><svg class="reading" viewBox="0 0 56 56"></svg><div class="glyph ${(!glyphs[p.id]&&p.glyph.length>1)?'small':''}">${glyphHtml(p)}</div></div>
+      <div class="ringwrap"><svg class="ring" viewBox="0 0 56 56"></svg><svg class="reading" viewBox="0 0 56 56"></svg><svg class="activity" viewBox="0 0 56 56"></svg><div class="glyph ${(!glyphs[p.id]&&p.glyph.length>1)?'small':''}">${glyphHtml(p)}</div></div>
       <div class="pct">—</div></div>`).join('');
     pill.dataset.cells=want;
   }
   for(const p of ps){
     const cell=pill.querySelector(`.cell[data-p="${p.id}"]`); if(!cell) continue;
-    const svg=cell.querySelector('svg.ring'), reading=cell.querySelector('svg.reading'), pct=cell.querySelector('.pct'), glyph=cell.querySelector('.glyph'), wrap=cell.querySelector('.ringwrap');
+    const svg=cell.querySelector('svg.ring'), reading=cell.querySelector('svg.reading'), activity=cell.querySelector('svg.activity'), pct=cell.querySelector('.pct'), glyph=cell.querySelector('.glyph'), wrap=cell.querySelector('.ringwrap');
     const h=headlineOf(p.snap,p.id);
     let inner=`<circle cx="28" cy="28" r="22" fill="#2a2a2a"/><circle cx="28" cy="28" r="25" fill="none" stroke="${TRACK}" stroke-width="5"/>`;
     wrap.classList.toggle('pressed',!!refreshing[p.id]);
@@ -747,18 +760,20 @@ function renderRing(){
           +svgArc(r,Math.min(wk.used,1),tone(wk.used),2.4,'opacity="0.85"');
       }
     }
-    { // thin inner arc: spinning white = working, yellow pulse = waiting on you (one animation for all four, different sources)
-      const ws=workState(p.id);
-      if(ws==='running') inner+=`<g class="arc-spin">${svgArc(19,0.28,INK,2.5)}</g>`;
-      else if(ws==='attention') inner+=`<g class="arc-pulse"><circle cx="28" cy="28" r="19" fill="none" stroke="${WATCH}" stroke-width="2.5"/></g>`;
-    }
     svg.innerHTML=inner;
+    { // thin inner arc: spinning white = working, yellow pulse = waiting on you (one animation for all four, different sources)
+      // Its own layer, so a stale reading can dim around it without dimming it: see `.ringwrap.stale`
+      const ws=workState(p.id);
+      if(ws==='running') activity.innerHTML=`<g class="arc-spin">${svgArc(19,0.28,INK,2.5)}</g>`;
+      else if(ws==='attention') activity.innerHTML=`<g class="arc-pulse"><circle cx="28" cy="28" r="19" fill="none" stroke="${WATCH}" stroke-width="2.5"/></g>`;
+      else activity.innerHTML='';
+    }
     if(p.snap.status==='needsAuth'||p.snap.status==='none') pct.textContent='—';
     else if(h && h.count!=null) pct.textContent='~'+h.count;
     else if(h) pct.textContent=(h.derived?'~':'')+pctText(h.used)+'%';
     else pct.textContent=p.snap.windows.length?'—':'…'; // its declared window is missing: a dash, not a wait
     glyph.classList.toggle('dim', !!(h && h.used>=1));
-    wrap.classList.toggle('dim', staleOf(p.snap));
+    wrap.classList.toggle('stale', staleOf(p.snap));
   }
   reportHot(); // a provider appearing or leaving resizes the pill
 }
