@@ -146,7 +146,7 @@
       <section class="pane" id="pane-appearance" role="tabpanel" aria-labelledby="tab-appearance" hidden>
         <div class="sec">Notch</div>
         <div class="group">
-          <div class="item"><span>Show</span><span class="seg" id="seg-show"><button data-v="show">Always show</button><button data-v="hide">Hide</button></span></div>
+          <div class="item"><span>Show</span><span class="seg" id="seg-show"><button data-v="show">Always show</button><button data-v="hover">Show on hover</button><button data-v="hide">Hide</button></span></div>
           <div class="item cap" id="cap-show" data-dynamic></div>
           <div class="item"><span>Size</span><span class="seg" id="seg-size"><button data-v="0.8">Small</button><button data-v="1">Medium</button><button data-v="1.25">Large</button></span></div>
           <div class="item cap" id="cap-size" data-dynamic></div>
@@ -252,6 +252,8 @@ const RU_STATIC = {
   'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'Одно кольцо на провайдера с основным лимитом. Недельная квота остаётся в карточке при наведении.',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'Тонкое кольцо недельного лимита внутри основного. Оно делит зазор с индикатором работы.',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Тонкое кольцо недельного лимита вокруг основного, в промежутке между кольцом и краем панели.',
+  'Show on hover':'Показывать при наведении',
+  'A small pill at the screen edge that opens when you reach it.':'Небольшая панель у края экрана, которая открывается при наведении.',
   'The notch stays open with every reading visible.':'Выемка остаётся открытой, и все данные видны.',
   'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'Чёрная панель у правого края экрана с отдельным кольцом для каждого инструмента. При выключении панель исчезает, но Codenotch продолжает считать использование.',
   'Recentre':'По центру',
@@ -307,6 +309,8 @@ const ZH_STATIC = {
   'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'每个服务一个圆环，显示主额度。每周额度仍在提示卡里。',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'一条更细的每周额度圆环，画在主环内侧。和工作指示共用那个空隙。',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'一条更细的每周额度圆环，画在主环外侧，圆环和刘海边缘之间的空隙里。',
+  'Show on hover':'悬停时显示',
+  'A small pill at the screen edge that opens when you reach it.':'屏幕边缘一颗小胶囊，指针移过去就会展开。',
   'The notch stays open with every reading visible.':'刘海保持展开，所有读数都看得见。',
   'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'屏幕右侧边缘的黑色胶囊，每个工具对应一个圆环。关闭它后胶囊会消失；无论哪种情况，Codenotch 都会继续统计你的使用情况。',
   'Recentre':'重新居中',
@@ -386,6 +390,8 @@ const ZH_HANT_STATIC = {
   'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'每個服務一個圓環，顯示主額度。每週額度仍在提示卡裡。',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'一條更細的每週額度圓環，畫在主環內側。和工作指示共用那個空隙。',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'一條更細的每週額度圓環，畫在主環外側，圓環和瀏海邊緣之間的空隙裡。',
+  'Show on hover':'懸停時顯示',
+  'A small pill at the screen edge that opens when you reach it.':'螢幕邊緣一顆小膠囊，游標移過去就會展開。',
   'The notch stays open with every reading visible.':'瀏海保持展開，所有讀數都看得見。',
   'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'螢幕右側邊緣的黑色膠囊，每個工具對應一個圓環。關閉它後膠囊會消失；無論哪種情況，Codenotch 都會繼續統計你的使用情況。',
   'Recentre':'重新置中',
@@ -467,6 +473,8 @@ const JA_STATIC = {
   'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'サービスごとに 1 本のリングで主な上限を表示します。週間の枠はホバーカードに残ります。',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'週間の上限を細いリングで主リングの内側に描きます。作業中インジケータと同じ隙間を共有します。',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'週間の上限を細いリングで主リングの外側、リングとノッチの端の間の余白に描きます。',
+  'Show on hover':'ホバー時に表示',
+  'A small pill at the screen edge that opens when you reach it.':'画面の端に小さなピル。ポインタを近づけると開きます。',
   'The notch stays open with every reading visible.':'ノッチは開いたままで、すべての読み取りが見えます。',
   'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'画面の右端にある黒いピルには、ツールごとに1つのリングが表示されます。オフにするとピルは消えますが、どちらにしても Codenotch は使用量のカウントを続けます。',
   'Recentre':'中央に戻す',
@@ -531,6 +539,8 @@ const KO_STATIC = {
   'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'제공자당 하나의 링으로, 주요 제한을 표시합니다. 주간 허용량은 호버 카드에 유지됩니다.',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'주간 제한을 나타내는 더 얇은 링으로, 메인 링 안쪽에 그려집니다. 작동 표시기와 간격을 공유합니다.',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'주간 제한을 나타내는 더 얇은 링으로, 메인 링 주위에 그려지며 링과 노치 가장자리 사이의 여백에 위치합니다.',
+  'Show on hover':'마우스를 올리면 표시',
+  'A small pill at the screen edge that opens when you reach it.':'화면 가장자리의 작은 필로, 포인터를 가져가면 열립니다.',
   'The notch stays open with every reading visible.':'노치가 열려 있고 모든 읽기 값이 표시됩니다.',
   'Edge':'가장자리',
   'Left':'왼쪽',
@@ -608,6 +618,8 @@ const UK_STATIC = {
   'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'Одне кільце на провайдера з головним лімітом. Тижневий ліміт лишається в картці при наведенні.',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'Тонше кільце тижневого ліміту всередині основного. Воно ділить проміжок з індикатором роботи.',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Тонше кільце тижневого ліміту навколо основного, у проміжку між кільцем і краєм вирізу.',
+  'Show on hover':'Показувати при наведенні',
+  'A small pill at the screen edge that opens when you reach it.':'Невелика смужка біля краю екрана, що розгортається при наведенні.',
   'The notch stays open with every reading visible.':'Виріз лишається відкритим, усі показники видно.',
   'Edge':'Край',
   'Left':'Ліворуч',
@@ -949,18 +961,21 @@ accountsPane.addEventListener('change', e => {
    Two choices, one command. Hiding both would leave nothing to click, so Rust keeps the tray icon
    whenever the notch is hidden, and its answer says what was actually stored. */
 const SHOW_WHY = 'The notch stays open with every reading visible.';
+const HOVER_WHY = 'A small pill at the screen edge that opens when you reach it.';
 const HIDE_WHY = 'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.';
 const TRAY_WHY = 'The small icon down by the clock. Right-clicking it opens this window, refreshes the readings, or quits Codenotch.';
 const NO_TRAY_WHY = 'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.';
 const HELD_ON = 'Held on: the notch is hidden, so this icon is the only way left to reach Codenotch. Switch the notch back on first if you want to hide it.';
 const KEPT_ON = 'The taskbar icon has been kept on. With the notch hidden it is the only way left to open this window or to quit Codenotch, so Codenotch will not let both of them be switched off at the same time.';
-let flags = { notch:true, tray:true }, flagsBusy = false, flagsCorrected = false;
+let flags = { notch:true, hover:false, tray:true }, flagsBusy = false, flagsCorrected = false;
 
 function readFlags(v){
   const nv = v && (v.notch_visible !== undefined ? v.notch_visible : v.notchVisible);
+  const hv = v && (v.notch_on_hover !== undefined ? v.notch_on_hover : v.notchOnHover);
   const tv = v && (v.tray_visible !== undefined ? v.tray_visible : v.trayVisible);
-  return { notch: nv !== false, tray: tv !== false };
+  return { notch: nv !== false, hover: hv === true, tray: tv !== false };
 }
+function showMode(){ return !flags.notch ? 'hide' : flags.hover ? 'hover' : 'show'; }
 function drawSeg(id, value, disabled){
   for(const b of document.querySelectorAll('#' + id + ' button')){
     const on = b.dataset.v === value;
@@ -970,22 +985,23 @@ function drawSeg(id, value, disabled){
   }
 }
 function renderFlags(){
-  drawSeg('seg-show', flags.notch ? 'show' : 'hide');
+  drawSeg('seg-show', showMode());
   drawSeg('seg-tray', flags.tray ? 'tray' : 'none', flags.notch ? [] : ['none']);
-  document.getElementById('cap-show').textContent = flags.notch ? ui(SHOW_WHY, SHOW_WHY) : ui(HIDE_WHY, HIDE_WHY);
+  const showWhy = { show:SHOW_WHY, hover:HOVER_WHY, hide:HIDE_WHY }[showMode()];
+  document.getElementById('cap-show').textContent = ui(showWhy, showWhy);
   const trayWhy = !flags.notch ? HELD_ON : flags.tray ? TRAY_WHY : NO_TRAY_WHY;
   document.getElementById('cap-tray').textContent = ui(trayWhy, trayWhy);
   const fix = document.getElementById('flags-fix');
   fix.hidden = !flagsCorrected;
   fix.textContent = ui(KEPT_ON, KEPT_ON);
 }
-function saveFlags(wantNotch, wantTray){
+function saveFlags(wantNotch, wantTray, wantHover){
   if(flagsBusy) return;
   flagsBusy = true;
-  const asked = { notch:wantNotch, tray:wantTray };
+  const asked = { notch:wantNotch, hover:wantHover, tray:wantTray };
   flags = asked;
   renderFlags();
-  invoke('set_ui_flags', { notchVisible: wantNotch, trayVisible: wantTray })
+  invoke('set_ui_flags', { notchVisible: wantNotch, trayVisible: wantTray, notchOnHover: wantHover })
     .then(v => {
       flags = readFlags(v);
       flagsCorrected = flags.notch !== asked.notch || flags.tray !== asked.tray;
@@ -1000,16 +1016,19 @@ function saveFlags(wantNotch, wantTray){
 }
 document.getElementById('seg-show').addEventListener('click', e => {
   const b = e.target.closest('button');
-  if(!b || b.disabled) return;
-  const notch = b.dataset.v === 'show';
-  if(notch !== flags.notch) saveFlags(notch, flags.tray);
+  if(!b || b.disabled || b.dataset.v === showMode()) return;
+  // Hide leaves the hover choice as it was, so switching the notch back on returns to it
+  const notch = b.dataset.v !== 'hide';
+  saveFlags(notch, flags.tray, notch ? b.dataset.v === 'hover' : flags.hover);
 });
 document.getElementById('seg-tray').addEventListener('click', e => {
   const b = e.target.closest('button');
   if(!b || b.disabled) return;
   const tray = b.dataset.v === 'tray';
-  if(tray !== flags.tray) saveFlags(flags.notch, tray);
+  if(tray !== flags.tray) saveFlags(flags.notch, tray, flags.hover);
 });
+// Keep open in the notch's own menu changes the same setting while this window may be open
+try { window.__TAURI__.event.listen('ui_flags', e => { if(!flagsBusy && e.payload){ flags = readFlags(e.payload); renderFlags(); } }); } catch(e) { /* read again next time it opens */ }
 
 /* ---- Appearance: size ------------------------------------------------------ */
 const SIZE_WHY = {

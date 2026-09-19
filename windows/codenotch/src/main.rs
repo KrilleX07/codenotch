@@ -935,6 +935,9 @@ fn start_pointer_watchdog(app: AppHandle) {
             if click_through != Some(!inside) {
                 set_click_through(&app, !inside);
                 click_through = Some(!inside);
+                // Show on hover opens on this and folds a moment after it goes false. The page cannot
+                // tell on its own: once click-through is back on, it is sent nothing at all.
+                let _ = app.emit_to("notch", "notch_pointer", inside);
                 applog(&format!(
                     "click-through {} at cursor_rel=({lx:.0},{ly:.0}) rects={rects:?}",
                     if inside { "off (cursor on the notch)" } else { "on (cursor elsewhere)" }
@@ -1251,43 +1254,72 @@ fn get_app_icon() -> Option<String> {
 
 // ---------------- what is on screen at all ----------------
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 struct UiFlags {
     notch_visible: bool,
+    notch_on_hover: bool,
     tray_visible: bool,
+}
+
+fn ui_flags(c: &config::Config) -> UiFlags {
+    UiFlags { notch_visible: c.notch_visible, notch_on_hover: c.notch_on_hover, tray_visible: c.tray_visible }
 }
 
 #[tauri::command]
 fn get_ui_flags(app: AppHandle) -> UiFlags {
     let st = app.state::<AppState>();
     let c = st.cfg.lock().unwrap();
-    UiFlags { notch_visible: c.notch_visible, tray_visible: c.tray_visible }
+    ui_flags(&c)
 }
 
 /// Hiding both would leave the app running with nothing to click, so the tray icon is kept
 /// whenever the notch is off. The answer says what was actually stored, so the settings window can
-/// show the corrected state rather than a lie.
+/// show the corrected state rather than a lie. Show on hover is not "off": the pill stays on screen.
 #[tauri::command]
-fn set_ui_flags(app: AppHandle, notch_visible: bool, tray_visible: bool) -> UiFlags {
+fn set_ui_flags(app: AppHandle, notch_visible: bool, tray_visible: bool, notch_on_hover: Option<bool>) -> UiFlags {
     let flags = {
         let st = app.state::<AppState>();
         let mut c = st.cfg.lock().unwrap();
         c.notch_visible = notch_visible;
+        if let Some(on_hover) = notch_on_hover {
+            c.notch_on_hover = on_hover;
+        }
         c.tray_visible = if notch_visible { tray_visible } else { true };
         config::save(&c);
-        UiFlags { notch_visible: c.notch_visible, tray_visible: c.tray_visible }
+        ui_flags(&c)
     };
     apply_visibility(&app);
     flags
 }
 
+/// The notch menu's Keep open: the Mac's own shortcut between Always show and Show on hover
+/// (`onToggleKeepOpen` flips `notchVisibility`), so it is the same setting from another place.
+pub fn toggle_keep_open(app: &AppHandle) {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.notch_on_hover = !c.notch_on_hover;
+        config::save(&c);
+    }
+    apply_visibility(app);
+}
+
+pub fn keeps_open(app: &AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    !c.notch_on_hover
+}
+
 /// Puts the two switches into effect.
 pub fn apply_visibility(app: &AppHandle) {
-    let (notch, tray_on) = {
+    let (notch, tray_on, flags) = {
         let st = app.state::<AppState>();
         let c = st.cfg.lock().unwrap();
-        (c.notch_visible, c.tray_visible)
+        (c.notch_visible, c.tray_visible, ui_flags(&c))
     };
+    // The page folds or stays open by these, and the Settings window redraws its Show row from them
+    // when Keep open changed them from the notch's own menu
+    let _ = app.emit("ui_flags", flags);
     if let Some(w) = app.get_webview_window("notch") {
         if notch {
             let _ = w.show();

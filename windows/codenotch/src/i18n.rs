@@ -206,6 +206,14 @@ pub fn tr(lang: &str, key: &str) -> &'static str {
         ("ru", "open_host") => "Открыть %@",
         ("uk", "open_host") => "Відкрити %@",
         (_, "open_host") => "Open %@",
+        // The Mac's own catalog, but for Korean, which it does not have
+        ("zh", "keep_open") => "保持展开",
+        ("zh-Hant", "keep_open") => "保持展開",
+        ("ja", "keep_open") => "開いたままにする",
+        ("ko", "keep_open") => "열어 두기",
+        ("ru", "keep_open") => "Оставить открытым",
+        ("uk", "keep_open") => "Тримати відкритим",
+        (_, "keep_open") => "Keep open",
         _ => "?",
     }
 }
@@ -221,6 +229,7 @@ mod tests {
         ("quit_app", "Выйти из Codenotch"),
         ("refresh_now", "Обновить сейчас"),
         ("open_host", "Открыть %@"),
+        ("keep_open", "Оставить открытым"),
         ("quit", "Выйти"),
         ("install", "Установить хуки Claude Code"),
         ("uninstall", "Удалить хуки"),
@@ -245,6 +254,7 @@ mod tests {
     }
 
     const UKRAINIAN_KEYS: &[(&str, &str)] = &[
+        ("keep_open", "Тримати відкритим"),
         ("open_data", "Відкрити теку даних (журнали / значки)"),
         ("install", "Встановити хуки Claude Code"),
         ("uninstall", "Видалити хуки"),
