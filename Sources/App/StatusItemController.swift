@@ -12,8 +12,7 @@ import AppKit
 ///
 /// The item itself is the plain icon unless Settings switches on limits in
 /// the menu bar. Then it shows each chosen provider's five-hour window at a
-/// glance, with the chosen reset presentation beside the provider's mark,
-/// and is the icon again
+/// glance — "72% · 2h 18m" beside the provider's mark — and is the icon again
 /// whenever none of them has such a window to show. See `StatusItemSummary`.
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
@@ -43,13 +42,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         didSet {
             guard limits != oldValue else { return }
             updateButton()
-        }
-    }
-    var resetTimeFormat: ResetTimeFormat = .automatic {
-        didSet {
-            guard resetTimeFormat != oldValue else { return }
-            updateButton()
-            updateOpenMenu()
         }
     }
     /// What the item shows now, so a publication that changes nothing on it —
@@ -106,17 +98,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// Nothing here reads or refreshes usage: the store owns that, and it
     /// already re-reads on its first tick after a window resets. When the
     /// countdown reaches zero the item shows a dash until that reading lands.
-    /// With limits off only an open menu needs presentation updates.
+    /// With limits off there is no countdown, so nothing is left to wake it.
     private func updateButton(now: Date = Date()) {
-        let next = StatusItemSummary.make(from: snapshots, showing: limits, now: now, format: resetTimeFormat)
-        // An open menu can show weekly/monthly windows even when the bar is
-        // icon-only. Its local countdown must keep running in menu tracking.
-        let menuChange = openMenu == nil ? nil : snapshots
-            .flatMap { $0.windows.compactMap(\.resetsAt) + [$0.block?.resetsAt].compactMap { $0 } }
-            .compactMap { ResetCopy.nextCountdownChange(to: $0, now: now) }
-            .min()
-        scheduleCountdown(at: [item == nil ? nil : next.nextChange, menuChange].compactMap { $0 }.min())
         guard let item, let button = item.button else { return }
+        let next = StatusItemSummary.make(from: snapshots, showing: limits, now: now)
+        scheduleCountdown(at: next.nextChange)
         guard next != summary else { return }
         summary = next
 
@@ -144,10 +130,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         countdownTimer = nil
         guard let fireDate else { return }
         let timer = Timer(fire: fireDate, interval: 0, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.updateButton()
-                self?.updateOpenMenu()
-            }
+            MainActor.assumeIsolated { self?.updateButton() }
         }
         // Late by a second is invisible at a minute's precision, and lets the
         // system fold this wake-up into others.
@@ -163,13 +146,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         rebuild(menu: menu, now: Date())
         openMenu = menu
-        updateButton()
         onRefreshAll?()
     }
 
     func menuDidClose(_ menu: NSMenu) {
         openMenu = nil
-        updateButton()
     }
 
     private func updateOpenMenu() {
@@ -204,8 +185,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             for snapshot in snapshots {
                 menu.addItem(headerItem(for: snapshot, now: now))
                 let models = cells.filter { $0.providerID == snapshot.id && $0.localModel != nil }
-                for (index, line) in Self.detailLines(for: snapshot, cells: cells, activity: activity,
-                                                    now: now, format: resetTimeFormat).enumerated() {
+                for (index, line) in Self.detailLines(for: snapshot, cells: cells, activity: activity, now: now).enumerated() {
                     let row = NSMenuItem(title: line, action: nil, keyEquivalent: "")
                     if snapshot.kind == .localRuntime, models.indices.contains(index) {
                         Self.setProviderImage(models[index].glyph, on: row)
@@ -310,7 +290,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// menu.
     static func detailLines(for snapshot: ProviderSnapshot, cells: [ProviderSnapshot] = [],
                             activity: (ProviderSnapshot) -> ActivitySummary? = { _ in nil },
-                            now: Date, format: ResetTimeFormat = .automatic) -> [String] {
+                            now: Date) -> [String] {
         let now = now
         if snapshot.kind == .localRuntime {
             let models = cells.filter { $0.providerID == snapshot.id && $0.localModel != nil }
@@ -320,14 +300,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             return snapshot.localRuntime == nil ? [snapshot.statusMessage].compactMap { $0 } : []
         }
         if let block = snapshot.block {
-            var lines = [block.summary(now: now, format: format)]
-            lines += snapshot.windows.map { windowLine(for: $0, now: now, format: format) }
+            var lines = [block.summary(now: now)]
+            lines += snapshot.windows.map { windowLine(for: $0, now: now) }
             return lines
         }
         if let message = snapshot.statusMessage {
             return [message]
         }
-        return snapshot.windows.map { windowLine(for: $0, now: now, format: format) }
+        return snapshot.windows.map { windowLine(for: $0, now: now) }
     }
 
     /// One loaded model on one line: what its cell prints, what it is doing,
@@ -353,8 +333,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     static func windowLine(for window: LimitWindow, now: Date,
                            format: ResetTimeFormat = .automatic) -> String {
         var line = "\(window.label): \(window.summary)"
-        if let reset = ResetCopy.menuBarText(for: window.resetsAt, now: now, format: format, context: .detail) {
-            line += " · \(reset)"
+        if let resetsAt = window.resetsAt {
+            line += " · \(ResetCopy.text(for: resetsAt, now: now, format: format))"
         }
         return line
     }

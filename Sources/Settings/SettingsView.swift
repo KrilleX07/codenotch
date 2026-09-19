@@ -996,19 +996,6 @@ struct SettingsView: View {
                 .padding(.top, 4)
             }
 
-            Section(L10n.t("Menu Bar")) {
-                Picker(L10n.t("Reset display"), selection: $preferences.menuBarResetTimeFormat) {
-                    Text(L10n.t("Reset Date")).tag(ResetTimeFormat.automatic)
-                    Text(L10n.t("Time Remaining")).tag(ResetTimeFormat.remaining)
-                }
-                .pickerStyle(.segmented)
-
-                Text(L10n.t("How usage resets appear in the menu bar and its menu."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
             // Apart from the notch's own group: these are about the app, not
             // the thing it draws on the screen edge.
             Section(L10n.t("App")) {

@@ -59,7 +59,7 @@ final class StatusItemSummaryTests: XCTestCase {
         StatusItemSummary.make(
             from: snapshots,
             showing: limits ?? MenuBarLimits(isOn: true, chosen: Set(snapshots.map(\.id))),
-            now: now, format: .remaining)
+            now: now)
     }
 
     private func on(_ chosen: Set<String>?) -> MenuBarLimits {
@@ -72,7 +72,7 @@ final class StatusItemSummaryTests: XCTestCase {
         let entry = try XCTUnwrap(summary([claude(0.72, resetIn: 2 * hour + 18 * minute + 20)]).entries.first)
         XCTAssertEqual(entry.glyph, .claude)
         XCTAssertEqual(entry.percent, "72%")
-        XCTAssertEqual(entry.resetText, "2h 18m")
+        XCTAssertEqual(entry.countdown, "2h 18m")
         XCTAssertNil(entry.label)
         XCTAssertFalse(entry.isStale)
         XCTAssertEqual(entry.detail, "Claude — Current session: 72% Used · 28% left · 2h 18m")
@@ -82,7 +82,7 @@ final class StatusItemSummaryTests: XCTestCase {
         let entry = try XCTUnwrap(summary([codex(0.41, resetIn: 4 * hour + 5 * minute + 30)]).entries.first)
         XCTAssertEqual(entry.glyph, .openai)
         XCTAssertEqual(entry.percent, "41%")
-        XCTAssertEqual(entry.resetText, "4h 05m")
+        XCTAssertEqual(entry.countdown, "4h 05m")
     }
 
     /// Both, in the order the store keeps — which is the user's order, the
@@ -155,7 +155,7 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertEqual(result.entries.map(\.id), ["claude", "codex"])
         for entry in result.entries {
             XCTAssertEqual(entry.percent, "—")
-            XCTAssertEqual(entry.resetText, "—")
+            XCTAssertEqual(entry.countdown, "—")
             XCTAssertTrue(entry.isBlank)
             XCTAssertFalse(entry.isStale, "a dash is not a reading to dim")
         }
@@ -237,7 +237,7 @@ final class StatusItemSummaryTests: XCTestCase {
                                           limits: on(["claude"])).entries.first)
         XCTAssertTrue(entry.isBlank)
         XCTAssertEqual(entry.percent, "—")
-        XCTAssertEqual(entry.resetText, "—")
+        XCTAssertEqual(entry.countdown, "—")
     }
 
     /// The room in the bar goes to the chosen alone: leaving providers out
@@ -287,7 +287,7 @@ final class StatusItemSummaryTests: XCTestCase {
         let result = summary([claude(0.72, resetIn: nil)])
         let entry = try XCTUnwrap(result.entries.first)
         XCTAssertEqual(entry.percent, "72%")
-        XCTAssertEqual(entry.resetText, "—")
+        XCTAssertEqual(entry.countdown, "—")
         XCTAssertNil(result.nextChange, "nothing is counting down, so nothing needs to wake")
     }
 
@@ -297,14 +297,14 @@ final class StatusItemSummaryTests: XCTestCase {
         let result = summary([claude(0.93, resetIn: -20)])
         let entry = try XCTUnwrap(result.entries.first)
         XCTAssertEqual(entry.percent, "—")
-        XCTAssertEqual(entry.resetText, "—")
+        XCTAssertEqual(entry.countdown, "—")
         XCTAssertEqual(entry.detail, "Claude — Current session: Resetting…")
         XCTAssertNil(result.nextChange)
     }
 
     func testTheCountdownRunsDownToUnderAMinute() throws {
-        XCTAssertEqual(try XCTUnwrap(summary([claude(0.66, resetIn: 47 * minute + 50)]).entries.first).resetText, "47m")
-        XCTAssertEqual(try XCTUnwrap(summary([claude(0.93, resetIn: 42)]).entries.first).resetText, "<1m")
+        XCTAssertEqual(try XCTUnwrap(summary([claude(0.66, resetIn: 47 * minute + 50)]).entries.first).countdown, "47m")
+        XCTAssertEqual(try XCTUnwrap(summary([claude(0.93, resetIn: 42)]).entries.first).countdown, "<1m")
     }
 
     /// A remembered reading is dimmed, as the notch dims its ring, and says
