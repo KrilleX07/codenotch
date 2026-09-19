@@ -34,7 +34,7 @@ pub const NOTCH_W: f64 = 360.0;
 /// Hand-bumped build tag, written to run.log at startup so a log can always be matched to the exe that wrote it.
 pub const BUILD: &str = "r31";
 pub const NOTCH_H: f64 = 520.0; // 300 clipped the card once it held three window blocks plus the session list; 460 clipped Antigravity's two model groups once the reading was stale and an agent was working
-/// Height of the upright window. Five cells make a 504 px pill; its fillets add 38.7 px at each end
+/// Height of the upright window. Five cells make a 447 px pill; its fillets add 38.7 px at each end
 /// and the settings orb reaches 28.5 px past the far one, so 520 cut both fillets and hid the orb.
 pub const NOTCH_UPRIGHT_H: f64 = 650.0;
 
@@ -269,8 +269,8 @@ static NOTCH_INSETS: Mutex<[f64; 4]> = Mutex::new([0.0; 4]);
 /// The notch window's logical size for an edge.
 ///
 /// Upright on the left and right, the pill is a column and 360 wide is plenty; its length is what
-/// needs room, hence `NOTCH_UPRIGHT_H`. Lying flat on the top and bottom it is a row: five 56 px
-/// rings, their gaps, the padding, both fillets and the settings orb come to about 506 px, so a
+/// needs room, hence `NOTCH_UPRIGHT_H`. Lying flat on the top and bottom it is a row: five 44 px
+/// rings, their gaps, the padding, both fillets and the settings orb come to about 446 px, so a
 /// 360 px window clipped the pill once a fifth provider was on. The flat window keeps the full
 /// height too, for the hover card that opens below or above the pill.
 pub fn notch_window_size(edge: &str) -> (f64, f64) {
@@ -1832,8 +1832,8 @@ mod tests {
 
     #[test]
     fn a_flat_notch_is_wide_enough_for_five_rings() {
-        // 5 × 56 px rings + 4 × 14 px gaps + 36 px padding + 2 × 38.7 px fillets + the orb's 28.5 px reach
-        let pill = 5.0 * 56.0 + 4.0 * 14.0 + 36.0 + 2.0 * (38.7 + 28.5);
+        // 5 × 44 px rings + 4 × 14 px gaps + 36 px padding + 2 × 38.7 px fillets + the orb's 28.5 px reach
+        let pill = 5.0 * 44.0 + 4.0 * 14.0 + 36.0 + 2.0 * (38.7 + 28.5);
         for edge in ["top", "bottom"] {
             let (w, h) = notch_window_size(edge);
             assert!(w >= pill, "{edge}: {w} px cannot hold a {pill} px pill");
@@ -1881,8 +1881,8 @@ mod tests {
     /// all have to fit between the centre and each end.
     #[test]
     fn an_upright_notch_has_room_for_five_rings_and_the_orb() {
-        // 5 cells (56 px ring + 6 px gap + 21 px percentage) + 4 × 14 px gaps + 36 px padding
-        let pill = 5.0 * (56.0 + 6.0 + 21.0) + 4.0 * 14.0 + 36.0;
+        // 5 cells (44 px ring + 6 px gap + 21 px percentage) + 4 × 14 px gaps + 36 px padding
+        let pill = 5.0 * (44.0 + 6.0 + 21.0) + 4.0 * 14.0 + 36.0;
         for edge in ["left", "right"] {
             let (_, h) = notch_window_size(edge);
             assert!(h / 2.0 >= pill / 2.0 + 38.7 + 28.5, "{edge}: {h} px leaves no room for the orb");
