@@ -156,6 +156,13 @@ final class NotchFleet {
             controller.model.isPinned = pinned
             if pinned && !controller.model.isExpanded {
                 controller.unfoldForPin()
+            } else if !pinned && self.visibility == .onHover {
+                // If we unpin while in hover mode, evaluate the pointer to fold immediately if it's not hovering.
+                if Runtime.isUnderTest {
+                    controller.model.isExpanded = false
+                } else {
+                    controller.cursorMoved()
+                }
             }
         }
     }
@@ -439,6 +446,9 @@ final class NotchFleet {
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled
         controller.model.deepSeekPricingSchedule = deepSeekPricingSchedule
         controller.model.isPinned = pinned
+        if pinned {
+            controller.unfoldForPin()
+        }
         controller.onRefresh = onRefresh
         controller.onRefreshProvider = onRefreshProvider
         controller.onOpenSettings = onOpenSettings
