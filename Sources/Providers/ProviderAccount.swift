@@ -122,8 +122,13 @@ struct ProviderSummary: Identifiable, Equatable {
     /// does too when the editor is signed in, but `cursor-agent` files its
     /// JWT in the login keychain — without this flag a declined prompt would
     /// have no "Allow access…" to put the dialogue back.
+    ///
+    /// Only Antigravity's default profile reads the keychain. The extra ones
+    /// are read from their own directory's `oauth_creds.json` or `agent.db`
+    /// and never raise the dialogue, so offering to restore access there would
+    /// point at a prompt that cannot appear.
     var usesKeychain: Bool {
-        ClaudeProfile.isClaude(providerID: id) || AntigravityProfile.isAntigravity(providerID: id) || id == "cursor"
+        ClaudeProfile.isClaude(providerID: id) || id == AntigravityProfile.defaultID || id == "cursor"
     }
 
     let id: String
