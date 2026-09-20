@@ -927,7 +927,9 @@ function renderCard(){
   const p=providers().find(x=>x.id===hoverId)||providers()[0];
   const snap=p.snap;
   const headIcon=glyphHtml(p,true);
-  let html=`<div class="c-head">${headIcon}<span class="c-title">${ui().title(p.name)}</span></div>`;
+  // p.name is no longer a constant: for a second account it is built from the home
+  // directory's slug and the subscriptionType read out of .credentials.json.
+  let html=`<div class="c-head">${headIcon}<span class="c-title">${esc(ui().title(p.name))}</span></div>`;
   if(staleOf(snap)&&snap.fetched_at) html+=`<div class="c-sub">${textCopy('Updated')} ${ago(snap.fetched_at)}</div>`;
   if(snap.status==='needsAuth'){
     const who={claude:'Sign in to Claude Code to see usage.',cursor:'Sign in to Cursor to see usage.',codex:'Sign in to Codex to see usage.',grok:'Run grok login to see usage.',gemini:'Sign in to Antigravity to see usage.'}[p.base]||'';
@@ -1150,7 +1152,10 @@ function refreshRing(id){
   refreshing[id]={at:Date.now(),timer:setTimeout(()=>settle(id),PRESS_MAX)};
   renderRing();
   turnReading(id);
-  invoke('refresh_ring',{provider:id}).then(coming=>{if(!coming)settle(id);}).catch(()=>settle(id));
+  // The cell id addresses the DOM, the provider id addresses Rust: a second Claude
+  // account's cell is `claude@work`, which no command answers to.
+  const provider=(providers().find(p=>p.id===id)||{}).base||id;
+  invoke('refresh_ring',{provider}).then(coming=>{if(!coming)settle(id);}).catch(()=>settle(id));
 }
 // The reading has a layer of its own that renders never replace, turned as a whole element so the
 // compositor can run it; it finishes its turn whenever the press lets go
