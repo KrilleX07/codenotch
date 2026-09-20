@@ -45,6 +45,15 @@ const BACKOFF_MIN_SECS: u64 = 60; // wait at least this long after a 429; Retry-
 static REFRESH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// Retry deadline given by the server (ms epoch): neither a manual refresh nor a restart may bypass it
 static BACKOFF_UNTIL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// When the native client may be tried again after it came back with nothing.
+///
+/// `read_app_server` spawns `codex app-server` and waits on it. On a machine that has Codex
+/// installed but is signed out, that call fails every time, and the poll runs every five minutes —
+/// a hidden process, up to twenty seconds long, for as long as the app is open. The native read is
+/// a fallback for managed sign-ins `auth.json` cannot describe, not something worth paying for on
+/// every poll, so a failed attempt stands the path down for half an hour.
+static NATIVE_RETRY_AFTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+const NATIVE_STAND_DOWN_MS: u64 = 30 * 60 * 1000;
 
 pub fn request_refresh() {
     REFRESH.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -644,9 +653,15 @@ fn read_once() -> UsageSnapshot {
     }
     // Keep the no-process HTTP path first, and do not use a second transport to bypass
     // its Retry-After. The native client can handle managed sign-in that auth.json cannot.
-    if snap.backoff_until <= now_ms() {
-        if let Some(native) = read_app_server() {
-            return native;
+    if snap.backoff_until <= now_ms()
+        && NATIVE_RETRY_AFTER.load(std::sync::atomic::Ordering::Relaxed) <= now_ms()
+    {
+        match read_app_server() {
+            Some(native) => return native,
+            None => NATIVE_RETRY_AFTER.store(
+                now_ms() + NATIVE_STAND_DOWN_MS,
+                std::sync::atomic::Ordering::Relaxed,
+            ),
         }
     }
     // Fallback: rollout
