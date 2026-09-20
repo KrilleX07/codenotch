@@ -3,7 +3,12 @@
 //! Headers: Authorization: Bearer <token>; anthropic-beta: oauth-2025-04-20; 15 s timeout
 //! Rules (upstream's discipline):
 //!   - the credential comes from Claude Code's own store (Windows: ~/.claude/.credentials.json), read only
-//!   - 401 → re-read once and retry; 403 is access denied, not proof of lost authentication
+//!   - accounts, plural: ~/.claude and every ~/.claude-<slug> holding a credential. That layout is not invented
+//!     here — it is what CLAUDE_CONFIG_DIR points a shell at, and what the Mac app already reads several accounts
+//!     by. Each account's windows carry its name in `group`, so the card stacks them exactly as Antigravity's
+//!     model families stack, and a machine with one account produces byte-for-byte the old reading
+//!   - 401 → re-read the credential once and retry (Claude Code may have just refreshed the token) → still
+//!     failing means needsAuth; 403 is access denied, not proof of lost authentication
 //!   - 429 → back off 60 s × 2^n capped at 15 min, Retry-After only raises it, even past the cap; the deadline is persisted
 //!   - an expired token is never sent: the endpoint answers it with 429 + Retry-After ≈ 3600, not 401, so sending it
 //!     reads as "rate limited" for as long as the token stays stale (upstream's credentialExpired, no network)
@@ -17,6 +22,8 @@
 
 use crate::AppState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -56,6 +63,67 @@ fn now_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+const CRED_NAMES: [&str; 2] = [".credentials.json", "credentials.json"];
+
+/// One Claude Code account, as its config directory. `slug` is None for the default ~/.claude and
+/// Some("work") for ~/.claude-work.
+#[derive(Debug, Clone, PartialEq)]
+struct Profile {
+    dir: PathBuf,
+    slug: Option<String>,
+}
+
+impl Profile {
+    fn name(&self) -> String {
+        self.slug.clone().unwrap_or_else(|| "default".into())
+    }
+
+    /// The heading the card files this account's windows under. The plan is what tells two accounts
+    /// apart at a glance ("max" against "pro"); the slug is what stays unique when both plans match.
+    fn group(&self, plan: Option<&str>) -> String {
+        match plan {
+            Some(p) if !p.is_empty() => format!("{} · {p}", self.name()),
+            _ => self.name(),
+        }
+    }
+}
+
+fn has_credential(dir: &Path) -> bool {
+    CRED_NAMES.iter().any(|n| dir.join(n).is_file())
+}
+
+/// Every account on the machine: the default first, then ~/.claude-<slug> in name order. A secondary
+/// directory counts only once it holds a credential, so a half-made one never shows up on the card as
+/// an account waiting to be signed in.
+fn profiles() -> Vec<Profile> {
+    let Some(home) = dirs::home_dir() else {
+        return Vec::new();
+    };
+    let mut out = vec![Profile { dir: home.join(".claude"), slug: None }];
+    let mut extra: Vec<Profile> = Vec::new();
+    if let Ok(rd) = std::fs::read_dir(&home) {
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            let Some(slug) = name.strip_prefix(".claude-") else {
+                continue;
+            };
+            let dir = e.path();
+            if slug.is_empty() || !dir.is_dir() || !has_credential(&dir) {
+                continue;
+            }
+            extra.push(Profile { dir, slug: Some(slug.to_string()) });
+        }
+    }
+    extra.sort_by(|a, b| a.slug.cmp(&b.slug));
+    out.append(&mut extra);
+    out
+}
+
+/// Every account directory, for anything that watches a profile's files (the session watcher)
+pub fn profile_dirs() -> Vec<PathBuf> {
+    profiles().into_iter().map(|p| p.dir).collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -109,10 +177,13 @@ fn persist(s: &UsageSnapshot) {
     }
 }
 
+#[derive(Default)]
 struct Credential {
     token: String,
     /// ms epoch (None = the file names no expiry)
     expires_at: Option<u64>,
+    /// "max" | "pro" | … as the credential names it, for the card's account heading
+    plan: Option<String>,
 }
 
 impl Credential {
@@ -121,26 +192,27 @@ impl Credential {
     }
 }
 
-/// Both supported credential shapes; an empty token is signed out, not expired.
-fn credential_from_json(v: &serde_json::Value) -> Option<Credential> {
-    let oauth = v.get("claudeAiOauth").unwrap_or(v);
-    let token = oauth.get("accessToken")?.as_str()?;
-    if token.trim().is_empty() { return None; }
-    let expires_at = oauth.get("expiresAt").and_then(|x| x.as_f64()).map(|ms| ms as u64);
-    Some(Credential { token: token.into(), expires_at })
-}
-
-fn read_credentials() -> Option<Credential> {
-    let home = dirs::home_dir()?;
-    for name in [".credentials.json", "credentials.json"] {
-        let p = home.join(".claude").join(name);
+/// Reads Claude Code's OAuth credential.
+fn read_credentials(dir: &Path) -> Option<Credential> {
+    for name in CRED_NAMES {
+        let p = dir.join(name);
         let Ok(text) = std::fs::read_to_string(&p) else {
             continue;
         };
         let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
             continue;
         };
-        if let Some(c) = credential_from_json(&v) { return Some(c); }
+        let oauth = v.get("claudeAiOauth").unwrap_or(&v);
+        if let Some(tok) = oauth.get("accessToken").and_then(|x| x.as_str()) {
+            // An empty token is signed out, not expired: fall through to the next
+            // candidate file rather than report a credential that cannot be used.
+            if tok.trim().is_empty() {
+                continue;
+            }
+            let expires_at = oauth.get("expiresAt").and_then(|x| x.as_f64()).map(|ms| ms as u64);
+            let plan = oauth.get("subscriptionType").and_then(|x| x.as_str()).map(String::from);
+            return Some(Credential { token: tok.to_string(), expires_at, plan });
+        }
     }
     None
 }
@@ -151,14 +223,29 @@ pub fn probe_credentials() -> String {
         Some(p) => format!("renews via {}", p.display()),
         None => "no standalone claude CLI found to renew it".into(),
     };
-    match read_credentials() {
-        Some(c) => format!(
-            "credential: found (token {} chars, {}; {cli})",
-            c.token.len(),
-            if c.expired(now_ms()) { "expired" } else { "valid" }
-        ),
-        None => "credential: ~/.claude/.credentials.json not found (needsAuth; the desktop app may use another store — signing in once with the Claude Code CLI creates it)".into(),
+    let list = profiles();
+    if list.is_empty() {
+        return format!("credential: no home directory to read ~/.claude from; {cli}");
     }
+    let lines: Vec<String> = list
+        .iter()
+        .map(|p| match read_credentials(&p.dir) {
+            Some(c) => format!(
+                "credential[{}]: found (token {} chars, {}, plan {})",
+                p.name(),
+                c.token.len(),
+                if c.expired(now_ms()) { "expired" } else { "valid" },
+                c.plan.as_deref().unwrap_or("?")
+            ),
+            None => format!(
+                "credential[{}]: {} not found (needsAuth; the desktop app may use another store — signing in once with the Claude Code CLI creates it)",
+                p.name(),
+                p.dir.join(CRED_NAMES[0]).display()
+            ),
+        })
+        .collect();
+    format!("{}; {cli}", lines.join("
+  "))
 }
 
 // ---------------- token renewal (upstream's ClaudeTokenRefresher) ----------------
@@ -170,8 +257,8 @@ fn is_desktop_owned(p: &std::path::Path) -> bool {
     s.contains("\\anthropicclaude\\") || s.contains("\\claude\\claude-code\\") || s.contains("\\windowsapps\\")
 }
 
-/// Standalone Claude Code: native installer, npm/WinGet/pnpm/Volta, then PATH.
-pub(crate) fn find_cli() -> Option<std::path::PathBuf> {
+/// The standalone Claude Code command: its own installer's location first, then global npm/pnpm/Volta, then PATH
+fn find_cli() -> Option<std::path::PathBuf> {
     let mut v = Vec::new();
     if let Some(h) = dirs::home_dir() {
         v.push(h.join(".local").join("bin").join("claude.exe"));
@@ -180,7 +267,6 @@ pub(crate) fn find_cli() -> Option<std::path::PathBuf> {
         v.push(d.join("npm").join("claude.cmd"));
     }
     if let Some(d) = dirs::data_local_dir() {
-        v.push(d.join("Microsoft/WinGet/Links/claude.exe"));
         v.push(d.join("pnpm").join("claude.cmd"));
     }
     if let Some(h) = dirs::home_dir() {
@@ -223,7 +309,7 @@ fn retry_wait_ms(failures: u32) -> u64 {
 
 /// `claude -p` with a null stdin starts up (which is where it renews an aged token), then exits non-zero for want
 /// of a prompt: no conversation, no transcript. Output goes nowhere — a token could in principle be echoed into it.
-fn run_renewal(cli: &std::path::Path) -> std::io::Result<()> {
+fn run_renewal(cli: &std::path::Path, dir: &Path) -> std::io::Result<()> {
     use std::process::{Command, Stdio};
     let mut cmd = Command::new(cli);
     cmd.arg("-p").stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
@@ -234,6 +320,10 @@ fn run_renewal(cli: &std::path::Path) -> std::io::Result<()> {
             cmd.env_remove(k.as_ref());
         }
     }
+    // Which account gets renewed is said here, never inherited: CLAUDE_CONFIG_DIR is not CLAUDE_CODE_*, so it
+    // survives the loop above, and a Codenotch started from a shell pointed at another account used to renew
+    // that one while the account on screen stayed expired.
+    cmd.env("CLAUDE_CONFIG_DIR", dir);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -263,7 +353,7 @@ struct Renewer {
 impl Renewer {
     /// Renews if the token is about to expire. Some(true) = the expiry moved; judged on the outcome, never on the
     /// exit status, because refusing the empty prompt is a non-zero exit and a successful renewal at the same time
-    fn maybe_renew(&mut self, cred: &Credential) -> Option<bool> {
+    fn maybe_renew(&mut self, cred: &Credential, dir: &Path, who: &str) -> Option<bool> {
         let _auth = crate::claude_auth::try_acquire()?;
         let now = now_ms();
         if !should_renew(cred.expires_at, now, self.attempted_for, self.last_attempt, self.failures) {
@@ -276,19 +366,21 @@ impl Renewer {
         self.attempted_for = cred.expires_at;
         self.failures = self.failures.saturating_add(1);
         let Some(cli) = find_cli() else {
-            crate::applog("claude: token about to expire and no standalone claude CLI found to renew it");
+            crate::applog(&format!(
+                "claude[{who}]: token about to expire and no standalone claude CLI found to renew it"
+            ));
             return Some(false);
         };
-        if let Err(e) = run_renewal(&cli) {
-            crate::applog(&format!("claude: token renewal could not start ({}): {e}", cli.display()));
+        if let Err(e) = run_renewal(&cli, dir) {
+            crate::applog(&format!("claude[{who}]: token renewal could not start ({}): {e}", cli.display()));
             return Some(false);
         }
-        let after = read_credentials().and_then(|c| c.expires_at);
+        let after = read_credentials(dir).and_then(|c| c.expires_at);
         let renewed = matches!((after, cred.expires_at), (Some(a), Some(b)) if a > b);
         crate::applog(&if renewed {
-            format!("claude: token renewed via {}", cli.display())
+            format!("claude[{who}]: token renewed via {}", cli.display())
         } else {
-            format!("claude: ran {} but the token expiry did not move", cli.display())
+            format!("claude[{who}]: ran {} but the token expiry did not move", cli.display())
         });
         Some(renewed)
     }
@@ -382,10 +474,6 @@ fn fetch_once(token: &str) -> Result<Vec<LimitWindow>, FetchErr> {
         .set("anthropic-beta", "oauth-2025-04-20")
         .timeout(Duration::from_secs(15))
         .call();
-    interpret_response(resp)
-}
-
-fn interpret_response(resp: Result<ureq::Response, ureq::Error>) -> Result<Vec<LimitWindow>, FetchErr> {
     match resp {
         Ok(r) => {
             let v: serde_json::Value = r
@@ -393,9 +481,7 @@ fn interpret_response(resp: Result<ureq::Response, ureq::Error>) -> Result<Vec<L
                 .map_err(|e| FetchErr::Other(format!("parse: {e}")))?;
             Ok(parse_response(&v))
         }
-        Err(ureq::Error::Status(401, _)) => {
-            Err(FetchErr::NeedsAuth)
-        }
+        Err(ureq::Error::Status(401, _)) => Err(FetchErr::NeedsAuth),
         Err(ureq::Error::Status(403, _)) => Err(FetchErr::Other(
             "Claude HTTP 403: access denied. Check network or account access; sign-in may still be valid.".into())),
         Err(ureq::Error::Status(429, r)) => {
@@ -428,101 +514,200 @@ fn set_and_broadcast(app: &AppHandle, mutate: impl FnOnce(&mut UsageSnapshot)) {
     let _ = app.emit("usage", &snap);
 }
 
+/// What one account contributes to the shared reading. Kept across ticks so a refresh that fails for
+/// one account keeps showing that account's last good windows, and never blanks the other one.
+#[derive(Default)]
+struct Account {
+    renewer: Renewer,
+    consecutive_429: u32,
+    backoff_until: u64,
+    windows: Vec<LimitWindow>,
+    status: String,
+    note: String,
+    fetched_at: u64,
+}
+
+fn key(p: &Profile) -> String {
+    p.dir.to_string_lossy().to_string()
+}
+
+/// The account's windows as they go on the card: its name in `group`, and for a secondary account an
+/// id suffixed with the slug -- which is what keeps `by_id("session")` in the notch meaning the default
+/// account's session and not whichever account answered first.
+fn decorate(mut windows: Vec<LimitWindow>, p: &Profile, group: Option<&str>) -> Vec<LimitWindow> {
+    for w in &mut windows {
+        if let Some(g) = group {
+            w.group = Some(g.to_string());
+        }
+        if let Some(slug) = &p.slug {
+            w.id = format!("{}@{slug}", w.id);
+        }
+    }
+    windows
+}
+
+/// Hands each account back the windows it contributed before the restart: a secondary account's ids
+/// carry `@slug`, so both accounts come back from disk instead of only the default one.
+fn split_persisted(snap: &UsageSnapshot, order: &[Profile]) -> HashMap<String, Vec<LimitWindow>> {
+    let mut out: HashMap<String, Vec<LimitWindow>> = HashMap::new();
+    for w in &snap.windows {
+        let owner = order.iter().find(|p| match &p.slug {
+            Some(sl) => w.id.ends_with(&format!("@{sl}")),
+            None => !w.id.contains('@'),
+        });
+        if let Some(p) = owner {
+            out.entry(key(p)).or_default().push(w.clone());
+        }
+    }
+    out
+}
+
+/// One reading out of every account's, in profile order. The status is the best news any account has:
+/// a second account that needs signing in must not dim a first one that just answered.
+fn aggregate(order: &[Profile], accounts: &HashMap<String, Account>) -> UsageSnapshot {
+    let rank = |s: &str| match s {
+        "ok" => 0,
+        "stale" => 1,
+        "error" => 2,
+        _ => 3, // needsAuth, and anything not set yet
+    };
+    let multi = order.len() > 1;
+    let mut snap = UsageSnapshot::default();
+    let mut notes: Vec<String> = Vec::new();
+    let mut best = 4;
+    for p in order {
+        let Some(a) = accounts.get(&key(p)) else {
+            continue;
+        };
+        snap.windows.extend(a.windows.iter().cloned());
+        snap.fetched_at = snap.fetched_at.max(a.fetched_at);
+        if !a.status.is_empty() && rank(a.status.as_str()) < best {
+            best = rank(a.status.as_str());
+            snap.status = a.status.clone();
+        }
+        if !a.note.is_empty() {
+            notes.push(if multi { format!("{}: {}", p.name(), a.note) } else { a.note.clone() });
+        }
+        // The soonest deadline is the one worth waking for
+        if a.backoff_until > 0 && (snap.backoff_until == 0 || a.backoff_until < snap.backoff_until) {
+            snap.backoff_until = a.backoff_until;
+        }
+    }
+    if snap.status.is_empty() {
+        snap.status = "needsAuth".into();
+    }
+    snap.note = notes.join(" · ");
+    snap
+}
+
+/// One account's turn: renew if the token is aging, then read it, exactly as the single-account loop did.
+fn poll_account(p: &Profile, acc: &mut Account, group: Option<&str>) {
+    let who = p.name();
+    // Ahead of the back-off: renewing never touches the usage endpoint, and a fresh token deserves a fresh try
+    if let Some(cred) = read_credentials(&p.dir) {
+        if acc.renewer.maybe_renew(&cred, &p.dir, &who) == Some(true) {
+            acc.consecutive_429 = 0;
+            acc.backoff_until = 0;
+        }
+    }
+    // No requests inside this account's back-off window
+    if acc.backoff_until > now_ms() {
+        return;
+    }
+    match read_credentials(&p.dir) {
+        None => {
+            acc.status = "needsAuth".into();
+            acc.note = "No Claude Code credential found".into();
+        }
+        // Expired is not signed out: keep the last reading, dimmed and dated, and send nothing
+        Some(cred) if cred.expired(now_ms()) => {
+            acc.status = if acc.windows.is_empty() { "needsAuth" } else { "stale" }.into();
+            acc.note = EXPIRED_NOTE.into();
+        }
+        Some(cred) => {
+            let token = cred.token;
+            // On 401 re-read the credential and retry once (Claude Code may have just refreshed it)
+            let result = match fetch_once(&token) {
+                Err(FetchErr::NeedsAuth) => match read_credentials(&p.dir) {
+                    Some(c2) if c2.token != token => fetch_once(&c2.token),
+                    _ => Err(FetchErr::NeedsAuth),
+                },
+                other => other,
+            };
+            match result {
+                Ok(windows) => {
+                    crate::claude_auth::usage_succeeded();
+                    acc.consecutive_429 = 0;
+                    acc.status = "ok".into();
+                    acc.windows = decorate(windows, p, group);
+                    acc.fetched_at = now_ms();
+                    acc.note.clear();
+                    acc.backoff_until = 0;
+                }
+                Err(FetchErr::NeedsAuth) => {
+                    acc.status = "needsAuth".into();
+                    acc.note = "Credential rejected (switched accounts?)".into();
+                }
+                Err(FetchErr::RateLimited(ra)) => {
+                    acc.consecutive_429 += 1;
+                    let wait = backoff_secs(acc.consecutive_429 - 1, ra);
+                    // The status is left alone: a refused refresh says nothing about the reading we are
+                    // holding, which is exactly as old as it was a moment ago. Marking it stale here
+                    // dimmed the ring on the first 429, which on Windows is often the first minute of a
+                    // rate limit. Age decides, as it does on the Mac (`UsageStore` keeps the previous
+                    // status until `staleAfter`), and the note says why it is not moving.
+                    acc.note = format!("Rate limited, retrying in {wait}s");
+                    acc.backoff_until = now_ms() + wait * 1000;
+                }
+                Err(FetchErr::Other(msg)) => {
+                    // No reading at all is an error worth showing; a reading we could not refresh is
+                    // just a reading, and its own age is what makes it stale.
+                    if acc.windows.is_empty() {
+                        acc.status = "error".into();
+                    }
+                    acc.note = msg;
+                }
+            }
+        }
+    }
+}
+
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
         // Broadcast the persisted old reading at startup (stale beats blank)
-        {
+        let persisted = {
             let st = app.state::<AppState>();
             let snap = st.usage.lock().unwrap().clone();
             let _ = app.emit("usage", &snap);
+            snap
+        };
+        let mut accounts: HashMap<String, Account> = HashMap::new();
+        for (k, windows) in split_persisted(&persisted, &profiles()) {
+            accounts.entry(k).or_default().windows = windows;
         }
-        let mut consecutive_429: u32 = 0;
-        let mut renewer = Renewer::default();
         loop {
+            // A sign-in the user started owns the credential until it finishes. Polling through it
+            // reads a file being rewritten and reports a signed-out account mid-login.
             if crate::claude_auth::state().busy {
                 sleep_interruptible(2);
                 continue;
             }
-            // Ahead of the back-off: renewing never touches the usage endpoint, and a fresh token deserves a fresh try
-            if let Some(cred) = read_credentials() {
-                if renewer.maybe_renew(&cred) == Some(true) {
-                    consecutive_429 = 0;
-                    set_and_broadcast(&app, |u| u.backoff_until = 0);
-                }
+            // Re-read the list each tick: an account signed into or removed while this runs needs no restart
+            let order = profiles();
+            let multi = order.len() > 1;
+            for p in &order {
+                let group = if multi {
+                    Some(p.group(read_credentials(&p.dir).and_then(|c| c.plan).as_deref()))
+                } else {
+                    None
+                };
+                let acc = accounts.entry(key(p)).or_default();
+                poll_account(p, acc, group.as_deref());
             }
-            // No requests inside the backoff window
-            let bu = {
-                let st = app.state::<AppState>();
-                let u = st.usage.lock().unwrap();
-                u.backoff_until
-            };
-            let now = now_ms();
-            if bu > now {
-                sleep_interruptible(((bu - now) / 1000).clamp(1, 30));
-                continue;
-            }
-            match read_credentials() {
-                None => set_and_broadcast(&app, |u| {
-                    u.status = "needsAuth".into();
-                    u.note = "No Claude Code credential found".into();
-                }),
-                // Expired is not signed out: keep the last reading, dimmed and dated, and send nothing
-                Some(cred) if cred.expired(now_ms()) => set_and_broadcast(&app, |u| {
-                    u.status = if u.windows.is_empty() { "needsAuth" } else { "stale" }.into();
-                    u.note = EXPIRED_NOTE.into();
-                }),
-                Some(cred) => {
-                    let token = cred.token;
-                    // On 401 re-read once (Claude Code may have just refreshed the token).
-                    let result = match fetch_once(&token) {
-                        Err(FetchErr::NeedsAuth) => match read_credentials() {
-                            Some(c2) if c2.token != token => fetch_once(&c2.token),
-                            _ => Err(FetchErr::NeedsAuth),
-                        },
-                        other => other,
-                    };
-                    let auth_note = "Credential rejected (switched accounts?)";
-                    match result {
-                        Ok(windows) => {
-                            crate::claude_auth::usage_succeeded();
-                            consecutive_429 = 0;
-                            set_and_broadcast(&app, |u| {
-                                u.status = "ok".into();
-                                u.windows = windows;
-                                u.fetched_at = now_ms();
-                                u.note.clear();
-                                u.backoff_until = 0;
-                            });
-                        }
-                        Err(FetchErr::NeedsAuth) => set_and_broadcast(&app, |u| {
-                            u.status = "needsAuth".into();
-                            u.note = auth_note.into();
-                        }),
-                        Err(FetchErr::RateLimited(ra)) => {
-                            consecutive_429 += 1;
-                            let wait = backoff_secs(consecutive_429 - 1, ra);
-                            set_and_broadcast(&app, |u| {
-                                // The status is left alone: a refused refresh says nothing about the
-                                // reading we are holding, which is exactly as old as it was a moment
-                                // ago. Marking it stale here dimmed the ring on the first 429, which
-                                // on Windows is often the first minute of a rate limit. Age decides,
-                                // as it does on the Mac (`UsageStore` keeps the previous status until
-                                // `staleAfter`), and the note below says why it is not moving.
-                                u.note = format!("Rate limited, retrying in {wait}s");
-                                u.backoff_until = now_ms() + wait * 1000;
-                            });
-                        }
-                        Err(FetchErr::Other(msg)) => set_and_broadcast(&app, |u| {
-                            // No reading at all is an error worth showing; a reading we could not
-                            // refresh is just a reading, and its own age is what makes it stale.
-                            if u.windows.is_empty() {
-                                u.status = "error".into();
-                            }
-                            u.note = msg;
-                        }),
-                    }
-                }
-            }
+            accounts.retain(|k, _| order.iter().any(|p| key(p) == *k));
+            let snap = aggregate(&order, &accounts);
+            let backoff_until = snap.backoff_until;
+            set_and_broadcast(&app, |u| *u = snap);
             // 60 s while a session is active, 300 s otherwise (upstream throttling discipline)
             let active = {
                 let st = app.state::<AppState>();
@@ -530,11 +715,16 @@ pub fn start(app: AppHandle) {
                 let s = store.snapshot("en", "en", false, false);
                 !s.sessions.is_empty()
             };
-            sleep_interruptible(if active {
-                POLL_ACTIVE_SECS
+            let base = if active { POLL_ACTIVE_SECS } else { POLL_IDLE_SECS };
+            // A back-off deadline sooner than the next tick is what we wake for, as the single-account
+            // loop did when it slept the window out in slices
+            let now = now_ms();
+            let secs = if backoff_until > now {
+                ((backoff_until - now) / 1000).clamp(1, base.min(30))
             } else {
-                POLL_IDLE_SECS
-            });
+                base
+            };
+            sleep_interruptible(secs);
         }
     });
 }
@@ -544,26 +734,6 @@ mod tests {
     use super::*;
 
     const EXP: u64 = 1_000_000_000;
-
-    #[test]
-    fn empty_credentials_are_signed_out_and_both_shapes_work() {
-        for value in [serde_json::json!({}), serde_json::json!({"accessToken":" "}),
-            serde_json::json!({"claudeAiOauth":{"accessToken":""}})] {
-            assert!(credential_from_json(&value).is_none());
-        }
-        let v = serde_json::json!({"accessToken":"fixture","expiresAt":EXP});
-        assert_eq!(credential_from_json(&v).unwrap().token, "fixture");
-        assert_eq!(credential_from_json(&serde_json::json!({"claudeAiOauth":v})).unwrap().expires_at, Some(EXP));
-    }
-
-    #[test]
-    fn distinguishes_auth_access_and_rate_limit_errors() {
-        let error = |code| ureq::Error::Status(code, ureq::Response::new(code, "fixture", "{}").unwrap());
-        assert!(matches!(interpret_response(Err(error(401))), Err(FetchErr::NeedsAuth)));
-        assert!(matches!(interpret_response(Err(error(403))), Err(FetchErr::Other(_))));
-        assert!(matches!(interpret_response(Err(error(429))), Err(FetchErr::RateLimited(_))));
-        assert!(matches!(interpret_response(Err(error(503))), Err(FetchErr::Other(_))));
-    }
 
     #[test]
     fn renews_only_inside_the_margin() {
@@ -613,20 +783,114 @@ mod tests {
     fn live_renewal_runs_the_standalone_cli() {
         let cli = find_cli().expect("a standalone claude CLI");
         assert!(!is_desktop_owned(&cli));
-        let before = read_credentials().and_then(|c| c.expires_at);
+        let p = profiles().into_iter().next().expect("a profile");
+        let before = read_credentials(&p.dir).and_then(|c| c.expires_at);
         let t = std::time::Instant::now();
-        run_renewal(&cli).expect("spawned");
+        run_renewal(&cli, &p.dir).expect("spawned");
         assert!(t.elapsed() < Duration::from_secs(RENEW_TIMEOUT_SECS), "returned before the timeout");
-        let after = read_credentials().and_then(|c| c.expires_at);
+        let after = read_credentials(&p.dir).and_then(|c| c.expires_at);
         assert!(after >= before, "the expiry never moves backwards");
         eprintln!("cli: {}", cli.display());
     }
 
+    fn prof(slug: Option<&str>) -> Profile {
+        Profile {
+            dir: PathBuf::from(match slug {
+                Some(s) => format!("/home/u/.claude-{s}"),
+                None => "/home/u/.claude".to_string(),
+            }),
+            slug: slug.map(String::from),
+        }
+    }
+
+    fn win(id: &str) -> LimitWindow {
+        LimitWindow { id: id.into(), label: "Current session".into(), used: 0.5, ..Default::default() }
+    }
+
+    #[test]
+    fn one_account_reads_exactly_as_before() {
+        let w = decorate(vec![win("session")], &prof(None), None);
+        assert_eq!(w[0].id, "session", "the only account keeps its ids");
+        assert_eq!(w[0].group, None, "and stays ungrouped, so its card is the card that shipped");
+    }
+
+    #[test]
+    fn a_second_account_is_suffixed_and_grouped() {
+        let w = decorate(vec![win("session")], &prof(Some("work")), Some("work · pro"));
+        assert_eq!(w[0].id, "session@work", "so by_id(\"session\") still means the default account");
+        assert_eq!(w[0].group.as_deref(), Some("work · pro"));
+    }
+
+    #[test]
+    fn the_group_pairs_the_name_with_the_plan() {
+        assert_eq!(prof(None).group(Some("max")), "default · max");
+        assert_eq!(prof(Some("work")).group(None), "work");
+        assert_eq!(prof(Some("work")).group(Some("")), "work", "an empty plan adds no separator");
+    }
+
+    #[test]
+    fn persisted_windows_go_back_to_the_account_that_made_them() {
+        let order = vec![prof(None), prof(Some("work"))];
+        let snap = UsageSnapshot {
+            windows: vec![win("session"), win("session@work"), win("weekly@gone")],
+            ..Default::default()
+        };
+        let split = split_persisted(&snap, &order);
+        assert_eq!(split[&key(&order[0])].len(), 1);
+        assert_eq!(split[&key(&order[1])][0].id, "session@work");
+        assert_eq!(split.len(), 2, "windows from an account that is gone are dropped");
+    }
+
+    #[test]
+    fn status_is_the_best_news_any_account_has() {
+        let order = vec![prof(None), prof(Some("work"))];
+        let mut accounts: HashMap<String, Account> = HashMap::new();
+        accounts.insert(
+            key(&order[0]),
+            Account { status: "ok".into(), windows: vec![win("session")], fetched_at: 10, ..Default::default() },
+        );
+        accounts.insert(
+            key(&order[1]),
+            Account {
+                status: "needsAuth".into(),
+                note: "No Claude Code credential found".into(),
+                ..Default::default()
+            },
+        );
+        let snap = aggregate(&order, &accounts);
+        assert_eq!(snap.status, "ok", "a signed-out second account must not dim the first");
+        assert_eq!(snap.windows.len(), 1);
+        assert_eq!(snap.fetched_at, 10);
+        assert!(snap.note.starts_with("work: "), "the note names the account: {}", snap.note);
+    }
+
+    #[test]
+    fn the_soonest_back_off_is_the_one_waited_out() {
+        let order = vec![prof(None), prof(Some("work"))];
+        let mut accounts: HashMap<String, Account> = HashMap::new();
+        accounts.insert(key(&order[0]), Account { backoff_until: 900, ..Default::default() });
+        accounts.insert(key(&order[1]), Account { backoff_until: 300, ..Default::default() });
+        assert_eq!(aggregate(&order, &accounts).backoff_until, 300);
+    }
+
+    #[test]
+    fn the_default_account_is_first_and_always_listed() {
+        // Discovery reads the real home, so this asserts only what holds on any machine
+        let list = profiles();
+        assert!(!list.is_empty(), "the default account is listed even with no credential");
+        assert_eq!(list[0].slug, None, "and comes first, so it owns the notch");
+        let slugs: Vec<Option<String>> = list.iter().skip(1).map(|p| p.slug.clone()).collect();
+        let mut sorted = slugs.clone();
+        sorted.sort();
+        assert_eq!(slugs, sorted, "secondary accounts are listed in name order");
+        assert!(list.iter().skip(1).all(|p| p.slug.is_some()), "only the default account has no slug");
+    }
+
     #[test]
     fn expired_is_judged_against_now() {
-        let c = Credential { token: "t".into(), expires_at: Some(EXP) };
+        let c = Credential { token: "t".into(), expires_at: Some(EXP), ..Default::default() };
         assert!(c.expired(EXP));
         assert!(!c.expired(EXP - 1));
-        assert!(!Credential { token: "t".into(), expires_at: None }.expired(EXP));
+        assert!(!Credential { token: "t".into(), expires_at: None, ..Default::default() }.expired(EXP));
     }
 }
