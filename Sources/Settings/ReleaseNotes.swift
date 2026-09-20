@@ -32,6 +32,40 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.16.0",
+                headline: L10n.t("Windows updates itself, five-hour limits in the menu bar, and a notch you can fold away."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Five-hour limits in the menu bar"),
+                        detail: L10n.t("Off until you ask for it: choose which accounts to show and the menu bar carries their session share and countdown, beside the notch rather than instead of it.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Every Antigravity account"),
+                        detail: L10n.t("More than one Antigravity profile now reads, each with its own ring and its own answer to a keychain prompt.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Clearer glass"),
+                        detail: L10n.t("Tooltip copy keeps its footing on Liquid Glass in dark mode, where a pale desktop behind it used to wash the secondary lines out.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Windows keeps itself up to date"),
+                        detail: L10n.t("It looks for a new version shortly after it starts and can install one for you, checking the download's signature first. Until now a Windows install stayed on the build it was installed from.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A Windows notch that moves"),
+                        detail: L10n.t("Carry it between monitors by its handle, slide it along an edge with Alt held down, and fold it to a pill when it is not in use, as Show on hover does on the Mac.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Z.AI and every Claude account on Windows"),
+                        detail: L10n.t("A ring for the Z.AI Coding Plan, one for each Claude account rather than only the default one, and Claude sign-in from the card itself.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("日本語, and Russian notch placement"),
+                        detail: L10n.t("The release notes read in Japanese, and the Windows notch placement settings in Russian.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.15.0",
                 headline: L10n.t("QianwenAI reads again, fewer false alerts, and a steadier Windows notch."),
                 changes: [
