@@ -90,8 +90,8 @@ final class PaletteAppearanceTests: XCTestCase {
                                                               reduceTransparency: true))
     }
 
-    func testReadableLiquidGlassDimStaysDarkAndTranslucent() {
-        guard let dim = resolve(Palette.liquidGlassTooltipDim, .darkAqua) else { return }
+    func testReadableLiquidGlassDimStaysDarkAndTranslucent() throws {
+        let dim = try XCTUnwrap(resolve(Palette.liquidGlassTooltipDim, .darkAqua))
         // `resolve` deliberately returns sRGB. `whiteComponent` is undefined
         // for that colour space and raises an AppKit exception, so assert the
         // three channels directly just as `assertOpaque` does above.
@@ -100,11 +100,11 @@ final class PaletteAppearanceTests: XCTestCase {
         XCTAssertEqual(dim.blueComponent, 0, accuracy: 1.0 / 255)
         XCTAssertEqual(dim.alphaComponent, 0.35, accuracy: 1.0 / 255)
 
-        guard let darkGlassDim = TooltipGlassContrast.dim(surfaceStyle: .darkGlass,
-                                                           colorScheme: .dark)
-                .flatMap({ resolve($0, .darkAqua) }) else { return }
+        let darkGlassDim = try XCTUnwrap(TooltipGlassContrast.dim(surfaceStyle: .darkGlass,
+                                                                   colorScheme: .dark)
+                .flatMap({ resolve($0, .darkAqua) }))
         XCTAssertEqual(darkGlassDim.alphaComponent, 0.80, accuracy: 1.0 / 255)
-        guard let notchDim = resolve(Palette.darkGlassDim, .darkAqua) else { return }
+        let notchDim = try XCTUnwrap(resolve(Palette.darkGlassDim, .darkAqua))
         XCTAssertEqual(notchDim.alphaComponent, 0.60, accuracy: 1.0 / 255)
     }
 
