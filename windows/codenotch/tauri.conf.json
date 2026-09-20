@@ -31,7 +31,23 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "icon": ["icons/icon.ico"]
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/vinzdg/codenotch/releases/latest/download/latest.json"
+      ],
+      "pubkey": "REPLACE_WITH_TAURI_PUBLIC_KEY",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

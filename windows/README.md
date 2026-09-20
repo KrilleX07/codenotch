@@ -95,6 +95,37 @@ from the latest release. It installs for the current user without administrator 
 Windows does not already have it. The installer is not code-signed, so SmartScreen stops it the
 first time with *Windows protected your PC*: choose **More info**, then **Run anyway**.
 
+### Updates
+
+Codenotch looks for a newer release about twenty seconds after it starts, and again whenever
+**Check for updates** is pressed in Settings → General. The feed is `latest.json` on the newest
+release, written by the Windows Package workflow beside the installer it describes, so publishing
+a release is the whole of shipping an update.
+
+Nothing about this nags. A check that fails — no network, an unreachable feed — leaves the app
+as it was and says so only next to the version. There is no dialogue and no badge.
+
+The download is a minisign-signed archive, and the signature is checked against the public key in
+`tauri.conf.json` before anything is run. This is what stands in for code signing here: the
+installer itself is unsigned, so SmartScreen still warns on a first manual install, but an update
+delivered to an already-installed copy is verified.
+
+Before the first signed release, the key has to exist:
+
+```powershell
+npx --yes @tauri-apps/cli@2.11.4 signer generate -w $env:USERPROFILE\.tauri\codenotch.key
+```
+
+Put the **private** key in the repository secret `TAURI_SIGNING_PRIVATE_KEY` and its password in
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, and paste the **public** key into `plugins.updater.pubkey`
+in `codenotch/tauri.conf.json`, replacing `REPLACE_WITH_TAURI_PUBLIC_KEY`. Until that is done the
+app skips the check entirely rather than reporting a failure nobody can act on; the packaging job
+builds an ordinary installer and warns that it made no feed, and a `v*` release fails loudly rather
+than going out with an update path nobody can use.
+
+Keep the private key. Losing it means no installed copy can be updated again, because every one of
+them checks against the public key it shipped with — they would all have to reinstall by hand.
+
 To build from source instead — prerequisites: Rust (MSVC toolchain), WebView2 runtime (ships with Windows 11).
 
 ```powershell
