@@ -81,11 +81,14 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           SIGNED: ${{ steps.signing.outputs.signed }}
         run: |
-          $args = @('--config', 'tauri.bundle.conf.json')
+          # Not $args: that is a PowerShell automatic variable, and splatting it here
+          # silently dropped tauri.bundle.conf.json, so the hook was left out of the
+          # installer and only the smoke test below noticed.
+          $cliArgs = @('--config', 'tauri.bundle.conf.json')
           if ($env:SIGNED -eq 'true') {
-            $args += @('--config', '{"bundle":{"createUpdaterArtifacts":true}}')
+            $cliArgs += @('--config', '{"bundle":{"createUpdaterArtifacts":true}}')
           }
-          npx --yes @tauri-apps/cli@2.11.4 build @args -- --locked
+          npx --yes @tauri-apps/cli@2.11.4 build @cliArgs -- --locked
 
       # The bundler names the file after the version, which would change the
       # URL every release. One fixed name lets the README link to
