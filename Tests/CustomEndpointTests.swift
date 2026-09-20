@@ -40,6 +40,26 @@ final class CustomEndpointTests: XCTestCase {
         // No budget
         endpoint.monthlyBudgetUSD = nil
         XCTAssertEqual(endpoint.usedFraction, 0.0)
+
+        // Display remaining mode
+        var remainingEndpoint = CustomEndpoint(
+            name: "Remaining Test",
+            baseURL: "https://api.groq.com/openai/v1",
+            monthlyBudgetUSD: 100.0,
+            currentSpendUSD: 25.0,
+            displayRemaining: true
+        )
+        XCTAssertEqual(remainingEndpoint.remainingFraction, 0.75, accuracy: 0.001)
+        XCTAssertEqual(remainingEndpoint.usedFraction, 0.75, accuracy: 0.001)
+
+        remainingEndpoint.currentSpendUSD = 100.0
+        XCTAssertEqual(remainingEndpoint.remainingFraction, 0.0, accuracy: 0.001)
+        XCTAssertEqual(remainingEndpoint.usedFraction, 0.0, accuracy: 0.001)
+
+        // Show currency flag
+        XCTAssertFalse(remainingEndpoint.showCurrency)
+        remainingEndpoint.showCurrency = true
+        XCTAssertTrue(remainingEndpoint.showCurrency)
     }
 
     func testURLValidation() {

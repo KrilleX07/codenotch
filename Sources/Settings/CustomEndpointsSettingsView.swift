@@ -273,7 +273,16 @@ struct CustomEndpointsSettingsView: View {
                         .tint(Color(hex: endpoint.accentColorHex))
                         .scaleEffect(x: 1, y: 0.8, anchor: .center)
 
-                    Text(String(format: "$%.2f / $%.2f", spend, budget))
+                    let amountText: String = {
+                        if endpoint.displayRemaining {
+                            let rem = max(0.0, budget - spend)
+                            return String(format: L10n.t("%@ / %@ left"), String(format: "$%.2f", rem), String(format: "$%.2f", budget))
+                        } else {
+                            return String(format: "$%.2f / $%.2f", spend, budget)
+                        }
+                    }()
+
+                    Text(amountText)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)
                 } else {
@@ -537,6 +546,20 @@ struct CustomEndpointsSettingsView: View {
                         }
                     ))
                     .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(L10n.t("Show dollar amount ($) instead of percentage (%)"), isOn: Binding(
+                        get: { editingEndpoint?.showCurrency ?? false },
+                        set: { editingEndpoint?.showCurrency = $0 }
+                    ))
+                    .toggleStyle(.checkbox)
+
+                    Toggle(L10n.t("Show remaining budget instead of spent"), isOn: Binding(
+                        get: { editingEndpoint?.displayRemaining ?? false },
+                        set: { editingEndpoint?.displayRemaining = $0 }
+                    ))
+                    .toggleStyle(.checkbox)
                 }
 
                 HStack {

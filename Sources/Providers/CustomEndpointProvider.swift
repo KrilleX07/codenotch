@@ -220,28 +220,33 @@ actor CustomEndpointProvider: UsageProvider {
 
         if let budget = budget, budget > 0 {
             let remaining = max(0.0, budget - spend)
-            let money = UsageMoneyBreakdown(
-                currency: "$",
-                spent: spend,
-                remaining: remaining
-            )
-            let usedFormatted = String(format: "$%.2f", spend)
+            let isRemaining = current.displayRemaining
+            let displayFraction = isRemaining ? current.remainingFraction : current.usedFraction
+            let usedFormatted = String(format: "$%.2f", isRemaining ? remaining : spend)
             let budgetFormatted = String(format: "$%.2f", budget)
-            let detailText = "\(usedFormatted) / \(budgetFormatted)"
+            let detailText = isRemaining
+                ? String(format: L10n.t("%@ / %@ remaining"), usedFormatted, budgetFormatted)
+                : "\(usedFormatted) / \(budgetFormatted)"
+            let label = isRemaining ? L10n.t("Remaining Budget") : L10n.t("Monthly Budget")
+
+            // Exhaustion band is based on spend fraction so 100% remaining is ample
+            let spendFraction = min(max(spend / budget, 0.0), 1.0)
+            let bandOverride = isRemaining ? UsageBand.band(for: spendFraction) : nil
 
             windows.append(
                 LimitWindow(
                     id: "monthly-budget",
                     group: nil,
-                    label: L10n.t("Monthly Budget"),
-                    usedFraction: current.usedFraction,
+                    label: label,
+                    usedFraction: displayFraction,
                     remaining: nil,
                     used: nil,
                     usedText: usedFormatted,
                     detail: detailText,
-                    money: money,
                     resetsAt: Self.nextMonthlyResetDate(),
-                    duration: 30 * 86400
+                    duration: 30 * 86400,
+                    bandOverride: bandOverride,
+                    prefersUsedText: current.showCurrency
                 )
             )
         } else {
@@ -251,14 +256,14 @@ actor CustomEndpointProvider: UsageProvider {
                     id: "spend-tracking",
                     group: nil,
                     label: L10n.t("Total Spend"),
-                    usedFraction: 0,
+                    usedFraction: nil,
                     remaining: nil,
                     used: nil,
                     usedText: usedFormatted,
                     detail: usedFormatted,
-                    money: UsageMoneyBreakdown(currency: "$", spent: spend, remaining: 0),
                     resetsAt: nil,
-                    duration: nil
+                    duration: nil,
+                    prefersUsedText: true
                 )
             )
         }

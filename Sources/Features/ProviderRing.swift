@@ -31,6 +31,7 @@ struct ProviderRing: View {
     var weeklyFraction: Double?
     /// Where the user asked for it, if at all.
     var weeklyRing: WeeklyRing = .off
+    var bandOverride: UsageBand? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.codenotchReduceTransparency) private var reduceTransparency
@@ -42,6 +43,7 @@ struct ProviderRing: View {
 
     private var band: UsageBand {
         guard !isBlocked else { return .exhausted }
+        if let bandOverride { return bandOverride }
         return UsageBand.band(for: usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
     }
     private var sweep: CGFloat { CGFloat(min(max(usedFraction ?? 0, 0), 1)) }
@@ -282,7 +284,8 @@ struct ProviderCell: View {
                 localPerformance: snapshot.localPerformance,
                 localContextFraction: snapshot.localContextFraction,
                 weeklyFraction: snapshot.hasReading ? snapshot.weeklyFraction : nil,
-                weeklyRing: weeklyRing
+                weeklyRing: weeklyRing,
+                bandOverride: snapshot.bandOverride
             )
             Text(readingText)
                 .font(Typography.percent)

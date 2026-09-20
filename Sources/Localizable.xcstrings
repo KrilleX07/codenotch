@@ -29790,6 +29790,91 @@
     },
     "Cancel": {
       "extractionState": "manual"
+    },
+    "Show remaining budget (%) instead of spent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show remaining budget (%) instead of spent"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan sisa anggaran (%) bukan terpakai"
+          }
+        }
+      }
+    },
+    "Remaining Budget": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remaining Budget"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sisa Anggaran"
+          }
+        }
+      }
+    },
+    "%@ / %@ remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ remaining"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sisa %@ / %@"
+          }
+        }
+      }
+    },
+    "%@ / %@ left": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ left"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sisa %@ / %@"
+          }
+        }
+      }
+    },
+    "Show dollar amount ($) instead of percentage (%)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show dollar amount ($) instead of percentage (%)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan nominal dollar ($) bukan persentase (%)"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

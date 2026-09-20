@@ -56,6 +56,8 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
     public var customIconFilename: String?
     public var monthlyBudgetUSD: Double?
     public var currentSpendUSD: Double?
+    public var displayRemaining: Bool
+    public var showCurrency: Bool
     public var lastLatencyMs: Int?
     public var lastHealthStatus: CustomEndpointHealth
     public var lastCheckedAt: Date?
@@ -73,6 +75,8 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         customIconFilename: String? = nil,
         monthlyBudgetUSD: Double? = nil,
         currentSpendUSD: Double? = nil,
+        displayRemaining: Bool = false,
+        showCurrency: Bool = false,
         lastLatencyMs: Int? = nil,
         lastHealthStatus: CustomEndpointHealth = .idle,
         lastCheckedAt: Date? = nil
@@ -89,6 +93,8 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         self.customIconFilename = customIconFilename
         self.monthlyBudgetUSD = monthlyBudgetUSD
         self.currentSpendUSD = currentSpendUSD
+        self.displayRemaining = displayRemaining
+        self.showCurrency = showCurrency
         self.lastLatencyMs = lastLatencyMs
         self.lastHealthStatus = lastHealthStatus
         self.lastCheckedAt = lastCheckedAt
@@ -115,9 +121,16 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         currentSpendUSD ?? 0
     }
 
+    public var remainingFraction: Double {
+        guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
+        let spent = computedSpendUSD
+        return min(max((budget - spent) / budget, 0.0), 1.0)
+    }
+
     public var usedFraction: Double {
         guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
-        return min(max(computedSpendUSD / budget, 0.0), 1.0)
+        let spentFraction = min(max(computedSpendUSD / budget, 0.0), 1.0)
+        return displayRemaining ? (1.0 - spentFraction) : spentFraction
     }
 
     public var providerID: String {
@@ -141,6 +154,8 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         case budgetMonthlyUSD
         case currentSpendUSD
         case directSpendUSD
+        case displayRemaining
+        case showCurrency
         case lastLatencyMs
         case lastHealthStatus
         case lastCheckedAt
@@ -163,6 +178,8 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
             ?? container.decodeIfPresent(Double.self, forKey: .budgetMonthlyUSD)
         self.currentSpendUSD = try container.decodeIfPresent(Double.self, forKey: .currentSpendUSD)
             ?? container.decodeIfPresent(Double.self, forKey: .directSpendUSD)
+        self.displayRemaining = try container.decodeIfPresent(Bool.self, forKey: .displayRemaining) ?? false
+        self.showCurrency = try container.decodeIfPresent(Bool.self, forKey: .showCurrency) ?? false
         self.lastLatencyMs = try container.decodeIfPresent(Int.self, forKey: .lastLatencyMs)
         self.lastHealthStatus = try container.decodeIfPresent(CustomEndpointHealth.self, forKey: .lastHealthStatus) ?? .idle
         self.lastCheckedAt = try container.decodeIfPresent(Date.self, forKey: .lastCheckedAt)
@@ -188,6 +205,12 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         try container.encodeIfPresent(customIconFilename, forKey: .customIconFilename)
         try container.encodeIfPresent(monthlyBudgetUSD, forKey: .monthlyBudgetUSD)
         try container.encodeIfPresent(currentSpendUSD, forKey: .currentSpendUSD)
+        if displayRemaining {
+            try container.encode(displayRemaining, forKey: .displayRemaining)
+        }
+        if showCurrency {
+            try container.encode(showCurrency, forKey: .showCurrency)
+        }
         try container.encodeIfPresent(lastLatencyMs, forKey: .lastLatencyMs)
         try container.encode(lastHealthStatus, forKey: .lastHealthStatus)
         try container.encodeIfPresent(lastCheckedAt, forKey: .lastCheckedAt)

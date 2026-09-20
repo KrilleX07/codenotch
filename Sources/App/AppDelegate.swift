@@ -173,12 +173,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 order: preferences.providerOrder
             )
             preferences.$customEndpoints
-                .map { $0.filter(\.isEnabled).map(\.id) }
+                .map { endpoints in
+                    endpoints.filter(\.isEnabled).map {
+                        "\($0.id):\($0.name):\($0.baseURL):\($0.monthlyBudgetUSD ?? -1):\($0.currentSpendUSD ?? -1):\($0.displayRemaining):\($0.showCurrency):\($0.iconPreset ?? ""):\($0.customIconFilename ?? ""):\($0.accentColorHex):\($0.selectedModel)"
+                    }
+                }
                 .removeDuplicates()
                 .receive(on: RunLoop.main)
-                .sink { [weak store] enabledIDs in
+                .sink { [weak store] _ in
                     let stored = Preferences.storedCustomEndpoints()
-                    let active = stored.filter { $0.isEnabled && enabledIDs.contains($0.id) }
+                    let active = stored.filter(\.isEnabled)
                     let providers: [UsageProvider] = active.map { CustomEndpointProvider(endpoint: $0) }
                     store?.registerCustomProviders(providers)
                 }

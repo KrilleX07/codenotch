@@ -431,7 +431,10 @@ private struct LimitWindowRow: View {
     @Environment(\.usageCriticalLimit) private var criticalLimit
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
-    private var band: UsageBand { UsageBand.band(for: window.usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit) }
+    private var band: UsageBand {
+        if let override = window.bandOverride { return override }
+        return UsageBand.band(for: window.usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
+    }
     private var trackWidth: CGFloat { NotchLayout.cardWidth - 2 * NotchLayout.cardPadding - inset }
     private var fillWidth: CGFloat {
         let fraction = CGFloat(min(max(window.usedFraction ?? 0, 0), 1))

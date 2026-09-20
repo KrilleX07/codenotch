@@ -133,11 +133,14 @@ struct LimitWindow: Identifiable, Codable, Equatable {
 
     /// Exact cycle length when known; optional to keep older archives readable.
     let duration: TimeInterval?
+    var bandOverride: UsageBand? = nil
+    var prefersUsedText: Bool = false
 
     init(id: String, group: String? = nil, label: String, usedFraction: Double? = nil,
          remaining: Int? = nil, used: Int? = nil, usedText: String? = nil, detail: String? = nil,
          money: UsageMoneyBreakdown? = nil, resetsAt: Date? = nil,
-         duration: TimeInterval? = nil) {
+         duration: TimeInterval? = nil, bandOverride: UsageBand? = nil,
+         prefersUsedText: Bool = false) {
         self.id = id
         self.group = group
         self.label = label
@@ -149,6 +152,8 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         self.money = money
         self.resetsAt = resetsAt
         self.duration = duration
+        self.bandOverride = bandOverride
+        self.prefersUsedText = prefersUsedText
     }
 
     /// Whether this is a rolling five-hour window — the limit a coding session
@@ -325,6 +330,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     }
 
     var usedFraction: Double? { headline?.usedFraction }
+    var bandOverride: UsageBand? { headline?.bandOverride }
 
     /// The five-hour window, where the provider has one: the headline when it
     /// is that window, otherwise the account's own.
@@ -370,6 +376,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
             return showsLocalPerformance ? (localPerformance?.headlineText ?? "— tok/s")
                 : (localModel?.memoryText ?? "—")
         }
+        if headline?.prefersUsedText == true, let usedText = headline?.usedText { return usedText }
         if let usedFraction { return Percent.text(for: usedFraction) + "%" }
         if let remaining = headline?.remaining { return LimitWindow.compact(remaining) }
         if let usedText = headline?.usedText { return usedText }
