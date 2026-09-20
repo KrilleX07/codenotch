@@ -1,9 +1,11 @@
 //! GLM Coding Plan usage adapter (Z.ai), ported from the upstream macOS GLMUsage/GLMCredentials.
 //!
 //! Endpoint: GET {console}/api/monitor/usage/quota/limit — the monitor Z.ai's own plan
-//! page reads. Bearer-authenticated with an API key borrowed from whichever coding tool
-//! already holds one. Sources, in order:
+//! page reads. Authenticated with a raw API key — no "Bearer" scheme — borrowed from
+//! whichever coding tool already holds one. Sources, in order:
 //!   1. a manual key file next to the config: glm.json {"api_key":"...","base_url":"https://api.z.ai"}
+//!   1b. Claude Code: ~/.claude/settings.json env.ANTHROPIC_AUTH_TOKEN, claimed only when
+//!      env.ANTHROPIC_BASE_URL points at a Z.ai console
 //!   2. ZCode's plan key: ~/.zcode/v2/config.json, an enabled builtin:*-coding-plan entry
 //!      with a plaintext apiKey; the baseURL beside it decides which console (z.ai or bigmodel.cn)
 //!   3. ZCode's sign-in token: ~/.zcode/v2/credentials.json "oauth:zai:access_token";
@@ -132,6 +134,24 @@ fn manual_key() -> Option<Credential> {
     Some(Credential { token, base, source: "glm.json".into() })
 }
 
+/// ~/.claude/settings.json → env.ANTHROPIC_AUTH_TOKEN plus env.ANTHROPIC_BASE_URL.
+///
+/// The documented way to point Claude Code at the plan, and the Mac's first source. The base URL
+/// is what makes this a GLM key: `ANTHROPIC_AUTH_TOKEN` aimed at api.anthropic.com is somebody's
+/// Anthropic key, and claiming it would read the wrong account and report it under GLM's name.
+fn claude_code_key() -> Option<Credential> {
+    let home = dirs::home_dir()?;
+    let root = read_json(&home.join(".claude").join("settings.json"))?;
+    let env = root.get("env")?;
+    let token = non_empty(env.get("ANTHROPIC_AUTH_TOKEN"))
+        .or_else(|| non_empty(env.get("ANTHROPIC_API_KEY")))?;
+    let host = non_empty(env.get("ANTHROPIC_BASE_URL")).and_then(|u| host_of(&u))?;
+    if !is_zai_host(&host) {
+        return None;
+    }
+    Some(Credential { token, base: console_for_host(&host).to_string(), source: "Claude Code".into() })
+}
+
 /// ~/.zcode/v2/config.json → an enabled builtin:*-coding-plan provider with the plan key pasted in
 fn zcode_plan_key() -> Option<Credential> {
     let home = dirs::home_dir()?;
@@ -202,13 +222,18 @@ fn opencode_key() -> Option<Credential> {
 }
 
 fn load_credential() -> Option<Credential> {
-    manual_key().or_else(zcode_plan_key).or_else(zcode_oauth).or_else(opencode_key)
+    manual_key()
+        .or_else(claude_code_key)
+        .or_else(zcode_plan_key)
+        .or_else(zcode_oauth)
+        .or_else(opencode_key)
 }
 
 /// Is any GLM key source present on this machine? If not, no cell is shown.
 pub fn present() -> bool {
     let mut any = key_file().is_file();
     if let Some(home) = dirs::home_dir() {
+        any = any || claude_code_key().is_some();
         any = any || home.join(".zcode").join("v2").join("config.json").is_file();
         any = any || home.join(".zcode").join("v2").join("credentials.json").is_file();
         any = any || home.join(".local").join("share").join("opencode").join("auth.json").is_file();
@@ -230,7 +255,10 @@ enum FetchErr {
 fn fetch(cred: &Credential) -> Result<serde_json::Value, FetchErr> {
     let url = format!("{}/api/monitor/usage/quota/limit", cred.base);
     let resp = ureq::get(&url)
-        .set("Authorization", &format!("Bearer {}", cred.token))
+        // The monitor takes the key raw — no "Bearer" scheme, matching
+        // `GLMProvider.swift`. Prefixing it is exactly what an auth failure
+        // looks like from here.
+        .set("Authorization", &cred.token)
         .set("Accept", "application/json")
         .set("User-Agent", concat!("codenotch/", env!("CARGO_PKG_VERSION"), " (Windows)"))
         .timeout(Duration::from_secs(15))
@@ -349,16 +377,18 @@ fn read_once() -> UsageSnapshot {
                     snap.status = "needsAuth".into();
                     snap.note = "Z.ai rejected the key — renew it in the tool that holds it".into();
                 } else {
-                    let msg = v.get("msg").and_then(|x| x.as_str()).unwrap_or("no message");
+                    // The code, never the upstream prose. A provider's own error
+                    // text can carry account details, and the log is the first
+                    // thing people paste into an issue.
                     snap.status = "error".into();
-                    snap.note = format!("Z.ai monitor answered {code}: {msg}");
-                    crate::applog(&format!("glm: monitor answered code={code} msg={msg}"));
+                    snap.note = format!("Z.ai monitor refused the request ({code})");
+                    crate::applog(&format!("glm: monitor answered code={code}"));
                 }
                 return snap;
             }
             let windows = windows_from(&v);
             if windows.is_empty() {
-                snap.status = "none".into();
+                snap.status = "stale".into();
                 snap.note = "The plan reported no usage windows".into();
                 crate::applog("glm: reply carried no usable limits, keeping the last reading");
                 return snap;

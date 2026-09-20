@@ -1111,6 +1111,10 @@ fn ring_window<'a>(
         "codex" => by_id("primary"),
         "cursor" => by_id("included").or_else(|| by_id("api")),
         "grok" => by_id("credits").or_else(|| windows.first()),
+        // The Mac sets headlineID "session", weeklyID "weekly". Without this the
+        // plan falls through to Antigravity's lane picker and the ring shows the
+        // tightest window it can find instead of the session.
+        "glm" => by_id("session"),
         _ => antigravity_lane(windows, antigravity_limit, antigravity_model),
     }
 }
