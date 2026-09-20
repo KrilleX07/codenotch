@@ -56,6 +56,15 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(lmstudioEndpoint, forKey: Keys.lmstudioEndpoint) }
     }
 
+    /// User-configured custom OpenAI-compatible endpoints.
+    @Published var customEndpoints: [CustomEndpoint] {
+        didSet {
+            if let data = try? JSONEncoder().encode(customEndpoints) {
+                defaults.set(data, forKey: Keys.customEndpoints)
+            }
+        }
+    }
+
     /// Providers whose threshold alerts are muted. Stored as the muted set so
     /// a provider added later alerts by default. Connection is stored the
     /// other way: the ones that are on.
@@ -469,6 +478,7 @@ final class Preferences: ObservableObject {
         static let notchSurfaceStyle = "notchSurfaceStyle"
         static let watchLimit = "watchLimit"
         static let criticalLimit = "criticalLimit"
+        static let customEndpoints = "customEndpoints"
         static let lastSeenVersion = "lastSeenVersion"
         static let order = "providerOrder"
         static let announceSessionEnd = "announceSessionEnd"
@@ -537,6 +547,22 @@ final class Preferences: ObservableObject {
         defaults: UserDefaults = .standard
     ) -> Bool {
         defaults.object(forKey: Keys.showCodexExtraLimits) as? Bool ?? true
+    }
+
+    /// The MiniMax region read straight from disk, off the main actor.
+    ///
+    /// Custom endpoints read straight from disk, off the main actor.
+    ///
+    /// Custom endpoint providers are actors and ask for this on every fetch, and
+    /// `@Published` state is main-actor-isolated where `UserDefaults` is
+    /// thread-safe — so providers read the store, not the object.
+    nonisolated static func storedCustomEndpoints(
+        defaults: UserDefaults = .standard
+    ) -> [CustomEndpoint] {
+        guard let data = defaults.data(forKey: Keys.customEndpoints),
+              let endpoints = try? JSONDecoder().decode([CustomEndpoint].self, from: data)
+        else { return [] }
+        return endpoints
     }
 
     /// The MiniMax region read straight from disk, off the main actor.
@@ -777,9 +803,41 @@ final class Preferences: ObservableObject {
             ?? SessionChime.defaultBlocked
         self.geminiAPIMonthlyTokenBudget = Self.storedGeminiAPIMonthlyTokenBudget(defaults: defaults)
         self.minimaxRegion = Self.storedMinimaxRegion(defaults: defaults)
+        if let data = defaults.data(forKey: Keys.customEndpoints),
+           let list = try? JSONDecoder().decode([CustomEndpoint].self, from: data) {
+            self.customEndpoints = list
+        } else {
+            self.customEndpoints = []
+        }
         // Read from the system rather than from our own store: the user can turn
         // this off in System Settings, and a remembered `true` would then be a lie.
         self.launchAtLogin = Self.isRegisteredForLogin
+    }
+
+    // MARK: Custom Endpoints
+
+    func addCustomEndpoint(_ endpoint: CustomEndpoint) {
+        customEndpoints.append(endpoint)
+        if endpoint.isEnabled {
+            setConnected(true, for: endpoint.providerID)
+        }
+    }
+
+    func updateCustomEndpoint(_ endpoint: CustomEndpoint) {
+        if let idx = customEndpoints.firstIndex(where: { $0.id == endpoint.id }) {
+            customEndpoints[idx] = endpoint
+            setConnected(endpoint.isEnabled, for: endpoint.providerID)
+        }
+    }
+
+    func removeCustomEndpoint(id: String) {
+        if let endpoint = customEndpoints.first(where: { $0.id == id }) {
+            setConnected(false, for: endpoint.providerID)
+            if let filename = endpoint.customIconFilename {
+                CustomIconStore.deleteIcon(filename: filename)
+            }
+        }
+        customEndpoints.removeAll { $0.id == id }
     }
 
     // MARK: Threshold alerts

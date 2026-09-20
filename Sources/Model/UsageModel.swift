@@ -269,6 +269,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// A model cell has its own display preference, but polling belongs to the
     /// runtime that supplied it.
     var sourceProviderID: String?
+    var customIconFilename: String?
 
     var providerID: String { sourceProviderID ?? id }
 

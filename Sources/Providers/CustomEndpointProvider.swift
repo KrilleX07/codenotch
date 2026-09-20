@@ -1,0 +1,283 @@
+import Foundation
+
+public actor CustomEndpointNetwork {
+    public static let shared = CustomEndpointNetwork()
+
+    public func testEndpoint(
+        baseURL: String,
+        apiKey: String,
+        headerKey: String = "Authorization"
+    ) async -> (health: CustomEndpointHealth, latencyMs: Int, models: [String], error: String?) {
+        guard CustomEndpoint.isValidURL(baseURL), let url = URL(string: baseURL) else {
+            return (.unreachable, 0, [], "Invalid URL format")
+        }
+
+        let modelsURL: URL
+        if baseURL.hasSuffix("/models") {
+            modelsURL = url
+        } else if baseURL.hasSuffix("/") {
+            modelsURL = url.appendingPathComponent("models")
+        } else {
+            modelsURL = url.appendingPathComponent("models")
+        }
+
+        var request = URLRequest(url: modelsURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 6.0
+
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedKey.isEmpty {
+            let header = headerKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            if header.lowercased() == "authorization" && !trimmedKey.lowercased().hasPrefix("bearer ") {
+                request.setValue("Bearer \(trimmedKey)", forHTTPHeaderField: "Authorization")
+            } else {
+                request.setValue(trimmedKey, forHTTPHeaderField: header.isEmpty ? "Authorization" : header)
+            }
+        }
+
+        let start = DispatchTime.now()
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            let elapsedNano = DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds
+            let latencyMs = max(1, Int(elapsedNano / 1_000_000))
+
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return (.unreachable, latencyMs, [], "Non-HTTP response")
+            }
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                return (.unreachable, latencyMs, [], "HTTP status \(httpResponse.statusCode)")
+            }
+
+            // Parse models from {"data": [{"id": "model-name"}]} or {"models": [...]}
+            var discoveredModels: [String] = []
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let list = json["data"] as? [[String: Any]] {
+                    discoveredModels = list.compactMap { $0["id"] as? String }.sorted()
+                } else if let list = json["models"] as? [[String: Any]] {
+                    discoveredModels = list.compactMap { ($0["name"] as? String) ?? ($0["id"] as? String) }.sorted()
+                }
+            }
+
+            let health: CustomEndpointHealth = latencyMs > 800 ? .slow : .online
+            return (health, latencyMs, discoveredModels, nil)
+        } catch {
+            let elapsedNano = DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds
+            let latencyMs = Int(elapsedNano / 1_000_000)
+            return (.unreachable, latencyMs, [], error.localizedDescription)
+        }
+    }
+
+    public func scanCommonLocalPorts() async -> [CustomEndpointPreset] {
+        let candidates: [(name: String, port: Int, defaultModel: String, glyph: String, color: String)] = [
+            ("Local vLLM", 8000, "", "ollama", "#10B981"),
+            ("Local llama.cpp", 8080, "", "lmstudio", "#8B5CF6"),
+            ("Local LM Studio / Proxy", 1234, "", "lmstudio", "#8B5CF6"),
+            ("Local Ollama", 11434, "", "ollama-local", "#14B8A6"),
+            ("Local AI Server", 5000, "", "openai", "#3B82F6")
+        ]
+
+        var found: [CustomEndpointPreset] = []
+        await withTaskGroup(of: CustomEndpointPreset?.self) { group in
+            for candidate in candidates {
+                group.addTask {
+                    let baseURL = "http://localhost:\(candidate.port)/v1"
+                    guard let url = URL(string: "\(baseURL)/models") else { return nil }
+                    var req = URLRequest(url: url)
+                    req.timeoutInterval = 1.2
+                    guard let (_, res) = try? await URLSession.shared.data(for: req),
+                          let http = res as? HTTPURLResponse,
+                          (200...299).contains(http.statusCode) else {
+                        return nil
+                    }
+                    return CustomEndpointPreset(
+                        id: "detected-\(candidate.port)",
+                        name: "\(candidate.name) (:\(candidate.port))",
+                        baseURL: baseURL,
+                        headerKey: "Authorization",
+                        defaultModel: candidate.defaultModel,
+                        iconPreset: candidate.glyph,
+                        accentColorHex: candidate.color
+                    )
+                }
+            }
+            for await preset in group {
+                if let preset {
+                    found.append(preset)
+                }
+            }
+        }
+        return found.sorted { $0.name < $1.name }
+    }
+}
+
+actor CustomEndpointProvider: UsageProvider {
+    nonisolated let id: String
+    private let endpointID: String
+    private let session: URLSession
+
+    init(endpoint: CustomEndpoint, session: URLSession = .shared) {
+        self.endpointID = endpoint.id
+        self.id = endpoint.providerID
+        self.session = session
+    }
+
+    nonisolated static func storedEndpoint(id: String) -> CustomEndpoint? {
+        Preferences.storedCustomEndpoints().first(where: { $0.id == id })
+    }
+
+    nonisolated var glyph: ProviderGlyph {
+        if let current = Self.storedEndpoint(id: endpointID),
+           let iconPreset = current.iconPreset,
+           let presetGlyph = ProviderGlyph(rawValue: iconPreset) {
+            return presetGlyph
+        }
+        return .openai
+    }
+
+    nonisolated var displayName: String {
+        Self.storedEndpoint(id: endpointID)?.name ?? L10n.t("Custom Endpoint")
+    }
+
+    nonisolated var customIconFilename: String? {
+        Self.storedEndpoint(id: endpointID)?.customIconFilename
+    }
+
+    nonisolated var isVisibleWhenAbsent: Bool { false }
+
+    nonisolated func account() -> ProviderAccount? {
+        guard let current = Self.storedEndpoint(id: endpointID) else { return nil }
+        let modelSummary = current.selectedModel.isEmpty ? current.baseURL : current.selectedModel
+
+        // Only use manageURL for strictly https schemes to prevent launching arbitrary schemes
+        var safeManageURL: URL? = nil
+        if let url = URL(string: current.baseURL), url.scheme?.lowercased() == "https" {
+            safeManageURL = url
+        }
+
+        return ProviderAccount(
+            label: current.name,
+            plan: modelSummary,
+            source: L10n.t("Custom Endpoint"),
+            manageURL: safeManageURL
+        )
+    }
+
+    nonisolated var signInRoute: SignInRoute {
+        .guidance(L10n.t("Configure endpoint details and credentials in Settings."))
+    }
+
+    func signOut() async {
+        if let current = Self.storedEndpoint(id: endpointID) {
+            current.deleteAPIKey()
+        }
+    }
+
+    nonisolated func presentSignIn() {}
+
+    nonisolated func forgetCachedCredential() {}
+
+    private static func nextMonthlyResetDate() -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: now),
+              let startOfNextMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: nextMonth)) else {
+            return now.addingTimeInterval(30 * 86400)
+        }
+        return startOfNextMonth
+    }
+
+    func fetchSnapshot() async throws -> ProviderSnapshot {
+        guard let current = Self.storedEndpoint(id: endpointID) else {
+            throw UsageProviderError.needsAuth
+        }
+        guard current.isEnabled else {
+            throw UsageProviderError.needsAuth
+        }
+        guard CustomEndpoint.isValidURL(current.baseURL) else {
+            throw UsageProviderError.badResponse(status: 400)
+        }
+
+        // Live network probe to verify reachability and authentication
+        let apiKey = current.apiKey ?? ""
+        let probe = await CustomEndpointNetwork.shared.testEndpoint(
+            baseURL: current.baseURL,
+            apiKey: apiKey,
+            headerKey: current.headerKey
+        )
+
+        if probe.health == .unreachable {
+            if let err = probe.error, err.contains("401") || err.contains("403") {
+                throw UsageProviderError.needsAuth
+            }
+            throw UsageProviderError.badResponse(status: 503)
+        }
+
+        let spend = current.computedSpendUSD
+        let budget = current.monthlyBudgetUSD
+
+        var windows: [LimitWindow] = []
+
+        if let budget = budget, budget > 0 {
+            let remaining = max(0.0, budget - spend)
+            let money = UsageMoneyBreakdown(
+                currency: "$",
+                spent: spend,
+                remaining: remaining
+            )
+            let usedFormatted = String(format: "$%.2f", spend)
+            let budgetFormatted = String(format: "$%.2f", budget)
+            let detailText = "\(usedFormatted) / \(budgetFormatted)"
+
+            windows.append(
+                LimitWindow(
+                    id: "monthly-budget",
+                    group: nil,
+                    label: L10n.t("Monthly Budget"),
+                    usedFraction: current.usedFraction,
+                    remaining: nil,
+                    used: nil,
+                    usedText: usedFormatted,
+                    detail: detailText,
+                    money: money,
+                    resetsAt: Self.nextMonthlyResetDate(),
+                    duration: 30 * 86400
+                )
+            )
+        } else {
+            let usedFormatted = String(format: "$%.2f", spend)
+            windows.append(
+                LimitWindow(
+                    id: "spend-tracking",
+                    group: nil,
+                    label: L10n.t("Total Spend"),
+                    usedFraction: 0,
+                    remaining: nil,
+                    used: nil,
+                    usedText: usedFormatted,
+                    detail: usedFormatted,
+                    money: UsageMoneyBreakdown(currency: "$", spent: spend, remaining: 0),
+                    resetsAt: nil,
+                    duration: nil
+                )
+            )
+        }
+
+        let headlineID = windows.first?.id
+
+        var snapshot = ProviderSnapshot(
+            id: id,
+            displayName: displayName,
+            glyph: glyph,
+            fidelity: .derived,
+            status: .ok,
+            windows: windows,
+            headlineID: headlineID,
+            weeklyID: nil,
+            block: nil,
+            kind: .usage
+        )
+        snapshot.customIconFilename = current.customIconFilename
+        return snapshot
+    }
+}

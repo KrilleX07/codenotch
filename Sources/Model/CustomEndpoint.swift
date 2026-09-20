@@ -1,0 +1,317 @@
+import AppKit
+import Foundation
+import SwiftUI
+
+public enum CustomEndpointHealth: String, Codable, Equatable, Sendable {
+    case online
+    case slow
+    case unreachable
+    case idle
+
+    public var title: String {
+        switch self {
+        case .online: return L10n.t("Online")
+        case .slow: return L10n.t("Slow")
+        case .unreachable: return L10n.t("Unreachable")
+        case .idle: return L10n.t("Not Checked")
+        }
+    }
+
+    public var color: Color {
+        switch self {
+        case .online: return .green
+        case .slow: return .yellow
+        case .unreachable: return .red
+        case .idle: return .secondary
+        }
+    }
+}
+
+public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
+    public static let keychainService = "com.vinzdg.codenotch.custom-endpoint"
+
+    public static func keychainAccount(for endpointID: String) -> String {
+        "endpoint-\(endpointID)"
+    }
+
+    public static func isValidURL(_ string: String) -> Bool {
+        guard let url = URL(string: string.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let scheme = url.scheme?.lowercased(),
+              (scheme == "http" || scheme == "https"),
+              let host = url.host, !host.isEmpty else {
+            return false
+        }
+        return true
+    }
+
+    public var id: String
+    public var name: String
+    public var baseURL: String
+    public var headerKey: String
+    public var selectedModel: String
+    public var availableModels: [String]
+    public var isEnabled: Bool
+    public var accentColorHex: String
+    public var iconPreset: String?
+    public var customIconFilename: String?
+    public var monthlyBudgetUSD: Double?
+    public var currentSpendUSD: Double?
+    public var lastLatencyMs: Int?
+    public var lastHealthStatus: CustomEndpointHealth
+    public var lastCheckedAt: Date?
+
+    public init(
+        id: String = UUID().uuidString,
+        name: String,
+        baseURL: String,
+        headerKey: String = "Authorization",
+        selectedModel: String = "",
+        availableModels: [String] = [],
+        isEnabled: Bool = true,
+        accentColorHex: String = "#6366F1",
+        iconPreset: String? = "openai",
+        customIconFilename: String? = nil,
+        monthlyBudgetUSD: Double? = nil,
+        currentSpendUSD: Double? = nil,
+        lastLatencyMs: Int? = nil,
+        lastHealthStatus: CustomEndpointHealth = .idle,
+        lastCheckedAt: Date? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.baseURL = baseURL
+        self.headerKey = headerKey
+        self.selectedModel = selectedModel
+        self.availableModels = availableModels
+        self.isEnabled = isEnabled
+        self.accentColorHex = accentColorHex
+        self.iconPreset = iconPreset
+        self.customIconFilename = customIconFilename
+        self.monthlyBudgetUSD = monthlyBudgetUSD
+        self.currentSpendUSD = currentSpendUSD
+        self.lastLatencyMs = lastLatencyMs
+        self.lastHealthStatus = lastHealthStatus
+        self.lastCheckedAt = lastCheckedAt
+    }
+
+    public var apiKey: String? {
+        KeychainItem.read(service: Self.keychainService, account: Self.keychainAccount(for: id))
+    }
+
+    public func saveAPIKey(_ key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            KeychainItem.delete(service: Self.keychainService, account: Self.keychainAccount(for: id))
+        } else {
+            _ = KeychainItem.store(service: Self.keychainService, account: Self.keychainAccount(for: id), value: trimmed)
+        }
+    }
+
+    public func deleteAPIKey() {
+        KeychainItem.delete(service: Self.keychainService, account: Self.keychainAccount(for: id))
+    }
+
+    public var computedSpendUSD: Double {
+        currentSpendUSD ?? 0
+    }
+
+    public var usedFraction: Double {
+        guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
+        return min(max(computedSpendUSD / budget, 0.0), 1.0)
+    }
+
+    public var providerID: String {
+        "custom-endpoint-\(id)"
+    }
+
+    // MARK: - Codable (Never stores apiKey in UserDefaults)
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case baseURL
+        case headerKey
+        case selectedModel
+        case availableModels
+        case isEnabled
+        case accentColorHex
+        case iconPreset
+        case customIconFilename
+        case monthlyBudgetUSD
+        case budgetMonthlyUSD
+        case currentSpendUSD
+        case directSpendUSD
+        case lastLatencyMs
+        case lastHealthStatus
+        case lastCheckedAt
+        case legacyApiKey = "apiKey"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.baseURL = try container.decode(String.self, forKey: .baseURL)
+        self.headerKey = try container.decodeIfPresent(String.self, forKey: .headerKey) ?? "Authorization"
+        self.selectedModel = try container.decodeIfPresent(String.self, forKey: .selectedModel) ?? ""
+        self.availableModels = try container.decodeIfPresent([String].self, forKey: .availableModels) ?? []
+        self.isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        self.accentColorHex = try container.decodeIfPresent(String.self, forKey: .accentColorHex) ?? "#6366F1"
+        self.iconPreset = try container.decodeIfPresent(String.self, forKey: .iconPreset)
+        self.customIconFilename = try container.decodeIfPresent(String.self, forKey: .customIconFilename)
+        self.monthlyBudgetUSD = try container.decodeIfPresent(Double.self, forKey: .monthlyBudgetUSD)
+            ?? container.decodeIfPresent(Double.self, forKey: .budgetMonthlyUSD)
+        self.currentSpendUSD = try container.decodeIfPresent(Double.self, forKey: .currentSpendUSD)
+            ?? container.decodeIfPresent(Double.self, forKey: .directSpendUSD)
+        self.lastLatencyMs = try container.decodeIfPresent(Int.self, forKey: .lastLatencyMs)
+        self.lastHealthStatus = try container.decodeIfPresent(CustomEndpointHealth.self, forKey: .lastHealthStatus) ?? .idle
+        self.lastCheckedAt = try container.decodeIfPresent(Date.self, forKey: .lastCheckedAt)
+
+        // Migrate legacy apiKey from plaintext defaults if found
+        if let legacyKey = try container.decodeIfPresent(String.self, forKey: .legacyApiKey),
+           !legacyKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            self.saveAPIKey(legacyKey)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(baseURL, forKey: .baseURL)
+        try container.encode(headerKey, forKey: .headerKey)
+        try container.encode(selectedModel, forKey: .selectedModel)
+        try container.encode(availableModels, forKey: .availableModels)
+        try container.encode(isEnabled, forKey: .isEnabled)
+        try container.encode(accentColorHex, forKey: .accentColorHex)
+        try container.encodeIfPresent(iconPreset, forKey: .iconPreset)
+        try container.encodeIfPresent(customIconFilename, forKey: .customIconFilename)
+        try container.encodeIfPresent(monthlyBudgetUSD, forKey: .monthlyBudgetUSD)
+        try container.encodeIfPresent(currentSpendUSD, forKey: .currentSpendUSD)
+        try container.encodeIfPresent(lastLatencyMs, forKey: .lastLatencyMs)
+        try container.encode(lastHealthStatus, forKey: .lastHealthStatus)
+        try container.encodeIfPresent(lastCheckedAt, forKey: .lastCheckedAt)
+        // Notice: legacyApiKey is intentionally never encoded!
+    }
+}
+
+public struct CustomEndpointPreset: Identifiable, Sendable {
+    public let id: String
+    public let name: String
+    public let baseURL: String
+    public let headerKey: String
+    public let defaultModel: String
+    public let iconPreset: String
+    public let accentColorHex: String
+
+    public static let templates: [CustomEndpointPreset] = [
+        CustomEndpointPreset(
+            id: "openrouter",
+            name: "OpenRouter",
+            baseURL: "https://openrouter.ai/api/v1",
+            headerKey: "Authorization",
+            defaultModel: "openai/gpt-4o",
+            iconPreset: "openai",
+            accentColorHex: "#6366F1"
+        ),
+        CustomEndpointPreset(
+            id: "groq",
+            name: "Groq",
+            baseURL: "https://api.groq.com/openai/v1",
+            headerKey: "Authorization",
+            defaultModel: "llama-3.3-70b-versatile",
+            iconPreset: "grok",
+            accentColorHex: "#F97316"
+        ),
+        CustomEndpointPreset(
+            id: "together",
+            name: "Together AI",
+            baseURL: "https://api.together.xyz/v1",
+            headerKey: "Authorization",
+            defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            iconPreset: "meta",
+            accentColorHex: "#06B6D4"
+        ),
+        CustomEndpointPreset(
+            id: "mistral",
+            name: "Mistral AI",
+            baseURL: "https://api.mistral.ai/v1",
+            headerKey: "Authorization",
+            defaultModel: "mistral-large-latest",
+            iconPreset: "mistral",
+            accentColorHex: "#F59E0B"
+        ),
+        CustomEndpointPreset(
+            id: "deepinfra",
+            name: "DeepInfra",
+            baseURL: "https://api.deepinfra.com/v1/openai",
+            headerKey: "Authorization",
+            defaultModel: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+            iconPreset: "deepseek",
+            accentColorHex: "#3B82F6"
+        ),
+        CustomEndpointPreset(
+            id: "vllm",
+            name: "Local vLLM",
+            baseURL: "http://localhost:8000/v1",
+            headerKey: "Authorization",
+            defaultModel: "",
+            iconPreset: "ollama",
+            accentColorHex: "#10B981"
+        ),
+        CustomEndpointPreset(
+            id: "llamacpp",
+            name: "Local llama.cpp",
+            baseURL: "http://localhost:8080/v1",
+            headerKey: "Authorization",
+            defaultModel: "",
+            iconPreset: "lmstudio",
+            accentColorHex: "#8B5CF6"
+        ),
+        CustomEndpointPreset(
+            id: "ollamaproxy",
+            name: "Local Ollama Proxy",
+            baseURL: "http://localhost:11434/v1",
+            headerKey: "Authorization",
+            defaultModel: "",
+            iconPreset: "ollama-local",
+            accentColorHex: "#14B8A6"
+        )
+    ]
+}
+
+public enum CustomIconStore {
+    private static var customIconsDirectory: URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let codenotchDir = appSupport.appendingPathComponent("Codenotch", isDirectory: true)
+        let iconsDir = codenotchDir.appendingPathComponent("CustomIcons", isDirectory: true)
+        try? FileManager.default.createDirectory(at: iconsDir, withIntermediateDirectories: true)
+        return iconsDir
+    }
+
+    public static func saveIcon(image: NSImage, for endpointID: String) -> String? {
+        guard let tiffData = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            return nil
+        }
+        let filename = "\(endpointID).png"
+        let fileURL = customIconsDirectory.appendingPathComponent(filename)
+        do {
+            try pngData.write(to: fileURL)
+            return filename
+        } catch {
+            return nil
+        }
+    }
+
+    public static func loadIcon(filename: String) -> NSImage? {
+        let fileURL = customIconsDirectory.appendingPathComponent(filename)
+        return NSImage(contentsOf: fileURL)
+    }
+
+    public static func deleteIcon(filename: String) {
+        let fileURL = customIconsDirectory.appendingPathComponent(filename)
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+}

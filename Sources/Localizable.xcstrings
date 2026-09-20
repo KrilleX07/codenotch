@@ -29643,6 +29643,153 @@
           }
         }
       }
+    },
+    "Authorization": {
+      "extractionState": "manual"
+    },
+    "Appearance & Icon": {
+      "extractionState": "manual"
+    },
+    "Test": {
+      "extractionState": "manual"
+    },
+    "Monthly Budget ($)": {
+      "extractionState": "manual"
+    },
+    "Configured Endpoints": {
+      "extractionState": "manual"
+    },
+    "Monthly Budget": {
+      "extractionState": "manual"
+    },
+    "Hide Templates": {
+      "extractionState": "manual"
+    },
+    "No custom endpoints yet. Click 'Add Endpoint' or pick a Quick Template to get started.": {
+      "extractionState": "manual"
+    },
+    "Icon": {
+      "extractionState": "manual"
+    },
+    "Add Endpoint": {
+      "extractionState": "manual"
+    },
+    "Choose a preset to pre-fill settings:": {
+      "extractionState": "manual"
+    },
+    "Scan Local Engines": {
+      "extractionState": "manual"
+    },
+    "Online": {
+      "extractionState": "manual"
+    },
+    "e.g. 20.00 (leave empty for unlimited)": {
+      "extractionState": "manual"
+    },
+    "URL must start with http:// or https:// and have a valid host.": {
+      "extractionState": "manual"
+    },
+    "Name": {
+      "extractionState": "manual"
+    },
+    "Auth Header": {
+      "extractionState": "manual"
+    },
+    "Base URL": {
+      "extractionState": "manual"
+    },
+    "Model": {
+      "extractionState": "manual"
+    },
+    "New Custom Endpoint": {
+      "extractionState": "manual"
+    },
+    "Discovered Local Services:": {
+      "extractionState": "manual"
+    },
+    "e.g. 4.25": {
+      "extractionState": "manual"
+    },
+    "Select a model...": {
+      "extractionState": "manual"
+    },
+    "Edit": {
+      "extractionState": "manual"
+    },
+    "Upload Custom Image...": {
+      "extractionState": "manual"
+    },
+    "Save Endpoint": {
+      "extractionState": "manual"
+    },
+    "Configure endpoint details and credentials in Settings.": {
+      "extractionState": "manual"
+    },
+    "Edit Endpoint": {
+      "extractionState": "manual"
+    },
+    "API Key": {
+      "extractionState": "manual"
+    },
+    "Model name (e.g. gpt-4o, llama-3.3)": {
+      "extractionState": "manual"
+    },
+    "Custom Endpoints": {
+      "extractionState": "manual"
+    },
+    "e.g. My OpenRouter, Local vLLM": {
+      "extractionState": "manual"
+    },
+    "Custom Endpoint": {
+      "extractionState": "manual"
+    },
+    "sk-... (optional for local)": {
+      "extractionState": "manual"
+    },
+    "Current Spend ($)": {
+      "extractionState": "manual"
+    },
+    "Monthly Budget & Spend Tracking": {
+      "extractionState": "manual"
+    },
+    "Not Checked": {
+      "extractionState": "manual"
+    },
+    "Spend: $%.2f": {
+      "extractionState": "manual"
+    },
+    "Slow": {
+      "extractionState": "manual"
+    },
+    "Test Connection & Fetch Models": {
+      "extractionState": "manual"
+    },
+    "Ring Accent": {
+      "extractionState": "manual"
+    },
+    "Unreachable": {
+      "extractionState": "manual"
+    },
+    "Add to Endpoints": {
+      "extractionState": "manual"
+    },
+    "Connect any OpenAI-compatible API, local inference runtime, or custom proxy.": {
+      "extractionState": "manual"
+    },
+    "Total Spend": {
+      "extractionState": "manual"
+    },
+    "https://api.openai.com/v1": {
+      "extractionState": "manual"
+    },
+    "Quick Templates": {
+      "extractionState": "manual"
+    },
+    "Reset Spend": {
+      "extractionState": "manual"
+    },
+    "Cancel": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

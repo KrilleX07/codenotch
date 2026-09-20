@@ -131,11 +131,17 @@ struct GlyphShape: Shape {
 
 struct ProviderGlyphView: View {
     let glyph: ProviderGlyph
+    var customIconFilename: String? = nil
     var size: CGFloat = Design.px(46)
 
     var body: some View {
         Group {
-            if let image = NSImage(named: glyph.assetName) {
+            if let customIconFilename,
+               let image = CustomIconStore.loadIcon(filename: customIconFilename) {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+            } else if let image = NSImage(named: glyph.assetName) {
                 Image(nsImage: image)
                     .renderingMode(.template)
                     .resizable()

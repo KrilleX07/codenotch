@@ -142,6 +142,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.usage.info("antigravity profiles: \(self.antigravityProfiles.map(\.displayPath).joined(separator: ", "), privacy: .public)")
             let claudeProviders = claudeProfiles.map { ClaudeOAuthProvider(profile: $0) }
             self.claudeProviders = claudeProviders
+            let customProviders: [UsageProvider] = preferences.customEndpoints.filter(\.isEnabled).map { endpoint in
+                CustomEndpointProvider(endpoint: endpoint)
+            }
             let allProviders: [UsageProvider] = claudeProviders
                 + [CursorLocalProvider()]
                 + codexProfiles.map { CodexLocalProvider(profile: $0) }
@@ -158,6 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                        Preferences.storedGeminiAPIMonthlyTokenBudget()
                    })]
                 + webProviders
+                + customProviders
             preferences.reconcile(discoveredIDs: allProviders.map(\.id))
             let store = UsageStore(
                 providers: allProviders,
@@ -168,6 +172,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // order for a frame and then visibly shuffles.
                 order: preferences.providerOrder
             )
+            preferences.$customEndpoints
+                .map { $0.filter(\.isEnabled).map(\.id) }
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak store] enabledIDs in
+                    let stored = Preferences.storedCustomEndpoints()
+                    let active = stored.filter { $0.isEnabled && enabledIDs.contains($0.id) }
+                    let providers: [UsageProvider] = active.map { CustomEndpointProvider(endpoint: $0) }
+                    store?.registerCustomProviders(providers)
+                }
+                .store(in: &cancellables)
             deepSeek.onAuthenticated = { [weak store] in
                 store?.providerAuthenticationChanged(providerID: "deepseek")
             }
