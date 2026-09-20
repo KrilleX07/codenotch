@@ -509,16 +509,31 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
             std::thread::sleep(std::time::Duration::from_millis(16));
         }
         // The right edge of another screen is a move too, though the edge has the same name
-        let crossed = !same_screen(&mon, &start);
-        applog(&format!("notch carry: {from} -> {target} on {:?}", mon.name));
-        if target != from || crossed {
+        let mut crossed = !same_screen(&mon, &start);
+        // A screen Windows will not name has nothing stable to remember it by, which is why the
+        // picker in Settings lists those disabled. Saving `None` would not mean "this screen", it
+        // means "the primary", so the notch would jump off it at the next placement. Take the edge
+        // the carry chose and leave it on the screen it came from rather than record a move that
+        // will not survive.
+        let unnameable = crossed && mon.name.is_none();
+        if unnameable {
+            crossed = false;
+        }
+        applog(&format!(
+            "notch carry: {from} -> {target} on {:?}{}",
+            mon.name,
+            if unnameable { " (unnamed screen, staying put)" } else { "" }
+        ));
+        if target != from || crossed || unnameable {
             {
                 let st = app.state::<AppState>();
                 let mut c = st.cfg.lock().unwrap();
                 // It lands where it was last left on that edge — centred, like the zone it was
                 // offered, on an edge it has never been slid along
                 c.notch_edge = target.clone();
-                c.notch_monitor = mon.name.clone();
+                if !unnameable {
+                    c.notch_monitor = mon.name.clone();
+                }
                 config::save(&c);
             }
             if crossed {
