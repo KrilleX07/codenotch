@@ -156,6 +156,46 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         self.prefersUsedText = prefersUsedText
     }
 
+    enum CodingKeys: String, CodingKey {
+        case id, group, label, usedFraction, remaining, used, detail, money, usedText, resetsAt, duration, bandOverride, prefersUsedText
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.group = try container.decodeIfPresent(String.self, forKey: .group)
+        self.label = try container.decode(String.self, forKey: .label)
+        self.usedFraction = try container.decodeIfPresent(Double.self, forKey: .usedFraction)
+        self.remaining = try container.decodeIfPresent(Int.self, forKey: .remaining)
+        self.used = try container.decodeIfPresent(Int.self, forKey: .used)
+        self.detail = try container.decodeIfPresent(String.self, forKey: .detail)
+        self.money = try container.decodeIfPresent(UsageMoneyBreakdown.self, forKey: .money)
+        self.usedText = try container.decodeIfPresent(String.self, forKey: .usedText)
+        self.resetsAt = try container.decodeIfPresent(Date.self, forKey: .resetsAt)
+        self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        self.bandOverride = try container.decodeIfPresent(UsageBand.self, forKey: .bandOverride)
+        self.prefersUsedText = try container.decodeIfPresent(Bool.self, forKey: .prefersUsedText) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(group, forKey: .group)
+        try container.encode(label, forKey: .label)
+        try container.encodeIfPresent(usedFraction, forKey: .usedFraction)
+        try container.encodeIfPresent(remaining, forKey: .remaining)
+        try container.encodeIfPresent(used, forKey: .used)
+        try container.encodeIfPresent(detail, forKey: .detail)
+        try container.encodeIfPresent(money, forKey: .money)
+        try container.encodeIfPresent(usedText, forKey: .usedText)
+        try container.encodeIfPresent(resetsAt, forKey: .resetsAt)
+        try container.encodeIfPresent(duration, forKey: .duration)
+        try container.encodeIfPresent(bandOverride, forKey: .bandOverride)
+        if prefersUsedText {
+            try container.encode(prefersUsedText, forKey: .prefersUsedText)
+        }
+    }
+
     /// Whether this is a rolling five-hour window — the limit a coding session
     /// runs into first. Read from the length the provider reported rather than
     /// from an id, because every vendor names it differently: Claude's
