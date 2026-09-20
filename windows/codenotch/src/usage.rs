@@ -258,7 +258,7 @@ fn is_desktop_owned(p: &std::path::Path) -> bool {
 }
 
 /// The standalone Claude Code command: its own installer's location first, then global npm/pnpm/Volta, then PATH
-fn find_cli() -> Option<std::path::PathBuf> {
+pub(crate) fn find_cli() -> Option<std::path::PathBuf> {
     let mut v = Vec::new();
     if let Some(h) = dirs::home_dir() {
         v.push(h.join(".local").join("bin").join("claude.exe"));
