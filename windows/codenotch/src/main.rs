@@ -175,6 +175,72 @@ fn edge_origin(s: &Screen, edge: &str, ww: i32, wh: i32, ratio: f64) -> (i32, i3
     }
 }
 
+/// The landing whose pill is being kept out of sight, or 0. Numbered so a fallback timer from one
+/// landing can never reveal the next one early.
+static LANDING: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static LANDING_SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// The landing the page has confirmed it has painted empty for.
+static LANDING_HIDDEN: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+/// Longest a landing stays out of sight if the page never reports a settled layout.
+const LANDING_FALLBACK_MS: u64 = 700;
+
+/// Places the notch on a screen at another scale without the change of scale showing.
+///
+/// Arriving there, Windows resizes the window by the ratio of the two scales before `place_notch`
+/// puts it right, and the page then re-zooms itself for the new pixel ratio a debounce later, which
+/// can bring one more zoom correction from `report_dpr`. All of that played out on screen as the
+/// notch jumping sizes as it landed. Hiding the window did not help: a hidden WebView2 stops painting
+/// and throttles its timers, so the page only caught up once it was shown again, in plain view.
+///
+/// So the window stays up and the page empties itself instead — the window is transparent, so an
+/// empty page is an invisible notch — while the WebView keeps doing its layout. It is revealed when
+/// the page reports a layout that has stopped changing (`report_dpr` with `settled`), not after a
+/// guessed delay. At the same scale nothing is resized on arrival, so there is nothing to hide.
+fn land_on_another_screen(app: &AppHandle, from_scale: f64, to_scale: f64) {
+    if (from_scale - to_scale).abs() < 0.01 {
+        return place_notch(app);
+    }
+    use std::sync::atomic::Ordering::SeqCst;
+    let gen = LANDING_SEQ.fetch_add(1, SeqCst) + 1;
+    LANDING.store(gen, SeqCst);
+    let _ = app.emit_to("notch", "notch_landing", ());
+    // Moved before the page has painted itself empty, the jump would show after all
+    for _ in 0..40 {
+        if LANDING_HIDDEN.load(SeqCst) == gen {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    place_notch(app);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(LANDING_FALLBACK_MS));
+        if LANDING.compare_exchange(gen, 0, SeqCst, SeqCst).is_ok() {
+            applog("notch landing: no settled layout reported, shown anyway");
+            let _ = app.emit_to("notch", "notch_reveal", ());
+        }
+    });
+}
+
+/// The page has painted itself empty for the landing in progress.
+#[tauri::command]
+fn notch_hidden() {
+    use std::sync::atomic::Ordering::SeqCst;
+    LANDING_HIDDEN.store(LANDING.load(SeqCst), SeqCst);
+}
+
+/// The screen the pointer is over, for a carry that can cross between them. None in the gap a
+/// smaller screen leaves beside a larger one, where the carry stays on the screen it was last over.
+fn screen_at(list: &[Screen], x: f64, y: f64) -> Option<&Screen> {
+    list.iter()
+        .find(|s| x >= s.x as f64 && x < (s.x + s.w) as f64 && y >= s.y as f64 && y < (s.y + s.h) as f64)
+}
+
+/// By where it is rather than by name, which the platform is not obliged to report.
+fn same_screen(a: &Screen, b: &Screen) -> bool {
+    (a.x, a.y, a.w, a.h) == (b.x, b.y, b.w, b.h)
+}
+
 /// `edge_origin` run backwards along one axis: where a window at `pos`, `len` long, has its centre,
 /// as a fraction of the span from `start`. What a slide along the edge saves, so it lands exactly
 /// where it was let go.
@@ -391,7 +457,7 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
             DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
             let _ = app.emit("move_end", ());
         };
-        let Some(mon) = target_screen(&app) else {
+        let Some(start) = target_screen(&app) else {
             done(&app);
             return;
         };
@@ -405,18 +471,33 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
         // Every figure here is the work area's, to match the overlay window and the notch itself:
         // the zone drawn on the taskbar's edge has to sit where the notch will, and the edge the
         // pointer picks has to be read against the same rectangle the zones are drawn in.
-        let (ax, ay, aw, ah) = mon.area();
-        let mut zones = dropzones::Zones {
-            w: aw as f64 / mon.scale,
-            h: ah as f64 / mon.scale,
-            depth: depth * size,
-            length: length * size,
-            target: from.clone(),
+        let zones_on = |s: &Screen, target: &str| {
+            let (_, _, aw, ah) = s.area();
+            dropzones::Zones {
+                w: aw as f64 / s.scale,
+                h: ah as f64 / s.scale,
+                depth: depth * size,
+                length: length * size,
+                target: target.to_string(),
+            }
         };
+        let all = screens(&app);
+        let mut mon = start.clone();
+        let mut zones = zones_on(&mon, &from);
         dropzones::show(&app, &mon, &zones);
         let mut target = from.clone();
         while left_button_down() {
             if let Ok(cur) = app.cursor_position() {
+                // Crossing onto another screen takes the zones with it. The silhouette is in logical
+                // px, so it keeps its size on a screen at another scale, exactly as the notch will.
+                if let Some(s) = screen_at(&all, cur.x, cur.y) {
+                    if !same_screen(s, &mon) {
+                        mon = s.clone();
+                        zones = zones_on(&mon, &target);
+                        dropzones::relocate(&app, &mon, &zones);
+                    }
+                }
+                let (ax, ay, aw, ah) = mon.area();
                 let next = edge_at(cur.x - ax as f64, cur.y - ay as f64, aw as f64, ah as f64);
                 if next != target {
                     target = next.to_string();
@@ -427,17 +508,24 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
             }
             std::thread::sleep(std::time::Duration::from_millis(16));
         }
-        applog(&format!("notch carry: {from} -> {target}"));
-        if target != from {
+        // The right edge of another screen is a move too, though the edge has the same name
+        let crossed = !same_screen(&mon, &start);
+        applog(&format!("notch carry: {from} -> {target} on {:?}", mon.name));
+        if target != from || crossed {
             {
                 let st = app.state::<AppState>();
                 let mut c = st.cfg.lock().unwrap();
                 // It lands where it was last left on that edge — centred, like the zone it was
                 // offered, on an edge it has never been slid along
                 c.notch_edge = target.clone();
+                c.notch_monitor = mon.name.clone();
                 config::save(&c);
             }
-            place_notch(&app);
+            if crossed {
+                land_on_another_screen(&app, start.scale, mon.scale);
+            } else {
+                place_notch(&app);
+            }
         }
         done(&app);
     });
@@ -731,8 +819,11 @@ pub fn applog(line: &str) {
 /// the designed 340 and every coordinate conversion was off (the watchdog misfired and the card
 /// flashed away). Fix: the page reports its DPR, and when it differs from the primary monitor's
 /// scale, set_zoom pulls the effective DPR back to that scale, restoring the 340 px width.
+///
+/// `settled` is true when the report comes at the end of a burst of resizes rather than partway
+/// through one, which is what a landing on another screen waits for before it shows the notch.
 #[tauri::command]
-fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64) {
+fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64, settled: Option<bool>) {
     let Some(win) = app.get_webview_window("notch") else { return };
     let want = target_screen(&app)
         .map(|s| s.scale)
@@ -748,6 +839,7 @@ fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64) {
     ));
     // Oscillation guard: at most three corrections per process (if the DPR does not follow the zoom, stop chasing it)
     static APPLIED: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let mut corrected = false;
     if (dpr - want).abs() > 0.02
         && (target - *z).abs() > 0.01
         && (0.25..=4.0).contains(&target)
@@ -756,10 +848,16 @@ fn report_dpr(app: AppHandle, dpr: f64, w: f64, h: f64) {
         match win.set_zoom(target) {
             Ok(()) => {
                 *z = target;
+                corrected = true;
                 applog(&format!("dpr correction: set_zoom({target:.3}) ok"));
             }
             Err(e) => applog(&format!("dpr correction failed: {e}")),
         }
+    }
+    // A correction resizes the page once more, and its own settled report follows; the landing is
+    // shown on the first settled report that needed none
+    if settled == Some(true) && !corrected && LANDING.swap(0, std::sync::atomic::Ordering::SeqCst) != 0 {
+        let _ = app.emit_to("notch", "notch_reveal", ());
     }
 }
 
@@ -1533,6 +1631,7 @@ fn main() {
             notchmenu::show_notch_menu,
             set_hot,
             report_dpr,
+            notch_hidden,
             log_js,
             focus_session,
             dismiss_session,
@@ -1724,8 +1823,26 @@ mod tests {
         // The corner diagonals are the boundaries: a step either side of one changes the answer
         assert_eq!(super::edge_at(690.0, 700.0, w, h), "left");
         assert_eq!(super::edge_at(700.0, 690.0, w, h), "top");
-        // Dragged onto another monitor: still answers the edge it left by
+        // A pointer off the screen — in the gap a smaller one leaves — still answers the nearest edge
         assert_eq!(super::edge_at(-200.0, 700.0, w, h), "left");
+    }
+
+    /// A carry follows the pointer from one screen to the next, and holds on to the last one while
+    /// the pointer crosses the gap a shorter screen leaves beside a taller one.
+    #[test]
+    fn a_carry_crosses_onto_whichever_screen_the_pointer_is_over() {
+        let main = Screen { name: Some("1".into()), x: 0, y: 0, w: 2560, h: 1600, scale: 1.25, work: (0, 0, 2560, 1552) };
+        // An older monitor to the right, shorter, and sitting 200 px lower
+        let old = Screen { name: Some("2".into()), x: 2560, y: 200, w: 1920, h: 1080, scale: 1.0, work: (2560, 200, 1920, 1040) };
+        let all = [main.clone(), old.clone()];
+        assert_eq!(super::screen_at(&all, 100.0, 100.0).and_then(|s| s.name.clone()), main.name);
+        assert_eq!(super::screen_at(&all, 3000.0, 700.0).and_then(|s| s.name.clone()), old.name);
+        assert!(super::screen_at(&all, 3000.0, 100.0).is_none(), "above the shorter screen is on neither");
+        assert!(super::screen_at(&all, 2560.0, 700.0).is_some(), "the shared border belongs to the right-hand one");
+        assert!(super::same_screen(&main, &main.clone()));
+        assert!(!super::same_screen(&main, &old));
+        // The same place with no name reported is still the same screen
+        assert!(super::same_screen(&Screen { name: None, ..old.clone() }, &old));
     }
 
     /// The pill sits in the middle of the window, so half of it, a fillet and the settings orb's reach
