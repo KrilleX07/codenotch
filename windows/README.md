@@ -119,8 +119,9 @@ npx --yes @tauri-apps/cli@2.11.4 signer generate -w $env:USERPROFILE\.tauri\code
 Put the **private** key in the repository secret `TAURI_SIGNING_PRIVATE_KEY` and its password in
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, and paste the **public** key into `plugins.updater.pubkey`
 in `codenotch/tauri.conf.json`, replacing `REPLACE_WITH_TAURI_PUBLIC_KEY`. Until that is done the
-app skips the check entirely rather than reporting a failure nobody can act on, and the release
-job refuses to publish a feed it could not sign.
+app skips the check entirely rather than reporting a failure nobody can act on; the packaging job
+builds an ordinary installer and warns that it made no feed, and a `v*` release fails loudly rather
+than going out with an update path nobody can use.
 
 Keep the private key. Losing it means no installed copy can be updated again, because every one of
 them checks against the public key it shipped with — they would all have to reinstall by hand.

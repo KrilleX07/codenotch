@@ -56,19 +56,36 @@ jobs:
           RUSTFLAGS: -C target-feature=+crt-static
         run: cargo build --release --locked -p codenotch-hook --target-dir target/hook
 
+      # The signing key is what the updater in an already-installed copy checks the
+      # download against. Asking the bundler for updater artifacts without one is a
+      # hard error, not a warning, so the artifacts are switched on here rather than
+      # in tauri.conf.json: a fork, or this repository before the key exists, still
+      # gets an installer out of this job.
+      - name: Can this build be signed?
+        id: signing
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          $have = -not [string]::IsNullOrWhiteSpace($env:KEY)
+          "signed=$($have.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if (-not $have) {
+            Write-Host '::warning::TAURI_SIGNING_PRIVATE_KEY is not set - building an installer with no update feed.'
+          }
+
       # tauri.bundle.conf.json is merged only here, so a plain `cargo build`
       # never looks for a hook binary that has not been built.
-      #
-      # The signing key is what the updater in an already-installed copy checks the
-      # download against. Without the secret the bundler still produces an installer,
-      # just no .sig beside it, and the "Publish the update feed" step below refuses
-      # rather than shipping a release that every updater will reject.
       - name: Build the installer
         working-directory: windows/codenotch
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx --yes @tauri-apps/cli@2.11.4 build --config tauri.bundle.conf.json -- --locked
+          SIGNED: ${{ steps.signing.outputs.signed }}
+        run: |
+          $args = @('--config', 'tauri.bundle.conf.json')
+          if ($env:SIGNED -eq 'true') {
+            $args += @('--config', '{"bundle":{"createUpdaterArtifacts":true}}')
+          }
+          npx --yes @tauri-apps/cli@2.11.4 build @args -- --locked
 
       # The bundler names the file after the version, which would change the
       # URL every release. One fixed name lets the README link to
@@ -130,6 +147,7 @@ jobs:
       # Built on every run, not only on a release: a malformed feed that only appears
       # at release time would be found by users rather than by CI.
       - name: Build the update feed
+        if: steps.signing.outputs.signed == 'true'
         run: |
           $zip = @(Get-ChildItem target/release/bundle/nsis/*-setup.nsis.zip -ErrorAction SilentlyContinue)
           if ($zip.Count -ne 1) { throw "expected one updater archive, found $($zip.Count)" }
@@ -151,6 +169,7 @@ jobs:
           Get-Content latest.json
 
       - uses: actions/upload-artifact@v7
+        if: steps.signing.outputs.signed == 'true'
         with:
           name: Codenotch-update-feed-${{ github.sha }}
           path: |
@@ -176,9 +195,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
+          SIGNED: ${{ steps.signing.outputs.signed }}
         run: |
+          if ($env:SIGNED -ne 'true') {
+            throw 'No TAURI_SIGNING_PRIVATE_KEY, so this release carries no update feed and no installed copy will see it. The installer above is fine; see windows/README.md to make the key.'
+          }
           $feed = Get-Content latest.json -Raw | ConvertFrom-Json
           if (-not $feed.platforms.'windows-x86_64'.signature) {
-            throw 'the installer was not signed: set the TAURI_SIGNING_PRIVATE_KEY secret before releasing'
+            throw 'the updater archive was not signed; refusing to publish a feed every updater would reject'
           }
           gh release upload $env:TAG Codenotch-Setup.nsis.zip latest.json --clobber
