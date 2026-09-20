@@ -26,6 +26,7 @@ mod diag;
 mod dropzones;
 mod watcher;
 mod settings_window;
+mod updater;
 
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
@@ -1672,6 +1673,7 @@ fn main() {
     let port = cfg.port;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             // Opening Codenotch again while it runs brings Settings forward, as on the Mac: with the
             // tray icon hidden it is the way back. Logged too, for a rebuild that was not picked up.
@@ -1696,6 +1698,9 @@ fn main() {
             claude_sign_in,
             get_claude_auth,
             refresh_claude_usage,
+            updater::get_update_state,
+            updater::check_for_update,
+            updater::install_update,
             get_codex,
             get_cursor,
             get_grok,
@@ -1756,6 +1761,7 @@ fn main() {
             tray::setup(&handle)?;
             notchmenu::setup(&handle);
             start_menu_updater(handle.clone());
+            updater::check_on_launch(&handle);
             // Honours the saved switches: a notch hidden last time stays hidden.
             apply_visibility(&handle);
             server::start(handle.clone(), port);

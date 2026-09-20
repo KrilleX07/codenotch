@@ -58,8 +58,16 @@ jobs:
 
       # tauri.bundle.conf.json is merged only here, so a plain `cargo build`
       # never looks for a hook binary that has not been built.
+      #
+      # The signing key is what the updater in an already-installed copy checks the
+      # download against. Without the secret the bundler still produces an installer,
+      # just no .sig beside it, and the "Publish the update feed" step below refuses
+      # rather than shipping a release that every updater will reject.
       - name: Build the installer
         working-directory: windows/codenotch
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx --yes @tauri-apps/cli@2.11.4 build --config tauri.bundle.conf.json -- --locked
 
       # The bundler names the file after the version, which would change the
@@ -115,6 +123,41 @@ jobs:
             'the first time. Choose **More info**, then **Run anyway**.'
           ) -join "`n" >> $env:GITHUB_STEP_SUMMARY
 
+      # The feed an installed copy reads. `endpoints` in tauri.conf.json points at
+      # releases/latest/download/latest.json — the same stable URL the README links
+      # the installer to — so publishing a release is the whole of shipping an update.
+      #
+      # Built on every run, not only on a release: a malformed feed that only appears
+      # at release time would be found by users rather than by CI.
+      - name: Build the update feed
+        run: |
+          $zip = @(Get-ChildItem target/release/bundle/nsis/*-setup.nsis.zip -ErrorAction SilentlyContinue)
+          if ($zip.Count -ne 1) { throw "expected one updater archive, found $($zip.Count)" }
+          Copy-Item $zip[0].FullName Codenotch-Setup.nsis.zip
+          $sigPath = "$($zip[0].FullName).sig"
+          $signature = if (Test-Path $sigPath) { (Get-Content $sigPath -Raw).Trim() } else { '' }
+          $version = (Get-Content codenotch/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $feed = [ordered]@{
+            version = $version
+            pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            platforms = [ordered]@{
+              'windows-x86_64' = [ordered]@{
+                signature = $signature
+                url = "https://github.com/vinzdg/codenotch/releases/download/v$version/Codenotch-Setup.nsis.zip"
+              }
+            }
+          }
+          $feed | ConvertTo-Json -Depth 5 | Set-Content latest.json -Encoding utf8
+          Get-Content latest.json
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Codenotch-update-feed-${{ github.sha }}
+          path: |
+            windows/latest.json
+            windows/Codenotch-Setup.nsis.zip
+          if-no-files-found: error
+
       # v* only: the rolling `preview` release belongs to Package, which deletes
       # every asset on it each time it refreshes.
       - name: Attach to the release
@@ -123,3 +166,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.release.tag_name }}
         run: gh release upload $env:TAG Codenotch-Setup.exe --clobber
+
+      # Last, and only once the installer is up: latest.json is what sends every
+      # installed copy to that file, so it must never name one that is not there yet.
+      # An unsigned build is refused rather than published — the updater would reject
+      # the download anyway, and a feed nobody can use is worse than no feed.
+      - name: Publish the update feed
+        if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $feed = Get-Content latest.json -Raw | ConvertFrom-Json
+          if (-not $feed.platforms.'windows-x86_64'.signature) {
+            throw 'the installer was not signed: set the TAURI_SIGNING_PRIVATE_KEY secret before releasing'
+          }
+          gh release upload $env:TAG Codenotch-Setup.nsis.zip latest.json --clobber
