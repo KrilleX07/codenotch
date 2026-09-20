@@ -6,11 +6,18 @@ use std::{process::{Child, Command, Stdio}, sync::{atomic::{AtomicBool, Ordering
 static BUSY: AtomicBool = AtomicBool::new(false);
 static MESSAGE: Mutex<String> = Mutex::new(String::new());
 
+/// The lock guards one short line of status text. A panic while it is held would
+/// poison it and take the whole card down with `unwrap`, which is a steep price
+/// for a string nobody has to trust — so take it back and carry on.
+fn message() -> std::sync::MutexGuard<'static, String> {
+    MESSAGE.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 #[derive(Serialize)]
 pub struct AuthState { pub busy: bool, pub message: String }
 
 pub fn state() -> AuthState {
-    AuthState { busy: BUSY.load(Ordering::Acquire), message: MESSAGE.lock().unwrap().clone() }
+    AuthState { busy: BUSY.load(Ordering::Acquire), message: message().clone() }
 }
 
 /// Shared with background renewal so the two native clients cannot rotate the
@@ -24,7 +31,7 @@ impl Drop for AuthGuard {
 }
 
 pub fn usage_succeeded() {
-    if !BUSY.load(Ordering::Acquire) { MESSAGE.lock().unwrap().clear(); }
+    if !BUSY.load(Ordering::Acquire) { message().clear(); }
 }
 
 // No interpolated shell input: even paths containing apostrophes arrive in env.
@@ -81,10 +88,10 @@ pub fn start_login() -> Result<(), String> {
     let guard = try_acquire().ok_or("Claude sign-in or renewal is already running.")?;
     let mut cmd = login_command(&cli)?;
     let mut child = cmd.spawn().map_err(|_| "Unable to open Claude sign-in window.")?;
-    *MESSAGE.lock().unwrap() = "Complete sign-in in the browser or terminal window.".into();
+    *message() = "Complete sign-in in the browser or terminal window.".into();
     std::thread::spawn(move || {
         let ok = wait_child(&mut child, Duration::from_secs(15 * 60));
-        *MESSAGE.lock().unwrap() = if ok { "Sign-in complete. Refreshing usage..." } else {
+        *message() = if ok { "Sign-in complete. Refreshing usage..." } else {
             "Sign-in cancelled, failed or timed out. Try again."
         }.into();
         drop(guard);
