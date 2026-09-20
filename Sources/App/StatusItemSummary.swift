@@ -61,7 +61,7 @@ struct StatusItemSummary: Equatable {
     /// a limit to show — which gives the item its icon back.
     @MainActor
     static func make(from snapshots: [ProviderSnapshot], showing limits: MenuBarLimits,
-                     now: Date) -> StatusItemSummary {
+                     now: Date, format: ResetTimeFormat = .automatic) -> StatusItemSummary {
         guard limits.isOn else { return StatusItemSummary(entries: [], nextChange: nil) }
         let summarised = snapshots.filter { snapshot in
             canSummarise(snapshot) && limits.isChosen(snapshot.id)
@@ -69,7 +69,8 @@ struct StatusItemSummary: Equatable {
         var marks: [ProviderGlyph: Int] = [:]
         for snapshot in summarised { marks[snapshot.glyph, default: 0] += 1 }
         let entries = summarised.map { snapshot in
-            entry(for: snapshot, sharesMark: marks[snapshot.glyph, default: 0] > 1, now: now)
+            entry(for: snapshot, sharesMark: marks[snapshot.glyph, default: 0] > 1, now: now,
+                  format: format)
         }
         let nextChange = summarised
             .compactMap { $0.fiveHourWindow?.resetsAt }
@@ -84,7 +85,7 @@ struct StatusItemSummary: Equatable {
 
     @MainActor
     private static func entry(for snapshot: ProviderSnapshot, sharesMark: Bool,
-                              now: Date) -> Entry {
+                              now: Date, format: ResetTimeFormat) -> Entry {
         let window = snapshot.fiveHourWindow
         // Past its reset a reading describes a window that is over. The store
         // re-reads on its first tick after a reset; until that lands the honest
@@ -106,7 +107,7 @@ struct StatusItemSummary: Equatable {
             countdown: countdown ?? Entry.unknown,
             isStale: snapshot.status.isStale && percent != Entry.unknown,
             detail: detail(for: snapshot, window: window, isOver: isOver,
-                           countdown: countdown, now: now)
+                           countdown: countdown, now: now, format: format)
         )
     }
 
@@ -115,7 +116,8 @@ struct StatusItemSummary: Equatable {
     /// two never disagree by the minute that rounding would put between them.
     @MainActor
     private static func detail(for snapshot: ProviderSnapshot, window: LimitWindow?,
-                               isOver: Bool, countdown: String?, now: Date) -> String {
+                               isOver: Bool, countdown: String?, now: Date,
+                               format: ResetTimeFormat) -> String {
         let reading: String
         if let window {
             let figures = isOver
@@ -125,7 +127,7 @@ struct StatusItemSummary: Equatable {
         } else if let headline = snapshot.headline {
             // What the account does meter, so a dash in the bar is explained
             // rather than merely shown.
-            reading = StatusItemController.windowLine(for: headline, now: now, format: .remaining)
+            reading = StatusItemController.windowLine(for: headline, now: now, format: format)
         } else {
             reading = snapshot.statusMessage ?? L10n.t("No reading")
         }

@@ -388,6 +388,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // delivers a run loop turn later, and the item would otherwise go
             // up as one thing and then change its mind.
             statusItem.limits = preferences.menuBarLimits
+            statusItem.resetTimeFormat = preferences.resetTimeFormat
 
             preferences.$appPresence
                 .receive(on: RunLoop.main)
@@ -514,7 +515,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             preferences.$resetTimeFormat
                 .receive(on: RunLoop.main)
-                .sink { [weak fleet] in fleet?.apply(resetTimeFormat: $0) }
+                .sink { [weak fleet, weak statusItem] in
+                    fleet?.apply(resetTimeFormat: $0)
+                    statusItem?.resetTimeFormat = $0
+                }
                 .store(in: &cancellables)
 
             preferences.$accentColor

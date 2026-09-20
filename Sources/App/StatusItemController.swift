@@ -40,6 +40,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             updateButton()
         }
     }
+    /// How a reset time is worded, from Settings. The notch follows this, and
+    /// the item's tooltip is the same sentence, so it follows it too.
+    var resetTimeFormat: ResetTimeFormat = .automatic {
+        didSet {
+            guard resetTimeFormat != oldValue else { return }
+            updateButton()
+        }
+    }
     /// What the item shows now, so a publication that changes nothing on it —
     /// a local runtime is re-read every second — redraws nothing.
     private var summary: StatusItemSummary?
@@ -95,7 +103,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// With limits off there is no countdown, so nothing is left to wake it.
     private func updateButton(now: Date = Date()) {
         guard let item, let button = item.button else { return }
-        let next = StatusItemSummary.make(from: snapshots, showing: limits, now: now)
+        let next = StatusItemSummary.make(from: snapshots, showing: limits, now: now,
+                                          format: resetTimeFormat)
         scheduleCountdown(at: next.nextChange)
         guard next != summary else { return }
         summary = next

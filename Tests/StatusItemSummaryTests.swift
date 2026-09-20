@@ -55,11 +55,12 @@ final class StatusItemSummaryTests: XCTestCase {
     /// Everything it is given, chosen, unless told otherwise: most of these
     /// tests are about what the bar says, not about who asked for it.
     private func summary(_ snapshots: [ProviderSnapshot],
-                         limits: MenuBarLimits? = nil) -> StatusItemSummary {
+                         limits: MenuBarLimits? = nil,
+                         format: ResetTimeFormat = .automatic) -> StatusItemSummary {
         StatusItemSummary.make(
             from: snapshots,
             showing: limits ?? MenuBarLimits(isOn: true, chosen: Set(snapshots.map(\.id))),
-            now: now)
+            now: now, format: format)
     }
 
     private func on(_ chosen: Set<String>?) -> MenuBarLimits {
@@ -170,6 +171,19 @@ final class StatusItemSummaryTests: XCTestCase {
         let entry = try XCTUnwrap(summary([codex(0.12, resetIn: 20 * 86400, length: 30 * 86400)]).entries.first)
         XCTAssertTrue(entry.isBlank)
         XCTAssertTrue(entry.detail.hasPrefix("Codex — Monthly limit: 12% Used"), entry.detail)
+    }
+
+    /// That sentence is the notch's, so it is worded the way Settings asks for
+    /// — the item used to word it "remaining" whatever the preference said.
+    func testTheMeteredSentenceFollowsTheChosenResetWording() throws {
+        let account = codex(0.12, resetIn: 20 * 86400, length: 30 * 86400)
+        let automatic = try XCTUnwrap(summary([account], format: .automatic).entries.first)
+        let remaining = try XCTUnwrap(summary([account], format: .remaining).entries.first)
+        XCTAssertNotEqual(automatic.detail, remaining.detail)
+        XCTAssertEqual(remaining.detail,
+                       StatusItemSummary.make(from: [account],
+                                              showing: on(nil), now: now,
+                                              format: .remaining).entries.first?.detail)
     }
 
     // MARK: - What Settings chose
