@@ -38,20 +38,25 @@
     background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
   }
   .cell{display:flex;flex-direction:column;align-items:center;gap:6px}
-  .ringwrap{position:relative;width:56px;height:56px;transition:transform .3s cubic-bezier(.34,1.4,.64,1)}
+  /* The ring takes the Mac's own share of the body, NotchLayout.ringDiameter against sideBodyDepth: 44 in
+     70. At 56 it left an outside weekly ring 2.8 px from the screen edge, where the Mac keeps it about 10
+     clear ("far enough in that the bezel is never touched"). The arcs are drawn in a 56-unit viewBox and
+     scale with the ring on their own; the glyphs are sized here in px, so they take the same factor. */
+  :root{--ring:44px;--k:calc(44 / 56)}
+  .ringwrap{position:relative;width:var(--ring);height:var(--ring);transition:transform .3s cubic-bezier(.34,1.4,.64,1)}
   .ringwrap.pressed{transform:scale(.93)}
   .ringwrap > svg.ring,.ringwrap > svg.reading,.ringwrap > svg.activity{position:absolute;inset:0;overflow:visible} /* pins only the ring itself; an inline logo svg must not match this or it ends up in the top-left corner */
   .glyph{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-size:20px;font-weight:700;color:#e8e8ea;letter-spacing:-.5px;
+    font-size:calc(20px * var(--k));font-weight:700;color:#e8e8ea;letter-spacing:-.5px;
   }
-  .glyph.small{font-size:15px}
+  .glyph.small{font-size:calc(15px * var(--k))}
   /* Glyphs: mark = the provider's own brand mark (monochrome, shown white); appicon = the installed app's icon (colour, rounded and shrunk) */
   .glyph img,.glyph svg{display:block;pointer-events:none;user-select:none}
-  .glyph .mark{display:block;width:26px;height:26px;color:#e8e8ea}
-  .glyph .mark svg{width:26px;height:26px;fill:currentColor} /* inline SVG follows currentColor, so it dims together with the cell */
-  .glyph img.png{width:26px;height:26px;object-fit:contain}
-  .glyph img.appicon{width:30px;height:30px;border-radius:8px;object-fit:cover}
+  .glyph .mark{display:block;width:calc(26px * var(--k));height:calc(26px * var(--k));color:#e8e8ea}
+  .glyph .mark svg{width:calc(26px * var(--k));height:calc(26px * var(--k));fill:currentColor} /* inline SVG follows currentColor, so it dims together with the cell */
+  .glyph img.png{width:calc(26px * var(--k));height:calc(26px * var(--k));object-fit:contain}
+  .glyph img.appicon{width:calc(30px * var(--k));height:calc(30px * var(--k));border-radius:calc(8px * var(--k));object-fit:cover}
   .c-head .mark{display:inline-block;width:16px;height:16px;color:#e8e8ea;margin-right:2px}
   .c-head .mark svg{width:16px;height:16px;fill:currentColor}
   .pct{font-size:15px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
@@ -152,6 +157,39 @@
   body[data-edge="top"] #tail{clip-path:path('M0 32C9 32 13.68 13.44 18 0C22.32 13.44 27 32 36 32Z')}
   body[data-edge="bottom"] #tail{clip-path:path('M0 0C9 0 13.68 18.56 18 32C22.32 18.56 27 0 36 0Z')}
 
+  /* Show on hover, the Mac's .onHover: folded, the notch rests as a small pill at the edge. Its size is
+     the Mac's NotchLayout.pillWidth × pillHeight, 26 × 210 of its design px — 10 × 79 of this page's,
+     the same unscaled measures the orb and the fillets use. The open pill keeps its whole layout and is
+     clipped down to that, so everything measured off it (the card's anchor, the handles, which ring is
+     under the pointer) stays true; `#rest` draws the outline the clip takes away, which is the only
+     thing that shows a black pill against a black wallpaper. */
+  #pill{--clip-open:inset(-40px -1px -40px -1px round 0);
+    --clip-rest:inset(calc(50% - 39.5px) 0 calc(50% - 39.5px) calc(100% - 10px) round 6px 0 0 6px);
+    clip-path:var(--clip-open);transition:clip-path .36s cubic-bezier(.32,.72,.24,1)}
+  body.folded #pill{clip-path:var(--clip-rest)}
+  body[data-edge="left"] #pill{--clip-rest:inset(calc(50% - 39.5px) calc(100% - 10px) calc(50% - 39.5px) 0 round 0 6px 6px 0)}
+  body[data-edge="top"] #pill,body[data-edge="bottom"] #pill{--clip-open:inset(-1px -40px -1px -40px round 0)}
+  body[data-edge="top"] #pill{--clip-rest:inset(0 calc(50% - 39.5px) calc(100% - 10px) calc(50% - 39.5px) round 0 0 6px 6px)}
+  body[data-edge="bottom"] #pill{--clip-rest:inset(calc(100% - 10px) calc(50% - 39.5px) 0 calc(50% - 39.5px) round 6px 6px 0 0)}
+  #rest{position:absolute;box-sizing:border-box;background:#000;border:1px solid #2e2e2e;pointer-events:none;
+    right:0;top:50%;translate:0 -50%;width:10px;height:79px;border-right:none;border-radius:6px 0 0 6px;
+    opacity:0;transition:opacity .16s ease}
+  body.folded #rest{opacity:1;transition:opacity .2s ease .18s} /* arrives as the clip does */
+  body[data-edge="left"] #rest{right:auto;left:0;border-right:1px solid #2e2e2e;border-left:none;border-radius:0 6px 6px 0}
+  body[data-edge="top"] #rest,body[data-edge="bottom"] #rest{right:auto;left:50%;top:auto;translate:-50% 0;width:79px;height:10px;border:1px solid #2e2e2e}
+  body[data-edge="top"] #rest{top:0;border-top:none;border-radius:0 0 6px 6px}
+  body[data-edge="bottom"] #rest{bottom:0;border-bottom:none;border-radius:6px 6px 0 0}
+  /* The rings leave by fading and sliding a little toward the edge, one after another — the Mac's
+     NotchMotion.stagger, 28 of its design px (10 here), and no scaling: the clip does the concealing */
+  .cell{transition:opacity .18s ease calc(var(--i,0) * 28ms),translate .3s cubic-bezier(.32,.72,.24,1) calc(var(--i,0) * 28ms)}
+  body.folded .cell{opacity:0;translate:10px 0}
+  body.folded[data-edge="left"] .cell{translate:-10px 0}
+  body.folded[data-edge="top"] .cell{translate:0 -10px}
+  body.folded[data-edge="bottom"] .cell{translate:0 10px}
+  .handle{transition:opacity .2s ease}
+  body.folded .handle{opacity:0;pointer-events:none}
+  @media (prefers-reduced-motion: reduce){#pill,#rest,body.folded #rest,.cell,.handle{transition:none}}
+
   /* The two handles, one off each end of the pill, as on the Mac (SettingsOrb and MoveHandle):
      settings past the far fillet, move past the near one. At rest each is a quarter arc tucked into
      that fillet's pocket, concentric with it and a gap inside; under the pointer the same circle
@@ -204,6 +242,7 @@
     <svg class="h-glyph" viewBox="0 0 12 12" aria-hidden="true"><path fill-rule="evenodd" d="M5.1.6h1.8l.3 1.5 1.1.5 1.3-.8 1.3 1.3-.8 1.3.5 1.1 1.5.3v1.8l-1.5.3-.5 1.1.8 1.3-1.3 1.3-1.3-.8-1.1.5-.3 1.5H5.1l-.3-1.5-1.1-.5-1.3.8-1.3-1.3.8-1.3-.5-1.1L.6 6.9V5.1l1.5-.3.5-1.1-.8-1.3 1.3-1.3 1.3.8 1.1-.5zM6 4.1a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z"/></svg>
   </div>
   <div id="pill"></div><!-- one .cell per provider, stacked vertically (upstream: data-driven, the same layout for 1–5 cells) -->
+  <div id="rest"></div><!-- after the pill, so its outline is drawn over the clipped pill -->
   <div id="notice"></div>
 </div>
 <script>
@@ -246,6 +285,8 @@ let activity=[]; // working state of the non-Claude providers: {provider,state:'
 /* Which screen edge the notch is pinned to. Rust owns it (it is what placed the window); the page is
    told so it can mirror or rotate itself to match. 'right' is the default and the pre-edge layout. */
 let notchEdge='right';
+// Show on hover — the logic is beside the move handle below; declared here, since reportHot reads `folded` from the first frame
+let onHover=false, folded=false, pointerIn=false, menuOpen=false, foldTimer=null;
 /* How much of the window the taskbar covers, in CSS px, from Rust: top, right, bottom, left. The pill
    stays against the screen edge; the card is kept out of these. */
 let insets=[0,0,0,0];
@@ -738,7 +779,7 @@ function renderRing(){
   // Rebuild the DOM only when the structure changes (never swap the element under the cursor)
   const want=ps.map(p=>p.id+':'+(glyphs[p.id]?glyphs[p.id].kind:'-')).join(',');
   if(pill.dataset.cells!==want){
-    pill.innerHTML=ps.map(p=>`<div class="cell" data-p="${p.id}">
+    pill.innerHTML=ps.map((p,i)=>`<div class="cell" data-p="${p.id}" style="--i:${i}">
       <div class="ringwrap"><svg class="ring" viewBox="0 0 56 56"></svg><svg class="reading" viewBox="0 0 56 56"></svg><svg class="activity" viewBox="0 0 56 56"></svg><div class="glyph ${(!glyphs[p.id]&&p.glyph.length>1)?'small':''}">${glyphHtml(p)}</div></div>
       <div class="pct">—</div></div>`).join('');
     pill.dataset.cells=want;
@@ -925,10 +966,22 @@ function rectOf(el){const r=el.getBoundingClientRect(),k=window.devicePixelRatio
 /* Rust gates click-through on these, so they are reported whenever the pill or card moves, not only
    when the card opens: a stale pill rectangle is a pill that cannot be clicked. */
 function reportHot(){
+  if(folded){ callq('set_hot',{rects:[wakeRect()],expanded:false}).catch(()=>{}); return; }
   const open=card.classList.contains('show');
   const rects=open?[rectOf(pill),rectOf(tail),rectOf(card)]:[rectOf(pill)];
   if(placeHandles()){ rects.push(rectOf(orb)); if(showMove) rects.push(rectOf(moveHandle)); }
   callq('set_hot',{rects,expanded:open}).catch(()=>{});
+}
+/* What wakes the folded notch: the resting pill, as long along the edge as the pill and deepened into
+   the screen by the Mac's pillHotZone — Design.px(90), 34 here — because the pill is small and the
+   place that opens it should not be (NotchViewModel.wakeLength and wakeDepth). */
+const WAKE_BAND=34;
+function wakeRect(){
+  const r=document.getElementById('rest').getBoundingClientRect(), k=window.devicePixelRatio||1;
+  const b=WAKE_BAND*(parseFloat(document.documentElement.style.zoom)||1); // rects come back zoomed
+  let x=r.left,y=r.top,w=r.width,h=r.height;
+  if(notchEdge==='left') w+=b; else if(notchEdge==='top') h+=b; else if(notchEdge==='bottom'){ y-=b; h+=b; } else { x-=b; w+=b; }
+  return [x*k,y*k,w*k,h*k];
 }
 function armWatchdog(){
   requestAnimationFrame(reportHot); // wait one frame so renderCard's new content is laid out before measuring
@@ -985,6 +1038,8 @@ function pointerInHot(x,y){
 }
 let hideLogged=0;
 document.addEventListener('mousemove',e=>{
+  // Folded, the page is sent events only over the pill, so any movement at all is the pointer reaching it
+  if(folded){ pointerIn=true; unfold(); }
   if(dragging)return; // no card while dragging
   if(carrying) return; // the notch is in hand; the card would only be in the way
   setHovered(onHandle(e.clientX,e.clientY));
@@ -1038,7 +1093,7 @@ function settle(id){
 }
 // Alt+drag, the Mac's ⌥-drag. Without Alt a press on the pill is only ever a click — a ring
 // refreshes (#244) — so one that slips can no longer carry the notch off (#251).
-pill.addEventListener('mousedown',e=>{ if(e.button!==0)return; press={x:e.clientX,y:e.clientY,id:cellAt(e.clientX,e.clientY)||hoverId,alt:e.altKey}; });
+pill.addEventListener('mousedown',e=>{ if(e.button!==0||folded)return; press={x:e.clientX,y:e.clientY,id:cellAt(e.clientX,e.clientY)||hoverId,alt:e.altKey}; });
 document.addEventListener('mousemove',e=>{
   if(!press||dragging||!press.alt)return;
   if(Math.abs(e.clientY-press.y)>4||Math.abs(e.clientX-press.x)>4){
@@ -1055,9 +1110,12 @@ document.addEventListener('mouseup',e=>{
 document.addEventListener('contextmenu',e=>{
   e.preventDefault();
   if(dragging||!pointerInHot(e.clientX,e.clientY)) return;
-  invoke('show_notch_menu',{provider:cellAt(e.clientX,e.clientY)||hoverId}).catch(err=>notice('show_notch_menu failed: '+err));
+  // The command returns once the menu has closed, which is when folding may be thought about again
+  menuOpen=true;
+  invoke('show_notch_menu',{provider:cellAt(e.clientX,e.clientY)||hoverId}).catch(err=>notice('show_notch_menu failed: '+err))
+    .finally(()=>{ menuOpen=false; scheduleFold(); });
 });
-listen('drag_end',()=>{dragging=false;press=null;reportHot();}).catch(()=>{});
+listen('drag_end',()=>{dragging=false;press=null;reportHot();scheduleFold();}).catch(()=>{});
 
 function notice(msg){
   const n=document.getElementById('notice');
@@ -1125,7 +1183,7 @@ function pressIn(el){
    outlines of two sizes, which reads as four different things instead of one notch offered a place. */
 function pillShapes(){
   const cells=Math.max(1,pill.querySelectorAll('.cell').length);
-  const ring=(pill.querySelector('.ringwrap')||{}).offsetHeight||56;
+  const ring=(pill.querySelector('.ringwrap')||{}).offsetHeight||44;
   const label=(pill.querySelector('.pct')||{}).offsetHeight||20;
   const ends=36, between=14, underRing=6;
   return { depth:70, length:ends+cells*(ring+underRing+label)+(cells-1)*between };
@@ -1139,7 +1197,31 @@ moveHandle.addEventListener('mousedown',e=>{
   clearTimeout(hideTimer); hideCard();
   callq('begin_move',pillShapes()).catch(()=>{carrying=false;moveHandle.classList.remove('armed');});
 });
-listen('move_end',()=>{ carrying=false; moveHandle.classList.remove('armed'); setHovered(null); reportHot(); }).catch(()=>{});
+listen('move_end',()=>{ carrying=false; moveHandle.classList.remove('armed'); setHovered(null); reportHot(); scheduleFold(); }).catch(()=>{});
+
+/* Show on hover, the Mac's .onHover. It opens on contact and folds a moment after the pointer has gone.
+   Rust says which (notch_pointer): once click-through is back on, the page is sent nothing at all. It
+   never folds mid-carry, mid-drag or under the right-click menu, all of which take the pointer off the
+   notch on purpose — folding under them is what #239's reviewers caught, so it is ruled out here. */
+const FOLD_GRACE=450; // NotchWindowController.foldGrace
+function foldAllowed(){ return onHover&&!pointerIn&&!carrying&&!dragging&&!menuOpen; }
+function setFolded(f){
+  if(f===folded) return;
+  folded=f;
+  if(f){ clearTimeout(hideTimer); hideCard(); setHovered(null); }
+  document.body.classList.toggle('folded',f);
+  reportHot();
+}
+function unfold(){ clearTimeout(foldTimer); setFolded(false); }
+function scheduleFold(){
+  clearTimeout(foldTimer);
+  if(!onHover){ setFolded(false); return; }
+  if(foldAllowed()) foldTimer=setTimeout(()=>{ if(foldAllowed()) setFolded(true); },FOLD_GRACE);
+}
+function applyUiFlags(f){ onHover=!!(f&&f.notch_on_hover); scheduleFold(); }
+listen('notch_pointer',e=>{ pointerIn=e.payload===true; if(pointerIn) unfold(); else scheduleFold(); }).catch(()=>{});
+listen('ui_flags',e=>applyUiFlags(e.payload)).catch(()=>{});
+invoke('get_ui_flags').then(applyUiFlags).catch(()=>{});
 listen('move_handle',e=>{ showMove=e.payload!==false; reportHot(); }).catch(()=>{});
 invoke('get_move_handle').then(v=>{ showMove=v!==false; reportHot(); }).catch(()=>{});
 

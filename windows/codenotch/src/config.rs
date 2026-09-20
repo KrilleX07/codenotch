@@ -81,6 +81,12 @@ pub struct Config {
     /// false = the pill is kept off the screen edge entirely; the tray icon is then the only way in
     #[serde(default = "yes")]
     pub notch_visible: bool,
+    /// true = the Mac's Show on hover: the notch rests as a small pill at the edge and opens when the
+    /// pointer reaches it. Only means anything while `notch_visible` is true. The Mac's default, and a
+    /// fresh install's; a config written before this existed keeps the always-open notch it had (see
+    /// `load`), so nobody's notch starts folding on an update.
+    #[serde(default = "yes")]
+    pub notch_on_hover: bool,
     /// false = the tray icon is hidden. Refused while the notch is also hidden, because that would
     /// leave the app running with no way to reach it.
     #[serde(default = "yes")]
@@ -113,6 +119,18 @@ pub fn edge_or_right(value: &str) -> String {
 /// where it lies flat (the pill is a row) and the window's width and height swap.
 pub fn edge_is_vertical(edge: &str) -> bool {
     matches!(edge, "left" | "right")
+}
+
+/// Show on hover is the default for a fresh install, as on the Mac, but a config saved before the
+/// setting existed was saved by a notch that was always open, and it stays that way: its owner never
+/// chose a folding notch, so an update is not where they should meet one.
+fn keep_open_on_upgrade(cfg: &mut Config, raw: Option<&str>) {
+    let saved_without_it = raw
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(t).ok())
+        .is_some_and(|v| v.get("notch_on_hover").is_none());
+    if saved_without_it {
+        cfg.notch_on_hover = false;
+    }
 }
 
 /// Migration: the one position every edge used to share becomes the position for the edge the notch
@@ -188,6 +206,7 @@ impl Default for Config {
             antigravity_limit: default_antigravity_limit(),
             antigravity_model: default_antigravity_model(),
             notch_visible: true,
+            notch_on_hover: true,
             tray_visible: true,
             show_move_handle: true,
         }
@@ -208,6 +227,7 @@ pub fn load() -> Config {
         .as_deref()
         .and_then(|t| serde_json::from_str(t).ok())
         .unwrap_or_default();
+    keep_open_on_upgrade(&mut cfg, raw.as_deref());
 
     // Migration: before slots existed the notch was a plain provider list, one ring each. That is
     // exactly a list of slots, so nobody's choice is lost and nobody has to reconfigure anything.
@@ -244,7 +264,26 @@ pub fn save(cfg: &Config) {
 
 #[cfg(test)]
 mod tests {
-    use super::{carry_shared_position, snap_scale, weekly_ring_or_off, Config};
+    use super::{carry_shared_position, keep_open_on_upgrade, snap_scale, weekly_ring_or_off, Config};
+
+    /// Show on hover is the Mac's default, so a fresh install gets it — but an update must not start
+    /// folding a notch whose owner has only ever known it open.
+    #[test]
+    fn only_a_fresh_install_starts_on_hover() {
+        let mut fresh = Config::default();
+        keep_open_on_upgrade(&mut fresh, None);
+        assert!(fresh.notch_on_hover, "no config file: the Mac's default");
+
+        let mut upgraded = Config::default();
+        keep_open_on_upgrade(&mut upgraded, Some(r#"{"notch_visible":true}"#));
+        assert!(!upgraded.notch_on_hover, "saved before the setting existed: stays open");
+
+        for chosen in [true, false] {
+            let mut c = Config { notch_on_hover: chosen, ..Default::default() };
+            keep_open_on_upgrade(&mut c, Some(&format!(r#"{{"notch_on_hover":{chosen}}}"#)));
+            assert_eq!(c.notch_on_hover, chosen, "a choice already made is kept");
+        }
+    }
 
     /// The Mac keeps one offset per edge; sliding the notch along one must not move it on another.
     #[test]

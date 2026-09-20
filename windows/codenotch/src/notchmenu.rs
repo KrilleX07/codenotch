@@ -2,7 +2,7 @@
 //! usage page: a left click used to open it, and a left click now refreshes the ring instead.
 
 use crate::i18n::tr;
-use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder};
 use tauri::{AppHandle, Manager, Window};
 
 /// Tauri hands every menu event to every handler, the tray's included, so these ids carry their own
@@ -37,10 +37,15 @@ pub fn show_notch_menu(window: Window, provider: Option<String>) -> Result<(), S
         .map_err(err)?;
         menu = menu.item(&open);
     }
+    // Checked while the notch is always open; unticking it is Show on hover
+    let keep_open = CheckMenuItemBuilder::with_id(format!("{PREFIX}keep_open"), tr(&lang, "keep_open"))
+        .checked(crate::keeps_open(app))
+        .build(app)
+        .map_err(err)?;
     let quit = MenuItemBuilder::with_id(format!("{PREFIX}quit"), tr(&lang, "quit_app"))
         .build(app)
         .map_err(err)?;
-    let menu = menu.separator().item(&quit).build().map_err(err)?;
+    let menu = menu.separator().item(&keep_open).separator().item(&quit).build().map_err(err)?;
     #[cfg(windows)]
     let before = foreground();
     // Returns once the menu has closed
@@ -83,6 +88,7 @@ fn handle(app: &AppHandle, id: &str) {
     }
     match item {
         "refresh" => crate::refresh_all(app),
+        "keep_open" => crate::toggle_keep_open(app),
         "quit" => app.exit(0),
         _ => {}
     }
