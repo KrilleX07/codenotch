@@ -21,7 +21,7 @@ final class NotchWindowController {
     /// One "Sign in to …" item per provider that needs a browser session.
     var signInItems: [(title: String, action: () -> Void)] = []
     /// Driven by the notch's own chrome.
-    var onToggleKeepOpen: (() -> Void)?
+
     /// Refetch a single provider, asked for by clicking its ring.
     var onRefreshProvider: ((String) async -> Void)?
     /// Open the settings window, asked for by clicking the handle.
@@ -1034,17 +1034,17 @@ final class NotchWindowController {
             withAnimation(NotchMotion.unfold) { model.isExpanded = true }
         case .onHover:
             if !Runtime.isUnderTest { panel?.orderFrontRegardless() }
+            model.isPinned = false
             model.isAlwaysOn = false
             // Fold now rather than waiting for the pointer to leave: it may
             // already be somewhere else, in which case nothing would arrive to
             // close it and "on hover" would look exactly like "always show".
-            if !model.isPinned {
-                withAnimation(NotchMotion.unfold) {
-                    model.isExpanded = false
-                    model.hoveredIndex = nil
-                }
+            withAnimation(NotchMotion.unfold) {
+                model.isExpanded = false
+                model.hoveredIndex = nil
             }
         case .hidden:
+            model.isPinned = false
             model.isAlwaysOn = false
             model.isExpanded = false
             model.hoveredIndex = nil
@@ -1181,7 +1181,6 @@ final class NotchWindowController {
             withAnimation(NotchMotion.unfold) { model.isExpanded = true }
         }
         updateInteractiveRects()
-        onToggleKeepOpen?()
     }
 
     func cellIndex(along: CGFloat) -> Int? {

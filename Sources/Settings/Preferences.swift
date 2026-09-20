@@ -82,16 +82,9 @@ final class Preferences: ObservableObject {
     @Published var notchVisibility: NotchVisibility {
         didSet {
             defaults.set(notchVisibility.rawValue, forKey: Keys.visibility)
-            if notchVisibility != oldValue {
-                notchPinned = false
-            }
         }
     }
 
-    /// Whether the notch is pinned open by the user.
-    @Published var notchPinned: Bool {
-        didSet { defaults.set(notchPinned, forKey: Keys.pinned) }
-    }
 
     /// Whether a frontmost full-screen app folds the notch away.
     @Published var foldsForFullScreen: Bool {
@@ -458,7 +451,6 @@ final class Preferences: ObservableObject {
         static let mutedAlerts = "mutedAlertProviders"
         static let hasLaunched = "hasLaunchedBefore"
         static let visibility = "notchVisibility"
-        static let pinned = "notchPinned"
         static let foldsForFullScreen = "foldsForFullScreen"
         static let presence = "appPresence"
         static let showsLimitsInMenuBar = "showsLimitsInMenuBar"
@@ -684,7 +676,6 @@ final class Preferences: ObservableObject {
         // like it failed to start.
         self.notchVisibility = defaults.string(forKey: Keys.visibility)
             .flatMap(NotchVisibility.init(rawValue:)) ?? .onHover
-        self.notchPinned = defaults.bool(forKey: Keys.pinned)
         // Absent means the fold that has shipped since full-screen detection
         // exists — the setting silences it, it does not introduce it.
         self.foldsForFullScreen = defaults.object(forKey: Keys.foldsForFullScreen) as? Bool ?? true

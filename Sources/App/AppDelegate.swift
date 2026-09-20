@@ -414,11 +414,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak fleet] in fleet?.apply($0) }
                 .store(in: &cancellables)
 
-            preferences.$notchPinned
-                .receive(on: RunLoop.main)
-                .sink { [weak fleet] in fleet?.applyPinned($0) }
-                .store(in: &cancellables)
-
             preferences.$foldsForFullScreen
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(foldsForFullScreen: $0) }
@@ -504,11 +499,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             fleet.onReposition = { [weak preferences] offset in
                 preferences?.setOffset(offset, for: preferences?.notchEdge ?? .right)
-            }
-            
-            fleet.onToggleKeepOpen = { [weak preferences] in
-                guard let prefs = preferences else { return }
-                prefs.notchPinned.toggle()
             }
 
             // Writing the preference is the whole of it: `notchEdge` is
