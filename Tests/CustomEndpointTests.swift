@@ -152,4 +152,97 @@ final class CustomEndpointTests: XCTestCase {
         endpoint.deleteAPIKey()
         XCTAssertNil(endpoint.apiKey)
     }
+
+    func testCustomEndpointTokenTracking() {
+        var endpoint = CustomEndpoint(
+            name: "Tokens Test",
+            baseURL: "http://localhost:8000/v1",
+            trackingUnit: .tokens,
+            monthlyBudgetTokensM: 10.0,
+            currentTokensUsedM: 2.5
+        )
+
+        XCTAssertEqual(endpoint.trackingUnit, .tokens)
+        XCTAssertEqual(endpoint.computedTokensUsedM, 2.5)
+        XCTAssertEqual(endpoint.usedFraction, 0.25, accuracy: 0.001)
+
+        // Tokens at budget
+        endpoint.currentTokensUsedM = 10.0
+        XCTAssertEqual(endpoint.usedFraction, 1.0, accuracy: 0.001)
+
+        // Tokens over budget caps at 1.0
+        endpoint.currentTokensUsedM = 15.0
+        XCTAssertEqual(endpoint.usedFraction, 1.0, accuracy: 0.001)
+
+        // No budget
+        endpoint.monthlyBudgetTokensM = nil
+        XCTAssertEqual(endpoint.usedFraction, 0.0)
+
+        // Display remaining mode
+        var remainingEndpoint = CustomEndpoint(
+            name: "Remaining Tokens Test",
+            baseURL: "http://localhost:8000/v1",
+            trackingUnit: .tokens,
+            monthlyBudgetTokensM: 100.0,
+            currentTokensUsedM: 25.0,
+            displayRemaining: true
+        )
+        XCTAssertEqual(remainingEndpoint.remainingTokensFraction, 0.75, accuracy: 0.001)
+        XCTAssertEqual(remainingEndpoint.remainingFraction, 0.75, accuracy: 0.001)
+        XCTAssertEqual(remainingEndpoint.usedTokensFraction, 0.75, accuracy: 0.001)
+        XCTAssertEqual(remainingEndpoint.usedFraction, 0.75, accuracy: 0.001)
+
+        remainingEndpoint.currentTokensUsedM = 100.0
+        XCTAssertEqual(remainingEndpoint.remainingFraction, 0.0, accuracy: 0.001)
+        XCTAssertEqual(remainingEndpoint.usedFraction, 0.0, accuracy: 0.001)
+    }
+
+    func testFormatTokenMillions() {
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(0), "0M")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(0.05), "50k")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(0.25), "250k")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(1.0), "1M")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(2.5), "2.5M")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(10.0), "10M")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(25.0), "25M")
+        XCTAssertEqual(CustomEndpoint.formatTokenMillions(1200.0), "1.2B")
+    }
+
+    func testCustomEndpointTokenCodable() throws {
+        let original = CustomEndpoint(
+            name: "Token Codable Test",
+            baseURL: "http://localhost:11434/v1",
+            trackingUnit: .tokens,
+            monthlyBudgetTokensM: 50.0,
+            currentTokensUsedM: 12.5
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(CustomEndpoint.self, from: data)
+
+        XCTAssertEqual(decoded.trackingUnit, .tokens)
+        XCTAssertEqual(decoded.monthlyBudgetTokensM, 50.0)
+        XCTAssertEqual(decoded.currentTokensUsedM, 12.5)
+
+        // Legacy JSON without trackingUnit should decode as .currency
+        let legacyJSON = """
+        {
+            "id": "legacy-id",
+            "name": "Legacy Endpoint",
+            "baseURL": "https://api.openai.com/v1",
+            "headerKey": "Authorization",
+            "accentColorHex": "#6366F1",
+            "isEnabled": true,
+            "monthlyBudgetUSD": 20.0,
+            "currentSpendUSD": 5.0
+        }
+        """.data(using: .utf8)!
+
+        let decodedLegacy = try JSONDecoder().decode(CustomEndpoint.self, from: legacyJSON)
+        XCTAssertEqual(decodedLegacy.trackingUnit, .currency)
+        XCTAssertEqual(decodedLegacy.monthlyBudgetUSD, 20.0)
+        XCTAssertEqual(decodedLegacy.currentSpendUSD, 5.0)
+        XCTAssertNil(decodedLegacy.monthlyBudgetTokensM)
+        XCTAssertNil(decodedLegacy.currentTokensUsedM)
+    }
 }

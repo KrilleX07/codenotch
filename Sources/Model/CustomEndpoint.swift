@@ -27,6 +27,11 @@ public enum CustomEndpointHealth: String, Codable, Equatable, Sendable {
     }
 }
 
+public enum CustomEndpointTrackingUnit: String, Codable, CaseIterable, Sendable {
+    case currency = "currency"
+    case tokens = "tokens"
+}
+
 public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
     public static let keychainService = "com.vinzdg.codenotch.custom-endpoint"
 
@@ -54,8 +59,11 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
     public var accentColorHex: String
     public var iconPreset: String?
     public var customIconFilename: String?
+    public var trackingUnit: CustomEndpointTrackingUnit
     public var monthlyBudgetUSD: Double?
     public var currentSpendUSD: Double?
+    public var monthlyBudgetTokensM: Double?
+    public var currentTokensUsedM: Double?
     public var displayRemaining: Bool
     public var showCurrency: Bool
     public var lastLatencyMs: Int?
@@ -73,8 +81,11 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         accentColorHex: String = "#6366F1",
         iconPreset: String? = "openai",
         customIconFilename: String? = nil,
+        trackingUnit: CustomEndpointTrackingUnit = .currency,
         monthlyBudgetUSD: Double? = nil,
         currentSpendUSD: Double? = nil,
+        monthlyBudgetTokensM: Double? = nil,
+        currentTokensUsedM: Double? = nil,
         displayRemaining: Bool = false,
         showCurrency: Bool = false,
         lastLatencyMs: Int? = nil,
@@ -91,8 +102,11 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         self.accentColorHex = accentColorHex
         self.iconPreset = iconPreset
         self.customIconFilename = customIconFilename
+        self.trackingUnit = trackingUnit
         self.monthlyBudgetUSD = monthlyBudgetUSD
         self.currentSpendUSD = currentSpendUSD
+        self.monthlyBudgetTokensM = monthlyBudgetTokensM
+        self.currentTokensUsedM = currentTokensUsedM
         self.displayRemaining = displayRemaining
         self.showCurrency = showCurrency
         self.lastLatencyMs = lastLatencyMs
@@ -121,16 +135,67 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         currentSpendUSD ?? 0
     }
 
-    public var remainingFraction: Double {
-        guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
-        let spent = computedSpendUSD
+    public var computedTokensUsedM: Double {
+        currentTokensUsedM ?? 0
+    }
+
+    public var remainingTokensFraction: Double {
+        guard let budget = monthlyBudgetTokensM, budget > 0 else { return 0 }
+        let spent = computedTokensUsedM
         return min(max((budget - spent) / budget, 0.0), 1.0)
     }
 
-    public var usedFraction: Double {
-        guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
-        let spentFraction = min(max(computedSpendUSD / budget, 0.0), 1.0)
+    public var usedTokensFraction: Double {
+        guard let budget = monthlyBudgetTokensM, budget > 0 else { return 0 }
+        let spentFraction = min(max(computedTokensUsedM / budget, 0.0), 1.0)
         return displayRemaining ? (1.0 - spentFraction) : spentFraction
+    }
+
+    public var remainingFraction: Double {
+        switch trackingUnit {
+        case .currency:
+            guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
+            let spent = computedSpendUSD
+            return min(max((budget - spent) / budget, 0.0), 1.0)
+        case .tokens:
+            return remainingTokensFraction
+        }
+    }
+
+    public var usedFraction: Double {
+        switch trackingUnit {
+        case .currency:
+            guard let budget = monthlyBudgetUSD, budget > 0 else { return 0 }
+            let spentFraction = min(max(computedSpendUSD / budget, 0.0), 1.0)
+            return displayRemaining ? (1.0 - spentFraction) : spentFraction
+        case .tokens:
+            return usedTokensFraction
+        }
+    }
+
+    public static func formatTokenMillions(_ millions: Double) -> String {
+        if millions >= 1000 {
+            return String(format: "%.1fB", millions / 1000.0)
+        } else if millions >= 10 {
+            return String(format: "%.0fM", millions)
+        } else if millions >= 1 {
+            let rounded = (millions * 10).rounded() / 10
+            if rounded.truncatingRemainder(dividingBy: 1) == 0 {
+                return String(format: "%.0fM", rounded)
+            } else {
+                return String(format: "%.1fM", rounded)
+            }
+        } else if millions > 0 {
+            let thousands = millions * 1000
+            let roundedK = (thousands * 10).rounded() / 10
+            if roundedK.truncatingRemainder(dividingBy: 1) == 0 {
+                return String(format: "%.0fk", roundedK)
+            } else {
+                return String(format: "%.1fk", roundedK)
+            }
+        } else {
+            return "0M"
+        }
     }
 
     public var providerID: String {
@@ -150,10 +215,13 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         case accentColorHex
         case iconPreset
         case customIconFilename
+        case trackingUnit
         case monthlyBudgetUSD
         case budgetMonthlyUSD
         case currentSpendUSD
         case directSpendUSD
+        case monthlyBudgetTokensM
+        case currentTokensUsedM
         case displayRemaining
         case showCurrency
         case lastLatencyMs
@@ -174,10 +242,13 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         self.accentColorHex = try container.decodeIfPresent(String.self, forKey: .accentColorHex) ?? "#6366F1"
         self.iconPreset = try container.decodeIfPresent(String.self, forKey: .iconPreset)
         self.customIconFilename = try container.decodeIfPresent(String.self, forKey: .customIconFilename)
+        self.trackingUnit = try container.decodeIfPresent(CustomEndpointTrackingUnit.self, forKey: .trackingUnit) ?? .currency
         self.monthlyBudgetUSD = try container.decodeIfPresent(Double.self, forKey: .monthlyBudgetUSD)
             ?? container.decodeIfPresent(Double.self, forKey: .budgetMonthlyUSD)
         self.currentSpendUSD = try container.decodeIfPresent(Double.self, forKey: .currentSpendUSD)
             ?? container.decodeIfPresent(Double.self, forKey: .directSpendUSD)
+        self.monthlyBudgetTokensM = try container.decodeIfPresent(Double.self, forKey: .monthlyBudgetTokensM)
+        self.currentTokensUsedM = try container.decodeIfPresent(Double.self, forKey: .currentTokensUsedM)
         self.displayRemaining = try container.decodeIfPresent(Bool.self, forKey: .displayRemaining) ?? false
         self.showCurrency = try container.decodeIfPresent(Bool.self, forKey: .showCurrency) ?? false
         self.lastLatencyMs = try container.decodeIfPresent(Int.self, forKey: .lastLatencyMs)
@@ -203,8 +274,13 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         try container.encode(accentColorHex, forKey: .accentColorHex)
         try container.encodeIfPresent(iconPreset, forKey: .iconPreset)
         try container.encodeIfPresent(customIconFilename, forKey: .customIconFilename)
+        if trackingUnit != .currency {
+            try container.encode(trackingUnit, forKey: .trackingUnit)
+        }
         try container.encodeIfPresent(monthlyBudgetUSD, forKey: .monthlyBudgetUSD)
         try container.encodeIfPresent(currentSpendUSD, forKey: .currentSpendUSD)
+        try container.encodeIfPresent(monthlyBudgetTokensM, forKey: .monthlyBudgetTokensM)
+        try container.encodeIfPresent(currentTokensUsedM, forKey: .currentTokensUsedM)
         if displayRemaining {
             try container.encode(displayRemaining, forKey: .displayRemaining)
         }

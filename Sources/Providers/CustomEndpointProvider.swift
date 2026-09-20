@@ -213,59 +213,116 @@ actor CustomEndpointProvider: UsageProvider {
             throw UsageProviderError.badResponse(status: 503)
         }
 
-        let spend = current.computedSpendUSD
-        let budget = current.monthlyBudgetUSD
-
         var windows: [LimitWindow] = []
 
-        if let budget = budget, budget > 0 {
-            let remaining = max(0.0, budget - spend)
-            let isRemaining = current.displayRemaining
-            let displayFraction = isRemaining ? current.remainingFraction : current.usedFraction
-            let usedFormatted = String(format: "$%.2f", isRemaining ? remaining : spend)
-            let budgetFormatted = String(format: "$%.2f", budget)
-            let detailText = isRemaining
-                ? String(format: L10n.t("%@ / %@ remaining"), usedFormatted, budgetFormatted)
-                : "\(usedFormatted) / \(budgetFormatted)"
-            let label = isRemaining ? L10n.t("Remaining Budget") : L10n.t("Monthly Budget")
+        switch current.trackingUnit {
+        case .currency:
+            let spend = current.computedSpendUSD
+            let budget = current.monthlyBudgetUSD
 
-            // Exhaustion band is based on spend fraction so 100% remaining is ample
-            let spendFraction = min(max(spend / budget, 0.0), 1.0)
-            let bandOverride = isRemaining ? UsageBand.band(for: spendFraction) : nil
+            if let budget = budget, budget > 0 {
+                let remaining = max(0.0, budget - spend)
+                let isRemaining = current.displayRemaining
+                let displayFraction = isRemaining ? current.remainingFraction : current.usedFraction
+                let usedFormatted = String(format: "$%.2f", isRemaining ? remaining : spend)
+                let budgetFormatted = String(format: "$%.2f", budget)
+                let detailText = isRemaining
+                    ? String(format: L10n.t("%@ / %@ remaining"), usedFormatted, budgetFormatted)
+                    : "\(usedFormatted) / \(budgetFormatted)"
+                let label = isRemaining ? L10n.t("Remaining Budget") : L10n.t("Monthly Budget")
 
-            windows.append(
-                LimitWindow(
-                    id: "monthly-budget",
-                    group: nil,
-                    label: label,
-                    usedFraction: displayFraction,
-                    remaining: nil,
-                    used: nil,
-                    usedText: usedFormatted,
-                    detail: detailText,
-                    resetsAt: Self.nextMonthlyResetDate(),
-                    duration: 30 * 86400,
-                    bandOverride: bandOverride,
-                    prefersUsedText: current.showCurrency
+                // Exhaustion band is based on spend fraction so 100% remaining is ample
+                let spendFraction = min(max(spend / budget, 0.0), 1.0)
+                let bandOverride = isRemaining ? UsageBand.band(for: spendFraction) : nil
+
+                windows.append(
+                    LimitWindow(
+                        id: "monthly-budget",
+                        group: nil,
+                        label: label,
+                        usedFraction: displayFraction,
+                        remaining: nil,
+                        used: nil,
+                        usedText: usedFormatted,
+                        detail: detailText,
+                        resetsAt: Self.nextMonthlyResetDate(),
+                        duration: 30 * 86400,
+                        bandOverride: bandOverride,
+                        prefersUsedText: current.showCurrency
+                    )
                 )
-            )
-        } else {
-            let usedFormatted = String(format: "$%.2f", spend)
-            windows.append(
-                LimitWindow(
-                    id: "spend-tracking",
-                    group: nil,
-                    label: L10n.t("Total Spend"),
-                    usedFraction: nil,
-                    remaining: nil,
-                    used: nil,
-                    usedText: usedFormatted,
-                    detail: usedFormatted,
-                    resetsAt: nil,
-                    duration: nil,
-                    prefersUsedText: true
+            } else {
+                let usedFormatted = String(format: "$%.2f", spend)
+                windows.append(
+                    LimitWindow(
+                        id: "spend-tracking",
+                        group: nil,
+                        label: L10n.t("Total Spend"),
+                        usedFraction: nil,
+                        remaining: nil,
+                        used: nil,
+                        usedText: usedFormatted,
+                        detail: usedFormatted,
+                        resetsAt: nil,
+                        duration: nil,
+                        prefersUsedText: true
+                    )
                 )
-            )
+            }
+
+        case .tokens:
+            let tokensUsed = current.computedTokensUsedM
+            let budget = current.monthlyBudgetTokensM
+
+            if let budget = budget, budget > 0 {
+                let remaining = max(0.0, budget - tokensUsed)
+                let isRemaining = current.displayRemaining
+                let displayFraction = isRemaining ? current.remainingFraction : current.usedFraction
+                let usedFormatted = CustomEndpoint.formatTokenMillions(isRemaining ? remaining : tokensUsed)
+                let budgetFormatted = CustomEndpoint.formatTokenMillions(budget)
+                let detailText = isRemaining
+                    ? String(format: L10n.t("%@ / %@ tokens remaining"), usedFormatted, budgetFormatted)
+                    : String(format: L10n.t("%@ / %@ tokens"), usedFormatted, budgetFormatted)
+                let label = isRemaining ? L10n.t("Remaining Tokens") : L10n.t("Monthly Tokens")
+
+                let tokensFraction = min(max(tokensUsed / budget, 0.0), 1.0)
+                let bandOverride = isRemaining ? UsageBand.band(for: tokensFraction) : nil
+
+                windows.append(
+                    LimitWindow(
+                        id: "token-budget",
+                        group: nil,
+                        label: label,
+                        usedFraction: displayFraction,
+                        remaining: nil,
+                        used: nil,
+                        usedText: usedFormatted,
+                        detail: detailText,
+                        resetsAt: Self.nextMonthlyResetDate(),
+                        duration: 30 * 86400,
+                        bandOverride: bandOverride,
+                        prefersUsedText: current.showCurrency
+                    )
+                )
+            } else {
+                let usedFormatted = CustomEndpoint.formatTokenMillions(tokensUsed)
+                let detailText = String(format: L10n.t("%@ tokens"), usedFormatted)
+                windows.append(
+                    LimitWindow(
+                        id: "token-tracking",
+                        group: nil,
+                        label: L10n.t("Tokens Used"),
+                        usedFraction: nil,
+                        remaining: nil,
+                        used: nil,
+                        usedText: usedFormatted,
+                        detail: detailText,
+                        resetsAt: nil,
+                        duration: nil,
+                        prefersUsedText: true
+                    )
+                )
+            }
         }
 
         let headlineID = windows.first?.id

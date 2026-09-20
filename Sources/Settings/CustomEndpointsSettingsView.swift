@@ -263,32 +263,62 @@ struct CustomEndpointsSettingsView: View {
                 }
             }
 
-            // Dollar usage progress bar
-            let spend = endpoint.computedSpendUSD
-            let budget = endpoint.monthlyBudgetUSD
-
+            // Usage progress bar (Currency or Tokens)
             HStack(spacing: 8) {
-                if let budget = budget, budget > 0 {
-                    ProgressView(value: endpoint.usedFraction)
-                        .tint(Color(hex: endpoint.accentColorHex))
-                        .scaleEffect(x: 1, y: 0.8, anchor: .center)
+                switch endpoint.trackingUnit {
+                case .currency:
+                    let spend = endpoint.computedSpendUSD
+                    let budget = endpoint.monthlyBudgetUSD
 
-                    let amountText: String = {
-                        if endpoint.displayRemaining {
-                            let rem = max(0.0, budget - spend)
-                            return String(format: L10n.t("%@ / %@ left"), String(format: "$%.2f", rem), String(format: "$%.2f", budget))
-                        } else {
-                            return String(format: "$%.2f / $%.2f", spend, budget)
-                        }
-                    }()
+                    if let budget = budget, budget > 0 {
+                        ProgressView(value: endpoint.usedFraction)
+                            .tint(Color(hex: endpoint.accentColorHex))
+                            .scaleEffect(x: 1, y: 0.8, anchor: .center)
 
-                    Text(amountText)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(String(format: L10n.t("Spend: $%.2f"), spend))
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                        let amountText: String = {
+                            if endpoint.displayRemaining {
+                                let rem = max(0.0, budget - spend)
+                                return String(format: L10n.t("%@ / %@ left"), String(format: "$%.2f", rem), String(format: "$%.2f", budget))
+                            } else {
+                                return String(format: "$%.2f / $%.2f", spend, budget)
+                            }
+                        }()
+
+                        Text(amountText)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(String(format: L10n.t("Spend: $%.2f"), spend))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+
+                case .tokens:
+                    let tokensUsed = endpoint.computedTokensUsedM
+                    let budget = endpoint.monthlyBudgetTokensM
+
+                    if let budget = budget, budget > 0 {
+                        ProgressView(value: endpoint.usedFraction)
+                            .tint(Color(hex: endpoint.accentColorHex))
+                            .scaleEffect(x: 1, y: 0.8, anchor: .center)
+
+                        let amountText: String = {
+                            if endpoint.displayRemaining {
+                                let rem = max(0.0, budget - tokensUsed)
+                                return String(format: L10n.t("%@ / %@ left"), CustomEndpoint.formatTokenMillions(rem), CustomEndpoint.formatTokenMillions(budget))
+                            } else {
+                                return "\(CustomEndpoint.formatTokenMillions(tokensUsed)) / \(CustomEndpoint.formatTokenMillions(budget))"
+                            }
+                        }()
+
+                        Text(amountText)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(String(format: L10n.t("Tokens: %@"), CustomEndpoint.formatTokenMillions(tokensUsed)))
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 if !endpoint.selectedModel.isEmpty {
@@ -514,60 +544,139 @@ struct CustomEndpointsSettingsView: View {
 
             Divider()
 
-            // Budget & Dollar Spending configuration
+            // Budget & Usage configuration (Currency or Tokens)
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.t("Monthly Budget & Spend Tracking"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
                 HStack {
-                    Text(L10n.t("Monthly Budget ($)"))
+                    Text(L10n.t("Tracking Unit"))
                         .frame(width: 120, alignment: .leading)
-                    TextField(L10n.t("e.g. 20.00 (leave empty for unlimited)"), text: Binding(
-                        get: {
-                            editingEndpoint?.monthlyBudgetUSD.map { String(format: "%.2f", $0) } ?? ""
-                        },
-                        set: {
-                            editingEndpoint?.monthlyBudgetUSD = Double($0)
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
-
-                HStack {
-                    Text(L10n.t("Current Spend ($)"))
-                        .frame(width: 120, alignment: .leading)
-                    TextField(L10n.t("e.g. 4.25"), text: Binding(
-                        get: {
-                            editingEndpoint?.currentSpendUSD.map { String(format: "%.2f", $0) } ?? ""
-                        },
-                        set: {
-                            editingEndpoint?.currentSpendUSD = Double($0)
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Toggle(L10n.t("Show dollar amount ($) instead of percentage (%)"), isOn: Binding(
-                        get: { editingEndpoint?.showCurrency ?? false },
-                        set: { editingEndpoint?.showCurrency = $0 }
-                    ))
-                    .toggleStyle(.checkbox)
-
-                    Toggle(L10n.t("Show remaining budget instead of spent"), isOn: Binding(
-                        get: { editingEndpoint?.displayRemaining ?? false },
-                        set: { editingEndpoint?.displayRemaining = $0 }
-                    ))
-                    .toggleStyle(.checkbox)
-                }
-
-                HStack {
-                    Spacer()
-                    Button(L10n.t("Reset Spend")) {
-                        editingEndpoint?.currentSpendUSD = 0
+                    Picker("", selection: Binding(
+                        get: { editingEndpoint?.trackingUnit ?? .currency },
+                        set: { editingEndpoint?.trackingUnit = $0 }
+                    )) {
+                        Text(L10n.t("USD ($)")).tag(CustomEndpointTrackingUnit.currency)
+                        Text(L10n.t("Tokens (Millions)")).tag(CustomEndpointTrackingUnit.tokens)
                     }
-                    .buttonStyle(SettingsButtonStyle(kind: .standard, compact: true))
+                    .pickerStyle(.segmented)
+                }
+
+                if (editingEndpoint?.trackingUnit ?? .currency) == .tokens {
+                    HStack {
+                        Text(L10n.t("Monthly Budget (M tokens)"))
+                            .frame(width: 120, alignment: .leading)
+                        TextField(L10n.t("e.g. 10.0 (leave empty for unlimited)"), text: Binding(
+                            get: {
+                                if let val = editingEndpoint?.monthlyBudgetTokensM {
+                                    return val.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", val) : String(val)
+                                }
+                                return ""
+                            },
+                            set: {
+                                if $0.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    editingEndpoint?.monthlyBudgetTokensM = nil
+                                } else {
+                                    editingEndpoint?.monthlyBudgetTokensM = Double($0)
+                                }
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+
+                    HStack {
+                        Text(L10n.t("Tokens Used (M tokens)"))
+                            .frame(width: 120, alignment: .leading)
+                        TextField(L10n.t("e.g. 2.5"), text: Binding(
+                            get: {
+                                if let val = editingEndpoint?.currentTokensUsedM {
+                                    return val.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", val) : String(val)
+                                }
+                                return ""
+                            },
+                            set: {
+                                if $0.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    editingEndpoint?.currentTokensUsedM = nil
+                                } else {
+                                    editingEndpoint?.currentTokensUsedM = Double($0)
+                                }
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle(L10n.t("Show token count instead of percentage (%)"), isOn: Binding(
+                            get: { editingEndpoint?.showCurrency ?? false },
+                            set: { editingEndpoint?.showCurrency = $0 }
+                        ))
+                        .toggleStyle(.checkbox)
+
+                        Toggle(L10n.t("Show remaining budget instead of spent"), isOn: Binding(
+                            get: { editingEndpoint?.displayRemaining ?? false },
+                            set: { editingEndpoint?.displayRemaining = $0 }
+                        ))
+                        .toggleStyle(.checkbox)
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button(L10n.t("Reset Tokens")) {
+                            editingEndpoint?.currentTokensUsedM = 0
+                        }
+                        .buttonStyle(SettingsButtonStyle(kind: .standard, compact: true))
+                    }
+                } else {
+                    HStack {
+                        Text(L10n.t("Monthly Budget ($)"))
+                            .frame(width: 120, alignment: .leading)
+                        TextField(L10n.t("e.g. 20.00 (leave empty for unlimited)"), text: Binding(
+                            get: {
+                                editingEndpoint?.monthlyBudgetUSD.map { String(format: "%.2f", $0) } ?? ""
+                            },
+                            set: {
+                                editingEndpoint?.monthlyBudgetUSD = Double($0)
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+
+                    HStack {
+                        Text(L10n.t("Current Spend ($)"))
+                            .frame(width: 120, alignment: .leading)
+                        TextField(L10n.t("e.g. 4.25"), text: Binding(
+                            get: {
+                                editingEndpoint?.currentSpendUSD.map { String(format: "%.2f", $0) } ?? ""
+                            },
+                            set: {
+                                editingEndpoint?.currentSpendUSD = Double($0)
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle(L10n.t("Show dollar amount ($) instead of percentage (%)"), isOn: Binding(
+                            get: { editingEndpoint?.showCurrency ?? false },
+                            set: { editingEndpoint?.showCurrency = $0 }
+                        ))
+                        .toggleStyle(.checkbox)
+
+                        Toggle(L10n.t("Show remaining budget instead of spent"), isOn: Binding(
+                            get: { editingEndpoint?.displayRemaining ?? false },
+                            set: { editingEndpoint?.displayRemaining = $0 }
+                        ))
+                        .toggleStyle(.checkbox)
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button(L10n.t("Reset Spend")) {
+                            editingEndpoint?.currentSpendUSD = 0
+                        }
+                        .buttonStyle(SettingsButtonStyle(kind: .standard, compact: true))
+                    }
                 }
             }
 
