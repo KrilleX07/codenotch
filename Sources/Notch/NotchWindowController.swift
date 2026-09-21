@@ -299,7 +299,8 @@ final class NotchWindowController {
         let frame = NotchGeometry.panelFrame(
             for: screen, panelSize: size, edge: model.edge,
             alongOffset: model.alongOffset, slack: model.slack,
-            trailingExtent: model.trailingExtent
+            trailingExtent: model.trailingExtent,
+            leadingExtent: model.leadingExtent
         )
 
         if let panel {
