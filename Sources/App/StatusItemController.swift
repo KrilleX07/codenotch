@@ -22,6 +22,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     var onRefreshProvider: ((String) -> Void)?
     /// Refetch every provider.
     var onRefreshAll: (() -> Void)?
+    /// Switch limits in the bar on or off — the same Settings preference,
+    /// written back through the same place, never a second one kept here. The
+    /// controller stores no answer of its own: it asks `limits.isOn`, which is
+    /// the preference mirrored in, and so the tick and Settings are one thing.
+    var onToggleLimits: ((Bool) -> Void)?
 
     /// The latest readings, mirrored from the store. The menu is rebuilt from
     /// these every time it opens, so reset countdowns and ages are fresh; the
@@ -171,6 +176,18 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             }
         }
         menu.addItem(.separator())
+        // The one Settings switch, within reach of the bar it changes: a tick
+        // beside its own wording, which is how macOS writes a setting into a
+        // menu. It sits with the utilities rather than the readings, because
+        // it is about the item rather than any provider on it.
+        let showLimits = NSMenuItem(
+            title: L10n.t("Show limit information in menu bar"),
+            action: #selector(toggleLimits), keyEquivalent: ""
+        )
+        showLimits.target = self
+        showLimits.state = limits.isOn ? .on : .off
+        menu.addItem(showLimits)
+        menu.addItem(.separator())
         menu.addItem(
             withTitle: L10n.t("Refresh all"), action: #selector(refreshAll), keyEquivalent: "r"
         ).target = self
@@ -222,6 +239,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func refreshAll() { onRefreshAll?() }
+
+    /// Asks for the opposite of what is on now. The answer comes back the way
+    /// Settings' own does — through the preference and into `limits` — so the
+    /// item redraws once, from one place, and the tick is right the next time
+    /// the menu opens whichever switch was used.
+    @objc private func toggleLimits() { onToggleLimits?(!limits.isOn) }
 
     /// The provider's own row: name, headline figure, and age when stale — the
     /// same three facts the tooltip header shows. Clicking re-reads it.
