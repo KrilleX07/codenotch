@@ -45,6 +45,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
     };
     let used = if w.derived { format!("~{used}") } else { used };
     match lang {
+        "pt-BR" => format!("Usado {used}% · {left}% restante"),
         "ru" => format!("Использовано {used}% · осталось {left}%"),
         "zh" => format!("已用 {used}% · 剩余 {left}%"),
         "zh-Hant" => format!("已用 {used}% · 剩餘 {left}%"),
@@ -59,6 +60,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
 pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if resets_at <= now {
         return match lang {
+            "pt-BR" => "Redefinindo…",
             "ru" => "Сброс…",
             "zh" => "正在重置…",
             "zh-Hant" => "正在重置…",
@@ -73,6 +75,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if minutes < 60 {
         let m = minutes.max(1);
         return match lang {
+            "pt-BR" => format!("Redefine em {m} min"),
             "ru" => format!("Сброс через {m} мин"),
             "zh" => format!("{m} 分钟后重置"),
             "zh-Hant" => format!("{m} 分鐘後重置"),
@@ -84,6 +87,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if hours < 24 {
         let (h, m) = (hours, minutes % 60);
         return match lang {
+            "pt-BR" => format!("Redefine em {h} h {m} min"),
             "ru" => format!("Сброс через {h} ч {m} мин"),
             "zh" => format!("{h} 小时 {m} 分钟后重置"),
             "zh-Hant" => format!("{h} 小時 {m} 分鐘後重置"),
@@ -95,6 +99,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if days < 7 {
         let (d, h) = (days, hours % 24);
         return match lang {
+            "pt-BR" => format!("Redefine em {d} d {h} h"),
             "ru" => format!("Сброс через {d} дн. {h} ч"),
             "zh" => format!("{d} 天 {h} 小时后重置"),
             "zh-Hant" => format!("{d} 天 {h} 小時後重置"),
@@ -106,6 +111,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     }
     let when = system_datetime(resets_at);
     match lang {
+        "pt-BR" => format!("Redefine em {when}"),
         "ru" => format!("Сброс: {when}"),
         "zh" => format!("{when} 重置"),
         "zh-Hant" => format!("{when} 重置"),
@@ -120,6 +126,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
     let minutes = now.saturating_sub(since) / 60_000;
     let span = if minutes < 60 {
         match lang {
+            "pt-BR" => format!("{minutes} min"),
             "ru" => format!("{minutes} мин"),
             "zh" => format!("{minutes} 分钟"),
             "zh-Hant" => format!("{minutes} 分鐘"),
@@ -130,6 +137,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
     } else {
         let h = (minutes as f64 / 60.0).round() as u64;
         match lang {
+            "pt-BR" => format!("{h} h"),
             "ru" => format!("{h} ч"),
             "zh" => format!("{h} 小时"),
             "zh-Hant" => format!("{h} 小時"),
@@ -139,6 +147,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
         }
     };
     match lang {
+        "pt-BR" => format!("há {span}"),
         "ru" => format!("{span} назад"),
         "zh" => format!("{span}前"),
         "zh-Hant" => format!("{span}前"),
@@ -152,6 +161,15 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
 /// starts sending a name nobody has translated prints that name rather than nothing.
 pub fn label(name: &str, lang: &str) -> String {
     let translated = match (lang, name) {
+        ("pt-BR", "Current session") => "Sessão atual",
+        ("pt-BR", "Weekly (all models)") => "Semanal (todos os modelos)",
+        ("pt-BR", "Weekly (Opus)") => "Semanal (Opus)",
+        ("pt-BR", "Weekly (model-scoped)") => "Semanal (por modelo)",
+        ("pt-BR", "Weekly limit" | "Weekly Limit") => "Limite semanal",
+        ("pt-BR", "Monthly limit" | "Monthly Limit") => "Limite mensal",
+        ("pt-BR", "5-hour Limit" | "5-Hour Limit") => "Limite de 5 horas",
+        ("pt-BR", "Included usage") => "Uso incluído",
+        ("pt-BR", "API usage") => "Uso da API",
         ("ru", "Current session") => "Текущий сеанс",
         ("ru", "Weekly (all models)") => "Недельный (все модели)",
         ("ru", "Weekly (Opus)") => "Недельный (Opus)",
@@ -332,6 +350,20 @@ mod tests {
             window_line(&w, MIN, "ru"),
             "Текущий сеанс: Использовано 61% · осталось 39% · Сброс через 59 мин"
         );
+    }
+
+    #[test]
+    fn brazilian_portuguese_formats_usage_and_limits() {
+        let w = window("Current session", 0.61, Some(60 * MIN));
+        assert_eq!(
+            window_line(&w, MIN, "pt-BR"),
+            "Sessão atual: Usado 61% · 39% restante · Redefine em 59 min"
+        );
+        assert_eq!(label("Weekly limit", "pt-BR"), "Limite semanal");
+        assert_eq!(label("Monthly limit", "pt-BR"), "Limite mensal");
+        assert_eq!(label("Included usage", "pt-BR"), "Uso incluído");
+        assert_eq!(label("API usage", "pt-BR"), "Uso da API");
+        assert_eq!(ago(0, 20 * MIN, "pt-BR"), "há 20 min");
     }
 
     #[test]
