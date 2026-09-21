@@ -413,6 +413,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // up as one thing and then change its mind.
             statusItem.limits = preferences.menuBarLimits
             statusItem.resetTimeFormat = preferences.resetTimeFormat
+            statusItem.showsWeeklyLimit = preferences.showsWeeklyLimitInMenuBar
 
             preferences.$appPresence
                 .receive(on: RunLoop.main)
@@ -434,6 +435,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // menu, which the run loop's default mode would hold back.
                 .receive(on: DispatchQueue.main)
                 .sink { [weak statusItem] in statusItem?.limits = $0 }
+                .store(in: &cancellables)
+
+            // Presentation only, like the parent limit switch: redraw from the
+            // current snapshots immediately and never start another fetch.
+            preferences.$showsWeeklyLimitInMenuBar
+                .removeDuplicates()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak statusItem] in statusItem?.showsWeeklyLimit = $0 }
                 .store(in: &cancellables)
 
             preferences.$notchVisibility

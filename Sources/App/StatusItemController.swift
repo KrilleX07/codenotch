@@ -53,6 +53,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             updateButton()
         }
     }
+    /// Adds the compact weekly-consumption ring to each provider that has a
+    /// valid weekly reading. Presentation only; changing it redraws from the
+    /// snapshots already held here and never asks the store to refresh.
+    var showsWeeklyLimit: Bool = false {
+        didSet {
+            guard showsWeeklyLimit != oldValue else { return }
+            updateButton()
+        }
+    }
     /// What the item shows now, so a publication that changes nothing on it —
     /// a local runtime is re-read every second — redraws nothing.
     private var summary: StatusItemSummary?
@@ -109,7 +118,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func updateButton(now: Date = Date()) {
         guard let item, let button = item.button else { return }
         let next = StatusItemSummary.make(from: snapshots, showing: limits, now: now,
-                                          format: resetTimeFormat)
+                                          format: resetTimeFormat,
+                                          showingWeeklyLimit: showsWeeklyLimit)
         scheduleCountdown(at: next.nextChange)
         guard next != summary else { return }
         summary = next

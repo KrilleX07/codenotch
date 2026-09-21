@@ -21,6 +21,9 @@ struct StatusItemSummary: Equatable {
         /// A remembered reading rather than a fresh one, dimmed the way the
         /// notch dims its ring.
         let isStale: Bool
+        /// Weekly allowance consumed, for the compact ring. Nil means the
+        /// provider did not publish a valid current weekly percentage.
+        let weeklyFraction: Double?
         /// What the tooltip and VoiceOver say about this entry, in full.
         let detail: String
 
@@ -61,7 +64,8 @@ struct StatusItemSummary: Equatable {
     /// a limit to show — which gives the item its icon back.
     @MainActor
     static func make(from snapshots: [ProviderSnapshot], showing limits: MenuBarLimits,
-                     now: Date, format: ResetTimeFormat = .automatic) -> StatusItemSummary {
+                     now: Date, format: ResetTimeFormat = .automatic,
+                     showingWeeklyLimit: Bool = false) -> StatusItemSummary {
         guard limits.isOn else { return StatusItemSummary(entries: [], nextChange: nil) }
         let summarised = snapshots.filter { snapshot in
             canSummarise(snapshot) && limits.isChosen(snapshot.id)
@@ -70,7 +74,7 @@ struct StatusItemSummary: Equatable {
         for snapshot in summarised { marks[snapshot.glyph, default: 0] += 1 }
         let entries = summarised.map { snapshot in
             entry(for: snapshot, sharesMark: marks[snapshot.glyph, default: 0] > 1, now: now,
-                  format: format)
+                  format: format, showingWeeklyLimit: showingWeeklyLimit)
         }
         let nextChange = summarised
             .compactMap { $0.fiveHourWindow?.resetsAt }
@@ -85,7 +89,8 @@ struct StatusItemSummary: Equatable {
 
     @MainActor
     private static func entry(for snapshot: ProviderSnapshot, sharesMark: Bool,
-                              now: Date, format: ResetTimeFormat) -> Entry {
+                              now: Date, format: ResetTimeFormat,
+                              showingWeeklyLimit: Bool) -> Entry {
         let window = snapshot.fiveHourWindow
         // Past its reset a reading describes a window that is over. The store
         // re-reads on its first tick after a reset; until that lands the honest
@@ -99,15 +104,26 @@ struct StatusItemSummary: Equatable {
         let label = sharesMark
             ? ClaudeProfile.slug(fromProviderID: snapshot.id) ?? CodexProfile.slug(fromProviderID: snapshot.id)
             : nil
+        let weeklyWindow = showingWeeklyLimit ? snapshot.weeklyLimitWindow : nil
+        let weeklyIsOver = weeklyWindow?.resetsAt.map { $0 <= now } ?? false
+        let weeklyFraction = weeklyIsOver ? nil : weeklyWindow?.usedFraction.flatMap { fraction in
+            fraction.isFinite && fraction >= 0 ? fraction : nil
+        }
+        var detail = detail(for: snapshot, window: window, isOver: isOver,
+                            countdown: countdown, now: now, format: format)
+        if weeklyFraction != nil, let weeklyWindow {
+            detail += " · \(L10n.t("Weekly Limit")): \(weeklyWindow.summary)"
+        }
         return Entry(
             id: snapshot.id,
             glyph: snapshot.glyph,
             label: label,
             percent: percent,
             countdown: countdown ?? Entry.unknown,
-            isStale: snapshot.status.isStale && percent != Entry.unknown,
-            detail: detail(for: snapshot, window: window, isOver: isOver,
-                           countdown: countdown, now: now, format: format)
+            isStale: snapshot.status.isStale
+                && (percent != Entry.unknown || weeklyFraction != nil),
+            weeklyFraction: weeklyFraction,
+            detail: detail
         )
     }
 
@@ -162,7 +178,7 @@ struct StatusItemArtwork {
     }
 
     private enum Mark {
-        case glyph(ProviderGlyph, NSRect)
+        case glyph(ProviderGlyph, NSRect, weeklyFraction: Double?)
         case text(String, NSPoint)
         /// The upright rule between two providers' readings.
         case rule(NSRect)
@@ -223,7 +239,7 @@ struct StatusItemArtwork {
             }
             let alpha: CGFloat = entry.isStale ? 0.5 : 1
             let box = NSRect(x: x, y: middle - glyphSize / 2, width: glyphSize, height: glyphSize)
-            marks.append((.glyph(entry.glyph, box), alpha))
+            marks.append((.glyph(entry.glyph, box, weeklyFraction: entry.weeklyFraction), alpha))
             x += glyphSize + glyphGap
             if let label = entry.label {
                 text(label, alpha: alpha)
@@ -237,11 +253,12 @@ struct StatusItemArtwork {
             let percentWidth = width(entry.percent)
             x += max(0, percentRoom - percentWidth)
             text(entry.percent, alpha: alpha)
-            guard !summary.isCompact else { continue }
-            text(separator, alpha: alpha)
-            let start = x
-            text(entry.countdown, alpha: alpha)
-            x = max(x, start + countdownRoom)
+            if !summary.isCompact {
+                text(separator, alpha: alpha)
+                let start = x
+                text(entry.countdown, alpha: alpha)
+                x = max(x, start + countdownRoom)
+            }
         }
         return (x.rounded(.up), marks)
     }
@@ -263,9 +280,38 @@ struct StatusItemArtwork {
             ink.setFill()
             // Composited like everything else here; plain `fill()` copies.
             rect.fill(using: .sourceOver)
-        case .glyph(let glyph, let box):
-            let inset = box.width * (1 - glyph.opticalScale) / 2
-            let rect = box.insetBy(dx: inset, dy: inset)
+        case .glyph(let glyph, let box, let weeklyFraction):
+            var glyphBox = box
+            if let weeklyFraction {
+                // Weekly usage borrows the app's established ring language and
+                // occupies the glyph's existing box, so enabling it adds no
+                // width even with several providers. The faint complete track
+                // makes 0% visible; the clockwise arc grows to a full circle.
+                let circle = box.insetBy(dx: 0.75, dy: 0.75)
+                let radius = min(circle.width, circle.height) / 2
+                let track = NSBezierPath()
+                track.appendArc(withCenter: NSPoint(x: circle.midX, y: circle.midY),
+                                radius: radius, startAngle: 90, endAngle: -270,
+                                clockwise: true)
+                track.lineWidth = 1
+                ink.withAlphaComponent(alpha * 0.32).setStroke()
+                track.stroke()
+
+                let clamped = CGFloat(min(max(weeklyFraction, 0), 1))
+                if clamped > 0 {
+                    let progress = NSBezierPath()
+                    progress.appendArc(withCenter: NSPoint(x: circle.midX, y: circle.midY),
+                                       radius: radius, startAngle: 90,
+                                       endAngle: 90 - 360 * clamped, clockwise: true)
+                    progress.lineWidth = 1.25
+                    progress.lineCapStyle = .round
+                    ink.setStroke()
+                    progress.stroke()
+                }
+                glyphBox = box.insetBy(dx: 2.25, dy: 2.25)
+            }
+            let inset = glyphBox.width * (1 - glyph.opticalScale) / 2
+            let rect = glyphBox.insetBy(dx: inset, dy: inset)
             // The same preference as the notch: a bundled asset over the trace,
             // fitted rather than stretched, since not every mark is square.
             if let asset = NSImage(named: glyph.assetName), asset.size.width > 0, asset.size.height > 0 {

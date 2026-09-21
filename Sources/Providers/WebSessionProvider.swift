@@ -106,6 +106,10 @@ final class WebSessionProvider: NSObject, UsageProvider {
         /// signed into, and not always the obvious one: QianwenAI's console
         /// serves its SPA only under `/home`, so `origin/usage` is a 404.
         let managePath: String
+        /// Semantic window roles declared by the site, rather than inferred
+        /// from array order or display copy.
+        let headlineID: String?
+        let weeklyID: String?
         /// Runs in the page as an async function body. Must return a JSON string
         /// `{ "status": Int, "body": String }`.
         let script: String
@@ -119,6 +123,8 @@ final class WebSessionProvider: NSObject, UsageProvider {
              associatedHosts: [String] = [],
              pollsDuringSignIn: Bool = false,
              managePath: String = "usage",
+             headlineID: String? = nil,
+             weeklyID: String? = nil,
              detailParse: ((String) throws -> ProviderUsageDetail?)? = nil,
              parse: @escaping (String) throws -> [LimitWindow]) {
             self.id = id
@@ -131,6 +137,8 @@ final class WebSessionProvider: NSObject, UsageProvider {
             self.associatedHosts = associatedHosts
             self.pollsDuringSignIn = pollsDuringSignIn
             self.managePath = managePath
+            self.headlineID = headlineID
+            self.weeklyID = weeklyID
             self.detailParse = detailParse
             self.parse = parse
         }
@@ -369,6 +377,8 @@ final class WebSessionProvider: NSObject, UsageProvider {
             fidelity: site.fidelity,
             status: .ok,
             windows: windows,
+            headlineID: site.headlineID,
+            weeklyID: site.weeklyID,
             usageDetail: usageDetail
         )
     }

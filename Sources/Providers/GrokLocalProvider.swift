@@ -40,7 +40,8 @@ actor GrokLocalProvider: UsageProvider {
             fidelity: .official,
             status: .ok,
             windows: try GrokUsage.windows(creditsJSON: credits),
-            headlineID: "credits"
+            headlineID: "credits",
+            weeklyID: "credits"
         )
     }
 
