@@ -133,11 +133,14 @@ struct LimitWindow: Identifiable, Codable, Equatable {
 
     /// Exact cycle length when known; optional to keep older archives readable.
     let duration: TimeInterval?
+    var bandOverride: UsageBand? = nil
+    var prefersUsedText: Bool = false
 
     init(id: String, group: String? = nil, label: String, usedFraction: Double? = nil,
          remaining: Int? = nil, used: Int? = nil, usedText: String? = nil, detail: String? = nil,
          money: UsageMoneyBreakdown? = nil, resetsAt: Date? = nil,
-         duration: TimeInterval? = nil) {
+         duration: TimeInterval? = nil, bandOverride: UsageBand? = nil,
+         prefersUsedText: Bool = false) {
         self.id = id
         self.group = group
         self.label = label
@@ -149,6 +152,48 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         self.money = money
         self.resetsAt = resetsAt
         self.duration = duration
+        self.bandOverride = bandOverride
+        self.prefersUsedText = prefersUsedText
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, group, label, usedFraction, remaining, used, detail, money, usedText, resetsAt, duration, bandOverride, prefersUsedText
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.group = try container.decodeIfPresent(String.self, forKey: .group)
+        self.label = try container.decode(String.self, forKey: .label)
+        self.usedFraction = try container.decodeIfPresent(Double.self, forKey: .usedFraction)
+        self.remaining = try container.decodeIfPresent(Int.self, forKey: .remaining)
+        self.used = try container.decodeIfPresent(Int.self, forKey: .used)
+        self.detail = try container.decodeIfPresent(String.self, forKey: .detail)
+        self.money = try container.decodeIfPresent(UsageMoneyBreakdown.self, forKey: .money)
+        self.usedText = try container.decodeIfPresent(String.self, forKey: .usedText)
+        self.resetsAt = try container.decodeIfPresent(Date.self, forKey: .resetsAt)
+        self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
+        self.bandOverride = try container.decodeIfPresent(UsageBand.self, forKey: .bandOverride)
+        self.prefersUsedText = try container.decodeIfPresent(Bool.self, forKey: .prefersUsedText) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(group, forKey: .group)
+        try container.encode(label, forKey: .label)
+        try container.encodeIfPresent(usedFraction, forKey: .usedFraction)
+        try container.encodeIfPresent(remaining, forKey: .remaining)
+        try container.encodeIfPresent(used, forKey: .used)
+        try container.encodeIfPresent(detail, forKey: .detail)
+        try container.encodeIfPresent(money, forKey: .money)
+        try container.encodeIfPresent(usedText, forKey: .usedText)
+        try container.encodeIfPresent(resetsAt, forKey: .resetsAt)
+        try container.encodeIfPresent(duration, forKey: .duration)
+        try container.encodeIfPresent(bandOverride, forKey: .bandOverride)
+        if prefersUsedText {
+            try container.encode(prefersUsedText, forKey: .prefersUsedText)
+        }
     }
 
     /// Whether this is a rolling five-hour window — the limit a coding session
@@ -269,6 +314,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// A model cell has its own display preference, but polling belongs to the
     /// runtime that supplied it.
     var sourceProviderID: String?
+    var customIconFilename: String?
 
     var providerID: String { sourceProviderID ?? id }
 
@@ -324,6 +370,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     }
 
     var usedFraction: Double? { headline?.usedFraction }
+    var bandOverride: UsageBand? { headline?.bandOverride }
 
     /// The five-hour window, where the provider has one: the headline when it
     /// is that window, otherwise the account's own.
@@ -369,6 +416,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
             return showsLocalPerformance ? (localPerformance?.headlineText ?? "— tok/s")
                 : (localModel?.memoryText ?? "—")
         }
+        if headline?.prefersUsedText == true, let usedText = headline?.usedText { return usedText }
         if let usedFraction { return Percent.text(for: usedFraction) + "%" }
         if let remaining = headline?.remaining { return LimitWindow.compact(remaining) }
         if let usedText = headline?.usedText { return usedText }

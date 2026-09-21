@@ -56,12 +56,16 @@ protocol UsageProvider {
     /// so users see sign-in guidance; local daemon providers return `false`
     /// so an inactive service does not take up a ring in the notch.
     var isVisibleWhenAbsent: Bool { get }
+    /// Optional custom icon image filename saved on disk.
+    var customIconFilename: String? { get }
 }
 
 extension UsageProvider {
     func presentAccountSwitch() { presentSignIn() }
 
     var isVisibleWhenAbsent: Bool { true }
+
+    var customIconFilename: String? { nil }
 }
 
 extension UsageProvider {

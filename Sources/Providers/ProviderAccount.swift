@@ -134,6 +134,7 @@ struct ProviderSummary: Identifiable, Equatable {
     let id: String
     let name: String
     let glyph: ProviderGlyph
+    var customIconFilename: String? = nil
     let account: ProviderAccount?
     let signIn: SignInRoute
     /// Whether macOS refused this credential on the last fetch — the one state

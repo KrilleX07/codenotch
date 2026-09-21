@@ -29643,6 +29643,465 @@
           }
         }
       }
+    },
+    "Authorization": {
+      "extractionState": "manual"
+    },
+    "Appearance & Icon": {
+      "extractionState": "manual"
+    },
+    "Test": {
+      "extractionState": "manual"
+    },
+    "Monthly Budget ($)": {
+      "extractionState": "manual"
+    },
+    "Configured Endpoints": {
+      "extractionState": "manual"
+    },
+    "Monthly Budget": {
+      "extractionState": "manual"
+    },
+    "Hide Templates": {
+      "extractionState": "manual"
+    },
+    "No custom endpoints yet. Click 'Add Endpoint' or pick a Quick Template to get started.": {
+      "extractionState": "manual"
+    },
+    "Icon": {
+      "extractionState": "manual"
+    },
+    "Add Endpoint": {
+      "extractionState": "manual"
+    },
+    "Choose a preset to pre-fill settings:": {
+      "extractionState": "manual"
+    },
+    "Scan Local Engines": {
+      "extractionState": "manual"
+    },
+    "Online": {
+      "extractionState": "manual"
+    },
+    "e.g. 20.00 (leave empty for unlimited)": {
+      "extractionState": "manual"
+    },
+    "URL must start with http:// or https:// and have a valid host.": {
+      "extractionState": "manual"
+    },
+    "Name": {
+      "extractionState": "manual"
+    },
+    "Auth Header": {
+      "extractionState": "manual"
+    },
+    "Base URL": {
+      "extractionState": "manual"
+    },
+    "Model": {
+      "extractionState": "manual"
+    },
+    "New Custom Endpoint": {
+      "extractionState": "manual"
+    },
+    "Discovered Local Services:": {
+      "extractionState": "manual"
+    },
+    "e.g. 4.25": {
+      "extractionState": "manual"
+    },
+    "Select a model...": {
+      "extractionState": "manual"
+    },
+    "Edit": {
+      "extractionState": "manual"
+    },
+    "Upload Custom Image...": {
+      "extractionState": "manual"
+    },
+    "Save Endpoint": {
+      "extractionState": "manual"
+    },
+    "Configure endpoint details and credentials in Settings.": {
+      "extractionState": "manual"
+    },
+    "Edit Endpoint": {
+      "extractionState": "manual"
+    },
+    "API Key": {
+      "extractionState": "manual"
+    },
+    "Model name (e.g. gpt-4o, llama-3.3)": {
+      "extractionState": "manual"
+    },
+    "Custom Endpoints": {
+      "extractionState": "manual"
+    },
+    "e.g. My OpenRouter, Local vLLM": {
+      "extractionState": "manual"
+    },
+    "Custom Endpoint": {
+      "extractionState": "manual"
+    },
+    "sk-... (optional for local)": {
+      "extractionState": "manual"
+    },
+    "Current Spend ($)": {
+      "extractionState": "manual"
+    },
+    "Monthly Budget & Spend Tracking": {
+      "extractionState": "manual"
+    },
+    "Not Checked": {
+      "extractionState": "manual"
+    },
+    "Spend: $%.2f": {
+      "extractionState": "manual"
+    },
+    "Slow": {
+      "extractionState": "manual"
+    },
+    "Test Connection & Fetch Models": {
+      "extractionState": "manual"
+    },
+    "Ring Accent": {
+      "extractionState": "manual"
+    },
+    "Unreachable": {
+      "extractionState": "manual"
+    },
+    "Add to Endpoints": {
+      "extractionState": "manual"
+    },
+    "Connect any OpenAI-compatible API, local inference runtime, or custom proxy.": {
+      "extractionState": "manual"
+    },
+    "Total Spend": {
+      "extractionState": "manual"
+    },
+    "https://api.openai.com/v1": {
+      "extractionState": "manual"
+    },
+    "Quick Templates": {
+      "extractionState": "manual"
+    },
+    "Reset Spend": {
+      "extractionState": "manual"
+    },
+    "Cancel": {
+      "extractionState": "manual"
+    },
+    "Show remaining budget (%) instead of spent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show remaining budget (%) instead of spent"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan sisa anggaran (%) bukan terpakai"
+          }
+        }
+      }
+    },
+    "Remaining Budget": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remaining Budget"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sisa Anggaran"
+          }
+        }
+      }
+    },
+    "%@ / %@ remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ remaining"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sisa %@ / %@"
+          }
+        }
+      }
+    },
+    "%@ / %@ left": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ left"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sisa %@ / %@"
+          }
+        }
+      }
+    },
+    "Show dollar amount ($) instead of percentage (%)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show dollar amount ($) instead of percentage (%)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan nominal dollar ($) bukan persentase (%)"
+          }
+        }
+      }
+    },
+    "Tracking Unit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracking Unit"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unit Pelacakan"
+          }
+        }
+      }
+    },
+    "Tokens (Millions)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens (Millions)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token (Juta)"
+          }
+        }
+      }
+    },
+    "Monthly Budget (M tokens)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly Budget (M tokens)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anggaran Bulanan (Juta token)"
+          }
+        }
+      }
+    },
+    "Tokens Used (M tokens)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens Used (M tokens)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token Terpakai (Juta token)"
+          }
+        }
+      }
+    },
+    "Tokens Used": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens Used"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token Terpakai"
+          }
+        }
+      }
+    },
+    "Tokens: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokens: %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token: %@"
+          }
+        }
+      }
+    },
+    "%@ / %@ tokens remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ tokens remaining"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sisa %@ / %@ token"
+          }
+        }
+      }
+    },
+    "%@ / %@ tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ tokens"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ token"
+          }
+        }
+      }
+    },
+    "%@ tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tokens"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ token"
+          }
+        }
+      }
+    },
+    "Remaining Tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remaining Tokens"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sisa Token"
+          }
+        }
+      }
+    },
+    "Monthly Tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly Tokens"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token Bulanan"
+          }
+        }
+      }
+    },
+    "Reset Tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Tokens"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset Token"
+          }
+        }
+      }
+    },
+    "Show token count instead of percentage (%)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show token count instead of percentage (%)"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan jumlah token bukan persentase (%)"
+          }
+        }
+      }
+    },
+    "e.g. 10.0 (leave empty for unlimited)": {
+      "extractionState": "manual"
+    },
+    "e.g. 2.5": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

@@ -138,9 +138,16 @@ struct TooltipSilhouette: Shape {
             tailRect = CGRect(x: rect.midX - tail.width / 2, y: cardRect.maxY,
                               width: tail.width, height: tail.height)
         }
+        var clampedTailOffset = tailOffset
         switch direction {
-        case .leading, .trailing: tailRect.origin.y += tailOffset
-        case .up, .down:          tailRect.origin.x += tailOffset
+        case .leading, .trailing:
+            let maxOffset = max(0, (cardRect.height / 2) - NotchLayout.cardCorner - (tail.height / 2))
+            clampedTailOffset = min(max(tailOffset, -maxOffset), maxOffset)
+            tailRect.origin.y += clampedTailOffset
+        case .up, .down:
+            let maxOffset = max(0, (cardRect.width / 2) - NotchLayout.cardCorner - (tail.width / 2))
+            clampedTailOffset = min(max(tailOffset, -maxOffset), maxOffset)
+            tailRect.origin.x += clampedTailOffset
         }
 
         return RoundedRectangle(cornerRadius: NotchLayout.cardCorner, style: .circular)
@@ -208,6 +215,18 @@ private struct TooltipShell<Content: View>: View {
         }
     }
 
+    private var clampedTailOffset: CGFloat {
+        let size = TooltipTail.size(for: direction)
+        switch direction {
+        case .leading, .trailing:
+            let maxOffset = max(0, (height / 2) - NotchLayout.cardCorner - (size.height / 2))
+            return min(max(tailOffset, -maxOffset), maxOffset)
+        case .up, .down:
+            let maxOffset = max(0, (NotchLayout.cardWidth / 2) - NotchLayout.cardCorner - (size.width / 2))
+            return min(max(tailOffset, -maxOffset), maxOffset)
+        }
+    }
+
     private var tail: some View {
         let size = TooltipTail.size(for: direction)
         // The tail is deliberately outside the clip: it is part of the card's
@@ -215,8 +234,8 @@ private struct TooltipShell<Content: View>: View {
         return TooltipTail(direction: direction)
             .fill(surfaceFill)
             .frame(width: size.width, height: size.height)
-            .offset(x: direction == .up || direction == .down ? tailOffset : 0,
-                    y: direction == .leading || direction == .trailing ? tailOffset : 0)
+            .offset(x: direction == .up || direction == .down ? clampedTailOffset : 0,
+                    y: direction == .leading || direction == .trailing ? clampedTailOffset : 0)
     }
 
     var body: some View {
@@ -232,12 +251,12 @@ private struct TooltipShell<Content: View>: View {
                     if #available(macOS 26.0, *) {
                         Color.clear
                             .glassEffect(surfaceStyle.glass, in: TooltipSilhouette(direction: direction,
-                                                                                   tailOffset: tailOffset))
+                                                                                   tailOffset: clampedTailOffset))
                             .background {
                                 if let dim = TooltipGlassContrast.dim(surfaceStyle: surfaceStyle,
-                                                                       colorScheme: colorScheme,
-                                                                       reduceTransparency: reduceTransparency) {
-                                    TooltipSilhouette(direction: direction, tailOffset: tailOffset).fill(dim)
+                                                                      colorScheme: colorScheme,
+                                                                      reduceTransparency: reduceTransparency) {
+                                    TooltipSilhouette(direction: direction, tailOffset: clampedTailOffset).fill(dim)
                                 }
                             }
                     }
@@ -412,7 +431,10 @@ private struct LimitWindowRow: View {
     @Environment(\.usageCriticalLimit) private var criticalLimit
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
-    private var band: UsageBand { UsageBand.band(for: window.usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit) }
+    private var band: UsageBand {
+        if let override = window.bandOverride { return override }
+        return UsageBand.band(for: window.usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
+    }
     private var trackWidth: CGFloat { NotchLayout.cardWidth - 2 * NotchLayout.cardPadding - inset }
     private var fillWidth: CGFloat {
         let fraction = CGFloat(min(max(window.usedFraction ?? 0, 0), 1))
@@ -576,7 +598,7 @@ private struct ProviderTooltip: View {
                           : L10n.t("\(snapshot.displayName) Usage"),
                           subtitle: snapshot.plan,
                           note: activityNote ?? (snapshot.localModel?.brand != nil ? snapshot.displayName : readingAge)) {
-                ProviderGlyphView(glyph: snapshot.glyph)
+                ProviderGlyphView(glyph: snapshot.glyph, customIconFilename: snapshot.customIconFilename)
                     .foregroundStyle(Palette.textPrimary)
             }
 

@@ -26,7 +26,7 @@ extension View {
 /// crossing-and-notification machinery it switches is Notifications' to
 /// explain.
 private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
-    case accounts, phone, deepseek, ollama, lmstudio, appearance, notifications, general
+    case accounts, phone, deepseek, ollama, lmstudio, customEndpoints, appearance, notifications, general
 
     /// The sections the sidebar lists; Phone only once pairing is offered.
     static var visible: [SettingsSection] {
@@ -36,7 +36,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     /// Providers with a pane of their own. They are accounts too, so the
     /// sidebar nests them under Accounts rather than listing them beside
     /// Appearance and General, where they read as app-wide settings.
-    static let providerPanes: [SettingsSection] = [.deepseek, .ollama, .lmstudio]
+    static let providerPanes: [SettingsSection] = [.deepseek, .ollama, .lmstudio, .customEndpoints]
 
     /// The sidebar's own rows: everything visible that is not nested.
     static var topLevel: [SettingsSection] {
@@ -52,6 +52,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .deepseek:      return "DeepSeek"
         case .ollama:        return "Ollama"   // a product name, the same in every language
         case .lmstudio:      return "LM Studio"
+        case .customEndpoints: return L10n.t("Custom Endpoints")
         case .appearance:    return L10n.t("Appearance")
         case .notifications: return L10n.t("Notifications")
         case .general:       return L10n.t("General")
@@ -77,6 +78,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .deepseek:      return L10n.t("Peak and off-peak pricing for your DeepSeek spend.")
         case .ollama:        return L10n.t("Models running in Ollama on this Mac.")
         case .lmstudio:      return L10n.t("Models loaded in LM Studio on this Mac.")
+        case .customEndpoints: return L10n.t("OpenAI-compatible APIs, local runtimes and custom proxies.")
         case .appearance:    return L10n.t("How the notch looks and where it sits.")
         case .notifications: return L10n.t("What Codenotch tells you, and when.")
         case .general:       return L10n.t("Startup, updates and everything else.")
@@ -90,6 +92,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .deepseek:      return "chart.line.uptrend.xyaxis"
         case .ollama:        return "desktopcomputer"
         case .lmstudio:      return "cpu"
+        case .customEndpoints: return "network"
         case .appearance:    return "paintbrush.fill"
         case .notifications: return "bell.badge.fill"
         case .general:       return "gearshape.fill"
@@ -106,6 +109,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .deepseek:      return .orange
         case .ollama:        return .teal
         case .lmstudio:      return .purple
+        case .customEndpoints: return .indigo
         case .appearance:    return .indigo
         case .notifications: return .red
         case .general:       return .gray
@@ -530,6 +534,9 @@ struct SettingsView: View {
                 let choices = MenuBarChoice.listed(in: snapshots)
                 if choices != menuBarChoices { menuBarChoices = choices }
             }
+        .onReceive(preferences.$customEndpoints.receive(on: RunLoop.main)) { _ in
+            accounts = providers()
+        }
     }
 
     /// The subject list: a full-height column on a shade lighter than the
@@ -606,6 +613,7 @@ struct SettingsView: View {
         // Opening a provider's pane from elsewhere must not land on a row
         // that is folded out of sight.
         .onChange(of: selection) { section in
+            if section == .accounts { accounts = providers() }
             if SettingsSection.providerPanes.contains(section) { accountsExpanded = true }
         }
         .frame(width: SettingsView.sidebarWidth)
@@ -681,6 +689,8 @@ struct SettingsView: View {
                 }
                 .formStyle(.grouped)
             }
+        case .customEndpoints:
+            CustomEndpointsSettingsView(preferences: preferences)
         case .appearance:    appearancePane
         case .notifications: notificationsPane
         case .general:       generalPane
@@ -1644,7 +1654,7 @@ private struct AccountRow: View {
                 HStack(spacing: 10) {
                     if isOrderable { handle }
 
-                    ProviderGlyphView(glyph: provider.glyph, size: 16)
+                    ProviderGlyphView(glyph: provider.glyph, customIconFilename: provider.customIconFilename, size: 16)
                         .foregroundStyle(isConnected ? .primary : .tertiary)
 
                     Text(provider.name)
@@ -1670,7 +1680,7 @@ private struct AccountRow: View {
                     // a lot of translucent furniture to move a ring one place
                     // up.
                     HStack(spacing: 6) {
-                        ProviderGlyphView(glyph: provider.glyph, size: 12)
+                        ProviderGlyphView(glyph: provider.glyph, customIconFilename: provider.customIconFilename, size: 12)
                         Text(provider.name)
                     }
                     .padding(.horizontal, 8)

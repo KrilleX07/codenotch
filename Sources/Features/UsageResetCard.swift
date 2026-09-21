@@ -24,6 +24,18 @@ struct UsageResetCard: View {
     /// exception, and its dim is drawn behind the glass itself, not here.
     private var surfaceFill: Color { glassy ? .clear : Palette.card }
 
+    private var clampedTailOffset: CGFloat {
+        let size = TooltipTail.size(for: direction)
+        switch direction {
+        case .leading, .trailing:
+            let maxOffset = max(0, (Self.cardHeight / 2) - NotchLayout.cardCorner - (size.height / 2))
+            return min(max(tailOffset, -maxOffset), maxOffset)
+        case .up, .down:
+            let maxOffset = max(0, (NotchLayout.cardWidth / 2) - NotchLayout.cardCorner - (size.width / 2))
+            return min(max(tailOffset, -maxOffset), maxOffset)
+        }
+    }
+
     var body: some View {
         stack
             .background {
@@ -32,12 +44,12 @@ struct UsageResetCard: View {
                 if glassy {
                     if #available(macOS 26.0, *) {
                         Color.clear
-                            .glassEffect(surfaceStyle.glass, in: TooltipSilhouette(direction: direction, tailOffset: tailOffset))
+                            .glassEffect(surfaceStyle.glass, in: TooltipSilhouette(direction: direction, tailOffset: clampedTailOffset))
                             .background {
                                 if let dim = TooltipGlassContrast.dim(surfaceStyle: surfaceStyle,
-                                                                       colorScheme: colorScheme,
-                                                                       reduceTransparency: reduceTransparency) {
-                                    TooltipSilhouette(direction: direction, tailOffset: tailOffset).fill(dim)
+                                                                      colorScheme: colorScheme,
+                                                                      reduceTransparency: reduceTransparency) {
+                                    TooltipSilhouette(direction: direction, tailOffset: clampedTailOffset).fill(dim)
                                 }
                             }
                     }
@@ -172,8 +184,8 @@ struct UsageResetCard: View {
         return TooltipTail(direction: direction)
             .fill(surfaceFill)
             .frame(width: size.width, height: size.height)
-            .offset(x: direction == .up || direction == .down ? tailOffset : 0,
-                    y: direction == .leading || direction == .trailing ? tailOffset : 0)
+            .offset(x: direction == .up || direction == .down ? clampedTailOffset : 0,
+                    y: direction == .leading || direction == .trailing ? clampedTailOffset : 0)
     }
 
     @ViewBuilder private var stack: some View {

@@ -13,6 +13,7 @@ struct ProviderRing: View {
     /// there is no arc to draw, and inventing one would be a lie in a shape.
     let usedFraction: Double?
     let glyph: ProviderGlyph
+    var customIconFilename: String? = nil
     var isStale: Bool = false
     /// Blocked right now. Shown as spent whatever the arc says, because that is
     /// what it means for you — a ring reading 16% while the account is paused
@@ -30,6 +31,7 @@ struct ProviderRing: View {
     var weeklyFraction: Double?
     /// Where the user asked for it, if at all.
     var weeklyRing: WeeklyRing = .off
+    var bandOverride: UsageBand? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.codenotchReduceTransparency) private var reduceTransparency
@@ -41,6 +43,7 @@ struct ProviderRing: View {
 
     private var band: UsageBand {
         guard !isBlocked else { return .exhausted }
+        if let bandOverride { return bandOverride }
         return UsageBand.band(for: usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
     }
     private var sweep: CGFloat { CGFloat(min(max(usedFraction ?? 0, 0), 1)) }
@@ -155,7 +158,7 @@ struct ProviderRing: View {
                         .animation(NotchMotion.reading, value: weeklyBand)
                 }
 
-                ProviderGlyphView(glyph: glyph)
+                ProviderGlyphView(glyph: glyph, customIconFilename: customIconFilename)
                     .foregroundStyle(Palette.textPrimary)
                     // A spent limit dims its glyph so the ring reads as "waiting".
                     // Under reduce-transparency, boost opacity so it stays legible without low alpha.
@@ -273,6 +276,7 @@ struct ProviderCell: View {
             ProviderRing(
                 usedFraction: snapshot.localModel == nil && snapshot.hasReading ? snapshot.ringFraction : nil,
                 glyph: snapshot.glyph,
+                customIconFilename: snapshot.customIconFilename,
                 isStale: snapshot.status.isStale || !snapshot.hasReading,
                 isBlocked: snapshot.block != nil,
                 activity: activity,
@@ -280,7 +284,8 @@ struct ProviderCell: View {
                 localPerformance: snapshot.localPerformance,
                 localContextFraction: snapshot.localContextFraction,
                 weeklyFraction: snapshot.hasReading ? snapshot.weeklyFraction : nil,
-                weeklyRing: weeklyRing
+                weeklyRing: weeklyRing,
+                bandOverride: snapshot.bandOverride
             )
             Text(readingText)
                 .font(Typography.percent)
