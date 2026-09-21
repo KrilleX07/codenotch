@@ -1063,9 +1063,10 @@ function armWatchdog(){
 // page is as wide as the design, so if the CSS viewport is not that wide the WebView's DPR disagrees
 // with the monitor; CSS zoom pulls the layout back to the design size.
 // The design width is the window's, and the window is not the same shape on every edge — see
-// `notch_window_size` in main.rs: NOTCH_W upright, NOTCH_H lying flat. Dividing by 360 on a flat edge
-// read the wider window as a DPR error and zoomed the whole notch by 520/360.
-const DESIGN_W_UPRIGHT=360, DESIGN_W_FLAT=520;
+// `notch_window_size` in main.rs: NOTCH_W upright, NOTCH_LONG lying flat. Dividing by 360 on a
+// flat edge read the wider window as a DPR error and zoomed the whole notch by 520/360. Either number
+// left behind when the window changes width does the same thing, so a test in main.rs pins both.
+const DESIGN_W_UPRIGHT=360, DESIGN_W_FLAT=650;
 function designWidth(){ return edgeIsVertical()?DESIGN_W_UPRIGHT:DESIGN_W_FLAT; }
 function fitZoom(){
   const z=innerWidth/designWidth();
