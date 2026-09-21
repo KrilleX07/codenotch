@@ -80,11 +80,8 @@ final class Preferences: ObservableObject {
 
     /// How much of itself the notch shows at rest.
     @Published var notchVisibility: NotchVisibility {
-        didSet {
-            defaults.set(notchVisibility.rawValue, forKey: Keys.visibility)
-        }
+        didSet { defaults.set(notchVisibility.rawValue, forKey: Keys.visibility) }
     }
-
 
     /// Whether a frontmost full-screen app folds the notch away.
     @Published var foldsForFullScreen: Bool {

@@ -1028,6 +1028,11 @@ final class NotchWindowController {
         switch visibility {
         case .alwaysShow:
             if !Runtime.isUnderTest { panel?.orderFrontRegardless() }
+            // Any pin made by hand is subsumed by the setting, exactly as it is
+            // for the other two. Leaving it set would hold `handleActiveSpaceOrAppChange`
+            // off for the rest of the session, so a pin made in hover mode would
+            // silently disable the full-screen fold once Always show was chosen.
+            model.isPinned = false
             model.isAlwaysOn = true
             foldWork?.cancel()
             foldWork = nil
@@ -1057,13 +1062,6 @@ final class NotchWindowController {
     }
 
     // MARK: - Peeking
-
-    func unfoldForPin() {
-        foldWork?.cancel()
-        foldWork = nil
-        withAnimation(NotchMotion.unfold) { model.isExpanded = true }
-        updateInteractiveRects()
-    }
 
     /// Open the notch by itself for a moment, because something happened.
     ///
