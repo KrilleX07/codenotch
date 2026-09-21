@@ -553,6 +553,34 @@ final class Preferences: ObservableObject {
     ///
     /// Custom endpoints read straight from disk, off the main actor.
     ///
+    /// Moves any key an earlier build left in the defaults plist into the keychain,
+    /// once, and writes the list back without it.
+    ///
+    /// The rewrite is the point. `customEndpoints` is assigned during `init`, where
+    /// `didSet` does not run, so without this the plaintext key stayed in the plist —
+    /// readable by any process running as the user, and swept into backups — until
+    /// the user happened to edit that endpoint. Returns the list with the carried
+    /// keys cleared, so a later encode cannot put them back.
+    nonisolated static func movingLegacyKeysToKeychain(
+        _ list: [CustomEndpoint],
+        defaults: UserDefaults
+    ) -> [CustomEndpoint] {
+        guard list.contains(where: { $0.legacyAPIKey != nil }) else { return list }
+        var migrated = list
+        for index in migrated.indices {
+            guard let legacy = migrated[index].legacyAPIKey else { continue }
+            // Only if the keychain has nothing: a key already moved is the newer one.
+            if migrated[index].apiKey == nil {
+                migrated[index].saveAPIKey(legacy)
+            }
+            migrated[index].legacyAPIKey = nil
+        }
+        if let data = try? JSONEncoder().encode(migrated) {
+            defaults.set(data, forKey: Keys.customEndpoints)
+        }
+        return migrated
+    }
+
     /// Custom endpoint providers are actors and ask for this on every fetch, and
     /// `@Published` state is main-actor-isolated where `UserDefaults` is
     /// thread-safe — so providers read the store, not the object.
@@ -805,7 +833,7 @@ final class Preferences: ObservableObject {
         self.minimaxRegion = Self.storedMinimaxRegion(defaults: defaults)
         if let data = defaults.data(forKey: Keys.customEndpoints),
            let list = try? JSONDecoder().decode([CustomEndpoint].self, from: data) {
-            self.customEndpoints = list
+            self.customEndpoints = Self.movingLegacyKeysToKeychain(list, defaults: defaults)
         } else {
             self.customEndpoints = []
         }

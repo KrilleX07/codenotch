@@ -30102,6 +30102,83 @@
     },
     "e.g. 2.5": {
       "extractionState": "manual"
+    },
+    "The address must start with http:// or https://": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The address must start with http:// or https://"
+          }
+        }
+      }
+    },
+    "Not an HTTP endpoint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not an HTTP endpoint"
+          }
+        }
+      }
+    },
+    "The endpoint answered %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The endpoint answered %lld"
+          }
+        }
+      }
+    },
+    "The endpoint did not answer in time": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The endpoint did not answer in time"
+          }
+        }
+      }
+    },
+    "Could not reach the endpoint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not reach the endpoint"
+          }
+        }
+      }
+    },
+    "Show remaining budget instead of spent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show remaining budget instead of spent"
+          }
+        }
+      }
+    },
+    "USD ($)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USD ($)"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

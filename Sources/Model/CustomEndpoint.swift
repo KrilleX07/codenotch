@@ -114,6 +114,11 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         self.lastCheckedAt = lastCheckedAt
     }
 
+    /// A plaintext key found in the defaults plist, waiting to be moved to the
+    /// keychain. Decode-only and never encoded, so it disappears the first time
+    /// the list is written back. Nil for anything written since.
+    public var legacyAPIKey: String?
+
     public var apiKey: String? {
         KeychainItem.read(service: Self.keychainService, account: Self.keychainAccount(for: id))
     }
@@ -255,11 +260,15 @@ public struct CustomEndpoint: Identifiable, Codable, Equatable, Sendable {
         self.lastHealthStatus = try container.decodeIfPresent(CustomEndpointHealth.self, forKey: .lastHealthStatus) ?? .idle
         self.lastCheckedAt = try container.decodeIfPresent(Date.self, forKey: .lastCheckedAt)
 
-        // Migrate legacy apiKey from plaintext defaults if found
-        if let legacyKey = try container.decodeIfPresent(String.self, forKey: .legacyApiKey),
-           !legacyKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            self.saveAPIKey(legacyKey)
-        }
+        // A key written by an earlier build of this feature, still in the defaults
+        // plist. Only carried here — moving it is `Preferences`' job, once, because
+        // this initialiser runs on every decode and every provider property access
+        // decodes the list again. Writing the keychain from here meant a `SecItemAdd`
+        // several times per repaint, and the plaintext was never removed from the
+        // plist because `didSet` does not fire during `Preferences.init`.
+        self.legacyAPIKey = try container.decodeIfPresent(String.self, forKey: .legacyApiKey)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : $0 }
     }
 
     public func encode(to encoder: Encoder) throws {

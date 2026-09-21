@@ -1,7 +1,32 @@
 import Foundation
 
+/// Refuses to carry the key across a redirect.
+///
+/// The endpoint's address comes from the user, but where it *redirects* to does
+/// not. Following a 302 with `URLSession`'s default policy re-sends every header,
+/// so a hostile or merely misconfigured endpoint could hand the key to another
+/// host. There is nothing a usage probe needs from a redirect, so it stops.
+private final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+
 public actor CustomEndpointNetwork {
     public static let shared = CustomEndpointNetwork()
+
+    private let noRedirects = NoRedirects()
+
+    /// What a plausible `/models` reply holds. Anything past this is not a list
+    /// someone is going to pick from.
+    static let maxModels = 200
+    static let maxModelIDLength = 200
 
     public func testEndpoint(
         baseURL: String,
@@ -9,7 +34,7 @@ public actor CustomEndpointNetwork {
         headerKey: String = "Authorization"
     ) async -> (health: CustomEndpointHealth, latencyMs: Int, models: [String], error: String?) {
         guard CustomEndpoint.isValidURL(baseURL), let url = URL(string: baseURL) else {
-            return (.unreachable, 0, [], "Invalid URL format")
+            return (.unreachable, 0, [], L10n.t("The address must start with http:// or https://"))
         }
 
         let modelsURL: URL
@@ -37,16 +62,16 @@ public actor CustomEndpointNetwork {
 
         let start = DispatchTime.now()
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request, delegate: noRedirects)
             let elapsedNano = DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds
             let latencyMs = max(1, Int(elapsedNano / 1_000_000))
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                return (.unreachable, latencyMs, [], "Non-HTTP response")
+                return (.unreachable, latencyMs, [], L10n.t("Not an HTTP endpoint"))
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
-                return (.unreachable, latencyMs, [], "HTTP status \(httpResponse.statusCode)")
+                return (.unreachable, latencyMs, [], L10n.t("The endpoint answered \(httpResponse.statusCode)"))
             }
 
             // Parse models from {"data": [{"id": "model-name"}]} or {"models": [...]}
@@ -60,11 +85,24 @@ public actor CustomEndpointNetwork {
             }
 
             let health: CustomEndpointHealth = latencyMs > 800 ? .slow : .online
-            return (health, latencyMs, discoveredModels, nil)
+            // Bounded before it is stored: this list is JSON-encoded into the
+            // defaults plist and decoded again on every provider property access,
+            // so an endpoint answering with a hundred thousand ids would bloat the
+            // plist and stall the picker. No real endpoint lists more than a few.
+            let bounded = discoveredModels
+                .filter { !$0.isEmpty && $0.count <= Self.maxModelIDLength }
+                .prefix(Self.maxModels)
+            return (health, latencyMs, Array(bounded), nil)
         } catch {
             let elapsedNano = DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds
             let latencyMs = Int(elapsedNano / 1_000_000)
-            return (.unreachable, latencyMs, [], error.localizedDescription)
+            // The code, never the endpoint's own words. A URLError's description can
+            // carry the host and path, and this string is shown in Settings and kept
+            // in the endpoint's saved health. The kind of failure is what helps.
+            let reason = (error as? URLError)?.code == .timedOut
+                ? L10n.t("The endpoint did not answer in time")
+                : L10n.t("Could not reach the endpoint")
+            return (.unreachable, latencyMs, [], reason)
         }
     }
 
