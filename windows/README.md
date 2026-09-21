@@ -62,8 +62,10 @@ it prints no account credentials or quota values and is not run by CI.
 
 ### Claude sign-in
 
-Hover Claude and choose **Sign in** to open the standalone Claude Code CLI's
-browser login (`claude auth login --claudeai`). Finish in the browser; if it
+When Claude is signed out, its card offers **Sign in**, which opens the standalone
+Claude Code CLI's browser login (`claude auth login --claudeai`). It is offered on
+the default `~/.claude` account only, since that is the one the CLI signs in.
+Finish in the browser; if it
 displays a code, paste it in the opened terminal, not in Codenotch. The card
 refreshes after the CLI exits without restarting the widget. The native CLI must
 already be installed; missing CLI, cancellation and launch errors are shown.
@@ -71,8 +73,8 @@ already be installed; missing CLI, cancellation and launch errors are shown.
 This explicit action shares a busy guard with automatic token renewal. Only the
 CLI handles OAuth and writes credentials; Codenotch does not receive login codes
 or expose tokens through UI IPC. The interactive child has a 15-minute timeout.
-**Refresh** requests only Claude usage and respects an active HTTP 429 retry
-deadline. HTTP 403 is reported as an access/network refusal rather than claiming
+To read Claude again, click its ring or choose **Refresh now** from the notch's
+right-click menu. HTTP 403 is reported as an access/network refusal rather than claiming
 that a still-valid login has expired. Existing automatic renewal is unchanged.
 
 ### Antigravity

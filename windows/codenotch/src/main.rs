@@ -657,9 +657,6 @@ fn claude_sign_in() -> Result<(), String> { claude_auth::start_login() }
 #[tauri::command]
 fn get_claude_auth() -> claude_auth::AuthState { claude_auth::state() }
 
-#[tauri::command]
-fn refresh_claude_usage(app: AppHandle) -> bool { refresh_provider(&app, "claude") }
-
 /// Asks one provider to read again, and says whether a reading is on its way. Claude's rate-limit
 /// wait stands, as on the Mac: asking early spends a request and can double the wait.
 pub(crate) fn refresh_provider(app: &AppHandle, provider: &str) -> bool {
@@ -1697,7 +1694,6 @@ fn main() {
             get_usage,
             claude_sign_in,
             get_claude_auth,
-            refresh_claude_usage,
             updater::get_update_state,
             updater::check_for_update,
             updater::install_update,
