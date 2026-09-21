@@ -45,7 +45,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
     };
     let used = if w.derived { format!("~{used}") } else { used };
     match lang {
-        "pt-BR" => format!("Usado {used}% · {left}% restante"),
+        "pt-BR" => format!("{used}% usado · {left}% restante"),
         "ru" => format!("Использовано {used}% · осталось {left}%"),
         "zh" => format!("已用 {used}% · 剩余 {left}%"),
         "zh-Hant" => format!("已用 {used}% · 剩餘 {left}%"),
@@ -60,7 +60,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
 pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if resets_at <= now {
         return match lang {
-            "pt-BR" => "Redefinindo…",
+            "pt-BR" => "Renovando…",
             "ru" => "Сброс…",
             "zh" => "正在重置…",
             "zh-Hant" => "正在重置…",
@@ -75,7 +75,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if minutes < 60 {
         let m = minutes.max(1);
         return match lang {
-            "pt-BR" => format!("Redefine em {m} min"),
+            "pt-BR" => format!("Renova em {m} min"),
             "ru" => format!("Сброс через {m} мин"),
             "zh" => format!("{m} 分钟后重置"),
             "zh-Hant" => format!("{m} 分鐘後重置"),
@@ -87,7 +87,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if hours < 24 {
         let (h, m) = (hours, minutes % 60);
         return match lang {
-            "pt-BR" => format!("Redefine em {h} h {m} min"),
+            "pt-BR" => format!("Renova em {h}h {m}m"),
             "ru" => format!("Сброс через {h} ч {m} мин"),
             "zh" => format!("{h} 小时 {m} 分钟后重置"),
             "zh-Hant" => format!("{h} 小時 {m} 分鐘後重置"),
@@ -99,7 +99,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if days < 7 {
         let (d, h) = (days, hours % 24);
         return match lang {
-            "pt-BR" => format!("Redefine em {d} d {h} h"),
+            "pt-BR" => if d == 1 { format!("Renova em {d} dia {h}h") } else { format!("Renova em {d} dias {h}h") },
             "ru" => format!("Сброс через {d} дн. {h} ч"),
             "zh" => format!("{d} 天 {h} 小时后重置"),
             "zh-Hant" => format!("{d} 天 {h} 小時後重置"),
@@ -111,7 +111,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     }
     let when = system_datetime(resets_at);
     match lang {
-        "pt-BR" => format!("Redefine em {when}"),
+        "pt-BR" => format!("Renova {when}"),
         "ru" => format!("Сброс: {when}"),
         "zh" => format!("{when} 重置"),
         "zh-Hant" => format!("{when} 重置"),
@@ -357,7 +357,7 @@ mod tests {
         let w = window("Current session", 0.61, Some(60 * MIN));
         assert_eq!(
             window_line(&w, MIN, "pt-BR"),
-            "Sessão atual: Usado 61% · 39% restante · Redefine em 59 min"
+            "Sessão atual: 61% usado · 39% restante · Renova em 59 min"
         );
         assert_eq!(label("Weekly limit", "pt-BR"), "Limite semanal");
         assert_eq!(label("Monthly limit", "pt-BR"), "Limite mensal");
