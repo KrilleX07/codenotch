@@ -25,6 +25,7 @@ final class NotchFleet {
     private(set) var scope: NotchScreenScope
     private var edge: NotchEdge
     private var visibility: NotchVisibility = .onHover
+
     private var snapshots: [ProviderSnapshot] = []
     private(set) var thinkingModels: [String: Date] = [:]
     /// Per source, the way the view model keeps them: the Ollama relay and
@@ -72,7 +73,6 @@ final class NotchFleet {
 
     /// Hooked up by the app delegate; driven by the notch's own chrome.
     var onRefresh: (() -> Void)?
-    var onToggleKeepOpen: (() -> Void)?
     var onRefreshProvider: ((String) async -> Void)?
     var onOpenSettings: (() -> Void)?
     var onFocusSession: ((pid_t) -> Void)?
@@ -427,6 +427,7 @@ final class NotchFleet {
         controller.model.surfaceStyle = surfaceStyle
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled
         controller.model.deepSeekPricingSchedule = deepSeekPricingSchedule
+
         controller.onRefresh = onRefresh
         controller.onRefreshProvider = onRefreshProvider
         controller.onOpenSettings = onOpenSettings
@@ -434,7 +435,6 @@ final class NotchFleet {
         controller.model.onFocusSession = onFocusSession
         controller.onReposition = onReposition
         controller.onMoveToEdge = onMoveToEdge
-        controller.onToggleKeepOpen = onToggleKeepOpen
         controller.signInItems = signInItems
         controller.model.updateSnapshots(snapshots)
         controller.model.thinkingModels = thinkingModels
