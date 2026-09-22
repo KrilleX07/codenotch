@@ -1068,6 +1068,8 @@ struct TooltipCard: View {
     /// How many sessions this screen has room to list. Solved from the display
     /// rather than fixed, so a big screen hides nothing.
     var sessionCap: Int = NotchLayout.defaultSessionCap
+    /// Project rows the cost section may list, as the view model solved it.
+    var costRows: Int = 0
     var resetTimeFormat: ResetTimeFormat = .automatic
     var deepSeekPricingEnabled: Bool = true
     var deepSeekPricingSchedule: DeepSeekPricing.Schedule = .current
@@ -1103,7 +1105,8 @@ struct TooltipCard: View {
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount,
-            showsDeepSeekPricing: deepSeekPricingEnabled
+            showsDeepSeekPricing: deepSeekPricingEnabled,
+            costRows: costRows
         )
     }
 
@@ -1132,6 +1135,9 @@ struct TooltipCard: View {
                     if let activity, snapshot.localModel == nil {
                         SessionList(summary: activity, now: now, cap: sessionCap,
                                     onFocus: onFocusSession)
+                    }
+                    if costRows > 0, let model = CostModels.model(for: snapshot.id) {
+                        CostSection(model: model, rows: costRows)
                     }
                 }
                 // An identity, so one provider's rows are never interpolated
