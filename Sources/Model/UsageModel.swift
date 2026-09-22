@@ -385,6 +385,18 @@ struct ProviderSnapshot: Identifiable, Equatable {
         return windows.first { $0.isFiveHour && $0.group == nil }
     }
 
+    /// The provider-declared weekly allowance, whether or not another surface
+    /// is already using it as its headline.
+    ///
+    /// Kept separate from `weeklyWindow`: the notch deliberately suppresses a
+    /// duplicate second ring when the weekly allowance is already its headline,
+    /// while compact summaries still need to know that a valid weekly reading
+    /// exists alongside their own five-hour figure.
+    var weeklyLimitWindow: LimitWindow? {
+        guard let weeklyID else { return nil }
+        return windows.first { $0.id == weeklyID }
+    }
+
     /// The window the second ring draws, when one is switched on.
     ///
     /// Declared by the provider, exactly like `headlineID`, and for the same
@@ -396,14 +408,14 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// Nil means this provider has no second window worth a ring, which is a
     /// real answer rather than a missing one.
     var weeklyWindow: LimitWindow? {
-        guard let weeklyID else { return nil }
+        guard let weeklyLimitWindow else { return nil }
         // Never the window the headline is already drawing. Providers that pick
         // their headline by which limit is tightest — Antigravity does — will
         // sometimes land on the weekly one, and two rings reporting the same
         // number is worse than one: it reads as a second fact that happens to
         // agree, rather than as the same fact twice.
         guard weeklyID != headlineID else { return nil }
-        return windows.first { $0.id == weeklyID }
+        return weeklyLimitWindow
     }
 
     /// Nil when there is no weekly window, or when the provider reports one

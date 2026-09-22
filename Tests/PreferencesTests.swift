@@ -422,6 +422,7 @@ final class MenuBarLimitsPreferenceTests: XCTestCase {
         upgraded.set(AppPresence.menuBar.rawValue, forKey: "appPresence")
         let preferences = Preferences(defaults: upgraded)
         XCTAssertFalse(preferences.showsLimitsInMenuBar)
+        XCTAssertFalse(preferences.showsWeeklyLimitInMenuBar)
         XCTAssertNil(preferences.menuBarProviders, "never chosen, not chosen as none")
     }
 
@@ -430,10 +431,12 @@ final class MenuBarLimitsPreferenceTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: name) }
         let preferences = Preferences(defaults: defaults)
         preferences.showsLimitsInMenuBar = true
+        preferences.showsWeeklyLimitInMenuBar = true
         preferences.setInMenuBar(false, for: "claude", among: ["claude", "codex"])
 
         let reopened = try reopen(name)
         XCTAssertTrue(reopened.showsLimitsInMenuBar)
+        XCTAssertTrue(reopened.showsWeeklyLimitInMenuBar)
         XCTAssertEqual(reopened.menuBarProviders, ["codex"])
         XCTAssertFalse(reopened.isInMenuBar("claude"))
         XCTAssertTrue(reopened.isInMenuBar("codex"))

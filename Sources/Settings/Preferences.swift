@@ -296,6 +296,13 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(showsLimitsInMenuBar, forKey: Keys.showsLimitsInMenuBar) }
     }
 
+    /// Whether providers with a weekly allowance add its compact ring to the
+    /// existing limit readout. Off by default so upgrades keep the exact menu
+    /// bar width and appearance they had before this setting existed.
+    @Published var showsWeeklyLimitInMenuBar: Bool {
+        didSet { defaults.set(showsWeeklyLimitInMenuBar, forKey: Keys.showsWeeklyLimitInMenuBar) }
+    }
+
     /// The providers the menu bar summarises when it does, as ids. Nil until
     /// the first choice — see `MenuBarLimits` for what that reads as. From
     /// then on it is the ones that are on, so a provider that turns up later
@@ -460,6 +467,7 @@ final class Preferences: ObservableObject {
         static let foldsForFullScreen = "foldsForFullScreen"
         static let presence = "appPresence"
         static let showsLimitsInMenuBar = "showsLimitsInMenuBar"
+        static let showsWeeklyLimitInMenuBar = "showsWeeklyLimitInMenuBar"
         static let menuBarProviders = "menuBarProviders"
         static let edge = "notchEdge"
         // A new key, so there is nothing under the old app name to migrate.
@@ -738,6 +746,9 @@ final class Preferences: ObservableObject {
         // Absent means never chosen, which is the icon every earlier version
         // drew — see `showsLimitsInMenuBar`.
         self.showsLimitsInMenuBar = defaults.bool(forKey: Keys.showsLimitsInMenuBar)
+        // Absent means an install from before this option, which must retain
+        // its existing compact status-item presentation.
+        self.showsWeeklyLimitInMenuBar = defaults.bool(forKey: Keys.showsWeeklyLimitInMenuBar)
         // Absent is kept distinct from empty: never chosen is not choosing none.
         self.menuBarProviders = defaults.stringArray(forKey: Keys.menuBarProviders).map(Set.init)
         // The right edge is where the notch has always been, and it is the one

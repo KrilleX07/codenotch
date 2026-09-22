@@ -256,6 +256,8 @@ enum Sites {
         // maps this plan page to `analytics/token-plan/individual` — the
         // default `origin/usage` answers 404 here.
         managePath: "home/analytics/token-plan/individual",
+        headlineID: "week",
+        weeklyID: "week",
         parse: { try QianwenUsage.windows(fromJSON: $0) }
     )
 

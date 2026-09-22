@@ -34961,6 +34961,9 @@
         }
       }
     },
+    "Adds a compact weekly-usage ring around each chosen provider that publishes it.": {
+      "extractionState": "manual"
+    },
     "Show limit information in menu bar": {
       "extractionState": "manual",
       "localizations": {
@@ -35025,6 +35028,9 @@
           }
         }
       }
+    },
+    "Show weekly limit in menu bar": {
+      "extractionState": "manual"
     },
     "Swaps the icon for each chosen provider's five-hour limit — how much is used and how long until it resets.": {
       "extractionState": "manual",

@@ -1073,6 +1073,13 @@ struct SettingsView: View {
             .fixedSize(horizontal: false, vertical: true)
 
         if preferences.showsLimitsInMenuBar {
+            Toggle(L10n.t("Show weekly limit in menu bar"),
+                   isOn: $preferences.showsWeeklyLimitInMenuBar)
+            Text(L10n.t("Adds a compact weekly-usage ring around each chosen provider that publishes it."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             ForEach(menuBarChoices) { choice in
                 Toggle(isOn: Binding(
                     get: { preferences.isInMenuBar(choice.id) },

@@ -356,6 +356,8 @@ final class QianwenUsageTests: XCTestCase {
         // A console session we hold, not a published API — the same reading
         // MiniMax's cookie path gets.
         XCTAssertEqual(site.fidelity, .derived)
+        XCTAssertEqual(site.headlineID, "week")
+        XCTAssertEqual(site.weeklyID, "week")
         XCTAssertEqual(site.associatedHosts,
                        ["platform-home.qianwenai.com", "cs-data.qianwenai.com",
                         "account.qianwenai.com", "account.aliyun.com"])

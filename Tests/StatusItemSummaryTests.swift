@@ -56,11 +56,12 @@ final class StatusItemSummaryTests: XCTestCase {
     /// tests are about what the bar says, not about who asked for it.
     private func summary(_ snapshots: [ProviderSnapshot],
                          limits: MenuBarLimits? = nil,
-                         format: ResetTimeFormat = .automatic) -> StatusItemSummary {
+                         format: ResetTimeFormat = .automatic,
+                         weekly: Bool = false) -> StatusItemSummary {
         StatusItemSummary.make(
             from: snapshots,
             showing: limits ?? MenuBarLimits(isOn: true, chosen: Set(snapshots.map(\.id))),
-            now: now, format: format)
+            now: now, format: format, showingWeeklyLimit: weekly)
     }
 
     private func on(_ chosen: Set<String>?) -> MenuBarLimits {
@@ -338,6 +339,77 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertEqual(result.nextChange, now.addingTimeInterval(20))
     }
 
+    // MARK: - Weekly ring
+
+    func testWeeklyRingUsesTheProvidersDeclaredConsumedFraction() throws {
+        let off = try XCTUnwrap(summary([claude(0.32, resetIn: hour)]).entries.first)
+        let on = try XCTUnwrap(summary([claude(0.32, resetIn: hour)], weekly: true).entries.first)
+        XCTAssertNil(off.weeklyFraction, "the new presentation is opt-in")
+        XCTAssertEqual(on.weeklyFraction, 0.31)
+        XCTAssertTrue(on.detail.contains("Weekly Limit: 31% Used · 69% left"), on.detail)
+        XCTAssertEqual(on.percent, "32%", "weekly usage never replaces the existing session share")
+    }
+
+    func testWeeklyRingOmitsUnavailableInvalidAndExpiredReadings() throws {
+        XCTAssertNil(try XCTUnwrap(summary([
+            other("glm", glyph: .glm, length: 5 * hour)
+        ], weekly: true).entries.first).weeklyFraction)
+
+        var invalid = claude(0.32, resetIn: hour)
+        invalid.windows[1] = LimitWindow(id: "weekly_all", label: "All models",
+                                         usedFraction: .nan, duration: 7 * 86400)
+        XCTAssertNil(try XCTUnwrap(summary([invalid], weekly: true).entries.first).weeklyFraction)
+
+        var expired = claude(0.32, resetIn: hour)
+        expired.windows[1] = LimitWindow(id: "weekly_all", label: "All models",
+                                         usedFraction: 0.67,
+                                         resetsAt: now.addingTimeInterval(-1), duration: 7 * 86400)
+        XCTAssertNil(try XCTUnwrap(summary([expired], weekly: true).entries.first).weeklyFraction)
+    }
+
+    func testWeeklyRingCoversEmptyLowHalfFullAndOverLimit() throws {
+        for (fraction, expected) in [(0.0, 0.0), (0.03, 0.03), (0.5, 0.5),
+                                     (1.0, 1.0), (1.08, 1.08)] {
+            var snapshot = claude(0.32, resetIn: hour)
+            snapshot.windows[1] = LimitWindow(id: "weekly_all", label: "All models",
+                                               usedFraction: fraction, duration: 7 * 86400)
+            XCTAssertEqual(try XCTUnwrap(summary([snapshot], weekly: true).entries.first).weeklyFraction,
+                           expected, "\(fraction)")
+        }
+    }
+
+    /// Antigravity may choose its weekly allowance as the notch headline. The
+    /// status item still leads with its independent five-hour reading, so the
+    /// declared weekly allowance remains useful rather than becoming a duplicate.
+    func testWeeklyRingStillWorksWhenTheNotchHeadlineIsWeekly() throws {
+        let snapshot = ProviderSnapshot(
+            id: "antigravity", displayName: "Antigravity", glyph: .antigravity,
+            fidelity: .official, status: .ok,
+            windows: [
+                LimitWindow(id: "five", label: "5-hour Limit", usedFraction: 0.21,
+                            resetsAt: now.addingTimeInterval(hour), duration: 5 * hour),
+                LimitWindow(id: "week", label: "Weekly Limit", usedFraction: 0.67,
+                            resetsAt: now.addingTimeInterval(3 * 86400), duration: 7 * 86400),
+            ],
+            headlineID: "week", weeklyID: "week")
+        XCTAssertNil(snapshot.weeklyWindow, "the notch still avoids drawing the same ring twice")
+        XCTAssertEqual(snapshot.weeklyLimitWindow?.usedFraction, 0.67)
+        let entry = try XCTUnwrap(summary([snapshot], weekly: true).entries.first)
+        XCTAssertEqual(entry.percent, "21%")
+        XCTAssertEqual(entry.weeklyFraction, 0.67)
+    }
+
+    func testEachProviderKeepsItsOwnWeeklyReading() {
+        var first = claude(0.32, resetIn: hour)
+        first.windows[1] = LimitWindow(id: "weekly_all", label: "All models",
+                                       usedFraction: 0.67, duration: 7 * 86400)
+        var second = codex(0.14, resetIn: 2 * hour)
+        second.windows[1] = LimitWindow(id: "secondary", label: "Weekly limit",
+                                        usedFraction: 0.28, duration: 7 * 86400)
+        let entries = summary([first, second], weekly: true).entries
+        XCTAssertEqual(entries.map(\.weeklyFraction), [0.67, 0.28])
+    }
+
     // MARK: - Room in the bar
 
     /// Two Claude logins are two identical marks; the second says which it is.
@@ -386,6 +458,22 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertGreaterThan(image.size.width, 0)
     }
 
+    func testWeeklyRingAddsNoMenuBarWidth() {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        let snapshot = claude(0.72, resetIn: hour)
+        let ordinary = StatusItemArtwork(summary: summary([snapshot]), font: font, height: 22).size.width
+        let weekly = StatusItemArtwork(summary: summary([snapshot], weekly: true), font: font, height: 22).size.width
+        XCTAssertEqual(weekly, ordinary, "the ring occupies the provider glyph's existing box")
+
+        var full = snapshot
+        full.windows[1] = LimitWindow(id: "weekly_all", label: "All models",
+                                      usedFraction: 1, duration: 7 * 86400)
+        XCTAssertEqual(
+            StatusItemArtwork(summary: summary([full], weekly: true), font: font, height: 22).size.width,
+            weekly,
+            "fill changes in place instead of moving other menu bar items")
+    }
+
     /// "72% · 2h 18m | 41% · 4h 05m": a second reading costs its own width
     /// and a rule between the two, and nothing more.
     func testASecondReadingSitsBesideTheFirstPastARule() {
@@ -397,6 +485,46 @@ final class StatusItemSummaryTests: XCTestCase {
         let two = width([claude(0.72, resetIn: 2 * hour), codex(0.41, resetIn: 4 * hour)])
         XCTAssertGreaterThan(two, one * 2, "the rule and its gaps sit between the readings")
         XCTAssertLessThan(two, one * 2 + 20, "and take no more room than that")
+    }
+
+    /// Opt-in visual QA fixture. The status artwork is drawn at four times its
+    /// menu-bar dimensions so a reviewer can inspect its actual vector output.
+    func testRenderWeeklyRingContactSheetWhenRequested() throws {
+        guard let path = ProcessInfo.processInfo.environment["CODENOTCH_WEEKLY_RENDER"] else { return }
+        let levels: [(String, Double)] = [
+            ("0%", 0), ("3%", 0.03), ("50%", 0.5), ("87%", 0.87), ("100%", 1),
+        ]
+        let scale: CGFloat = 4
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13 * scale, weight: .regular)
+        let rows: [(String, StatusItemArtwork)] = levels.map { label, fraction in
+            var snapshot = claude(0.32, resetIn: 2 * hour + 18 * minute)
+            snapshot.windows[1] = LimitWindow(id: "weekly_all", label: "All models",
+                                               usedFraction: fraction, duration: 7 * 86400)
+            return (label, StatusItemArtwork(summary: summary([snapshot], weekly: true),
+                                             font: font, height: 22 * scale))
+        }
+        let two = StatusItemArtwork(
+            summary: summary([claude(0.32, resetIn: hour), codex(0.14, resetIn: 2 * hour)], weekly: true),
+            font: font, height: 22 * scale)
+        let all = rows + [("2 providers", two)]
+        let labelWidth: CGFloat = 140
+        let rowHeight: CGFloat = 112
+        let canvas = NSImage(size: NSSize(width: labelWidth + (all.map { $0.1.size.width }.max() ?? 0) + 32,
+                                          height: rowHeight * CGFloat(all.count)), flipped: false) { rect in
+            NSColor.white.setFill(); rect.fill()
+            for (index, row) in all.enumerated() {
+                let y = rect.maxY - CGFloat(index + 1) * rowHeight + 12
+                NSAttributedString(string: row.0, attributes: [
+                    .font: NSFont.systemFont(ofSize: 18, weight: .medium), .foregroundColor: NSColor.black,
+                ]).draw(at: NSPoint(x: 12, y: y + 30))
+                row.1.image().draw(at: NSPoint(x: labelWidth, y: y),
+                                   from: .zero, operation: .sourceOver, fraction: 1)
+            }
+            return true
+        }
+        let data = try XCTUnwrap(canvas.tiffRepresentation)
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(data: data))
+        try XCTUnwrap(bitmap.representation(using: .png, properties: [:])).write(to: URL(fileURLWithPath: path))
     }
 }
 
