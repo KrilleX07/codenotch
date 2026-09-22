@@ -117,7 +117,32 @@ final class CatalogCoverageTests: XCTestCase {
             "Critical limit": "위험 표시 기준"
         ]
         for (key, value) in expected {
-            XCTAssertEqual(catalog.strings[key]?.localizations?["ko"]?.stringUnit?.value, value)
+            XCTAssertEqual(
+                catalog.strings[key]?.localizations?["ko"]?.stringUnit?.value,
+                value,
+                "missing Korean translation for \(key)"
+            )
+        }
+    }
+
+    func testUzbekCoreCopyIsTranslated() throws {
+        let catalog = try loadCatalog().json
+        let expected = [
+            "just now": "hozirgina",
+            "Resets in %lld min": "%lld daqiqadan soʻng yangilanadi",
+            "%lld%% Used · %lld%% left": "%lld%% ishlatilgan · %lld%% qoldi",
+            "Always show": "Doimo",
+            "Settings…": "Sozlamalar…",
+            "Sign in to %@": "%@ ga kirish",
+            "%lld%% of its %@ limit used.": "%2$@ limitining %1$lld%% ishlatilgan."
+        ]
+
+        for (key, value) in expected {
+            XCTAssertEqual(
+                catalog.strings[key]?.localizations?["uz"]?.stringUnit?.value,
+                value,
+                "missing Uzbek translation for \(key)"
+            )
         }
     }
 

@@ -82,6 +82,7 @@ targets:
           - zh-Hans
           - zh-Hant
           - uk
+          - uz
         LSMinimumSystemVersion: "15.0"
         # Sources/Info.plist is *generated* from this block, so editing that
         # file directly is undone by the next `make gen`. Pointing both at the

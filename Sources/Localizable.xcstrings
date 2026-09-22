@@ -57,6 +57,12 @@
             "state": "translated",
             "value": "방금"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hozirgina"
+          }
         }
       }
     },
@@ -115,6 +121,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld분"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld daqiqa"
           }
         }
       }
@@ -175,6 +187,12 @@
             "state": "translated",
             "value": "%lld시간"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld soat"
+          }
         }
       }
     },
@@ -233,6 +251,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld시간 %lld분"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld soat %lld daqiqa"
           }
         }
       }
@@ -293,6 +317,12 @@
             "state": "translated",
             "value": "%@ 전"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ oldin"
+          }
         }
       }
     },
@@ -351,6 +381,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "재설정 중…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanmoqda…"
           }
         }
       }
@@ -411,6 +447,12 @@
             "state": "translated",
             "value": "%lld분 후 재설정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld daqiqadan soʻng yangilanadi"
+          }
         }
       }
     },
@@ -469,6 +511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@에 재설정"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ yangilanadi"
           }
         }
       }
@@ -529,6 +577,12 @@
             "state": "translated",
             "value": "%lld%% 사용 · %lld%% 남음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% ishlatilgan · %lld%% qoldi"
+          }
         }
       }
     },
@@ -587,6 +641,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "1개 남음"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 qoldi"
           }
         }
       }
@@ -647,6 +707,12 @@
             "state": "translated",
             "value": "%lld개 남음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld qoldi"
+          }
         }
       }
     },
@@ -705,6 +771,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "1개 사용"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 ishlatilgan"
           }
         }
       }
@@ -765,6 +837,12 @@
             "state": "translated",
             "value": "%lld개 사용"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ishlatilgan"
+          }
         }
       }
     },
@@ -823,6 +901,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "측정값 없음"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maʼlumot yoʻq"
           }
         }
       }
@@ -883,6 +967,12 @@
             "state": "translated",
             "value": "%@ (%@까지)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — %@ gacha"
+          }
         }
       }
     },
@@ -941,6 +1031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량을 확인하려면 Claude Code에 로그인하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun Claude Codeʼga kiring"
           }
         }
       }
@@ -1001,6 +1097,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 ~/.claude-%@의 Claude Code에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun ~/.claude-%@ da Claude Codeʼga kiring"
+          }
         }
       }
     },
@@ -1059,6 +1161,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "편집기에서 Cursor에 로그인하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muharrirda Cursorʼga kiring"
           }
         }
       }
@@ -1119,6 +1227,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 Codex에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun Codexʼga kiring"
+          }
         }
       }
     },
@@ -1177,6 +1291,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량을 확인하려면 Antigravity에 로그인하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun Antigravityʼga kiring"
           }
         }
       }
@@ -1237,6 +1357,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 ~/.gemini/antigravity-%@의 Antigravity에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun ~/.gemini/antigravity-%@ da Antigravityʼga kiring"
+          }
         }
       }
     },
@@ -1295,6 +1421,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@의 Antigravity"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dagi Antigravity"
           }
         }
       }
@@ -1355,6 +1487,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 코딩 도구에 GLM Coding Plan 키를 설정하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun kodlash vositasiga GLM Coding Plan kalitini sozlang"
+          }
         }
       }
     },
@@ -1413,6 +1551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량을 확인하려면 OpenCode에서 Go 요금제를 연결하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun OpenCodeʼda Go rejasini ulang"
           }
         }
       }
@@ -1473,6 +1617,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 %@에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun %@ ga kiring"
+          }
         }
       }
     },
@@ -1531,6 +1681,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@의 저장된 로그인 정보에 대한 Codenotch의 접근이 거부되었습니다. 이 링을 클릭해 다시 요청하고 ‘항상 허용’을 선택하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotchʼga %@ ning saqlangan kirish maʼlumotiga ruxsat berilmadi. Qayta soʻrash uchun bu halqani bosing va Always Allow ni tanlang."
           }
         }
       }
@@ -1591,6 +1747,12 @@
             "state": "translated",
             "value": "사용량을 읽을 수 없습니다 — %@"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishni oʻqib boʻlmadi — %@"
+          }
         }
       }
     },
@@ -1649,6 +1811,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "첫 측정값을 기다리는 중…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birinchi maʼlumot kutilmoqda…"
           }
         }
       }
@@ -1709,6 +1877,12 @@
             "state": "translated",
             "value": "현재 세션"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozirgi sessiya"
+          }
         }
       }
     },
@@ -1768,6 +1942,12 @@
             "state": "translated",
             "value": "모든 모델"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barcha modellar"
+          }
         }
       }
     },
@@ -1823,6 +2003,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opus"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Opus"
@@ -1886,6 +2072,12 @@
             "state": "translated",
             "value": "Sonnet"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonnet"
+          }
         }
       }
     },
@@ -1944,6 +2136,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "포함 사용량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiritilgan foydalanish"
           }
         }
       }
@@ -2004,6 +2202,12 @@
             "state": "translated",
             "value": "API 사용량"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API foydalanishi"
+          }
         }
       }
     },
@@ -2062,6 +2266,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "온디맨드"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soʻrov boʻyicha"
           }
         }
       }
@@ -2122,6 +2332,12 @@
             "state": "translated",
             "value": "5시간 제한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 soatlik limit"
+          }
         }
       }
     },
@@ -2180,6 +2396,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "주간 제한"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limit"
           }
         }
       }
@@ -2240,6 +2462,12 @@
             "state": "translated",
             "value": "월간 제한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik limit"
+          }
         }
       }
     },
@@ -2298,6 +2526,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "일일 할당량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunlik kvota"
           }
         }
       }
@@ -2358,6 +2592,12 @@
             "state": "translated",
             "value": "장기 사용 기간"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzunroq oyna"
+          }
         }
       }
     },
@@ -2416,6 +2656,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld분 제한"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld daqiqalik limit"
           }
         }
       }
@@ -2476,6 +2722,12 @@
             "state": "translated",
             "value": "%lld시간 제한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld soatlik limit"
+          }
         }
       }
     },
@@ -2534,6 +2786,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld일 제한"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kunlik limit"
           }
         }
       }
@@ -2594,6 +2852,12 @@
             "state": "translated",
             "value": "주간"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik"
+          }
         }
       }
     },
@@ -2652,6 +2916,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "MCP (1개월)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCP (1 oy)"
           }
         }
       }
@@ -2712,6 +2982,12 @@
             "state": "translated",
             "value": "사용량 (%lld시간)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish (%lld soat)"
+          }
         }
       }
     },
@@ -2770,6 +3046,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량 (%lld주)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish (%lld hafta)"
           }
         }
       }
@@ -2830,6 +3112,12 @@
             "state": "translated",
             "value": "사용량"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish"
+          }
         }
       }
     },
@@ -2888,6 +3176,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pro 검색"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pro qidiruvlar"
           }
         }
       }
@@ -2948,6 +3242,12 @@
             "state": "translated",
             "value": "리서치"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tadqiqot"
+          }
         }
       }
     },
@@ -3007,6 +3307,12 @@
             "state": "translated",
             "value": "에이전트 리서치"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agentli tadqiqot"
+          }
         }
       }
     },
@@ -3062,6 +3368,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Labs"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Labs"
@@ -3125,6 +3437,12 @@
             "state": "translated",
             "value": "무료 질의"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bepul soʻrovlar"
+          }
         }
       }
     },
@@ -3183,6 +3501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "오늘 요청 수 · 한도 미공개"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bugungi soʻrovlar · limit eʼlon qilinmagan"
           }
         }
       }
@@ -3243,6 +3567,12 @@
             "state": "translated",
             "value": "오늘 요청 없음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bugun soʻrovlar yoʻq"
+          }
         }
       }
     },
@@ -3301,6 +3631,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "오늘 요청 약 %lld회"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~%lld soʻrov bugun"
           }
         }
       }
@@ -3361,6 +3697,12 @@
             "state": "translated",
             "value": "오늘 요청 약 %lld회"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~%lld soʻrov bugun"
+          }
         }
       }
     },
@@ -3416,6 +3758,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grok Build"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Grok Build"
@@ -3479,6 +3827,12 @@
             "state": "translated",
             "value": "%@ 사용량"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ foydalanishi"
+          }
         }
       }
     },
@@ -3537,6 +3891,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "외 %lld개"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "va yana %lld ta"
           }
         }
       }
@@ -3597,6 +3957,12 @@
             "state": "translated",
             "value": "작업 중"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ishlamoqda"
+          }
         }
       }
     },
@@ -3655,6 +4021,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "대기 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kutmoqda"
           }
         }
       }
@@ -3715,6 +4087,12 @@
             "state": "translated",
             "value": "유휴 상태"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "boʻsh"
+          }
         }
       }
     },
@@ -3773,6 +4151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "작업 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishlamoqda"
           }
         }
       }
@@ -3833,6 +4217,12 @@
             "state": "translated",
             "value": "데스크톱"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ish stoli"
+          }
         }
       }
     },
@@ -3888,6 +4278,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VS Code"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "VS Code"
@@ -3951,6 +4347,12 @@
             "state": "translated",
             "value": "에이전트"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent"
+          }
         }
       }
     },
@@ -4009,6 +4411,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "터미널"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal"
           }
         }
       }
@@ -4069,6 +4477,12 @@
             "state": "translated",
             "value": "제목 없는 채팅"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomsiz suhbat"
+          }
         }
       }
     },
@@ -4127,6 +4541,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "항상 표시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doimo"
           }
         }
       }
@@ -4187,6 +4607,12 @@
             "state": "translated",
             "value": "마우스를 올리면 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kursorda"
+          }
         }
       }
     },
@@ -4245,6 +4671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "숨기기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yashirish"
           }
         }
       }
@@ -4305,6 +4737,12 @@
             "state": "translated",
             "value": "노치를 열어 두고 모든 측정값을 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch barcha koʻrsatkichlar koʻrinadigan holda ochiq qoladi."
+          }
         }
       }
     },
@@ -4363,6 +4801,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "화면 가장자리의 작은 필에 포인터를 가져가면 펼쳐집니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran chekkasidagi kichkina choʻzinchoq shakl — unga yetganingizda ochiladi."
           }
         }
       }
@@ -4423,6 +4867,12 @@
             "state": "translated",
             "value": "화면에 아무것도 표시하지 않습니다. 이 설정으로 돌아오려면 응용 프로그램에서 Codenotch를 다시 여십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekranda hech narsa yoʻq. Bu sozlamalarni qaytarish uchun Codenotchʼni Applicationsʼdan qayta oching."
+          }
         }
       }
     },
@@ -4478,6 +4928,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Dock"
@@ -4541,6 +4997,12 @@
             "state": "translated",
             "value": "메뉴 막대"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menyu paneli"
+          }
         }
       }
     },
@@ -4599,6 +5061,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "표시 안 함"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hech biri"
           }
         }
       }
@@ -4659,6 +5127,12 @@
             "state": "translated",
             "value": "Codenotch가 실행 중일 때 Dock에 일반 앱 아이콘을 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch ishlab turganda Dockʼda oddiy ilova belgisi."
+          }
         }
       }
     },
@@ -4717,6 +5191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dock 대신 메뉴 막대에 작은 아이콘을 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buning oʻrniga menyu panelida kichik belgi, Dockʼda esa hech narsa."
           }
         }
       }
@@ -4777,6 +5257,12 @@
             "state": "translated",
             "value": "아이콘을 어디에도 표시하지 않습니다. 이 설정으로 돌아오려면 응용 프로그램에서 Codenotch를 다시 여십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hech qayerda belgi yoʻq. Bu sozlamalarni qaytarish uchun Codenotchʼni Applicationsʼdan qayta oching."
+          }
         }
       }
     },
@@ -4835,6 +5321,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "오른쪽"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻngda"
           }
         }
       }
@@ -4895,6 +5387,12 @@
             "state": "translated",
             "value": "왼쪽"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chapda"
+          }
         }
       }
     },
@@ -4953,6 +5451,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "위쪽"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqorida"
           }
         }
       }
@@ -5013,6 +5517,12 @@
             "state": "translated",
             "value": "아래쪽"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pastda"
+          }
         }
       }
     },
@@ -5071,6 +5581,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "오른쪽 가장자리에 세로로 배치하며, 같은 쪽에 있는 Dock을 피합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻng chekka boʻylab, oʻsha tomondagi Dockʼga tegmasdan."
           }
         }
       }
@@ -5131,6 +5647,12 @@
             "state": "translated",
             "value": "왼쪽 가장자리에 세로로 배치하며, 같은 쪽에 있는 Dock을 피합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chap chekka boʻylab, oʻsha tomondagi Dockʼga tegmasdan."
+          }
         }
       }
     },
@@ -5189,6 +5711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "위쪽 가장자리에 넓은 막대를 배치하고 측정값을 나란히 표시합니다. 노치가 있는 Mac에서는 기기 노치까지 이어져 하나의 모양처럼 보입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqorida keng chiziq, koʻrsatkichlar yonma-yon. Oʻz notchʼiga ega Macʼda u unga tutashadi, shunda ikkisi bitta shakl boʻlib koʻrinadi."
           }
         }
       }
@@ -5249,6 +5777,12 @@
             "state": "translated",
             "value": "Dock 위에 넓은 막대를 배치하고 측정값을 나란히 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock ustida turadigan keng chiziq, koʻrsatkichlar yonma-yon."
+          }
         }
       }
     },
@@ -5307,6 +5841,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integratsiyalar"
           }
         }
       }
@@ -5367,6 +5907,12 @@
             "state": "translated",
             "value": "모양"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koʻrinish"
+          }
         }
       }
     },
@@ -5425,6 +5971,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "일반"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umumiy"
           }
         }
       }
@@ -5485,6 +6037,12 @@
             "state": "translated",
             "value": "표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koʻrsatish"
+          }
         }
       }
     },
@@ -5543,6 +6101,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "가장자리"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chekka"
           }
         }
       }
@@ -5603,6 +6167,12 @@
             "state": "translated",
             "value": "앱 아이콘"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ilova belgisi"
+          }
         }
       }
     },
@@ -5661,6 +6231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "로그인 시 Codenotch 열기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tizimga kirganda Codenotchʼni ochish"
           }
         }
       }
@@ -5721,6 +6297,12 @@
             "state": "translated",
             "value": "업데이트 자동 설치"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanishlarni avtomatik oʻrnatish"
+          }
         }
       }
     },
@@ -5779,6 +6361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "지금 확인"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozir tekshirish"
           }
         }
       }
@@ -5839,6 +6427,12 @@
             "state": "translated",
             "value": "앱 디자인 및 개발"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ilova muallifi va dasturchisi"
+          }
         }
       }
     },
@@ -5897,6 +6491,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "시작하려면 어시스턴트를 연결하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boshlash uchun yordamchini ulang"
           }
         }
       }
@@ -5957,6 +6557,12 @@
             "state": "translated",
             "value": "Codenotch는 직접 로그인하지 않고, 이미 계정에 로그인된 도구에서 측정값을 가져옵니다. 여기서 로그아웃하면 자격 증명 읽기를 중단하고 측정값을 삭제하지만, 해당 도구의 로그인은 유지됩니다. macOS는 도구마다 처음 한 번, 그리고 다른 계정에 로그인할 때마다 권한을 요청합니다. ‘항상 허용’을 선택하면 더 이상 묻지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch hech qachon tizimga kirmaydi — har bir koʻrsatkich hisobni allaqachon saqlab turgan vositadan olinadi. Bu yerda chiqish kirish maʼlumoti oʻqilishini toʻxtatadi va raqamlarni unutadi, lekin siz oʻsha vositada kirgan holda qolasiz. macOS har bir vosita uchun birinchi marta, soʻng boshqa hisobga kirganingizda qayta soʻraydi; Always Allow uni jim qiladi."
+          }
         }
       }
     },
@@ -6015,6 +6621,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor, Codex, Antigravity, GLM, Grok, OpenCode 중 하나를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor, Codex, Antigravity, GLM, Grok yoki OpenCode — va uning halqasi notchʼda paydo boʻladi."
           }
         }
       }
@@ -6075,6 +6687,12 @@
             "state": "translated",
             "value": "macOS가 Claude Code와 Antigravity의 저장된 로그인 정보를 읽을 권한을 한 번 요청합니다. ‘항상 허용’을 선택하십시오. ‘허용’만 선택하면 매번 다시 묻습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS Claude Code va Antigravityʼning saqlangan kirish maʼlumotlarini oʻqishga ruxsat soʻrab bir marta murojaat qiladi. Always Allow ni tanlang — oddiy Allow har safar qayta soʻrashga majbur qiladi."
+          }
         }
       }
     },
@@ -6133,6 +6751,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "버전 %@. 업데이트는 백그라운드에서 설치되며 다음에 Codenotch를 시작할 때 적용됩니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ versiyasi. Yangilanishlar fonda oʻrnatiladi va Codenotch keyingi safar ishga tushganda qoʻllanadi."
           }
         }
       }
@@ -6193,6 +6817,12 @@
             "state": "translated",
             "value": "로그아웃됨 — 정보를 읽지 않으며 측정값도 보관하지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tizimdan chiqilgan — hech narsa oʻqilmaydi va hech qanday koʻrsatkich saqlanmaydi."
+          }
         }
       }
     },
@@ -6251,6 +6881,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "접근 허용…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruxsat berish…"
           }
         }
       }
@@ -6311,6 +6947,12 @@
             "state": "translated",
             "value": "전환…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Almashtirish…"
+          }
         }
       }
     },
@@ -6369,6 +7011,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@의 저장된 로그인 정보를 macOS에 다시 요청합니다. ‘항상 허용’을 선택하면 더 이상 묻지 않습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOSʼdan %@ ning saqlangan kirish maʼlumotini qayta soʻraydi. Always Allow ni tanlasangiz, u boshqa soʻramaydi."
           }
         }
       }
@@ -6429,6 +7077,12 @@
             "state": "translated",
             "value": "끄면 %@ 읽기를 중단하고 측정값을 삭제합니다. %@"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ni oʻqishni toʻxtatish va uning koʻrsatkichlarini unutish uchun oʻchiring. %@"
+          }
         }
       }
     },
@@ -6487,6 +7141,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "켜면 다시 로그인하고 %@ 읽기를 재개합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ga qayta kirish va uni oʻqish uchun yoqing."
           }
         }
       }
@@ -6547,6 +7207,12 @@
             "state": "translated",
             "value": "Codenotch가 %@의 저장된 로그인 정보를 읽고 있지 않습니다. 위의 ‘접근 허용…’을 선택한 다음 ‘허용’을 선택하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch %@ ning saqlangan kirish maʼlumotini oʻqimayapti. Yuqoridagi Ruxsat berish… ni tanlang va Allow deb javob bering."
+          }
         }
       }
     },
@@ -6605,6 +7271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 열기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ni ochish"
           }
         }
       }
@@ -6665,6 +7337,12 @@
             "state": "translated",
             "value": "이 계정이 로그인된 %@을(를) 엽니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ni ochadi — bu hisob oʻsha yerda tizimga kirgan."
+          }
         }
       }
     },
@@ -6723,6 +7401,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "브라우저에서 %@을(를) 엽니다. 해당 사이트의 로그인은 여기서 읽는 자격 증명과 별개입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ni brauzeringizda ochadi. Bu saytning oʻz kirishi bor — bu yerda oʻqiladigan kirish maʼlumotidan alohida."
           }
         }
       }
@@ -6783,6 +7467,12 @@
             "state": "translated",
             "value": "Codenotch 설정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch sozlamalari"
+          }
         }
       }
     },
@@ -6841,6 +7531,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "새로운 기능"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangiliklar"
           }
         }
       }
@@ -6901,6 +7597,12 @@
             "state": "translated",
             "value": "Codenotch의 새로운 기능"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotchʼdagi yangiliklar"
+          }
         }
       }
     },
@@ -6959,6 +7661,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "버전 %@"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ versiyasi"
           }
         }
       }
@@ -7019,6 +7727,12 @@
             "state": "translated",
             "value": "계속"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Davom etish"
+          }
         }
       }
     },
@@ -7077,6 +7791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "macOS가 이 작업을 거부했습니다 — Codenotch를 /Applications로 옮겨 보십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS buni rad etdi — Codenotchʼni /Applications ga koʻchirib koʻring."
           }
         }
       }
@@ -7137,6 +7857,12 @@
             "state": "translated",
             "value": "%@ 경유"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ orqali"
+          }
         }
       }
     },
@@ -7195,6 +7921,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@에 로그인"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ga kirish"
           }
         }
       }
@@ -7255,6 +7987,12 @@
             "state": "translated",
             "value": "이 계정의 정보를 읽으려면 %@에 로그인하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu hisobni oʻqish uchun %@ ga kiring."
+          }
         }
       }
     },
@@ -7313,6 +8051,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 계정의 정보를 읽으려면 %@으로 로그인하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu hisobni oʻqish uchun %@ orqali kiring."
           }
         }
       }
@@ -7373,6 +8117,12 @@
             "state": "translated",
             "value": "다른 계정을 사용하려면 %@ 창에서 로그아웃하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boshqa hisobdan foydalanish uchun %@ oynasida tizimdan chiqing."
+          }
         }
       }
     },
@@ -7431,6 +8181,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@에서 계정을 전환하면 노치에도 반영됩니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ da hisobni almashtiring; notch unga ergashadi."
           }
         }
       }
@@ -7491,6 +8247,12 @@
             "state": "translated",
             "value": "계정이 로그인된 도구에서 계정을 전환하면 노치에도 반영됩니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hisobni unga egalik qiluvchi vositada almashtiring; notch unga ergashadi."
+          }
         }
       }
     },
@@ -7549,6 +8311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@에서 로그아웃합니다 — 이 세션은 Codenotch가 관리합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dan chiqadi — sessiya Codenotchʼga tegishli."
           }
         }
       }
@@ -7609,6 +8377,12 @@
             "state": "translated",
             "value": "%@의 로그인은 유지됩니다 — 세션을 종료하려면 %@에서 직접 로그아웃하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz %@ da tizimga kirgan holda qolasiz — oʻsha sessiyani %@ ning oʻzida tugating."
+          }
         }
       }
     },
@@ -7667,6 +8441,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "계정이 로그인된 도구의 로그인은 유지됩니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz hisobga egalik qiluvchi vositada tizimga kirgan holda qolasiz."
           }
         }
       }
@@ -7727,6 +8507,12 @@
             "state": "translated",
             "value": "이 계정이 로그인된 도구에서 로그인하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu hisob tegishli boʻlgan vosita orqali kiring."
+          }
         }
       }
     },
@@ -7785,6 +8571,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@에 로그인…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ga kirish…"
           }
         }
       }
@@ -7845,6 +8637,12 @@
             "state": "translated",
             "value": "grok login을 실행하십시오. 로그인하고 여기서 읽는 토큰을 갱신합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "grok login ni ishga tushiring — u tizimga kiradi va bu oʻqiydigan tokenni yangilaydi."
+          }
         }
       }
     },
@@ -7903,6 +8701,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량은 OpenCode가 로그인 시 저장하는 opencode-go 키로 확인합니다. OpenCode에서 Go를 연결하면(`opencode auth login`) 노치가 사용량을 읽습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish OpenCode kirish paytida saqlaydigan opencode-go kalitiga bogʻliq — OpenCode ichida Goʻni ulang (`opencode auth login`), notch esa uni oʻqiydi."
           }
         }
       }
@@ -7963,6 +8767,12 @@
             "state": "translated",
             "value": "사용량은 코딩 도구에 저장된 Z.ai GLM Coding Plan 키로 확인합니다. Claude Code의 settings.json, ZCode 또는 OpenCode에 키를 설정하면 노치가 사용량을 읽습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish kodlash vositasi saqlaydigan Z.ai GLM Coding Plan kalitiga bogʻliq — Claude Codeʼning settings.json fayli, ZCode yoki OpenCode. Oʻsha yerda birini sozlang, notch esa uni oʻqiydi."
+          }
         }
       }
     },
@@ -8021,6 +8831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "`%@`을(를) 한 번 실행하십시오. 로그인하고 여기서 읽는 토큰을 갱신합니다. 계정을 변경하려면 해당 도구에서 /login을 사용하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`%@` ni bir marta ishga tushiring — u tizimga kiradi va bu oʻqiydigan tokenni yangilaydi. Hisobni oʻzgartirish uchun oʻsha yerda /login dan foydalaning."
           }
         }
       }
@@ -8081,6 +8897,12 @@
             "state": "translated",
             "value": "%@ 요금제는 무제한입니다 — 측정할 사용량이 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ rejasida cheksiz — hisoblanadigan narsa yoʻq"
+          }
         }
       }
     },
@@ -8139,6 +8961,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 요금제에는 아직 Cursor가 측정할 사용량이 없습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ rejasida Cursor hisoblaydigan narsa hali yoʻq"
           }
         }
       }
@@ -8199,6 +9027,12 @@
             "state": "translated",
             "value": "Codex가 사용량 집계 기간을 보고하지 않았습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex hech qanday foydalanish oynasini bildirmadi"
+          }
         }
       }
     },
@@ -8257,6 +9091,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 키에 OpenCode Go 구독이 없습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kalitda OpenCode Go obunasi yoʻq"
           }
         }
       }
@@ -8317,6 +9157,12 @@
             "state": "translated",
             "value": "이 계정에는 아직 Grok이 측정할 사용량이 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grokʼda bu hisob uchun hali hisoblanadigan narsa yoʻq"
+          }
         }
       }
     },
@@ -8375,6 +9221,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "설정…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sozlamalar…"
           }
         }
       }
@@ -8435,6 +9287,12 @@
             "state": "translated",
             "value": "Codenotch 종료"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotchʼni yopish"
+          }
         }
       }
     },
@@ -8493,6 +9351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "열어 두기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ochiq qoldirish"
           }
         }
       }
@@ -8553,6 +9417,12 @@
             "state": "translated",
             "value": "지금 새로 고침"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozir yangilash"
+          }
         }
       }
     },
@@ -8611,6 +9481,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codenotch가 ‘항상 표시’로 설정되어 있습니다. 설정에서 변경하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch “Doimo” holatiga oʻrnatilgan. Buni Sozlamalarda oʻzgartiring."
           }
         }
       }
@@ -8671,6 +9547,12 @@
             "state": "translated",
             "value": "확인 중…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekshirilmoqda…"
+          }
         }
       }
     },
@@ -8729,6 +9611,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codenotch가 최신 버전입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch eng soʻnggi versiyada."
           }
         }
       }
@@ -8789,6 +9677,12 @@
             "state": "translated",
             "value": "버전 %@을(를) 사용할 수 있으며 곧 설치됩니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ versiyasi mavjud va tez orada oʻrnatiladi."
+          }
         }
       }
     },
@@ -8847,6 +9741,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 서버에 연결할 수 없습니다. Codenotch가 자동으로 다시 시도합니다 — 설치된 앱에는 문제가 없습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanish serveriga ulanib boʻlmadi. Codenotch oʻzi qayta urinib koʻradi — bu nusxada hech qanday muammo yoʻq."
           }
         }
       }
@@ -12860,6 +13760,12 @@
             "state": "translated",
             "value": "Codenotch"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch"
+          }
         }
       }
     },
@@ -12918,6 +13824,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@%% 사용 · %@%% 남음"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%% ishlatilgan · %@%% qoldi"
           }
         }
       }
@@ -12978,6 +13890,12 @@
             "state": "translated",
             "value": "%@ 남음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ qoldi"
+          }
         }
       }
     },
@@ -13036,6 +13954,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 사용"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ishlatilgan"
           }
         }
       }
@@ -13096,6 +14020,12 @@
             "state": "translated",
             "value": "Copilot 사용량을 확인하려면 GitHub CLI로 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copilot foydalanishingizni oʻqish uchun GitHub CLI orqali kiring"
+          }
         }
       }
     },
@@ -13154,6 +14084,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "`gh auth login`으로 GitHub CLI에 로그인한 다음 GitHub Copilot을 활성화하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`gh auth login` yordamida GitHub CLI orqali kiring, soʻng GitHub Copilotʼni yoqing."
           }
         }
       }
@@ -13214,6 +14150,12 @@
             "state": "translated",
             "value": "GitHub Copilot이 측정 가능한 할당량을 보고하지 않았습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub Copilot hech qanday hisoblanadigan kvotani bildirmadi"
+          }
         }
       }
     },
@@ -13272,6 +14214,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "별도로 로그인할 필요가 없습니다. Gemini CLI, OpenCode, Hermes가 자체 호출에 대해 기록한 횟수를 합산합니다. API 키는 읽지 않습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiriladigan joy yoʻq: hisob Gemini CLI, OpenCode va Hermes oʻz chaqiruvlari haqida qayd etgan maʼlumotlardan yigʻiladi. API kalitingiz hech qachon oʻqilmaydi."
           }
         }
       }
@@ -13332,6 +14280,12 @@
             "state": "translated",
             "value": "Gemini CLI, OpenCode 또는 Hermes 세션을 찾을 수 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini CLI, OpenCode yoki Hermes sessiyalari topilmadi"
+          }
         }
       }
     },
@@ -13390,6 +14344,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "`%@`을(를) 한 번 실행하십시오. 로그인 후 해당 도구에서 측정값을 가져옵니다. 계정을 변경하려면 해당 도구에서 /login을 사용하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "`%@` ni bir marta ishga tushiring — u tizimga kiradi va bu koʻrsatkichlar oʻsha yerdan keladi. Hisobni oʻzgartirish uchun oʻsha yerda /login dan foydalaning."
           }
         }
       }
@@ -13450,6 +14410,12 @@
             "state": "translated",
             "value": "모델별"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cheklangan"
+          }
         }
       }
     },
@@ -13508,6 +14474,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "자동 사용량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avtomatik foydalanish"
           }
         }
       }
@@ -13568,6 +14540,12 @@
             "state": "translated",
             "value": "팀 온디맨드"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soʻrov boʻyicha jamoa"
+          }
         }
       }
     },
@@ -13626,6 +14604,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모두 새로 고침"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hammasini yangilash"
           }
         }
       }
@@ -13686,6 +14670,12 @@
             "state": "translated",
             "value": "재설정 날짜"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanish sanasi"
+          }
         }
       }
     },
@@ -13744,6 +14734,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "남은 시간"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qolgan vaqt"
           }
         }
       }
@@ -13804,6 +14800,12 @@
             "state": "translated",
             "value": "1시간 미만이면 분으로, 그 외에는 재설정 날짜와 시간으로 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir soatdan kam boʻlsa daqiqalarda; aks holda yangilanish sanasi va vaqti."
+          }
         }
       }
     },
@@ -13862,6 +14864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량이 재설정될 때까지 남은 시간을 3일 3시간 또는 3시간 20분처럼 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish yangilanishiga qolgan vaqt — masalan, 3 kun 3 soat yoki 3 soat 20 daqiqa."
           }
         }
       }
@@ -13922,6 +14930,12 @@
             "state": "translated",
             "value": "%lld일 %lld시간 후 재설정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kun %lld soatdan soʻng yangilanadi"
+          }
         }
       }
     },
@@ -13980,6 +14994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld일 %lld시간 후 재설정"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kun %lld soatdan soʻng yangilanadi"
           }
         }
       }
@@ -14040,6 +15060,12 @@
             "state": "translated",
             "value": "%lld시간 %lld분 후 재설정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld soat %lld daqiqadan soʻng yangilanadi"
+          }
         }
       }
     },
@@ -14098,6 +15124,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "화면에 아무것도 표시하지 않습니다. ‘앱 아이콘’이 ‘메뉴 막대’로 설정되어 있으면 메뉴 막대의 메뉴에서 측정값을 볼 수 있습니다. 그 외에는 응용 프로그램에서 Codenotch를 다시 열어 이 설정으로 돌아올 수 있습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekranda hech narsa yoʻq. Ilova belgisi Menyu paneli boʻlsa, koʻrsatkichlar menyu paneli menyusida qoladi. Aks holda, bu sozlamalarni qaytarish uchun Codenotchʼni Applicationsʼdan qayta oching."
           }
         }
       }
@@ -14158,6 +15190,12 @@
             "state": "translated",
             "value": "주 디스플레이"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asosiy displey"
+          }
         }
       }
     },
@@ -14216,6 +15254,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모든 디스플레이"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Barcha displeylar"
           }
         }
       }
@@ -14276,6 +15320,12 @@
             "state": "translated",
             "value": "메뉴 막대가 있는 디스플레이에만 노치를 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch faqat menyu paneli joylashgan displeyda koʻrinadi."
+          }
         }
       }
     },
@@ -14334,6 +15384,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "디스플레이마다 노치를 표시하며, 마우스를 올린 노치만 펼쳐집니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Har bir displey oʻz notchʼiga ega boʻladi va biriga kursor olib borilsa faqat oʻsha ochiladi."
           }
         }
       }
@@ -14394,6 +15450,12 @@
             "state": "translated",
             "value": "3초"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 soniya"
+          }
         }
       }
     },
@@ -14452,6 +15514,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "5초"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 soniya"
           }
         }
       }
@@ -14512,6 +15580,12 @@
             "state": "translated",
             "value": "10초"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 soniya"
+          }
         }
       }
     },
@@ -14570,6 +15644,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "알아차릴 수 있을 만큼 길고, 방해되지 않을 만큼 짧게 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sezishga yetarli darajada uzun, eʼtiborsiz qoldirishga yetarli darajada qisqa."
           }
         }
       }
@@ -14630,6 +15710,12 @@
             "state": "translated",
             "value": "세션 이름을 읽고 클릭할 수 있을 만큼 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiya nomini oʻqib, unga qoʻl choʻzishga yetarli darajada uzun."
+          }
         }
       }
     },
@@ -14688,6 +15774,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "화면을 확인할 여유가 생길 때까지 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qarab olishga ulgurgungizcha turadi."
           }
         }
       }
@@ -14748,6 +15840,12 @@
             "state": "translated",
             "value": "기기 강조 색상"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qurilma urgʻu rangi"
+          }
         }
       }
     },
@@ -14806,6 +15904,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결됨"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulangan"
           }
         }
       }
@@ -14866,6 +15970,12 @@
             "state": "translated",
             "value": "연결되지 않음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanmagan"
+          }
         }
       }
     },
@@ -14924,6 +16034,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "계정"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hisoblar"
           }
         }
       }
@@ -14984,6 +16100,12 @@
             "state": "translated",
             "value": "알림"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirishnomalar"
+          }
         }
       }
     },
@@ -15042,6 +16164,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결된 항목이 없어 노치에 표시할 링이 없습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hech narsa ulanmagan, shuning uchun notch chizadigan halqalar yoʻq."
           }
         }
       }
@@ -15102,6 +16230,12 @@
             "state": "translated",
             "value": "노치에 이 순서대로 표시합니다. 핸들을 드래그해 순서를 바꿀 수 있습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch bularni shu tartibda chizadi. Koʻchirish uchun birini dastagidan torting."
+          }
         }
       }
     },
@@ -15160,6 +16294,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 항목들은 아직 표시할 링이 없습니다. 켜면 위 목록의 끝에 추가됩니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bularda joylashtiriladigan halqa yoʻq. Birini yoqsangiz, u yuqoridagi roʻyxat oxiriga qoʻshiladi."
           }
         }
       }
@@ -15220,6 +16360,12 @@
             "state": "translated",
             "value": "노치"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch"
+          }
         }
       }
     },
@@ -15278,6 +16424,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "재설정 시간"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanish vaqti"
           }
         }
       }
@@ -15338,6 +16490,12 @@
             "state": "translated",
             "value": "디스플레이"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Displeylar"
+          }
         }
       }
     },
@@ -15396,6 +16554,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "디스플레이"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Displey"
           }
         }
       }
@@ -15456,6 +16620,12 @@
             "state": "translated",
             "value": "활성 창 따라가기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faol oynaga ergashish"
+          }
         }
       }
     },
@@ -15514,6 +16684,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용할 수 없는 디스플레이"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mavjud boʻlmagan displey"
           }
         }
       }
@@ -15574,6 +16750,12 @@
             "state": "translated",
             "value": "앱"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ilova"
+          }
         }
       }
     },
@@ -15632,6 +16814,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "강조 색상"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Urgʻu rangi"
           }
         }
       }
@@ -15692,6 +16880,12 @@
             "state": "translated",
             "value": "세션 종료 시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiya tugaganda"
+          }
         }
       }
     },
@@ -15750,6 +16944,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "노치 잠깐 열기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch bir lahzaga ochilsin"
           }
         }
       }
@@ -15810,6 +17010,12 @@
             "state": "translated",
             "value": "표시 시간"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Davomiyligi"
+          }
         }
       }
     },
@@ -15868,6 +17074,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "소리 재생"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tovush chiqarilsin"
           }
         }
       }
@@ -15928,6 +17140,12 @@
             "state": "translated",
             "value": "완료"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tugadi"
+          }
         }
       }
     },
@@ -15986,6 +17204,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "응답 대기 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sizni kutmoqda"
           }
         }
       }
@@ -16046,6 +17270,12 @@
             "state": "translated",
             "value": "사용량 기준 알림"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chegara ogohlantirishlari"
+          }
         }
       }
     },
@@ -16104,6 +17334,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사이드바 숨기기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yon panelni yashirish"
           }
         }
       }
@@ -16164,6 +17400,12 @@
             "state": "translated",
             "value": "사이드바 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yon panelni koʻrsatish"
+          }
         }
       }
     },
@@ -16222,6 +17464,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "선택됨"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanlangan"
           }
         }
       }
@@ -16282,6 +17530,12 @@
             "state": "translated",
             "value": "선택되지 않음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanlanmagan"
+          }
         }
       }
     },
@@ -16340,6 +17594,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ (없음)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (topilmadi)"
           }
         }
       }
@@ -16400,6 +17660,12 @@
             "state": "translated",
             "value": "%@ 재생"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ni chalish"
+          }
         }
       }
     },
@@ -16458,6 +17724,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 예산"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik byudjet"
           }
         }
       }
@@ -16518,6 +17790,12 @@
             "state": "translated",
             "value": "없음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yoʻq"
+          }
         }
       }
     },
@@ -16576,6 +17854,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "token"
           }
         }
       }
@@ -16636,6 +17920,12 @@
             "state": "translated",
             "value": "%@ 한도 도달"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ limitiga yetildi"
+          }
         }
       }
     },
@@ -16694,6 +17984,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 사용량 %lld%%"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %lld%% ga yetdi"
           }
         }
       }
@@ -16754,6 +18050,12 @@
             "state": "translated",
             "value": "%@ 한도를 모두 사용했습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ limiti tugadi."
+          }
         }
       }
     },
@@ -16812,6 +18114,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 한도를 모두 사용했습니다 — %@에 재설정"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ limiti tugadi — %@ yangilanadi"
           }
         }
       }
@@ -16872,6 +18180,12 @@
             "state": "translated",
             "value": "%2$@ 한도의 %1$lld%%를 사용했습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ limitining %1$lld%% ishlatilgan."
+          }
         }
       }
     },
@@ -16930,6 +18244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "키보드 입력을 받는 창이 있는 디스플레이로 이동합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klaviatura kiritishini qabul qilayotgan oyna joylashgan displeyga koʻchadi."
           }
         }
       }
@@ -16990,6 +18310,12 @@
             "state": "translated",
             "value": "%@에 고정되었습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ga mahkamlandi."
+          }
         }
       }
     },
@@ -17048,6 +18374,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "해당 디스플레이의 연결이 끊겼습니다. 다시 연결될 때까지 Codenotch는 활성 창을 따라갑니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu displey uzilgan. U qaytgunicha Codenotch faol oynaga ergashadi."
           }
         }
       }
@@ -17108,6 +18440,12 @@
             "state": "translated",
             "value": "드래그해 순서를 바꾸십시오. 노치에 이 순서대로 링을 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tartibni oʻzgartirish uchun torting. Notch halqalarni shu tartibda chizadi."
+          }
         }
       }
     },
@@ -17166,6 +18504,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "켜면 노치에 링이 표시됩니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchʼda unga halqa berish uchun buni yoqing."
           }
         }
       }
@@ -17226,6 +18570,12 @@
             "state": "translated",
             "value": "%@ 알림이 꺼져 있습니다. 클릭하면 다시 켭니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ogohlantirishlari oʻchirilgan. Yoqish uchun bosing."
+          }
         }
       }
     },
@@ -17284,6 +18634,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 사용량이 한도의 80%%와 100%%를 넘으면 알립니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ limitning 80%% va 100%% dan oshganda ogohlantirish."
           }
         }
       }
@@ -17344,6 +18700,12 @@
             "state": "translated",
             "value": "직접 정한 한도를 기준으로 링을 채웁니다. Google은 API 키의 한도를 공개하지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halqani siz tanlagan yuqori chegaraga nisbatan toʻldiradi; Google API kaliti uchun hech qanday chegara eʼlon qilmaydi."
+          }
         }
       }
     },
@@ -17403,6 +18765,12 @@
             "state": "translated",
             "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor(편집기 또는 cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, GitHub Copilot 또는 Gemini API 키(Gemini CLI, OpenCode, Hermes 경유)를 사용하는 도구를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, GitHub Copilot yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
         }
       }
     },
@@ -17461,6 +18829,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codenotch가 Claude Code, Antigravity 또는 cursor-agent의 저장된 로그인 정보를 읽기 전에 macOS가 권한을 요청할 수 있습니다. 백그라운드 새로 고침 중에는 요청하지 않으며, ‘접근 허용…’을 클릭할 때만 나타납니다. ‘거부’를 선택하면 다시 요청할 때까지 해당 로그인 정보를 읽지 않습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch Claude Code, Antigravity yoki cursor-agentʼning saqlangan kirish maʼlumotini oʻqishidan oldin macOS soʻrashi mumkin. Fondagi yangilanishlar bu savolni hech qachon koʻrsatmaydi; u faqat Ruxsat berish… ni bosganingizda paydo boʻladi, Deny esa siz qayta soʻramaguningizcha Codenotch oʻsha kirish maʼlumotini oʻqishini toʻxtatadi."
           }
         }
       }
@@ -18996,6 +20370,12 @@
             "state": "translated",
             "value": "시스템 따르기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tizimga ergashish"
+          }
         }
       }
     },
@@ -19054,6 +20434,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mac의 선호 언어를 따릅니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Macʼning asosiy tiliga moslashadi."
           }
         }
       }
@@ -19114,6 +20500,12 @@
             "state": "translated",
             "value": "Mac의 언어 설정과 관계없이 Codenotch에 이 언어를 사용합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac boshqa tilda boʻlsa ham, Codenotch shu tildan foydalanadi."
+          }
         }
       }
     },
@@ -19172,6 +20564,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "언어"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Til"
           }
         }
       }
@@ -19232,6 +20630,12 @@
             "state": "translated",
             "value": "사용 속도 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish surʼatini koʻrsatish"
+          }
         }
       }
     },
@@ -19290,6 +20694,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "기간별 할당량을 재설정까지 남은 시간과 비교해 사용량이 기준보다 초과했는지 여유가 있는지 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Har bir limit sarfini yangilanishgacha qolgan vaqtga solishtiradi — kvota meʼyordan tez ketayotgan boʻlsa ortiqcha sarflangan, sekin ketayotgan boʻlsa zaxira deb koʻrsatadi."
           }
         }
       }
@@ -19350,6 +20760,12 @@
             "state": "translated",
             "value": "크기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻlcham"
+          }
         }
       }
     },
@@ -19408,6 +20824,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "작게"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kichik"
           }
         }
       }
@@ -19468,6 +20890,12 @@
             "state": "translated",
             "value": "중간"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻrtacha"
+          }
         }
       }
     },
@@ -19526,6 +20954,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "크게"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katta"
           }
         }
       }
@@ -19586,6 +21020,12 @@
             "state": "translated",
             "value": "가장자리에서 차지하는 공간이 가장 작습니다. 가까이에서는 읽기 쉽지만 멀리서는 잘 보이지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chekkada eng kam joy egallaydi. Oʻqsa boʻladi, lekin stolning narigi chetidan emas."
+          }
         }
       }
     },
@@ -19644,6 +21084,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "노치의 원래 디자인 크기입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch chizilgan oʻlcham."
           }
         }
       }
@@ -19704,6 +21150,12 @@
             "state": "translated",
             "value": "한눈에 읽기 쉽고 눈에 잘 띕니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir qarashda oʻqish osonroq, eʼtiborsiz qoldirish qiyinroq."
+          }
         }
       }
     },
@@ -19762,6 +21214,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "⌥ 키를 누른 채 노치를 드래그하면 가장자리를 따라 이동합니다. 가장자리마다 마지막 위치를 기억합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchʼni chekkasi boʻylab surish uchun ⌥ ni bosib turib torting. Har bir chekka uni qayerda qoldirganingizni eslab qoladi."
           }
         }
       }
@@ -19822,6 +21280,12 @@
             "state": "translated",
             "value": "가운데로 되돌리기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markazga qaytarish"
+          }
         }
       }
     },
@@ -19880,6 +21344,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@%% 초과"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%% ortiqcha sarflangan"
           }
         }
       }
@@ -19940,6 +21410,12 @@
             "state": "translated",
             "value": "%@%% 여유"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%% zaxira"
+          }
         }
       }
     },
@@ -19998,6 +21474,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "유휴 상태"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boʻsh turibdi"
           }
         }
       }
@@ -20058,6 +21540,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 ~/.codex-%@의 Codex에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun ~/.codex-%@ da Codexʼga kiring"
+          }
         }
       }
     },
@@ -20116,6 +21604,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량을 확인하려면 Command Code 앱으로 로그인하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun Command Code ilovasi orqali kiring"
           }
         }
       }
@@ -20176,6 +21670,12 @@
             "state": "translated",
             "value": "설정에서 Ollama API 키를 입력하거나 OLLAMA_API_KEY를 내보내십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sozlamalarda Ollama API kalitini kiriting yoki OLLAMA_API_KEY ni export qiling"
+          }
         }
       }
     },
@@ -20234,6 +21734,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "로컬 모델을 모니터링하려면 Ollama를 시작하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal modellaringizni kuzatish uchun Ollamaʼni ishga tushiring"
           }
         }
       }
@@ -20294,6 +21800,12 @@
             "state": "translated",
             "value": "아래에 Ollama API 키를 입력하거나 셸에서 OLLAMA_API_KEY를 내보내십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quyida Ollama API kalitini kiriting yoki shellʼingizda OLLAMA_API_KEY ni export qiling."
+          }
         }
       }
     },
@@ -20352,6 +21864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Command Code 앱으로 로그인하십시오. 앱이 ~/.commandcode/auth.json에 기록하면 노치가 읽습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command Code ilovasi orqali kiring — u ~/.commandcode/auth.json ni yozadi, notch esa uni oʻqiydi."
           }
         }
       }
@@ -20412,6 +21930,12 @@
             "state": "translated",
             "value": "이 계정에는 아직 Command Code가 측정할 사용량이 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Command Codeʼda bu hisob uchun hali hisoblanadigan narsa yoʻq"
+          }
         }
       }
     },
@@ -20470,6 +21994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 사용량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik foydalanish"
           }
         }
       }
@@ -20530,6 +22060,12 @@
             "state": "translated",
             "value": "세션 사용량"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiya foydalanishi"
+          }
         }
       }
     },
@@ -20588,6 +22124,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "주간 사용량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik foydalanish"
           }
         }
       }
@@ -20648,6 +22190,12 @@
             "state": "translated",
             "value": "로컬 모델"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal modellar"
+          }
         }
       }
     },
@@ -20703,6 +22251,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localhost"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Localhost"
@@ -20766,6 +22320,12 @@
             "state": "translated",
             "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor(편집기 또는 cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot 또는 Gemini API 키(Gemini CLI, OpenCode, Hermes 경유)를 사용하는 도구를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
         }
       }
     },
@@ -20812,6 +22372,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "완료"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tugallandi"
           }
         }
       }
@@ -20860,6 +22426,12 @@
             "state": "translated",
             "value": "완료"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tugallangan"
+          }
         }
       }
     },
@@ -20906,6 +22478,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "대기 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kutmoqda"
           }
         }
       }
@@ -20954,6 +22532,12 @@
             "state": "translated",
             "value": "로컬 세션"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal sessiya"
+          }
         }
       }
     },
@@ -21000,6 +22584,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "활성"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faol"
           }
         }
       }
@@ -21048,6 +22638,12 @@
             "state": "translated",
             "value": "이 계정의 정보를 읽으려면 Antigravity IDE가 실행 중인지 확인하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu hisobni oʻqish uchun Antigravity IDE ishlab turganiga ishonch hosil qiling."
+          }
         }
       }
     },
@@ -21094,6 +22690,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "자동"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avtomatik"
           }
         }
       }
@@ -21142,6 +22744,12 @@
             "state": "translated",
             "value": "5시간 제한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 soatlik limit"
+          }
         }
       }
     },
@@ -21189,6 +22797,12 @@
             "state": "translated",
             "value": "주간 제한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limit"
+          }
         }
       }
     },
@@ -21232,6 +22846,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liquid Glass"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Liquid Glass"
@@ -21283,6 +22903,12 @@
             "state": "translated",
             "value": "불투명 검정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toʻliq qora"
+          }
         }
       }
     },
@@ -21329,6 +22955,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "어두운 유리"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toʻq Glass"
           }
         }
       }
@@ -21377,6 +23009,12 @@
             "state": "translated",
             "value": "시스템의 Liquid Glass를 사용합니다. 투명 또는 색조 유리와 라이트 또는 다크 모드 등 이 Mac의 모양 설정을 따릅니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tizim Liquid Glass. Shu Macʼning Koʻrinish sozlamalariga ergashadi — Clear yoki Tinted shisha va yorugʻ yoki qorongʻi rejim bilan birga."
+          }
         }
       }
     },
@@ -21424,6 +23062,12 @@
             "state": "translated",
             "value": "기존의 불투명한 검은색 노치입니다. Mac의 모양 설정과 관계없이 항상 어둡게 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asl shaffof boʻlmagan qora notch. Mac koʻrinishi qanday boʻlishidan qatʼi nazar, doimo qorongʻi."
+          }
         }
       }
     },
@@ -21470,6 +23114,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "검은색으로 물들인 Liquid Glass입니다. Mac의 모양 설정과 관계없이 항상 어둡게 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qora tusli Liquid Glass. Mac koʻrinishi qanday boʻlishidan qatʼi nazar, doimo qorongʻi."
           }
         }
       }
@@ -22458,6 +24108,12 @@
             "state": "translated",
             "value": "주간 링"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik halqa"
+          }
         }
       }
     },
@@ -22504,6 +24160,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "표면"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sirt"
           }
         }
       }
@@ -22552,6 +24214,12 @@
             "state": "translated",
             "value": "노치 표시 항목"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch nimalarni oʻqiydi"
+          }
         }
       }
     },
@@ -22598,6 +24266,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Antigravity의 기본 노치에 표시할 한도를 선택합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antigravity uchun asosiy notchʼda qaysi limit koʻrinishini tanlang."
           }
         }
       }
@@ -22646,6 +24320,12 @@
             "state": "translated",
             "value": "끄기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻchirilgan"
+          }
         }
       }
     },
@@ -22692,6 +24372,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "안쪽"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ichkarida"
           }
         }
       }
@@ -22740,6 +24426,12 @@
             "state": "translated",
             "value": "바깥쪽"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tashqarida"
+          }
         }
       }
     },
@@ -22786,6 +24478,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "제공자당 하나의 링으로 주요 한도를 표시합니다. 주간 할당량은 호버 카드에 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Har bir provayder uchun bitta halqa — asosiy limitni koʻrsatadi. Haftalik ruxsat maslahat kartasida qoladi."
           }
         }
       }
@@ -22834,6 +24532,12 @@
             "state": "translated",
             "value": "기본 링 안쪽에 주간 한도를 얇은 링으로 표시합니다. 작업 중 표시와 같은 간격을 사용합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limit uchun ingichkaroq halqa — asosiysining ichida chiziladi. U boʻshliqni ish holati indikatori bilan boʻlishadi."
+          }
         }
       }
     },
@@ -22880,6 +24584,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "기본 링과 노치 가장자리 사이의 여백에 주간 한도를 얇은 링으로 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limit uchun ingichkaroq halqa — asosiysining atrofida, halqa bilan notch chekkasi orasidagi boʻshliqda chiziladi."
           }
         }
       }
@@ -22928,6 +24638,12 @@
             "state": "translated",
             "value": "%@을(를) 터미널에서 실행해 %@에 로그인하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ ga kirish uchun Terminalda %1$@ ni ishga tushiring."
+          }
         }
       }
     },
@@ -22974,6 +24690,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "오늘 요청 수 · 마지막 사용 %@"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bugungi soʻrovlar · oxirgi ishlatilgan %@"
           }
         }
       }
@@ -23022,6 +24744,12 @@
             "state": "translated",
             "value": "어제"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kecha"
+          }
         }
       }
     },
@@ -23068,6 +24796,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld일 전"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kun oldin"
           }
         }
       }
@@ -23116,6 +24850,12 @@
             "state": "translated",
             "value": "개인"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shaxsiy"
+          }
         }
       }
     },
@@ -23162,6 +24902,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gemini 모델"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemini modellari"
           }
         }
       }
@@ -23210,6 +24956,12 @@
             "state": "translated",
             "value": "5시간 제한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5 soatlik limit"
+          }
         }
       }
     },
@@ -23256,6 +25008,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude 및 GPT 모델"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude va GPT modellari"
           }
         }
       }
@@ -23304,6 +25062,12 @@
             "state": "translated",
             "value": "질문"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savol"
+          }
         }
       }
     },
@@ -23350,6 +25114,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "승인"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasdiqlash"
           }
         }
       }
@@ -23398,6 +25168,12 @@
             "state": "translated",
             "value": "권한"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruxsat"
+          }
         }
       }
     },
@@ -23444,6 +25220,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "응답을 기다리는 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "javobingiz kerak"
           }
         }
       }
@@ -23492,6 +25274,12 @@
             "state": "translated",
             "value": "%@에서 작업 중"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ da ishlamoqda"
+          }
         }
       }
     },
@@ -23538,6 +25326,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanish"
           }
         }
       }
@@ -23586,6 +25380,12 @@
             "state": "translated",
             "value": "프리셋"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shablon"
+          }
         }
       }
     },
@@ -23632,6 +25432,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용자 지정"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maxsus"
           }
         }
       }
@@ -23680,6 +25486,12 @@
             "state": "translated",
             "value": "프리셋 크기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tayyor oʻlcham"
+          }
         }
       }
     },
@@ -23726,6 +25538,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "링, 텍스트, 툴팁을 함께 확대·축소해 원래 비율을 유지합니다. 100%가 노치의 원래 디자인 크기입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Butun sirtni — halqalar, matn va maslahat oynasini birgalikda — masshtablaydi, shunda nisbatlar chizilganicha qoladi. 100% — notch moʻljallangan oʻlcham."
           }
         }
       }
@@ -23774,6 +25592,12 @@
             "state": "translated",
             "value": "Ollama API 키"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama API kaliti"
+          }
         }
       }
     },
@@ -23820,6 +25644,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "키 붙여넣기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalitingizni joylashtiring"
           }
         }
       }
@@ -23868,6 +25698,12 @@
             "state": "translated",
             "value": "저장"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saqlash"
+          }
         }
       }
     },
@@ -23914,6 +25750,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "저장됨"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saqlandi"
           }
         }
       }
@@ -23962,6 +25804,12 @@
             "state": "translated",
             "value": "%@ 사용량을 읽으려면 로그인을 갱신해야 합니다 — 터미널에서 `claude`를 한 번 실행하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ foydalanishi uchun kirish yangilanishi kerak — terminalda bir marta `claude` ni ishga tushiring."
+          }
         }
       }
     },
@@ -24008,6 +25856,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ %@ · Ollama 경유"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ %@ · Ollama orqali"
           }
         }
       }
@@ -24056,6 +25910,12 @@
             "state": "translated",
             "value": "노치에서 숨김 · Ollama에 로드됨"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notchʼda yashirilgan · Ollamaʼga yuklangan"
+          }
         }
       }
     },
@@ -24102,6 +25962,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "노치에서 이 모델을 표시하거나 숨깁니다. Ollama에는 로드된 상태로 유지됩니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu modelni notchʼda koʻrsatish yoki yashirish. U Ollamaʼda yuklangan holda qoladi."
           }
         }
       }
@@ -24150,6 +26016,12 @@
             "state": "translated",
             "value": "생각 중"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻylamoqda"
+          }
         }
       }
     },
@@ -24196,6 +26068,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ · 로컬"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · Lokal"
           }
         }
       }
@@ -24244,6 +26122,12 @@
             "state": "translated",
             "value": "이 기간에 기록된 Ollama 사용량이 아직 없습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu davr uchun Ollama foydalanishi hali qayd etilmagan."
+          }
         }
       }
     },
@@ -24290,6 +26174,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "미사용 리셋"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishlatilmagan yangilanishlar"
           }
         }
       }
@@ -24338,6 +26228,12 @@
             "state": "translated",
             "value": "미사용 리셋 없음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishlatilmagan yangilanishlar yoʻq"
+          }
         }
       }
     },
@@ -24384,6 +26280,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "미사용 리셋 1개"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 ishlatilmagan yangilanish"
           }
         }
       }
@@ -24432,6 +26334,12 @@
             "state": "translated",
             "value": "미사용 리셋 %lld개"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ishlatilmagan yangilanish"
+          }
         }
       }
     },
@@ -24478,6 +26386,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@에 만료"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ da muddati tugaydi"
           }
         }
       }
@@ -24526,6 +26440,12 @@
             "state": "translated",
             "value": "다음 만료 %@"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyingisining muddati %@ da tugaydi"
+          }
         }
       }
     },
@@ -24566,6 +26486,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "제공자의 주요 한도 사용량이 80%를 넘는 순간과 100%에 도달할 때 시스템 알림을 보냅니다. 각 기준을 넘을 때 한 번씩 알리고, 집계 기간이 바뀐 뒤에만 다시 알립니다. ‘계정’의 해당 항목 옆 종 아이콘으로 알림을 끌 수 있습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provayderning asosiy limiti 80% dan oshgan zahoti tizim bildirishnomasi, 100% da esa yana bir marta — har oʻtishda bir martadan, keyingisi faqat oyna yangilangandan soʻng. Birini oʻchirish uchun Hisoblar boʻlimidagi qatori yonidagi qoʻngʻiroqni bosing."
           }
         }
       }
@@ -24608,6 +26534,12 @@
             "state": "translated",
             "value": "Codenotch는 에이전트가 작업을 마치거나 질문을 위해 멈추는 순간을 감지합니다. 노치가 열려 있을 때 클릭하면 해당 세션의 앱을 앞으로 가져옵니다. 외부에서 탭을 선택할 수 있는 터미널은 일부뿐이므로, 탭 대신 앱을 열고 툴팁에 세션 이름을 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch agent ishdan toʻxtagan yoki sizdan nimadir soʻramoqchi boʻlgan lahzani darhol biladi. Notch ochiq turganda uni bosish oʻsha sessiyaning ilovasini oldinga chiqaradi — ilovani, varaqni emas: faqat baʼzi terminallar tashqaridan varaq tanlashga ruxsat beradi, shuning uchun maslahat oynasi sessiya nomini koʻrsatadi."
+          }
         }
       }
     },
@@ -24648,6 +26580,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "소리는 인터페이스 효과음 채널이 아닌 일반 출력으로 재생합니다. 따라서 시스템 설정 → 사운드에서 ‘사용자 인터페이스 효과음 재생’을 꺼도 들립니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tovush interfeys effektlari kanalida emas, oddiy chiqishda chiqariladi — shuning uchun Tizim sozlamalari → Tovush boʻlimida “Play user interface sound effects” oʻchirilgan boʻlsa ham eshitiladi."
           }
         }
       }
@@ -24690,6 +26628,12 @@
             "state": "translated",
             "value": "대부분의 측정값은 이미 계정에 로그인된 도구에서 가져옵니다. DeepSeek는 예외로, ‘로그인’을 클릭하면 Codenotch 전용 WebView가 열리며 여기서 로그아웃하면 해당 세션과 저장된 측정값만 삭제합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koʻrsatkichlarning aksariyati hisobni allaqachon saqlab turgan vositadan olinadi. DeepSeek bundan mustasno: Kirish tugmasini bosish uning oʻz Codenotch WebViewʼini ochadi, bu yerda chiqish esa faqat oʻsha sessiya va uning saqlangan koʻrsatkichini tozalaydi."
+          }
         }
       }
     },
@@ -24730,6 +26674,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "누적 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umumiy tokenlar"
           }
         }
       }
@@ -24772,6 +26722,12 @@
             "state": "translated",
             "value": "최대 토큰"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori yuklama tokenlari"
+          }
         }
       }
     },
@@ -24812,6 +26768,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "가장 긴 채팅"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eng uzun suhbat"
           }
         }
       }
@@ -24854,6 +26816,12 @@
             "state": "translated",
             "value": "현재 연속 사용 일수"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozirgi seriya"
+          }
         }
       }
     },
@@ -24894,6 +26862,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "최장 연속 사용 일수"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eng uzun seriya"
           }
         }
       }
@@ -24936,6 +26910,12 @@
             "state": "translated",
             "value": "오늘"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bugun"
+          }
         }
       }
     },
@@ -24976,6 +26956,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "30일 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 kunlik tokenlar"
           }
         }
       }
@@ -25018,6 +27004,12 @@
             "state": "translated",
             "value": "대기 중"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kutilmoqda"
+          }
         }
       }
     },
@@ -25058,6 +27050,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용액"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sarflangan"
           }
         }
       }
@@ -25100,6 +27098,12 @@
             "state": "translated",
             "value": "잔여액"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qolgan"
+          }
         }
       }
     },
@@ -25140,6 +27144,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "충전액"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toʻldirilgan"
           }
         }
       }
@@ -25182,6 +27192,12 @@
             "state": "translated",
             "value": "사용량 상세"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish tafsilotlari"
+          }
         }
       }
     },
@@ -25222,6 +27238,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokenlar"
           }
         }
       }
@@ -25264,6 +27286,12 @@
             "state": "translated",
             "value": "비용"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Narx"
+          }
         }
       }
     },
@@ -25304,6 +27332,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "요청"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soʻrovlar"
           }
         }
       }
@@ -25346,6 +27380,12 @@
             "state": "translated",
             "value": "API 키"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API kalitlari"
+          }
         }
       }
     },
@@ -25386,6 +27426,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "일일 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunlik tokenlar"
           }
         }
       }
@@ -25428,6 +27474,12 @@
             "state": "translated",
             "value": "일일 비용"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunlik xarajat"
+          }
         }
       }
     },
@@ -25468,6 +27520,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "최대 %@"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yuqori yuklama %@"
           }
         }
       }
@@ -25510,6 +27568,12 @@
             "state": "translated",
             "value": "계정 사용량 (%@)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hisob foydalanishi (%@)"
+          }
         }
       }
     },
@@ -25550,6 +27614,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모니터링이 꺼져 있습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuzatuv oʻchirilgan."
           }
         }
       }
@@ -25592,6 +27662,12 @@
             "state": "translated",
             "value": "LM Studio 열기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studioʻni ochish"
+          }
         }
       }
     },
@@ -25632,6 +27708,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ollama 열기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollamaʼni ochish"
           }
         }
       }
@@ -25674,6 +27756,12 @@
             "state": "translated",
             "value": "서버 주소"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server manzili"
+          }
         }
       }
     },
@@ -25714,6 +27802,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결 확인"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanishni tekshirish"
           }
         }
       }
@@ -25756,6 +27850,12 @@
             "state": "translated",
             "value": "적용"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qoʻllash"
+          }
         }
       }
     },
@@ -25796,6 +27896,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "API 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API tokeni"
           }
         }
       }
@@ -25838,6 +27944,12 @@
             "state": "translated",
             "value": "제거"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻchirish"
+          }
         }
       }
     },
@@ -25878,6 +27990,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "LM Studio 확인 중…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studio tekshirilmoqda…"
           }
         }
       }
@@ -25920,6 +28038,12 @@
             "state": "translated",
             "value": "LM Studio에 연결 중…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LM Studioʻga ulanmoqda…"
+          }
         }
       }
     },
@@ -25960,6 +28084,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ollama 확인 중…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollama tekshirilmoqda…"
           }
         }
       }
@@ -26002,6 +28132,12 @@
             "state": "translated",
             "value": "Ollama에 연결 중…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ollamaʼga ulanmoqda…"
+          }
         }
       }
     },
@@ -26042,6 +28178,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "로드된 모델은 계정 → 연결됨에 표시하며 1초마다 확인합니다. 임베딩 모델은 표시하지 않습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuklangan modellar Hisoblar → Ulangan boʻlimida koʻrinadi va har soniyada tekshiriladi. Embedding modellari koʻrsatilmaydi."
           }
         }
       }
@@ -26084,6 +28226,12 @@
             "state": "translated",
             "value": "토큰을 저장하고 모든 요청에 포함해 전송합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token saqlanadi va har bir soʻrov bilan yuboriladi."
+          }
         }
       }
     },
@@ -26124,6 +28272,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "LM Studio 서버가 토큰을 요구할 때만 필요합니다(Developer → Server Settings). 토큰이 없으면 Authorization 헤더 없이 요청합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faqat LM Studio serveri token talab qilganda kerak (Developer → Server Settings). Tokensiz soʻrovlar Authorization sarlavhasisiz yuboriladi."
           }
         }
       }
@@ -26166,6 +28320,12 @@
             "state": "translated",
             "value": "감지된 모델은 계정 → 연결됨에 표시합니다. 모델 로드와 언로드 여부는 1초마다 확인합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topilgan modellar Hisoblar → Ulangan boʻlimida koʻrinadi. Model yuklanishi va oʻchirilishi har soniyada tekshiriladi."
+          }
         }
       }
     },
@@ -26206,6 +28366,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "속도 및 생각 중 상태 측정"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tezlik va fikrlashni oʻlchash"
           }
         }
       }
@@ -26248,6 +28414,12 @@
             "state": "translated",
             "value": "응답을 측정하려면 채팅 클라이언트의 주소를 http://127.0.0.1:11435로 설정하고 Codenotch를 열어 두십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Javoblarni oʻlchash uchun chat mijozingizni http://127.0.0.1:11435 ga yoʻnaltiring va Codenotchʼni ochiq qoldiring."
+          }
         }
       }
     },
@@ -26282,6 +28454,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 네트워크의 휴대전화 허용"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shu tarmoqdagi telefonlarga ruxsat berish"
           }
         }
       }
@@ -26318,6 +28496,12 @@
             "state": "translated",
             "value": "휴대전화가 Wi-Fi를 통해 이 Mac의 사용량을 읽습니다. 네트워크 밖으로는 아무것도 전송하지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefoningiz foydalanishni shu Macʼdan Wi-Fi orqali oʻqiydi. Hech narsa tarmogʻingizdan tashqariga chiqmaydi."
+          }
         }
       }
     },
@@ -26352,6 +28536,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "시작 중…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishga tushmoqda…"
           }
         }
       }
@@ -26388,6 +28578,12 @@
             "state": "translated",
             "value": "%@:%d에서 준비됨"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@:%d da tayyor"
+          }
         }
       }
     },
@@ -26422,6 +28618,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 Mac이 로컬 네트워크에 연결되어 있지 않습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Mac lokal tarmoqda emas"
           }
         }
       }
@@ -26458,6 +28660,12 @@
             "state": "translated",
             "value": "휴대전화 연결…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefon ulash…"
+          }
         }
       }
     },
@@ -26492,6 +28700,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "페어링된 휴대전화"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulangan telefonlar"
           }
         }
       }
@@ -26528,6 +28742,12 @@
             "state": "translated",
             "value": "아직 연결된 휴대전화가 없습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hali telefonlar yoʻq."
+          }
         }
       }
     },
@@ -26562,6 +28782,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "현재 활성"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozir faol"
           }
         }
       }
@@ -26598,6 +28824,12 @@
             "state": "translated",
             "value": "%@에 페어링됨"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ da ulangan"
+          }
         }
       }
     },
@@ -26632,6 +28864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "‘%@’을(를) 제거하시겠습니까?"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” oʻchirilsinmi?"
           }
         }
       }
@@ -26668,6 +28906,12 @@
             "state": "translated",
             "value": "다시 연결하려면 새 코드를 스캔해야 합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qayta ulanish uchun u yangi kodni skanerlashi kerak boʻladi."
+          }
         }
       }
     },
@@ -26702,6 +28946,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 연결됨"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ulangan"
           }
         }
       }
@@ -26738,6 +28988,12 @@
             "state": "translated",
             "value": "완료"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tayyor"
+          }
         }
       }
     },
@@ -26772,6 +29028,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "다른 휴대전화 연결"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boshqa telefon ulash"
           }
         }
       }
@@ -26808,6 +29070,12 @@
             "state": "translated",
             "value": "휴대전화 연결"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefoningizni ulang"
+          }
         }
       }
     },
@@ -26842,6 +29110,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "휴대전화의 Codenotch 앱으로 이 코드를 스캔하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kodni telefoningizdagi Codenotch ilovasi bilan skanerlang."
           }
         }
       }
@@ -26878,6 +29152,12 @@
             "state": "translated",
             "value": "%@ 후 만료"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ dan keyin muddati tugaydi"
+          }
         }
       }
     },
@@ -26912,6 +29192,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "복사됨 ✓"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nusxalandi ✓"
           }
         }
       }
@@ -26948,6 +29234,12 @@
             "state": "translated",
             "value": "링크 복사"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Havoladan nusxa olish"
+          }
         }
       }
     },
@@ -26982,6 +29274,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "1. 휴대전화에서 Codenotch 열기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Telefoningizda Codenotchʼni oching"
           }
         }
       }
@@ -27018,6 +29316,12 @@
             "state": "translated",
             "value": "2. QR 코드 스캔 누르기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. QR kodni skanerlash tugmasini bosing"
+          }
         }
       }
     },
@@ -27052,6 +29356,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "3. 휴대전화로 이 코드 비추기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Telefoningizni shu kodga qarating"
           }
         }
       }
@@ -27088,6 +29398,12 @@
             "state": "translated",
             "value": "휴대전화가 이 Mac과 같은 Wi-Fi에 연결되어 있어야 합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefoningiz shu Mac bilan bir xil Wi-Fiʼda boʻlishi kerak."
+          }
         }
       }
     },
@@ -27122,6 +29438,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "요금"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Narxlar"
           }
         }
       }
@@ -27158,6 +29480,12 @@
             "state": "translated",
             "value": "피크 요금 · 오프피크의 2배"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori yuklama narxi · past yuklamadan 2×"
+          }
         }
       }
     },
@@ -27192,6 +29520,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "오프피크 요금 · 기준"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past yuklama narxi · asosiy"
           }
         }
       }
@@ -27228,6 +29562,12 @@
             "state": "translated",
             "value": "다음 오프피크"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyingi past yuklama"
+          }
         }
       }
     },
@@ -27262,6 +29602,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "다음 피크"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyingi yuqori yuklama"
           }
         }
       }
@@ -27298,6 +29644,12 @@
             "state": "translated",
             "value": "피크/오프피크 요금"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori/past yuklama narxi"
+          }
         }
       }
     },
@@ -27332,6 +29684,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "DeepSeek 요금 표시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek narxlarini koʻrsatish"
           }
         }
       }
@@ -27368,6 +29726,12 @@
             "state": "translated",
             "value": "DeepSeek 사용량 카드에 현재 요금 구간과 다음 피크/오프피크 전환 시점을 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek foydalanish kartasida hozirgi hisob-kitob bosqichi va keyingi yuqori/past yuklama oʻzgarishini koʻrsatadi."
+          }
         }
       }
     },
@@ -27402,6 +29766,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "피크 규칙"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori yuklama qoidasi"
           }
         }
       }
@@ -27438,6 +29808,12 @@
             "state": "translated",
             "value": "공식 API에서 안정적으로 읽을 수 없어 일정을 로컬에서 관리합니다. 아래 시간은 UTC 기준이며, 카드에는 다음 전환 시점을 현지 시간으로 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jadval lokal saqlanadi, chunki uni rasmiy APIʼdan ishonchli oʻqib boʻlmaydi. Quyidagi vaqtlar UTCʼda; karta keyingi oʻzgarishni sizning mahalliy vaqtingizga oʻgiradi."
+          }
         }
       }
     },
@@ -27472,6 +29848,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "피크 요일"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori yuklama kunlari"
           }
         }
       }
@@ -27508,6 +29890,12 @@
             "state": "translated",
             "value": "일"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yak"
+          }
         }
       }
     },
@@ -27542,6 +29930,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dush"
           }
         }
       }
@@ -27578,6 +29972,12 @@
             "state": "translated",
             "value": "화"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesh"
+          }
         }
       }
     },
@@ -27612,6 +30012,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "수"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chor"
           }
         }
       }
@@ -27648,6 +30054,12 @@
             "state": "translated",
             "value": "목"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pay"
+          }
         }
       }
     },
@@ -27682,6 +30094,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "금"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jum"
           }
         }
       }
@@ -27718,6 +30136,12 @@
             "state": "translated",
             "value": "토"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shan"
+          }
         }
       }
     },
@@ -27752,6 +30176,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "시간대 1"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1-oyna"
           }
         }
       }
@@ -27788,6 +30218,12 @@
             "state": "translated",
             "value": "시간대 2"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2-oyna"
+          }
         }
       }
     },
@@ -27822,6 +30258,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "시간대 %lld"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld-oyna"
           }
         }
       }
@@ -27858,6 +30300,12 @@
             "state": "translated",
             "value": "피크 시간대 추가"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori yuklama oynasini qoʻshish"
+          }
         }
       }
     },
@@ -27892,6 +30340,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "피크 시간대 제거"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yuqori yuklama oynasini oʻchirish"
           }
         }
       }
@@ -27928,6 +30382,12 @@
             "state": "translated",
             "value": "시작"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boshlanish vaqti"
+          }
         }
       }
     },
@@ -27962,6 +30422,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "종료"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tugash vaqti"
           }
         }
       }
@@ -27998,6 +30464,12 @@
             "state": "translated",
             "value": "~"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "—"
+          }
         }
       }
     },
@@ -28032,6 +30504,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "현재 기본 규칙 복원"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozirgi standart qoidani tiklash"
           }
         }
       }
@@ -28068,6 +30546,12 @@
             "state": "translated",
             "value": "한도 도달 시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limitga yetilganda"
+          }
         }
       }
     },
@@ -28102,6 +30586,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "세션 한도 알림 표시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiya limiti uchun bildirishnoma koʻrsatilsin"
           }
         }
       }
@@ -28138,6 +30628,12 @@
             "state": "translated",
             "value": "주간 한도 알림 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limit uchun bildirishnoma koʻrsatilsin"
+          }
         }
       }
     },
@@ -28172,6 +30668,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "알림 소리"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogohlantirish tovushi"
           }
         }
       }
@@ -28208,6 +30710,12 @@
             "state": "translated",
             "value": "세션 한도 알림 미리 보기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiya limiti ogohlantirishini koʻrish"
+          }
         }
       }
     },
@@ -28242,6 +30750,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "주간 한도 알림 미리 보기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limit ogohlantirishini koʻrish"
           }
         }
       }
@@ -28278,6 +30792,12 @@
             "state": "translated",
             "value": "제공자의 세션 또는 주간 사용 한도에 도달하면 노치 옆에 알림 카드를 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provayderning sessiya yoki haftalik foydalanish limitiga yetilganda notch yonidan bildirishnoma kartasini koʻrsatadi."
+          }
         }
       }
     },
@@ -28312,6 +30832,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "한도 재설정 시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limit yangilanganda"
           }
         }
       }
@@ -28348,6 +30874,12 @@
             "state": "translated",
             "value": "노치에서 알림 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirishnoma notchʼdan koʻrsatilsin"
+          }
         }
       }
     },
@@ -28382,6 +30914,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "재설정 소리"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanish tovushi"
           }
         }
       }
@@ -28418,6 +30956,12 @@
             "state": "translated",
             "value": "알림 미리 보기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirishnomani koʻrish"
+          }
         }
       }
     },
@@ -28452,6 +30996,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "제공자의 사용 한도가 재설정되면 노치 옆에 알림 카드를 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provayderning foydalanish limiti yangilanganda notch yonidan bildirishnoma kartasini koʻrsatadi."
           }
         }
       }
@@ -28512,6 +31062,12 @@
             "state": "translated",
             "value": "일일 사용 속도"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kunlik surʼat"
+          }
         }
       }
     },
@@ -28570,6 +31126,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude 일일 사용 속도 링"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude kunlik surʼat halqasi"
           }
         }
       }
@@ -28630,6 +31192,12 @@
             "state": "translated",
             "value": "Claude의 기본 링에 세션 대신 주간 한도의 오늘 몫을 표시합니다. 주간 재설정일부터 하루에 7분의 1씩 계산합니다. 세션은 얇은 링과 카드로 옮겨 표시하고 알림은 일일 링을 기준으로 보냅니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeʼning asosiy halqasi sessiya oʻrniga haftalik limitning bugungi ulushini koʻrsatadi — kuniga yettidan bir, haftalik yangilanishdan hisoblanadi. Sessiya ingichka halqa va kartaga oʻtadi; ogohlantirishlar kunlik halqaga ergashadi."
+          }
         }
       }
     },
@@ -28664,6 +31232,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "휴대전화 연결…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefonni ulash…"
           }
         }
       }
@@ -28700,6 +31274,12 @@
             "state": "translated",
             "value": "다음 재설정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keyingi yangilanish"
+          }
         }
       }
     },
@@ -28734,6 +31314,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용 가능한 할당량이 있습니다 (0% 사용)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kvota mavjud (0% ishlatilgan)"
           }
         }
       }
@@ -28770,6 +31356,12 @@
             "state": "translated",
             "value": "재설정 시각"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanish vaqti"
+          }
         }
       }
     },
@@ -28804,6 +31396,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "세션 한도 도달 (100% 사용)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessiya limitiga yetildi (100% ishlatilgan)"
           }
         }
       }
@@ -28840,6 +31438,12 @@
             "state": "translated",
             "value": "주간 한도 도달 (100% 사용)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik limitga yetildi (100% ishlatilgan)"
+          }
         }
       }
     },
@@ -28874,6 +31478,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "생성 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yaratilmoqda"
           }
         }
       }
@@ -28910,6 +31520,12 @@
             "state": "translated",
             "value": "프롬프트"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt"
+          }
         }
       }
     },
@@ -28944,6 +31560,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "프롬프트 읽는 중"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prompt oʻqilmoqda"
           }
         }
       }
@@ -28980,6 +31602,12 @@
             "state": "translated",
             "value": "사용량을 확인하려면 DeepSeek Platform에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun DeepSeek Platformʼga kiring"
+          }
         }
       }
     },
@@ -29014,6 +31642,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용량을 확인하려면 kiro-cli로 로그인하십시오"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni oʻqish uchun kiro-cli orqali kiring"
           }
         }
       }
@@ -29050,6 +31684,12 @@
             "state": "translated",
             "value": "로컬 모델을 모니터링하려면 LM Studio 서버를 시작하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal modellaringizni kuzatish uchun LM Studio serverini ishga tushiring"
+          }
         }
       }
     },
@@ -29084,6 +31724,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "화면 아래쪽 가장자리에 고정되어 있습니다. Option 키를 누른 채 드래그하면 좌우로 이동합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekranning pastki chekkasiga biriktirilgan. Chapga yoki oʻngga koʻchirish uchun Option bilan torting."
           }
         }
       }
@@ -29120,6 +31766,12 @@
             "state": "translated",
             "value": "화면 왼쪽 가장자리에 고정되어 있습니다. Option 키를 누른 채 드래그하면 위아래로 이동합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekranning chap chekkasiga biriktirilgan. Yuqoriga yoki pastga koʻchirish uchun Option bilan torting."
+          }
         }
       }
     },
@@ -29154,6 +31806,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "화면 오른쪽 가장자리에 고정되어 있습니다. Option 키를 누른 채 드래그하면 위아래로 이동합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekranning oʻng chekkasiga biriktirilgan. Yuqoriga yoki pastga koʻchirish uchun Option bilan torting."
           }
         }
       }
@@ -29190,6 +31848,12 @@
             "state": "translated",
             "value": "새 코드 생성"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangi kod yaratish"
+          }
         }
       }
     },
@@ -29224,6 +31888,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "페어링 코드가 만료되었습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanish kodi muddati tugadi"
           }
         }
       }
@@ -29260,6 +31930,12 @@
             "state": "translated",
             "value": "다시 시도"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qayta urinish"
+          }
         }
       }
     },
@@ -29295,6 +31971,12 @@
             "state": "translated",
             "value": "코드 리뷰"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod koʻrigi"
+          }
         }
       }
     },
@@ -29326,6 +32008,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spark"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Spark"
@@ -29365,6 +32053,12 @@
             "state": "translated",
             "value": "터미널에서 `devin auth login`을 실행해 로그인하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kirish uchun terminalda `devin auth login` ni ishga tushiring."
+          }
         }
       }
     },
@@ -29399,6 +32093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "추가 사용량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qoʻshimcha foydalanish"
           }
         }
       }
@@ -29435,6 +32135,12 @@
             "state": "translated",
             "value": "추가 사용량 잔액"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qoʻshimcha foydalanish balansi"
+          }
         }
       }
     },
@@ -29469,6 +32175,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "주간 할당량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haftalik kvota"
           }
         }
       }
@@ -29505,6 +32217,12 @@
             "state": "translated",
             "value": "이 계정에 Kimi Code 요금제가 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu hisobda Kimi Code rejasi yoʻq"
+          }
         }
       }
     },
@@ -29539,6 +32257,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "kimi를 실행하고 /login으로 로그인하십시오. 여기서 읽는 토큰을 저장하고 갱신합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kimi ni ishga tushiring va /login orqali kiring — u bu oʻqiydigan tokenni yozadi va yangilaydi."
           }
         }
       }
@@ -29575,6 +32299,12 @@
             "state": "translated",
             "value": "이 계정에 Kimi Code 사용 한도가 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu hisobda Kimi Code foydalanish limitlari yoʻq"
+          }
         }
       }
     },
@@ -29609,6 +32339,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "크레딧"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kreditlar"
           }
         }
       }
@@ -29645,6 +32381,12 @@
             "state": "translated",
             "value": "Kiro CLI가 설치되어 있지 않습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro CLI oʻrnatilmagan"
+          }
         }
       }
     },
@@ -29679,6 +32421,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "초과 사용량"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limitdan oshgan"
           }
         }
       }
@@ -29715,6 +32463,12 @@
             "state": "translated",
             "value": "kiro-cli login을 실행하십시오. 여기서 읽는 세션을 저장하고 갱신합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kiro-cli login ni ishga tushiring — u bu oʻqiydigan sessiyani yozadi va yangilaydi."
+          }
         }
       }
     },
@@ -29749,6 +32503,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "보너스"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bonus"
           }
         }
       }
@@ -29785,6 +32545,12 @@
             "state": "translated",
             "value": "Kiro CLI가 사용량을 보고하지 않았습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiro CLI foydalanishni bildirmadi"
+          }
         }
       }
     },
@@ -29819,6 +32585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "중국"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xitoy"
           }
         }
       }
@@ -29855,6 +32627,12 @@
             "state": "translated",
             "value": "국제"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xalqaro"
+          }
         }
       }
     },
@@ -29889,6 +32667,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "MiniMax가 사용량 집계 기간을 보고하지 않았습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MiniMax hech qanday foydalanish oynasini bildirmadi"
           }
         }
       }
@@ -29925,6 +32709,12 @@
             "state": "translated",
             "value": "설정에서 Coding Plan 키를 붙여넣거나 MiniMax에 로그인하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sozlamalarda Coding Plan kalitini joylashtiring yoki MiniMaxʼga kiring."
+          }
         }
       }
     },
@@ -29959,6 +32749,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결 중…"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanmoqda…"
           }
         }
       }
@@ -29995,6 +32791,12 @@
             "state": "translated",
             "value": "전체 화면 앱 사용 시 접기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toʻliq ekranli ilovalarda yigʻilsin"
+          }
         }
       }
     },
@@ -30029,6 +32831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "중국 본토"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Materik Xitoy"
           }
         }
       }
@@ -30065,6 +32873,12 @@
             "state": "translated",
             "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor(편집기 또는 cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro 또는 Gemini API 키(Gemini CLI, OpenCode, Hermes 경유)를 사용하는 도구를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
         }
       }
     },
@@ -30100,6 +32914,12 @@
             "state": "translated",
             "value": "Cookie 헤더 (선택 사항)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cookie sarlavhasi (ixtiyoriy)"
+          }
         }
       }
     },
@@ -30131,6 +32951,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cookie: …"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "Cookie: …"
@@ -30170,6 +32996,12 @@
             "state": "translated",
             "value": "MiniMax Coding Plan 키"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MiniMax Coding Plan kaliti"
+          }
         }
       }
     },
@@ -30204,6 +33036,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모델 데이터"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model maʼlumotlari"
           }
         }
       }
@@ -30240,6 +33078,12 @@
             "state": "translated",
             "value": "대부분의 측정값은 이미 계정에 로그인된 도구에서 가져옵니다. DeepSeek와 MiniMax는 예외로, ‘로그인’을 클릭하면 해당 계정의 Codenotch 창이 열리며 여기서 로그아웃하면 해당 세션과 저장된 측정값만 삭제합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koʻrsatkichlarning aksariyati hisobni allaqachon saqlab turgan vositadan olinadi. DeepSeek va MiniMax bundan mustasno: Kirish tugmasini bosish oʻsha hisob uchun Codenotch oynasini ochadi, bu yerda chiqish esa faqat oʻsha sessiya va uning saqlangan koʻrsatkichini tozalaydi."
+          }
         }
       }
     },
@@ -30274,6 +33118,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "휴대전화"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefon"
           }
         }
       }
@@ -30310,6 +33160,12 @@
             "state": "translated",
             "value": "업데이트 후 휴대전화를 다시 페어링하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilangandan soʻng telefoningizni qayta ulang"
+          }
         }
       }
     },
@@ -30344,6 +33200,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "지역"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hudud"
           }
         }
       }
@@ -30380,6 +33242,12 @@
             "state": "translated",
             "value": "Spark 및 코드 리뷰 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spark va kod koʻrigini koʻrsatish"
+          }
         }
       }
     },
@@ -30414,6 +33282,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이동 핸들 표시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koʻchirish dastagini koʻrsatish"
           }
         }
       }
@@ -30450,6 +33324,12 @@
             "state": "translated",
             "value": "Codenotch에서 MiniMax에 로그인하거나 Coding Plan 키를 붙여넣으십시오. Cookie 헤더는 선택 사항입니다. Codenotch는 브라우저의 쿠키를 읽지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotchʼda MiniMaxʼga kiring yoki Coding Plan kalitini joylashtiring. Cookie sarlavhasi ixtiyoriy. Codenotch hech qachon brauzer cookieʼlarini oʻqimaydi."
+          }
         }
       }
     },
@@ -30484,6 +33364,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "노치 위의 호입니다. 길게 누르면 노치를 다른 가장자리로 옮길 수 있습니다. 위의 ‘가장자리’ 설정으로도 같은 작업을 할 수 있습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch ustidagi yoy. Notchʼni boshqa chekkaga olib oʻtish uchun uni bosib turing — yuqoridagi Chekka ham xuddi shuni qiladi."
           }
         }
       }
@@ -30520,6 +33406,12 @@
             "state": "translated",
             "value": "전체 화면 앱이 맨 앞에 있으면 노치를 접고, 해당 앱을 벗어나면 다시 표시합니다. 끄면 전체 화면 앱 위에서도 그대로 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toʻliq ekranli ilova oldinda turganda notch yigʻiladi va siz undan chiqqaningizda qaytadi. Oʻchirilgan holatda u toʻliq ekranli ilovalar ustida joyida qoladi."
+          }
         }
       }
     },
@@ -30554,6 +33446,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "링은 계속 Codex의 기본 집계 기간을 따릅니다. Spark와 코드 리뷰는 호버 카드에 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halqa baribir asosiy Codex oynasiga ergashadi. Spark va kod koʻrigi maslahat kartasida qoladi."
           }
         }
       }
@@ -30590,6 +33488,12 @@
             "state": "translated",
             "value": "사용량 표시 기준"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanish limitlari"
+          }
         }
       }
     },
@@ -30624,6 +33528,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "주의 표시 기준"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuzatiladigan limit"
           }
         }
       }
@@ -30660,6 +33570,12 @@
             "state": "translated",
             "value": "위험 표시 기준"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kritik limit"
+          }
         }
       }
     },
@@ -30695,6 +33611,12 @@
             "state": "translated",
             "value": "기본값으로 재설정"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standart holatga qaytarish"
+          }
         }
       }
     },
@@ -30729,6 +33651,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "주간 링을 점선으로 표시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzuq-uzuq haftalik halqa"
           }
         }
       }
@@ -30789,6 +33717,12 @@
             "state": "translated",
             "value": "%@의 저장된 로그인 정보를 macOS에 다시 요청합니다. ‘거부’를 선택하면 다시 요청할 때까지 Codenotch가 해당 정보를 읽지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOSʼdan %@ ning saqlangan kirish maʼlumotini qayta soʻraydi. Deny esa siz qayta soʻramaguningizcha Codenotch uni oʻqishini toʻxtatadi."
+          }
         }
       }
     },
@@ -30847,6 +33781,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Z.ai가 아직 GLM Start Plan의 사용량을 공개하지 않아 읽을 정보가 없습니다. Coding Plan은 지원합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z.ai hali GLM Start Plan uchun foydalanishni eʼlon qilmaydi, shuning uchun oʻqiladigan narsa yoʻq. Coding Plan qoʻllab-quvvatlanadi."
           }
         }
       }
@@ -30907,6 +33847,12 @@
             "state": "translated",
             "value": "Claude가 응답했지만 이 계정의 사용 한도는 제공하지 않았습니다. 일부 Enterprise 및 팀 요금제는 사용 한도를 보고하지 않습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude javob berdi, lekin bu hisob uchun foydalanish limitlarini koʻrsatmadi. Baʼzi Enterprise va jamoa rejalari ularni bildirmaydi."
+          }
         }
       }
     },
@@ -30965,6 +33911,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "QianwenAI가 Token Plan 사용량을 보고하지 않았습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI Token Plan foydalanishini bildirmadi"
           }
         }
       }
@@ -31025,6 +33977,12 @@
             "state": "translated",
             "value": "Token Plan 사용량을 확인하려면 QianwenAI에 로그인하십시오"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token Plan foydalanishingizni oʻqish uchun QianwenAIʼga kiring"
+          }
         }
       }
     },
@@ -31083,6 +34041,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "노치가 읽을 제공자를 선택합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch qaysi provayderlarni oʻqishini tanlang."
           }
         }
       }
@@ -31143,6 +34107,12 @@
             "state": "translated",
             "value": "휴대전화에서 사용량을 확인합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foydalanishingizni telefoningizda koʻring."
+          }
         }
       }
     },
@@ -31201,6 +34171,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "DeepSeek 사용 비용에 적용되는 피크 및 오프피크 요금입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek xarajatingiz uchun yuqori va past yuklama narxlari."
           }
         }
       }
@@ -31261,6 +34237,12 @@
             "state": "translated",
             "value": "이 Mac의 Ollama에서 실행 중인 모델입니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shu Macʼdagi Ollamaʼda ishlayotgan modellar."
+          }
         }
       }
     },
@@ -31319,6 +34301,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이 Mac의 LM Studio에 로드된 모델입니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shu Macʼdagi LM Studioʻga yuklangan modellar."
           }
         }
       }
@@ -31379,6 +34367,12 @@
             "state": "translated",
             "value": "노치의 모양과 위치를 설정합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch qanday koʻrinishi va qayerda turishi."
+          }
         }
       }
     },
@@ -31437,6 +34431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codenotch가 알릴 내용과 시점을 설정합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch sizga nima va qachon aytadi."
           }
         }
       }
@@ -31497,6 +34497,12 @@
             "state": "translated",
             "value": "시작, 업데이트 및 기타 항목을 설정합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishga tushish, yangilanishlar va qolgan hammasi."
+          }
         }
       }
     },
@@ -31555,6 +34561,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilash"
           }
         }
       }
@@ -31615,6 +34627,12 @@
             "state": "translated",
             "value": "버전 %@ 사용 가능"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ versiyasi mavjud"
+          }
         }
       }
     },
@@ -31673,6 +34691,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 확인을 완료하지 못했습니다. 다시 시도하거나 hivinz.com에서 최신 Codenotch를 다운로드하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangilanishni tekshirish tugamadi. Qayta urinib koʻring yoki eng soʻnggi Codenotchʼni hivinz.com dan yuklab oling."
           }
         }
       }
@@ -31733,6 +34757,12 @@
             "state": "translated",
             "value": "QianwenAI가 요청을 거부했습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI soʻrovni rad etdi."
+          }
         }
       }
     },
@@ -31791,6 +34821,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "1분 미만"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<1 daq"
           }
         }
       }
@@ -31851,6 +34887,12 @@
             "state": "translated",
             "value": "%lld분"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld daqiqa"
+          }
         }
       }
     },
@@ -31909,6 +34951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld시간 %@분"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld soat %@ daqiqa"
           }
         }
       }
@@ -31969,6 +35017,12 @@
             "state": "translated",
             "value": "메뉴 막대에 한도 정보 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menyu panelida limit maʼlumotini koʻrsatish"
+          }
         }
       }
     },
@@ -32027,6 +35081,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "아이콘 대신 선택한 각 제공자의 5시간 한도 사용량과 재설정까지 남은 시간을 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belgini har bir tanlangan provayderning besh soatlik limitiga almashtiradi — qancha ishlatilgani va yangilanishiga qancha qolgani."
           }
         }
       }
@@ -32087,6 +35147,12 @@
             "state": "translated",
             "value": "%@의 5시간 한도를 메뉴 막대에 표시합니다. 이 설정과 관계없이 Codenotch는 계속 사용량을 읽습니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menyu panelida %@ ning besh soatlik limitini koʻrsatadi. Codenotch uni baribir oʻqiydi."
+          }
         }
       }
     },
@@ -32145,6 +35211,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "현재 Codenotch가 읽는 항목에는 표시할 5시간 한도가 없습니다. Claude와 Codex가 지원하므로 ‘계정’에서 하나를 켜십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch oʻqiydigan hech narsada hali koʻrsatiladigan besh soatlik limit yoʻq. Claude va Codexʼda bor — birini Hisoblar boʻlimida yoqing."
           }
         }
       }
@@ -32205,6 +35277,12 @@
             "state": "translated",
             "value": "선택하지 않은 제공자는 메뉴 막대에서만 숨기며 Codenotch는 계속 사용량을 읽습니다. 아무것도 선택하지 않으면 아이콘을 다시 표시합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provayderni tanlamaslik uni faqat menyu panelidan chetda qoldiradi — Codenotch uni baribir oʻqiydi. Hech biri tanlanmasa, belgi qaytadi."
+          }
         }
       }
     },
@@ -32263,6 +35341,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "3개 이상이면 사용 비율만 표시하고 남은 시간은 툴팁으로 옮깁니다. 5개 이상이면 나머지는 메뉴에 표시합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ikkitadan ortsa, har biri faqat oʻz ulushini koʻrsatadi va sanoqlar maslahat oynasiga oʻtadi. Toʻrttadan ortsa, qolganlari menyuda boʻladi."
           }
         }
       }
@@ -34026,6 +37110,12 @@
             "state": "translated",
             "value": "인증"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avtorizatsiya"
+          }
         }
       }
     },
@@ -34036,6 +37126,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모양 및 아이콘"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koʻrinish va belgi"
           }
         }
       }
@@ -34048,6 +37144,12 @@
             "state": "translated",
             "value": "테스트"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sinash"
+          }
         }
       }
     },
@@ -34058,6 +37160,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 예산 ($)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik byudjet ($)"
           }
         }
       }
@@ -34070,6 +37178,12 @@
             "state": "translated",
             "value": "설정된 엔드포인트"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sozlangan endpointlar"
+          }
         }
       }
     },
@@ -34080,6 +37194,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 예산"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik byudjet"
           }
         }
       }
@@ -34092,6 +37212,12 @@
             "state": "translated",
             "value": "템플릿 숨기기"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shablonlarni yashirish"
+          }
         }
       }
     },
@@ -34102,6 +37228,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "아직 사용자 지정 엔드포인트가 없습니다. ‘엔드포인트 추가’를 클릭하거나 빠른 템플릿을 선택해 시작하십시오."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hali maxsus endpointlar yoʻq. Boshlash uchun ʼEndpoint qoʻshishʼ ni bosing yoki Tezkor shablonni tanlang."
           }
         }
       }
@@ -34114,6 +37246,12 @@
             "state": "translated",
             "value": "아이콘"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belgi"
+          }
         }
       }
     },
@@ -34124,6 +37262,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "엔드포인트 추가"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint qoʻshish"
           }
         }
       }
@@ -34136,6 +37280,12 @@
             "state": "translated",
             "value": "프리셋을 선택하면 설정을 미리 채웁니다:"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sozlamalarni oldindan toʻldirish uchun shablon tanlang:"
+          }
         }
       }
     },
@@ -34146,6 +37296,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "로컬 엔진 검색"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal dvigatellarni skanerlash"
           }
         }
       }
@@ -34158,6 +37314,12 @@
             "state": "translated",
             "value": "온라인"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onlayn"
+          }
         }
       }
     },
@@ -34168,6 +37330,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "예: 20.00 (무제한은 비워 두기)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "masalan, 20.00 (cheksiz uchun boʻsh qoldiring)"
           }
         }
       }
@@ -34180,6 +37348,12 @@
             "state": "translated",
             "value": "URL은 http:// 또는 https://로 시작하고 유효한 호스트를 포함해야 합니다."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL http:// yoki https:// bilan boshlanishi va toʻgʻri hostʼga ega boʻlishi kerak."
+          }
         }
       }
     },
@@ -34190,6 +37364,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이름"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomi"
           }
         }
       }
@@ -34202,6 +37382,12 @@
             "state": "translated",
             "value": "인증 헤더"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auth sarlavhasi"
+          }
         }
       }
     },
@@ -34212,6 +37398,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "기본 URL"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asosiy URL"
           }
         }
       }
@@ -34224,6 +37416,12 @@
             "state": "translated",
             "value": "모델"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
         }
       }
     },
@@ -34234,6 +37432,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "새 사용자 지정 엔드포인트"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yangi maxsus endpoint"
           }
         }
       }
@@ -34246,6 +37450,12 @@
             "state": "translated",
             "value": "발견된 로컬 서비스:"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topilgan lokal xizmatlar:"
+          }
         }
       }
     },
@@ -34256,6 +37466,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "예: 4.25"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "masalan, 4.25"
           }
         }
       }
@@ -34268,6 +37484,12 @@
             "state": "translated",
             "value": "모델 선택…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model tanlang..."
+          }
         }
       }
     },
@@ -34278,6 +37500,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "편집"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahrirlash"
           }
         }
       }
@@ -34290,6 +37518,12 @@
             "state": "translated",
             "value": "사용자 지정 이미지 업로드…"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maxsus rasm yuklash..."
+          }
         }
       }
     },
@@ -34300,6 +37534,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "엔드포인트 저장"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpointni saqlash"
           }
         }
       }
@@ -34312,6 +37552,12 @@
             "state": "translated",
             "value": "설정에서 엔드포인트 상세 정보와 자격 증명을 설정하십시오."
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint tafsilotlari va kirish maʼlumotlarini Sozlamalarda sozlang."
+          }
         }
       }
     },
@@ -34322,6 +37568,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "엔드포인트 편집"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpointni tahrirlash"
           }
         }
       }
@@ -34334,6 +37586,12 @@
             "state": "translated",
             "value": "API 키"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API kaliti"
+          }
         }
       }
     },
@@ -34344,6 +37602,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모델 이름 (예: gpt-4o, llama-3.3)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model nomi (masalan, gpt-4o, llama-3.3)"
           }
         }
       }
@@ -34356,6 +37620,12 @@
             "state": "translated",
             "value": "사용자 지정 엔드포인트"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maxsus endpointlar"
+          }
         }
       }
     },
@@ -34366,6 +37636,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "예: 내 OpenRouter, 로컬 vLLM"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "masalan, My OpenRouter, Local vLLM"
           }
         }
       }
@@ -34378,6 +37654,12 @@
             "state": "translated",
             "value": "사용자 지정 엔드포인트"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maxsus endpoint"
+          }
         }
       }
     },
@@ -34388,6 +37670,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "sk-... (로컬은 선택 사항)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sk-... (lokal uchun ixtiyoriy)"
           }
         }
       }
@@ -34400,6 +37688,12 @@
             "state": "translated",
             "value": "현재 사용액 ($)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hozirgi xarajat ($)"
+          }
         }
       }
     },
@@ -34410,6 +37704,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 예산 및 사용액 추적"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik byudjet va xarajat kuzatuvi"
           }
         }
       }
@@ -34422,6 +37722,12 @@
             "state": "translated",
             "value": "확인하지 않음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekshirilmagan"
+          }
         }
       }
     },
@@ -34432,6 +37738,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용액: $%.2f"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xarajat: $%.2f"
           }
         }
       }
@@ -34444,6 +37756,12 @@
             "state": "translated",
             "value": "느림"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sekin"
+          }
         }
       }
     },
@@ -34454,6 +37772,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결 테스트 및 모델 가져오기"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanishni sinash va modellarni olish"
           }
         }
       }
@@ -34466,6 +37790,12 @@
             "state": "translated",
             "value": "링 강조 색상"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Halqa urgʻusi"
+          }
         }
       }
     },
@@ -34476,6 +37806,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "연결할 수 없음"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulanib boʻlmaydi"
           }
         }
       }
@@ -34488,6 +37824,12 @@
             "state": "translated",
             "value": "엔드포인트에 추가"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpointlarga qoʻshish"
+          }
         }
       }
     },
@@ -34498,6 +37840,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI 호환 API, 로컬 추론 런타임 또는 사용자 지정 프록시를 연결합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Istalgan OpenAI bilan mos API, lokal inference muhiti yoki maxsus proksini ulang."
           }
         }
       }
@@ -34510,6 +37858,12 @@
             "state": "translated",
             "value": "총 사용액"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umumiy xarajat"
+          }
         }
       }
     },
@@ -34517,6 +37871,12 @@
       "extractionState": "manual",
       "localizations": {
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://api.openai.com/v1"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "https://api.openai.com/v1"
@@ -34532,6 +37892,12 @@
             "state": "translated",
             "value": "빠른 템플릿"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tezkor shablonlar"
+          }
         }
       }
     },
@@ -34543,6 +37909,12 @@
             "state": "translated",
             "value": "사용액 초기화"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xarajatni nolga qaytarish"
+          }
         }
       }
     },
@@ -34553,6 +37925,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "취소"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bekor qilish"
           }
         }
       }
@@ -34577,6 +37955,12 @@
             "state": "translated",
             "value": "사용액 대신 남은 예산 (%) 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sarflangan oʻrniga qolgan byudjetni (%) koʻrsatish"
+          }
         }
       }
     },
@@ -34599,6 +37983,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "남은 예산"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qolgan byudjet"
           }
         }
       }
@@ -34623,6 +38013,12 @@
             "state": "translated",
             "value": "%@ / %@ 남음"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ qolgan"
+          }
         }
       }
     },
@@ -34645,6 +38041,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ / %@ 남음"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ qoldi"
           }
         }
       }
@@ -34669,6 +38071,12 @@
             "state": "translated",
             "value": "백분율 (%) 대신 달러 금액 ($) 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foiz (%) oʻrniga dollar miqdorini ($) koʻrsatish"
+          }
         }
       }
     },
@@ -34691,6 +38099,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "추적 단위"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hisob birligi"
           }
         }
       }
@@ -34715,6 +38129,12 @@
             "state": "translated",
             "value": "토큰 (백만)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokenlar (million)"
+          }
         }
       }
     },
@@ -34737,6 +38157,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 예산 (백만 토큰)"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik byudjet (mln token)"
           }
         }
       }
@@ -34761,6 +38187,12 @@
             "state": "translated",
             "value": "사용한 토큰 (백만 토큰)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishlatilgan tokenlar (mln token)"
+          }
         }
       }
     },
@@ -34783,6 +38215,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "사용한 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ishlatilgan tokenlar"
           }
         }
       }
@@ -34807,6 +38245,12 @@
             "state": "translated",
             "value": "토큰: %@"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokenlar: %@"
+          }
         }
       }
     },
@@ -34829,6 +38273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ / %@ 토큰 남음"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ token qolgan"
           }
         }
       }
@@ -34853,6 +38303,12 @@
             "state": "translated",
             "value": "%@ / %@ 토큰"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@ token"
+          }
         }
       }
     },
@@ -34875,6 +38331,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ token"
           }
         }
       }
@@ -34899,6 +38361,12 @@
             "state": "translated",
             "value": "남은 토큰"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qolgan tokenlar"
+          }
         }
       }
     },
@@ -34921,6 +38389,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "월간 토큰"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylik tokenlar"
           }
         }
       }
@@ -34945,6 +38419,12 @@
             "state": "translated",
             "value": "토큰 초기화"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tokenlarni nolga qaytarish"
+          }
         }
       }
     },
@@ -34968,6 +38448,12 @@
             "state": "translated",
             "value": "백분율 (%) 대신 토큰 수 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foiz (%) oʻrniga token sonini koʻrsatish"
+          }
         }
       }
     },
@@ -34979,6 +38465,12 @@
             "state": "translated",
             "value": "예: 10.0 (무제한은 비워 두기)"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "masalan, 10.0 (cheksiz uchun boʻsh qoldiring)"
+          }
         }
       }
     },
@@ -34989,6 +38481,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "예: 2.5"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "masalan, 2.5"
           }
         }
       }
@@ -35007,6 +38505,12 @@
             "state": "translated",
             "value": "주소는 http:// 또는 https://로 시작해야 합니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manzil http:// yoki https:// bilan boshlanishi kerak"
+          }
         }
       }
     },
@@ -35023,6 +38527,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "HTTP 엔드포인트가 아닙니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HTTP endpoint emas"
           }
         }
       }
@@ -35041,6 +38551,12 @@
             "state": "translated",
             "value": "엔드포인트가 %lld 응답을 반환했습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint %lld bilan javob berdi"
+          }
         }
       }
     },
@@ -35057,6 +38573,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "엔드포인트가 제시간에 응답하지 않았습니다"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint oʻz vaqtida javob bermadi"
           }
         }
       }
@@ -35075,6 +38597,12 @@
             "state": "translated",
             "value": "엔드포인트에 연결할 수 없습니다"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpointga ulanib boʻlmadi"
+          }
         }
       }
     },
@@ -35092,6 +38620,12 @@
             "state": "translated",
             "value": "사용액 대신 남은 예산 표시"
           }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sarflangan oʻrniga qolgan byudjetni koʻrsatish"
+          }
         }
       }
     },
@@ -35105,6 +38639,12 @@
           }
         },
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USD ($)"
+          }
+        },
+        "uz": {
           "stringUnit": {
             "state": "translated",
             "value": "USD ($)"
