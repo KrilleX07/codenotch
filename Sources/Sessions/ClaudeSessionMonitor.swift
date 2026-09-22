@@ -36,6 +36,12 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
     /// between. See `ClaudeTokenRefresher`.
     var ignoredPIDs: () -> Set<Int32> = { [] }
 
+    /// Working directories whose sessions are Codenotch's own, matched as a
+    /// second net under the pids: the `/usage` probe runs in
+    /// `ClaudeUsageCLI.scratchDirectory`, and a session filed from there is
+    /// never the user's, whichever process wrote it.
+    var ignoredWorkingDirectories: Set<String> = []
+
     private var source: DispatchSourceFileSystemObject?
     private var descriptor: CInt = -1
     private var livenessTimer: Timer?
@@ -112,7 +118,8 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
 
     private func rescan() {
         let found = Self.read(directory: directory, transcripts: transcripts,
-                              ignoring: ignoredPIDs())
+                              ignoring: ignoredPIDs(),
+                              ignoringDirectories: ignoredWorkingDirectories)
         guard found != sessions else { return }   // don't churn SwiftUI for nothing
         // Only on a change, so this is a handful of lines an hour rather than a
         // firehose. It is the one way to see what the notch thinks is running
@@ -126,7 +133,11 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
 
     static func read(directory: URL,
                      transcripts: ClaudeTranscriptReader? = nil,
-                     ignoring: Set<Int32> = []) -> [AgentSession] {
+                     ignoring: Set<Int32> = [],
+                     ignoringDirectories: Set<String> = []) -> [AgentSession] {
+        let ignoredDirectories = Set(ignoringDirectories.map {
+            URL(fileURLWithPath: $0).standardizedFileURL.path
+        })
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
         let live = names
             .filter { $0.hasSuffix(".json") }
@@ -136,6 +147,7 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let record = ClaudeSessionRecord(json: json),
                       !ignoring.contains(record.pid),
+                      !ignoredDirectories.contains(URL(fileURLWithPath: record.cwd).standardizedFileURL.path),
                       ProcessLiveness.isAlive(pid: record.pid, startedAt: record.startedAt)
                 else { return nil }
                 return record
