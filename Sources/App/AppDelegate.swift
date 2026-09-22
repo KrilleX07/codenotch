@@ -400,6 +400,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.statusItem = statusItem
             statusItem.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
             statusItem.onRefreshAll = { [weak store] in store?.refreshNow() }
+            // The menu's tick writes to the same preference Settings writes to,
+            // and reads nothing back of its own: the sink below carries the new
+            // value to the item, and Settings — a published property away —
+            // redraws its own switch from it in the same breath.
+            statusItem.onToggleLimits = { [weak preferences] in preferences?.showsLimitsInMenuBar = $0 }
             // Read when the menu opens, so a model's line is as current as its cell.
             statusItem.cells = { [weak fleet] in fleet?.menuModel.snapshots ?? [] }
             statusItem.activity = { [weak fleet] in fleet?.menuModel.activity(for: $0) }
@@ -424,7 +429,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Publishers.CombineLatest(preferences.$showsLimitsInMenuBar, preferences.$menuBarProviders)
                 .map { MenuBarLimits(isOn: $0, chosen: $1) }
                 .removeDuplicates()
-                .receive(on: RunLoop.main)
+                // Dispatch, not the run loop: switched from the menu's own
+                // tick, this has to land while AppKit is still tracking that
+                // menu, which the run loop's default mode would hold back.
+                .receive(on: DispatchQueue.main)
                 .sink { [weak statusItem] in statusItem?.limits = $0 }
                 .store(in: &cancellables)
 
