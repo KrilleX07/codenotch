@@ -29,6 +29,7 @@ enum ProviderGlyph: String, Codable, Equatable {
     case commandcode
     case copilot
     case kimi
+    case kilo
     case kiro
     case amp
     case minimax
@@ -68,6 +69,7 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .commandcode: return 0.96
         case .copilot: return 0.96
         case .kimi:   return 0.95
+        case .kilo:   return 0.97
         case .kiro:   return 0.95
         case .amp:    return 1.0
         case .minimax: return 0.95
@@ -102,6 +104,7 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .commandcode: return GlyphOutline.commandcode
         case .copilot: return GlyphOutline.copilot
         case .kimi:   return GlyphOutline.kimi
+        case .kilo:   return GlyphOutline.kilo
         case .kiro:   return GlyphOutline.kiro
         // A fallback only: glyph-minimax in the asset catalogue is drawn instead.
         case .minimax: return GlyphOutline.minimax
