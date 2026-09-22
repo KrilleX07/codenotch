@@ -50,6 +50,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
         "zh-Hant" => format!("已用 {used}% · 剩餘 {left}%"),
         "ja" => format!("{used}% 使用 · 残り {left}%"),
         "uk" => format!("Використано {used}% · Лишилось {left}%"),
+        "ko" => format!("{used}% 사용 · {left}% 남음"),
         _ => format!("{used}% Used · {left}% left"),
     }
 }
@@ -64,6 +65,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
             "zh-Hant" => "正在重置…",
             "ja" => "リセット中…",
             "uk" => "Скидання…",
+            "ko" => "재설정 중…",
             _ => "Resetting…",
         }
         .into();
@@ -78,6 +80,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
             "zh-Hant" => format!("{m} 分鐘後重置"),
             "ja" => format!("{m} 分後にリセット"),
             "uk" => format!("Скидання через {m} хв"),
+            "ko" => format!("{m}분 후 재설정"),
             _ => format!("Resets in {m} min"),
         };
     }
@@ -89,6 +92,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
             "zh-Hant" => format!("{h} 小時 {m} 分鐘後重置"),
             "ja" => format!("{h} 時間 {m} 分後にリセット"),
             "uk" => format!("Скидання через {h} год {m} хв"),
+            "ko" => format!("{h}시간 {m}분 후 재설정"),
             _ => format!("Resets in {h}h {m}m"),
         };
     }
@@ -100,6 +104,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
             "zh-Hant" => format!("{d} 天 {h} 小時後重置"),
             "ja" => format!("{d} 日 {h} 時間後にリセット"),
             "uk" => format!("Скидання через {d} дн {h} год"),
+            "ko" => format!("{d}일 {h}시간 후 재설정"),
             _ if d == 1 => format!("Resets in {d} Day {h}h"),
             _ => format!("Resets in {d} Days {h}h"),
         };
@@ -111,6 +116,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         "zh-Hant" => format!("{when} 重置"),
         "ja" => format!("{when} にリセット"),
         "uk" => format!("Скидання {when}"),
+        "ko" => format!("{when}에 재설정"),
         _ => format!("Resets {when}"),
     }
 }
@@ -125,6 +131,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
             "zh-Hant" => format!("{minutes} 分鐘"),
             "ja" => format!("{minutes} 分"),
             "uk" => format!("{minutes} хв"),
+            "ko" => format!("{minutes}분"),
             _ => format!("{minutes}m"),
         }
     } else {
@@ -135,6 +142,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
             "zh-Hant" => format!("{h} 小時"),
             "ja" => format!("{h} 時間"),
             "uk" => format!("{h} год"),
+            "ko" => format!("{h}시간"),
             _ => format!("{h}h"),
         }
     };
@@ -144,6 +152,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
         "zh-Hant" => format!("{span}前"),
         "ja" => format!("{span}前"),
         "uk" => format!("{span} тому"),
+        "ko" => format!("{span} 전"),
         _ => format!("{span} ago"),
     }
 }
@@ -197,8 +206,12 @@ pub fn label(name: &str, lang: &str) -> String {
         ("uk", "5-hour Limit" | "5-Hour Limit") => "Ліміт 5 годин",
         ("uk", "Included usage") => "Використання в тарифі",
         ("uk", "API usage") => "Використання API",
-        // Only these three in Korean: the Mac catalog has no Korean, so the names it shares
-        // with the card have nothing to take.
+        ("ko", "Current session") => "현재 세션",
+        ("ko", "Included usage") => "포함 사용량",
+        ("ko", "API usage") => "API 사용량",
+        ("ko", "Weekly limit" | "Weekly Limit") => "주간 제한",
+        ("ko", "Monthly limit" | "Monthly Limit") => "월간 제한",
+        ("ko", "5-hour Limit" | "5-Hour Limit") => "5시간 제한",
         ("ko", "Weekly (all models)") => "주간 (모든 모델)",
         ("ko", "Weekly (Opus)") => "주간 (Opus)",
         ("ko", "Weekly (model-scoped)") => "주간 (모델별)",
@@ -374,6 +387,19 @@ mod tests {
     }
 
     #[test]
+    fn korean_readings_include_usage_and_reset_times() {
+        let w = window("Current session", 0.61, Some(60 * MIN));
+        assert_eq!(window_line(&w, MIN, "ko"), "현재 세션: 61% 사용 · 39% 남음 · 59분 후 재설정");
+        assert_eq!(reset_text(MIN, MIN, "ko"), "재설정 중…");
+        assert_eq!(reset_text(136 * MIN, MIN, "ko"), "2시간 15분 후 재설정");
+        assert_eq!(reset_text((3 * 1440 + 4 * 60 + 1) * MIN, MIN, "ko"), "3일 4시간 후 재설정");
+        assert_eq!(ago(MIN, 21 * MIN, "ko"), "20분 전");
+        assert_eq!(ago(MIN, 121 * MIN, "ko"), "2시간 전");
+        assert_eq!(used_left(&window("", 0.006, None), "ko"), "0.6% 사용 · 99.4% 남음");
+        assert_eq!(label("A future limit", "ko"), "A future limit");
+    }
+
+    #[test]
     fn a_fresh_reading_is_not_called_stale() {
         let fresh = UsageSnapshot { status: "ok".into(), fetched_at: 1, ..Default::default() };
         assert_eq!(stale_since(&fresh, 2 * MIN), None);
@@ -393,6 +419,9 @@ mod tests {
                      "Weekly limit", "Monthly limit", "Included usage", "API usage"] {
             assert!(page.contains(&format!("'{name}'")), "notch.html no longer names {name:?}");
             assert_ne!(label(name, "ru"), name, "{name:?} lost its Russian here");
+            let korean = label(name, "ko");
+            assert_ne!(korean, name, "{name:?} lost its Korean here");
+            assert!(page.contains(&format!("'{name}':'{korean}'")), "Korean card and tray disagree on {name:?}");
         }
     }
 }

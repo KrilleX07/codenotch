@@ -175,7 +175,7 @@ pub fn tr(lang: &str, key: &str) -> &'static str {
         ("zh", "waiting") => "正在等待首次读数…",
         ("zh-Hant", "waiting") => "正在等待首次讀數…",
         ("ja", "waiting") => "最初の読み取りを待っています…",
-        ("ko", "waiting") => "첫 번째 읽기를 기다리는 중…",
+        ("ko", "waiting") => "첫 측정값을 기다리는 중…",
         ("ru", "waiting") => "Ожидание первых данных…",
         ("uk", "waiting") => "Очікування першого показника…",
         (_, "waiting") => "Waiting for the first reading…",
@@ -199,14 +199,15 @@ pub fn tr(lang: &str, key: &str) -> &'static str {
         ("ja", "refresh_now") => "今すぐ更新",
         ("ru", "refresh_now") => "Обновить сейчас",
         ("uk", "refresh_now") => "Оновити зараз",
+        ("ko", "refresh_now") => "지금 새로 고침",
         (_, "refresh_now") => "Refresh now",
         ("zh", "open_host") => "打开 %@",
         ("zh-Hant", "open_host") => "開啟 %@",
         ("ja", "open_host") => "%@ を開く",
         ("ru", "open_host") => "Открыть %@",
         ("uk", "open_host") => "Відкрити %@",
+        ("ko", "open_host") => "%@ 열기",
         (_, "open_host") => "Open %@",
-        // The Mac's own catalog, but for Korean, which it does not have
         ("zh", "keep_open") => "保持展开",
         ("zh-Hant", "keep_open") => "保持展開",
         ("ja", "keep_open") => "開いたままにする",
@@ -327,6 +328,23 @@ mod tests {
         assert_eq!(language_from_windows_locale("zh-Hans-CN"), Some("zh"));
         assert_eq!(language_from_windows_locale("zh-SG"), Some("zh"));
         assert_eq!(language_from_windows_locale("zh"), Some("zh"));
+    }
+
+    #[test]
+    fn korean_locale_and_tray_copy() {
+        assert_eq!(super::language_from_windows_locale("ko-KR"), Some("ko"));
+        assert_eq!(super::language_from_windows_locale("ko"), Some("ko"));
+        for (key, expected) in [
+            ("settings", "설정…"),
+            ("refresh_all", "모두 새로 고침"),
+            ("refresh_now", "지금 새로 고침"),
+            ("open_host", "%@ 열기"),
+            ("waiting", "첫 측정값을 기다리는 중…"),
+            ("keep_open", "열어 두기"),
+            ("install", "Claude Code 후크 설치"),
+        ] {
+            assert_eq!(tr("ko", key), expected);
+        }
     }
 
     #[test]
