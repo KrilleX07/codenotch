@@ -132,4 +132,18 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(L10n.t("Always show"), "始終顯示")
         XCTAssertEqual(L10n.t("Settings…"), "設定…")
     }
+    func testKoreanIsOfferedAndMapsToKo() {
+        XCTAssertTrue(AppLanguage.allCases.contains(.korean))
+        XCTAssertEqual(AppLanguage.korean.title, "한국어")
+        XCTAssertEqual(AppLanguage.korean.locale?.identifier, "ko")
+    }
+
+    func testApplyKoreanStoresTheOverrideAndServesKoreanCopy() {
+        L10n.apply(.korean)
+        L10n.testLocale = nil
+        XCTAssertEqual(L10n.locale.identifier, "ko")
+        XCTAssertEqual(L10n.t("Always show"), "항상 표시")
+        XCTAssertEqual(L10n.t("Settings…"), "설정…")
+    }
+
 }
