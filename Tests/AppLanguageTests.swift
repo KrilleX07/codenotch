@@ -132,4 +132,23 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(L10n.t("Always show"), "始終顯示")
         XCTAssertEqual(L10n.t("Settings…"), "設定…")
     }
+
+    func testUzbekIsOfferedAndMapsToUz() {
+        XCTAssertTrue(AppLanguage.allCases.contains(.uzbek))
+        XCTAssertEqual(AppLanguage.uzbek.title, "O'zbekcha")
+        XCTAssertEqual(AppLanguage.uzbek.locale?.identifier, "uz")
+    }
+
+    func testApplyUzbekStoresTheOverride() {
+        L10n.apply(.uzbek)
+        L10n.testLocale = nil
+        XCTAssertEqual(L10n.locale.identifier, "uz")
+    }
+
+    func testApplyUzbekServesUzbekCopy() {
+        L10n.apply(.uzbek)
+        L10n.testLocale = nil
+        XCTAssertEqual(L10n.t("Always show"), "Doimo")
+        XCTAssertEqual(L10n.t("Settings…"), "Sozlamalar…")
+    }
 }

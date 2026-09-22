@@ -105,6 +105,27 @@ final class CatalogCoverageTests: XCTestCase {
         }
     }
 
+    func testUzbekCoreCopyIsTranslated() throws {
+        let catalog = try loadCatalog().json
+        let expected = [
+            "just now": "hozirgina",
+            "Resets in %lld min": "%lld daqiqadan so'ng yangilanadi",
+            "%lld%% Used · %lld%% left": "%lld%% ishlatilgan · %lld%% qoldi",
+            "Always show": "Doimo",
+            "Settings…": "Sozlamalar…",
+            "Sign in to %@": "%@ ga kirish",
+            "%lld%% of its %@ limit used.": "%2$@ limitining %1$lld%% ishlatilgan."
+        ]
+
+        for (key, value) in expected {
+            XCTAssertEqual(
+                catalog.strings[key]?.localizations?["uz"]?.stringUnit?.value,
+                value,
+                "missing Uzbek translation for \(key)"
+            )
+        }
+    }
+
     /// There is deliberately no "language X covers every key" test.
     ///
     /// The rule at the top of this file is that a missing translation falls
