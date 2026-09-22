@@ -75,6 +75,7 @@ targets:
           - en
           - fr
           - de
+          - id
           - ja
           - ko
           - pt-BR
