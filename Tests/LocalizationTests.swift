@@ -583,13 +583,25 @@ final class LocalizationTests: XCTestCase {
         )
     }
 
+    func testCoreCopyInKorean() {
+        let ko = Locale(identifier: "ko")
+        XCTAssertEqual(ElapsedCopy.text(since: now.addingTimeInterval(-5), now: now, locale: ko), "방금")
+        XCTAssertEqual(ElapsedCopy.text(since: now.addingTimeInterval(-6 * 60), now: now, locale: ko), "6분")
+        XCTAssertEqual(
+            ResetCopy.text(for: resetNow.addingTimeInterval(51 * 60), now: resetNow, locale: ko),
+            "51분 후 재설정"
+        )
+        XCTAssertEqual(percentWindow(0.12).summary(locale: ko), "12% 사용 · 88% 남음")
+        XCTAssertEqual(L10n.t("Sign in to \("Perplexity")", locale: ko), "Perplexity에 로그인")
+    }
+
     /// Every language the picker offers must resolve to a locale the catalog
     /// is filed under — a region-qualified or unshipped identifier silently
     /// serves another language instead.
     func testEveryOfferedLanguageResolves() {
         XCTAssertEqual(
             AppLanguage.allCases.map(\.rawValue),
-            ["system", "en", "fr", "de", "ja", "pt-BR", "ru", "zh-Hans", "zh-Hant", "uk"]
+            ["system", "en", "fr", "de", "ja", "ko", "pt-BR", "ru", "zh-Hans", "zh-Hant", "uk"]
         )
         XCTAssertNil(AppLanguage.system.locale)
         for language in AppLanguage.allCases where language != .system {
