@@ -8,7 +8,7 @@
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
-const LABEL: &str = "dropzones";
+pub const LABEL: &str = "dropzones";
 /// The last state pushed, for a page that finished loading after it was sent.
 static CURRENT: Mutex<Option<Zones>> = Mutex::new(None);
 
@@ -51,7 +51,11 @@ pub fn show(app: &AppHandle, screen: &crate::Screen, zones: &Zones) {
         // Never focus, like the notch: `relocate` shows it again on every screen crossed, and a
         // shown window that can take focus takes it from whatever the user is working in
         .focusable(false)
-        .resizable(false);
+        .resizable(false)
+        // Set here rather than after the build: this window is created in the middle of a carry,
+        // and a frame of the dark wash under a light notch is the whole of what anyone would see
+        .theme(crate::theme_choice(app))
+        .initialization_script(crate::theme_script(crate::resolved_theme(app)));
     match builder.build() {
         Ok(w) => {
             pin(&w, screen);
