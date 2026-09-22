@@ -36,6 +36,18 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
     /// between. See `ClaudeTokenRefresher`.
     var ignoredPIDs: () -> Set<Int32> = { [] }
 
+    /// Who owns a session the Claude desktop app hosts, when there is more than
+    /// one Claude account on the machine. Nil leaves every record with the
+    /// directory it was found in, which is what a single-profile machine and
+    /// every test that predates this want. See `ClaudeSessionOwnership`.
+    ///
+    /// Only this profile's own directory is *watched*; a session adopted from
+    /// another profile's directory arrives on the next liveness tick instead,
+    /// two seconds later. Deliberate: a second descriptor per profile per
+    /// profile is a lot of machinery to save a delay nobody can see, and the
+    /// timer is already what covers everything a file event cannot report.
+    var ownership: ClaudeSessionOwnership?
+
     private var source: DispatchSourceFileSystemObject?
     private var descriptor: CInt = -1
     private var livenessTimer: Timer?
@@ -112,7 +124,7 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
 
     private func rescan() {
         let found = Self.read(directory: directory, transcripts: transcripts,
-                              ignoring: ignoredPIDs())
+                              ignoring: ignoredPIDs(), ownership: ownership)
         guard found != sessions else { return }   // don't churn SwiftUI for nothing
         // Only on a change, so this is a handful of lines an hour rather than a
         // firehose. It is the one way to see what the notch thinks is running
@@ -124,11 +136,50 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
         sessions = found
     }
 
+    /// Every session this profile should draw.
+    ///
+    /// With no `ownership` this is exactly what it always was: the records in
+    /// `directory`, nothing else. With one, the registry files of *every*
+    /// profile are read and each desktop-hosted record goes to the profile
+    /// whose account actually hosts it — which is not the profile whose
+    /// directory it sits in, because the desktop app files them all under the
+    /// default. A record whose account cannot be established is left exactly
+    /// where it was found, so an unreadable index costs nothing but the
+    /// old behaviour.
     static func read(directory: URL,
                      transcripts: ClaudeTranscriptReader? = nil,
-                     ignoring: Set<Int32> = []) -> [AgentSession] {
+                     ignoring: Set<Int32> = [],
+                     ownership: ClaudeSessionOwnership? = nil) -> [AgentSession] {
+        let sources = ownership?.directories ?? [directory]
+
+        var live: [ClaudeSessionRecord] = []
+        /// Which directory each record came from: an adopted session's
+        /// transcript stays where the session writes it, not where its ring is.
+        var origin: [Int32: URL] = [:]
+
+        for source in sources {
+            for record in records(in: source, ignoring: ignoring) {
+                if let ownership, !ownership.claims(record, foundIn: source) { continue }
+                live.append(record)
+                origin[record.pid] = source
+            }
+        }
+
+        return deduplicated(live)
+            .map { record in
+                let reader = origin[record.pid].flatMap { ownership?.reader(for: $0) }
+                    ?? transcripts
+                return state(of: record, transcripts: reader)
+            }
+            // The id breaks ties so the order cannot flicker between two ticks
+            // that read the same thing.
+            .sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
+    }
+
+    /// The live records in one profile's `sessions` directory.
+    static func records(in directory: URL, ignoring: Set<Int32> = []) -> [ClaudeSessionRecord] {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
-        let live = names
+        return names
             .filter { $0.hasSuffix(".json") }
             .compactMap { name -> ClaudeSessionRecord? in
                 let url = directory.appendingPathComponent(name)
@@ -140,11 +191,6 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
                 else { return nil }
                 return record
             }
-        return deduplicated(live)
-            .map { record in state(of: record, transcripts: transcripts) }
-            // The id breaks ties so the order cannot flicker between two ticks
-            // that read the same thing.
-            .sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
     }
 
     /// The record's own answer where it has one, the transcript's where it does
