@@ -172,11 +172,24 @@ actor ClaudeOAuthProvider: UsageProvider {
         // endpoint's, and the CLI does not share the endpoint's rate limit —
         // there is no reason for a 429 on one to darken a ring the other can
         // still fill.
-        if let windows = await cliWindows() {
+        // Only for the default login. `claude /usage` in print mode gives
+        // one answer for the whole machine whatever CLAUDE_CONFIG_DIR says
+        // (verified: identical output, requests and sessions included, for
+        // ~/.claude and ~/.claude-braspine), so with more than one login it
+        // would paint every ring with the same figure. Named profiles read
+        // their own token instead.
+        if profile.slug == nil, !Self.hasSeveralProfiles, let windows = await cliWindows() {
             return snapshot(windows: windows, plan: lastCLIPlan)
         }
         return try await fetchFromKeychain()
     }
+
+    /// More than one Claude login on this Mac. The CLI's estimate is "based
+    /// on local sessions on this machine", all of them, so with two logins
+    /// it credits each with the other's work; each reads its own token.
+    /// Not under test: the suite runs on whatever Mac hosts it, and its CLI
+    /// stubs must be reached whatever that Mac's logins are.
+    private static let hasSeveralProfiles: Bool = !Runtime.isUnderTest && ClaudeProfile.discover().count > 1
 
     private func fetchFromKeychain() async throws -> ProviderSnapshot {
         if Self.shouldHoldOff(until: retryNoEarlierThan, slack: backoffSlack),
@@ -453,7 +466,8 @@ actor ClaudeOAuthProvider: UsageProvider {
     nonisolated var signInRoute: SignInRoute {
         // Names the command for a profile, because that is the only way to
         // reach it: plain `claude` signs the default one in, not this.
-        .guidance(L10n.t("Run `\(profile.signInCommand)` once — it signs in and is what these readings come from. Use /login there to change account."))
+        .command("\(profile.signInCommand) auth login", name: displayName,
+                 install: URL(string: "https://docs.claude.com/en/docs/claude-code/setup"))
     }
 
     /// Reached only from "Allow access…", so this is the one path allowed to

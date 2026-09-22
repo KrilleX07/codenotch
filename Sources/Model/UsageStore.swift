@@ -610,6 +610,15 @@ final class UsageStore: ObservableObject {
             // Claude Code: nothing to open. The row's guidance is the whole
             // answer, so the sheet has to show it rather than pretend.
             return false
+        case .command(let command, _, let install):
+            // Without the tool there is nothing to run; the button opens its
+            // install page instead, and the row's guidance says so.
+            if let install, !TerminalCommand.isInstalled(command: command) {
+                NSWorkspace.shared.open(install)
+            } else {
+                TerminalCommand.run(command)
+            }
+            return true
         }
     }
 

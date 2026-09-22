@@ -29,7 +29,8 @@ actor CodexLocalProvider: UsageProvider {
 
     nonisolated var signInRoute: SignInRoute {
         guard profile.slug != nil else { return .openApp(bundleID: "com.openai.codex", name: "Codex") }
-        return .guidance(L10n.t("Run \(profile.signInCommand) in Terminal to sign in to \(displayName)."))
+        return .command(profile.signInCommand, name: displayName,
+                        install: URL(string: "https://developers.openai.com/codex/cli"))
     }
 
     nonisolated func account() -> ProviderAccount? {

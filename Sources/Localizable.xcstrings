@@ -8581,136 +8581,6 @@
         }
       }
     },
-    "Run grok login — it signs in and refreshes the token this reads.": {
-      "extractionState": "manual",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Exécutez grok login — il vous connecte et rafraîchit le jeton lu ici."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "grok login を実行してください。サインインし、ここで読み取るトークンを更新します。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Execute grok login — ele faz o login e renova o token que isto lê."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行 grok login — 它会登录并刷新这里读取的令牌。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "執行 grok login — 它會登入並重新整理這裡讀取的權杖。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустите grok login — команда выполнит вход и обновит читаемый токен."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Führe grok login aus — das meldet dich an und erneuert das hier gelesene Token."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустіть grok login — команда виконує вхід і оновлює токен, який читає Codenotch."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "grok login을 실행하십시오. 로그인하고 여기서 읽는 토큰을 갱신합니다."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "grok login ni ishga tushiring — u tizimga kiradi va bu oʻqiydigan tokenni yangilaydi."
-          }
-        }
-      }
-    },
-    "Usage rides on the opencode-go key OpenCode stores on sign-in — connect Go inside OpenCode (`opencode auth login`) and the notch reads it.": {
-      "extractionState": "manual",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La consommation repose sur la clé opencode-go qu'OpenCode enregistre à la connexion — connectez Go dans OpenCode (`opencode auth login`) et l'encoche la lit."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "使用量は、OpenCode がサインイン時に保存する opencode-go キーを使います。OpenCode 内で Go を接続（`opencode auth login`）すれば、ノッチが読み取ります。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O uso depende da chave opencode-go que o OpenCode guarda ao entrar — conecte o Go dentro do OpenCode (`opencode auth login`) e o notch a lê."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用量走的是 OpenCode 登录时保存的 opencode-go 密钥 — 在 OpenCode 里接通 Go（`opencode auth login`），刘海就会读到。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用量走的是 OpenCode 登入時儲存的 opencode-go 金鑰 — 在 OpenCode 裡連上 Go（`opencode auth login`），瀏海就會讀到。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Использование берётся из ключа opencode-go, который OpenCode сохраняет при входе — подключите Go в OpenCode (`opencode auth login`), и панель начнёт его читать."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Nutzung hängt am opencode-go-Schlüssel, den OpenCode bei der Anmeldung speichert — verbinde Go innerhalb von OpenCode (`opencode auth login`), und die Notch liest ihn."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Використання тримається на ключі opencode-go, який OpenCode зберігає під час входу — підключіть Go в OpenCode (`opencode auth login`), і виріз його прочитає."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "사용량은 OpenCode가 로그인 시 저장하는 opencode-go 키로 확인합니다. OpenCode에서 Go를 연결하면(`opencode auth login`) 노치가 사용량을 읽습니다."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Foydalanish OpenCode kirish paytida saqlaydigan opencode-go kalitiga bogʻliq — OpenCode ichida Goʻni ulang (`opencode auth login`), notch esa uni oʻqiydi."
-          }
-        }
-      }
-    },
     "Usage rides on a Z.ai GLM Coding Plan key held by a coding tool — Claude Code's settings.json, ZCode or OpenCode. Set one up there and the notch reads it.": {
       "extractionState": "manual",
       "localizations": {
@@ -8772,71 +8642,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Foydalanish kodlash vositasi saqlaydigan Z.ai GLM Coding Plan kalitiga bogʻliq — Claude Codeʼning settings.json fayli, ZCode yoki OpenCode. Oʻsha yerda birini sozlang, notch esa uni oʻqiydi."
-          }
-        }
-      }
-    },
-    "Run `%@` once — it signs in and refreshes the token this reads. Use /login there to change account.": {
-      "extractionState": "manual",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Exécutez `%@` une fois — il vous connecte et rafraîchit le jeton lu ici. Utilisez /login là-bas pour changer de compte."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`%@` を一度実行してください。サインインし、ここで読み取るトークンを更新します。アカウントを変えるには、そこで /login を使います。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Execute `%@` uma vez — ele faz o login e renova o token que isto lê. Use /login lá para trocar de conta."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "先运行一次 `%@` — 它会登录并刷新这里读取的令牌。要换账号，在那里用 /login。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "先執行一次 `%@` — 它會登入並重新整理這裡讀取的權杖。要換帳號，在那裡用 /login。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Один раз запустите `%@` — команда выполнит вход и обновит читаемый токен. Для смены аккаунта используйте там /login."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Führe einmal `%@` aus — das meldet dich an und erneuert das hier gelesene Token. Verwende dort /login, um das Konto zu wechseln."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустіть `%@` один раз — команда виконує вхід і оновлює токен, який читає Codenotch. Щоб змінити акаунт, введіть там /login."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`%@`을(를) 한 번 실행하십시오. 로그인하고 여기서 읽는 토큰을 갱신합니다. 계정을 변경하려면 해당 도구에서 /login을 사용하십시오."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`%@` ni bir marta ishga tushiring — u tizimga kiradi va bu oʻqiydigan tokenni yangilaydi. Hisobni oʻzgartirish uchun oʻsha yerda /login dan foydalaning."
           }
         }
       }
@@ -14029,71 +13834,6 @@
         }
       }
     },
-    "Sign in with GitHub CLI using `gh auth login`, then enable GitHub Copilot.": {
-      "extractionState": "manual",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connectez-vous avec la CLI GitHub via `gh auth login`, puis activez GitHub Copilot."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`gh auth login` で GitHub CLI にサインインし、GitHub Copilot を有効にしてください。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Entre com a CLI do GitHub usando `gh auth login` e depois ative o GitHub Copilot."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用 `gh auth login` 登录 GitHub CLI，然后启用 GitHub Copilot。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "用 `gh auth login` 登入 GitHub CLI，然後啟用 GitHub Copilot。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Выполните вход через GitHub CLI командой `gh auth login`, затем включите GitHub Copilot."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Melde dich mit `gh auth login` bei der GitHub-CLI an und aktiviere dann GitHub Copilot."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Увійдіть через GitHub CLI командою `gh auth login`, потім увімкніть GitHub Copilot."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`gh auth login`으로 GitHub CLI에 로그인한 다음 GitHub Copilot을 활성화하십시오."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`gh auth login` yordamida GitHub CLI orqali kiring, soʻng GitHub Copilotʼni yoqing."
-          }
-        }
-      }
-    },
     "GitHub Copilot reported no metered quotas": {
       "extractionState": "manual",
       "localizations": {
@@ -14285,71 +14025,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gemini CLI, OpenCode yoki Hermes sessiyalari topilmadi"
-          }
-        }
-      }
-    },
-    "Run `%@` once — it signs in and is what these readings come from. Use /login there to change account.": {
-      "extractionState": "manual",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Exécutez `%@` une fois — il vous connecte et c'est de là que viennent ces relevés. Utilisez /login là-bas pour changer de compte."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`%@` を一度実行してください。サインインし、ここでの読み取りはそこから得られます。アカウントを変えるには、そこで /login を使います。"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Execute `%@` uma vez — ele faz o login e é a origem destas leituras. Use /login lá para trocar de conta."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "先运行一次 `%@` — 它会登录，读数就来自那里。要换账号，在那里用 /login。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "先執行一次 `%@` — 它會登入，讀數就來自那裡。要換帳號，在那裡用 /login。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Один раз запустите `%@` — команда выполнит вход и станет источником этих показаний. Для смены аккаунта используйте там /login."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Führe einmal `%@` aus — das meldet dich an, und daher stammen diese Messwerte. Verwende dort /login, um das Konto zu wechseln."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустіть `%@` один раз — команда виконує вхід, і саме звідти беруться ці показники. Щоб змінити акаунт, введіть там /login."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`%@`을(를) 한 번 실행하십시오. 로그인 후 해당 도구에서 측정값을 가져옵니다. 계정을 변경하려면 해당 도구에서 /login을 사용하십시오."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "`%@` ni bir marta ishga tushiring — u tizimga kiradi va bu koʻrsatkichlar oʻsha yerdan keladi. Hisobni oʻzgartirish uchun oʻsha yerda /login dan foydalaning."
           }
         }
       }
@@ -24594,59 +24269,6 @@
         }
       }
     },
-    "Run %@ in Terminal to sign in to %@.": {
-      "extractionState": "manual",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ をターミナルで実行して %@ にサインインしてください。"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在终端运行 %@ 以登录 %@。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在終端執行 %@ 以登入 %@。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустите %@ в Терминале, чтобы войти в %@."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Führe %@ im Terminal aus, um dich bei %@ anzumelden."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустіть %@ у Терміналі, щоб увійти в %@."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@을(를) 터미널에서 실행해 %@에 로그인하십시오."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%2$@ ga kirish uchun Terminalda %1$@ ni ishga tushiring."
-          }
-        }
-      }
-    },
     "Requests today · last used %@": {
       "extractionState": "manual",
       "localizations": {
@@ -32226,47 +31848,6 @@
         }
       }
     },
-    "Run kimi and sign in with /login — it writes and refreshes the token this reads.": {
-      "extractionState": "manual",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kimi を実行し、/login でサインインしてください。ここで読み取るトークンが書き出され、更新されます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустіть kimi і увійдіть через /login — так записується й оновлюється токен, який читає Codenotch."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行 kimi 并用 /login 登录 — 它会写入并刷新这里读取的令牌。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "執行 kimi 並用 /login 登入 — 它會寫入並重新整理這裡讀取的權杖。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kimi를 실행하고 /login으로 로그인하십시오. 여기서 읽는 토큰을 저장하고 갱신합니다."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kimi ni ishga tushiring va /login orqali kiring — u bu oʻqiydigan tokenni yozadi va yangilaydi."
-          }
-        }
-      }
-    },
     "No Kimi Code usage limits on this account": {
       "extractionState": "manual",
       "localizations": {
@@ -32427,47 +32008,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Limitdan oshgan"
-          }
-        }
-      }
-    },
-    "Run kiro-cli login — it writes and refreshes the session this reads.": {
-      "extractionState": "manual",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kiro-cli login を実行してください。ここで読み取るセッションが書き出され、更新されます。"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запустіть kiro-cli login — так записується й оновлюється сесія, яку читає Codenotch."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "运行 kiro-cli login — 它会写入并刷新这里读取的会话。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "執行 kiro-cli login — 它會寫入並重新整理這裡讀取的工作階段。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kiro-cli login을 실행하십시오. 여기서 읽는 세션을 저장하고 갱신합니다."
-          }
-        },
-        "uz": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kiro-cli login ni ishga tushiring — u bu oʻqiydigan sessiyani yozadi va yangilaydi."
           }
         }
       }
@@ -39061,6 +38601,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 확인이 ‘확인 중…’에서 멈추지 않으며 컨텍스트 사용량이 적어도 호를 표시합니다. Claude 계정 파일은 변경될 때만 다시 읽고, 중국어 번체는 대만에서 쓰는 표현으로 다듬었습니다."
+          }
+        }
+      }
+    },
+    "Install the %@ CLI first; Sign in opens its install page.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instale a CLI do %@ primeiro; Entrar abre a página de instalação."
+          }
+        }
+      }
+    },
+    "Runs %@ in your terminal; it opens the browser to sign in and saves the session this reads.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roda %@ no seu terminal; ele abre o navegador para entrar e guarda a sessão que o app lê."
+          }
+        }
+      }
+    },
+    "Runs %@ in your terminal; sign in there with /login and the notch reads the session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roda %@ no seu terminal; entre lá com /login e o notch lê a sessão."
           }
         }
       }
