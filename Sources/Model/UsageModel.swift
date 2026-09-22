@@ -279,7 +279,9 @@ struct UsageBlock: Equatable {
 
 struct ProviderSnapshot: Identifiable, Equatable {
     let id: String
-    let displayName: String
+    /// The provider's own name, or the one chosen for the account in
+    /// Settings; the store swaps it in before anything reads the snapshot.
+    var displayName: String
     let glyph: ProviderGlyph
     let fidelity: Fidelity
     var status: ProviderStatus

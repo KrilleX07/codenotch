@@ -39064,6 +39064,28 @@
           }
         }
       }
+    },
+    "Name this account": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dar nome a esta conta"
+          }
+        }
+      }
+    },
+    "What the notch, the menu bar and notifications call this account. Empty goes back to %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como o notch, a barra de menu e as notificações chamam esta conta. Vazio volta para %@."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
