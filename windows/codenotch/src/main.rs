@@ -1631,7 +1631,51 @@ fn report(r: Result<String, String>) {
 /// The subcommands that print to the parent console; only those may attach to it.
 const CONSOLE_CMDS: [&str; 4] = ["install-hooks", "uninstall-hooks", "autostart", "doctor"];
 
+/// ureq reads a proxy only from the environment. Started from Explorer or the Run key that
+/// variable is usually absent even where a system proxy is configured, and a machine that reaches
+/// api.anthropic.com only through that proxy then reads nothing at all — so the WinINet setting
+/// (Internet Options) is copied into the environment before the first request.
+/// An explicit HTTPS_PROXY/HTTP_PROXY always wins.
+#[cfg(windows)]
+fn adopt_system_proxy() {
+    if let Some(k) = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].iter().find(|k| std::env::var_os(k).is_some()) {
+        applog(&format!("proxy: using {k} from the environment"));
+        return;
+    }
+    let query = |v: &str| -> Option<String> {
+        let mut c = std::process::Command::new("reg");
+        c.args(["query", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings", "/v", v]);
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: no console flash on the GUI path
+        let out = c.output().ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        text.lines().find(|l| l.trim_start().starts_with(v)).and_then(|l| l.split_whitespace().last().map(str::to_string))
+    };
+    let enable = query("ProxyEnable");
+    if enable.as_deref() != Some("0x1") {
+        applog(&format!("proxy: none in the environment, system proxy disabled (ProxyEnable={enable:?})"));
+        return;
+    }
+    let Some(server) = query("ProxyServer") else {
+        applog("proxy: system proxy enabled but ProxyServer is unset");
+        return;
+    };
+    // "host:port", or "http=host:port;https=host:port;..." when it is set per scheme
+    let https = server
+        .split(';')
+        .find_map(|e| e.strip_prefix("https="))
+        .or_else(|| if server.contains('=') { server.split(';').find_map(|e| e.strip_prefix("http=")) } else { Some(server.as_str()) });
+    if let Some(h) = https {
+        let url = if h.contains("://") { h.to_string() } else { format!("http://{h}") };
+        std::env::set_var("HTTPS_PROXY", &url);
+        std::env::set_var("HTTP_PROXY", &url);
+        applog(&format!("proxy: adopted system proxy {url}"));
+    }
+}
+
 fn main() {
+    #[cfg(windows)]
+    adopt_system_proxy();
     let args: Vec<String> = std::env::args().collect();
     if let Some(cmd) = args.get(1) {
         // Attaching on the GUI path too tied the notch to whatever cmd.exe launched it: closing that
