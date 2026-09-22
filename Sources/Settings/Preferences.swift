@@ -286,6 +286,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(appPresence.rawValue, forKey: Keys.presence) }
     }
 
+    /// Where every notification goes: the notch, or a banner. One choice for
+    /// all of them; which events notify stays a switch per event.
+    @Published var notificationChannel: NotificationChannel {
+        didSet { defaults.set(notificationChannel.rawValue, forKey: Keys.notificationChannel) }
+    }
+
     /// Whether the menu bar item shows five-hour limits instead of its icon.
     ///
     /// Off unless switched on. The item is the way into an app that has left
@@ -466,6 +472,7 @@ final class Preferences: ObservableObject {
         static let visibility = "notchVisibility"
         static let foldsForFullScreen = "foldsForFullScreen"
         static let presence = "appPresence"
+        static let notificationChannel = "notificationChannel"
         static let showsLimitsInMenuBar = "showsLimitsInMenuBar"
         static let showsWeeklyLimitInMenuBar = "showsWeeklyLimitInMenuBar"
         static let menuBarProviders = "menuBarProviders"
@@ -743,6 +750,10 @@ final class Preferences: ObservableObject {
         // to learn it is running.
         self.appPresence = defaults.string(forKey: Keys.presence)
             .flatMap(AppPresence.init(rawValue:)) ?? .dock
+        // The notch, because that is what every earlier version did; a banner
+        // is the choice of someone who found the notch too quiet.
+        self.notificationChannel = defaults.string(forKey: Keys.notificationChannel)
+            .flatMap(NotificationChannel.init(rawValue:)) ?? .notch
         // Absent means never chosen, which is the icon every earlier version
         // drew — see `showsLimitsInMenuBar`.
         self.showsLimitsInMenuBar = defaults.bool(forKey: Keys.showsLimitsInMenuBar)
