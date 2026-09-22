@@ -36,10 +36,13 @@ use tauri::{AppHandle, Emitter, Manager};
 pub const NOTCH_W: f64 = 360.0;
 /// Hand-bumped build tag, written to run.log at startup so a log can always be matched to the exe that wrote it.
 pub const BUILD: &str = "r31";
-pub const NOTCH_H: f64 = 520.0; // 300 clipped the card once it held three window blocks plus the session list; 460 clipped Antigravity's two model groups once the reading was stale and an agent was working
-/// Height of the upright window. Five cells make a 447 px pill; its fillets add 38.7 px at each end
-/// and the settings orb reaches 28.5 px past the far one, so 520 cut both fillets and hid the orb.
-pub const NOTCH_UPRIGHT_H: f64 = 650.0;
+/// The notch window's long side: the upright window's height, and both sides of the flat one.
+///
+/// Five cells make a 447 px pill; its fillets add 38.7 px at each end and the settings orb reaches
+/// 28.5 px past the far one, so 520 cut both fillets and hid the orb. The card wants the same room:
+/// 300 clipped it once it held three window blocks plus the session list, and 460 clipped
+/// Antigravity's two model groups once the reading was stale and an agent was working.
+pub const NOTCH_LONG: f64 = 650.0;
 
 pub struct AppState {
     pub store: Mutex<state::Store>,
@@ -274,15 +277,16 @@ static NOTCH_INSETS: Mutex<[f64; 4]> = Mutex::new([0.0; 4]);
 /// The notch window's logical size for an edge.
 ///
 /// Upright on the left and right, the pill is a column and 360 wide is plenty; its length is what
-/// needs room, hence `NOTCH_UPRIGHT_H`. Lying flat on the top and bottom it is a row: six 44 px
-/// rings, their gaps, the padding, both fillets and the settings orb come to about 504 px, so a
-/// 360 px window clipped the pill once a fifth provider was on. The flat window keeps the full
-/// height too, for the hover card that opens below or above the pill.
+/// needs room, hence `NOTCH_LONG`. Lying flat on the top and bottom it is a row: six 44 px rings,
+/// their gaps, the padding, both fillets and the settings orb come to about 504 px, so a 360 px
+/// window clipped the pill once a fifth provider was on. It is square, because the card opens above
+/// or below the pill there instead of beside it, and so needs the pill's own depth on top of its
+/// height — at 520 a stale Antigravity card scrolled.
 pub fn notch_window_size(edge: &str) -> (f64, f64) {
     if config::edge_is_vertical(edge) {
-        (NOTCH_W, NOTCH_UPRIGHT_H)
+        (NOTCH_W, NOTCH_LONG)
     } else {
-        (NOTCH_UPRIGHT_H, NOTCH_H)
+        (NOTCH_LONG, NOTCH_LONG)
     }
 }
 
@@ -656,9 +660,6 @@ fn claude_sign_in() -> Result<(), String> { claude_auth::start_login() }
 
 #[tauri::command]
 fn get_claude_auth() -> claude_auth::AuthState { claude_auth::state() }
-
-#[tauri::command]
-fn refresh_claude_usage(app: AppHandle) -> bool { refresh_provider(&app, "claude") }
 
 /// Asks one provider to read again, and says whether a reading is on its way. Claude's rate-limit
 /// wait stands, as on the Mac: asking early spends a request and can double the wait.
@@ -1697,7 +1698,6 @@ fn main() {
             get_usage,
             claude_sign_in,
             get_claude_auth,
-            refresh_claude_usage,
             updater::get_update_state,
             updater::check_for_update,
             updater::install_update,
@@ -1818,7 +1818,7 @@ fn main() {
 mod tests {
     use super::{
         cursor_in_hot, notch_window_size, provider_page, ring_window, work_insets, Screen, HOT_PAD,
-        NOTCH_H, NOTCH_W, TRAY_PROVIDER_IDS,
+        NOTCH_W, TRAY_PROVIDER_IDS,
     };
     use crate::usage::LimitWindow;
 
@@ -1890,11 +1890,38 @@ mod tests {
         for edge in ["top", "bottom"] {
             let (w, h) = notch_window_size(edge);
             assert!(w >= pill, "{edge}: {w} px cannot hold a {pill} px pill");
-            assert_eq!(h, NOTCH_H, "{edge}: the hover card still needs the full height");
+            // `#card`'s max-height on a flat edge is the window less 150 px for the pill, the 30 px
+            // gap and the margins, and the tallest card the page has measured is 400 px.
+            assert!(h - 150.0 >= 400.0, "{edge}: {h} px leaves the card too little room");
         }
         for edge in ["left", "right"] {
-            assert_eq!(notch_window_size(edge), (NOTCH_W, super::NOTCH_UPRIGHT_H));
+            assert_eq!(notch_window_size(edge), (NOTCH_W, super::NOTCH_LONG));
         }
+    }
+
+    /// `fitZoom` treats a window wider than the page's design width as a DPI disagreement and zooms
+    /// the layout to close the gap, so a design width left behind when the window is widened zooms
+    /// the whole notch instead — and `placeCard`, which writes unzoomed styles from zoomed rects,
+    /// then puts the card at the wrong place entirely.
+    #[test]
+    fn the_pages_design_widths_are_the_window_widths() {
+        let page = include_str!("../ui/notch.html");
+        let line = page
+            .lines()
+            .find(|l| l.trim_start().starts_with("const DESIGN_W_UPRIGHT"))
+            .expect("notch.html declares its design widths on one line");
+        let width_of = |key: &str| -> f64 {
+            let after = line.split(key).nth(1).unwrap_or_else(|| panic!("{key} missing"));
+            after
+                .trim_start_matches('=')
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '.')
+                .collect::<String>()
+                .parse()
+                .unwrap_or_else(|_| panic!("{key} is not a number"))
+        };
+        assert_eq!(width_of("DESIGN_W_UPRIGHT"), notch_window_size("right").0);
+        assert_eq!(width_of("DESIGN_W_FLAT"), notch_window_size("top").0);
     }
 
     /// Four triangles about the centre, so every point on the screen belongs to exactly one edge.
