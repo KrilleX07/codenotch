@@ -83,9 +83,10 @@ enum NotchGeometry {
         // almost the full edge; the padding is free to run past the bezel,
         // since nothing is drawn there until a card actually opens.
         slack: CGFloat = 0,
-        // The settings handle hangs past the body's trailing end. That part
-        // of the padding must stay on screen even when the hover card may not.
-        trailingExtent: CGFloat = 0
+        // The handles can hang past either end of the body. Those parts of
+        // the padding must stay on screen even when the hover card may not.
+        trailingExtent: CGFloat = 0,
+        leadingExtent: CGFloat = 0
     ) -> CGRect {
         let full = screen.frameValue
         let width = panelSize.width.rounded(.up)
@@ -95,19 +96,23 @@ enum NotchGeometry {
         switch edge {
         case .right:
             let y = clamp(full.midY - height / 2 - alongOffset,
-                          min: full.minY - slack + trailingExtent, max: full.maxY - height + slack)
+                          min: full.minY - slack + trailingExtent,
+                          max: full.maxY - height + slack - leadingExtent)
             origin = CGPoint(x: full.maxX - width, y: y)
         case .left:
             let y = clamp(full.midY - height / 2 - alongOffset,
-                          min: full.minY - slack + trailingExtent, max: full.maxY - height + slack)
+                          min: full.minY - slack + trailingExtent,
+                          max: full.maxY - height + slack - leadingExtent)
             origin = CGPoint(x: full.minX, y: y)
         case .top:
             let x = clamp(full.midX - width / 2 + alongOffset,
-                          min: full.minX - slack, max: full.maxX - width + slack - trailingExtent)
+                          min: full.minX - slack + leadingExtent,
+                          max: full.maxX - width + slack - trailingExtent)
             origin = CGPoint(x: x, y: full.maxY - height)
         case .bottom:
             let x = clamp(full.midX - width / 2 + alongOffset,
-                          min: full.minX - slack, max: full.maxX - width + slack - trailingExtent)
+                          min: full.minX - slack + leadingExtent,
+                          max: full.maxX - width + slack - trailingExtent)
             origin = CGPoint(x: x, y: full.minY)
         }
 

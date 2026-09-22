@@ -338,7 +338,7 @@ final class NotchViewModel: ObservableObject {
     /// Reserve the full hit area even while only the resting arc is visible,
     /// so revealing the settings button cannot put it beyond the screen.
     var trailingExtent: CGFloat {
-        max(0, orbAlong - shapeLength + NotchLayout.orbHotZone / 2).rounded(.up)
+        (max(0, orbAlong - shapeLength + NotchLayout.orbHotZone / 2) * sizeScale).rounded(.up)
     }
 
     /// Where the move handle sits: the settings orb's position mirrored to the
@@ -352,7 +352,7 @@ final class NotchViewModel: ObservableObject {
     /// The mirror of `trailingExtent` at the near end — the room the move
     /// handle needs before the notch's own start.
     var leadingExtent: CGFloat {
-        max(0, -moveAlong + NotchLayout.orbHotZone / 2).rounded(.up)
+        (max(0, -moveAlong + NotchLayout.orbHotZone / 2) * sizeScale).rounded(.up)
     }
 
     /// Where the bar's far corner actually turns, along the stack.

@@ -90,20 +90,55 @@ final class PanelOffsetTests: XCTestCase {
         )
         for display in [screen, secondary] {
             for edge in NotchEdge.allCases {
-                let model = NotchViewModel()
-                model.edge = edge
-                let frame = NotchGeometry.panelFrame(
-                    for: display, panelSize: model.panelSize, edge: edge,
-                    alongOffset: 10_000, slack: model.slack,
-                    trailingExtent: model.trailingExtent
-                )
-                let handleEnd = model.slack + model.orbAlong + NotchLayout.orbHotZone / 2
-                if edge.isVertical {
-                    XCTAssertGreaterThanOrEqual(frame.maxY - handleEnd,
-                                                display.frameValue.minY - 0.5)
-                } else {
-                    XCTAssertLessThanOrEqual(frame.minX + handleEnd,
-                                             display.frameValue.maxX + 0.5)
+                for size in NotchSize.allCases {
+                    let model = NotchViewModel()
+                    model.edge = edge
+                    model.sizeScale = size.scale
+                    let frame = NotchGeometry.panelFrame(
+                        for: display, panelSize: model.panelSize, edge: edge,
+                        alongOffset: 10_000, slack: model.slack,
+                        trailingExtent: model.trailingExtent
+                    )
+                    let handleEnd = model.slack
+                        + (model.orbAlong + NotchLayout.orbHotZone / 2) * model.sizeScale
+                    if edge.isVertical {
+                        XCTAssertGreaterThanOrEqual(frame.maxY - handleEnd,
+                                                    display.frameValue.minY - 0.5)
+                    } else {
+                        XCTAssertLessThanOrEqual(frame.minX + handleEnd,
+                                                 display.frameValue.maxX + 0.5)
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testDraggingToTheLeadingEndKeepsTheMoveHandleOnScreen() {
+        let secondary = FakeScreen(
+            frameValue: CGRect(x: -1800, y: -200, width: 1800, height: 1169),
+            visibleFrameValue: CGRect(x: -1800, y: -200, width: 1800, height: 1132)
+        )
+        for display in [screen, secondary] {
+            for edge in NotchEdge.allCases {
+                for size in NotchSize.allCases {
+                    let model = NotchViewModel()
+                    model.edge = edge
+                    model.sizeScale = size.scale
+                    let frame = NotchGeometry.panelFrame(
+                        for: display, panelSize: model.panelSize, edge: edge,
+                        alongOffset: -10_000, slack: model.slack,
+                        leadingExtent: model.leadingExtent
+                    )
+                    let handleStart = model.slack
+                        + (model.moveAlong - NotchLayout.orbHotZone / 2) * model.sizeScale
+                    if edge.isVertical {
+                        XCTAssertLessThanOrEqual(frame.maxY - handleStart,
+                                                 display.frameValue.maxY + 0.5)
+                    } else {
+                        XCTAssertGreaterThanOrEqual(frame.minX + handleStart,
+                                                    display.frameValue.minX - 0.5)
+                    }
                 }
             }
         }
