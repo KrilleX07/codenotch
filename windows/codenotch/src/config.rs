@@ -27,7 +27,7 @@ pub struct TraySlot {
 pub struct Config {
     #[serde(default = "default_port")]
     pub port: u16,
-    /// "auto" | "zh" | "zh-Hant" | "en" | "ja" | "ko" | "ru" | "uk"
+    /// "auto" | "zh" | "zh-Hant" | "en" | "ja" | "ko" | "pt-BR" | "ru" | "uk"
     #[serde(default = "default_lang")]
     pub lang: String,
     #[serde(default)]

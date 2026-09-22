@@ -42,6 +42,9 @@ fn language_from_windows_locale(name: &str) -> Option<&'static str> {
     if name.starts_with("ko") {
         return Some("ko");
     }
+    if name.starts_with("pt-br") {
+        return Some("pt-BR");
+    }
     if name.starts_with("ru") {
         return Some("ru");
     }
@@ -101,6 +104,22 @@ fn is_24h_pattern(pattern: &str) -> bool {
 pub fn tr(lang: &str, key: &str) -> &'static str {
     let l = if lang == "auto" { resolve_auto() } else { lang };
     match (l, key) {
+        ("pt-BR", "open_data") => "Abrir pasta de dados (logs / ícones)",
+        ("pt-BR", "install") => "Instalar hooks do Claude Code",
+        ("pt-BR", "uninstall") => "Desinstalar hooks",
+        ("pt-BR", "language") => "Idioma",
+        ("pt-BR", "lang_auto") => "Seguir o sistema",
+        ("pt-BR", "reset_pos") => "Redefinir posição da barra",
+        ("pt-BR", "quit") => "Sair",
+        ("pt-BR", "hooks_missing") => "Hooks não instalados: clique com o botão direito no ícone da bandeja → Instalar hooks do Claude Code (o aplicativo desktop usa fallback automático)",
+        ("pt-BR", "autostart") => "Iniciar com o Windows",
+        ("pt-BR", "refresh_all") => "Atualizar tudo",
+        ("pt-BR", "waiting") => "Aguardando a primeira leitura…",
+        ("pt-BR", "quit_app") => "Encerrar o Codenotch",
+        ("pt-BR", "settings") => "Ajustes…",
+        ("pt-BR", "refresh_now") => "Atualizar agora",
+        ("pt-BR", "open_host") => "Abrir o %@",
+        ("pt-BR", "keep_open") => "Manter aberto",
         ("zh", "install") => "安装 Claude Code 钩子",
         ("zh-Hant", "install") => "安裝 Claude Code 鉤子",
         ("zh", "uninstall") => "卸载钩子",
@@ -328,6 +347,40 @@ mod tests {
         assert_eq!(language_from_windows_locale("zh-Hans-CN"), Some("zh"));
         assert_eq!(language_from_windows_locale("zh-SG"), Some("zh"));
         assert_eq!(language_from_windows_locale("zh"), Some("zh"));
+    }
+
+    const BRAZILIAN_PORTUGUESE_KEYS: &[(&str, &str)] = &[
+        ("settings", "Ajustes…"),
+        ("refresh_all", "Atualizar tudo"),
+        ("waiting", "Aguardando a primeira leitura…"),
+        ("quit_app", "Encerrar o Codenotch"),
+        ("refresh_now", "Atualizar agora"),
+        ("open_host", "Abrir o %@"),
+        ("keep_open", "Manter aberto"),
+        ("quit", "Sair"),
+        ("install", "Instalar hooks do Claude Code"),
+        ("uninstall", "Desinstalar hooks"),
+        ("language", "Idioma"),
+        ("lang_auto", "Seguir o sistema"),
+        ("reset_pos", "Redefinir posição da barra"),
+        ("autostart", "Iniciar com o Windows"),
+        ("open_data", "Abrir pasta de dados (logs / ícones)"),
+    ];
+
+    #[test]
+    fn brazilian_portuguese_translates_every_known_key() {
+        for (key, value) in BRAZILIAN_PORTUGUESE_KEYS {
+            assert_eq!(tr("pt-BR", key), *value, "missing Brazilian Portuguese translation for {key}");
+            assert_ne!(tr("pt-BR", key), "?", "unknown Brazilian Portuguese key {key}");
+        }
+    }
+
+    #[test]
+    fn brazilian_portuguese_locale_resolves() {
+        use super::language_from_windows_locale;
+        assert_eq!(language_from_windows_locale("pt-BR"), Some("pt-BR"));
+        assert_eq!(language_from_windows_locale("pt-br"), Some("pt-BR"));
+        assert_eq!(language_from_windows_locale("pt-PT"), None);
     }
 
     #[test]
