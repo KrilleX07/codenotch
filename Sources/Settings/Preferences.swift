@@ -279,6 +279,11 @@ final class Preferences: ObservableObject {
         }
     }
 
+    /// Hard step or continuous ramp — see `ColorTransitionStyle`.
+    @Published var colorTransitionStyle: ColorTransitionStyle {
+        didSet { defaults.set(colorTransitionStyle.rawValue, forKey: Keys.colorTransitionStyle) }
+    }
+
     /// The language the app itself speaks.
     ///
     /// `.system` follows the Mac. Written through `L10n.apply` so the store
@@ -493,6 +498,7 @@ final class Preferences: ObservableObject {
         static let notchSurfaceStyle = "notchSurfaceStyle"
         static let watchLimit = "watchLimit"
         static let criticalLimit = "criticalLimit"
+        static let colorTransitionStyle = "colorTransitionStyle"
         static let customEndpoints = "customEndpoints"
         static let lastSeenVersion = "lastSeenVersion"
         static let order = "providerOrder"
@@ -820,6 +826,8 @@ final class Preferences: ObservableObject {
         let critical = min(max(storedCriticalLimit, 0.02), 1.0)
         self.criticalLimit = critical
         self.watchLimit = min(max(storedWatchLimit, 0.01), critical - 0.01)
+        self.colorTransitionStyle = defaults.string(forKey: Keys.colorTransitionStyle)
+            .flatMap(ColorTransitionStyle.init(rawValue:)) ?? .hardStep
         // Absent means never chosen, which is follow-the-Mac.
         self.language = defaults.string(forKey: L10n.languageDefaultsKey)
             .flatMap(AppLanguage.init(rawValue:)) ?? .system

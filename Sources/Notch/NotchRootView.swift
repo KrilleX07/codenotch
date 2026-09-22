@@ -141,6 +141,7 @@ struct NotchRootView: View {
         .environment(\.weeklyRingDashed, model.weeklyRingDashed)
         .environment(\.usageWatchLimit, model.watchLimit)
         .environment(\.usageCriticalLimit, model.criticalLimit)
+        .environment(\.colorTransitionStyle, model.colorTransitionStyle)
     }
 
     /// Opening and closing are not mirror images. Appearing, the arc waits its

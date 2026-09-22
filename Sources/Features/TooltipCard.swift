@@ -429,11 +429,20 @@ private struct LimitWindowRow: View {
     @Environment(\.codenotchAccentColor) private var accentColor
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
+    @Environment(\.colorTransitionStyle) private var colorTransitionStyle
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
     private var band: UsageBand {
         if let override = window.bandOverride { return override }
         return UsageBand.band(for: window.usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
+    }
+    /// Continuous when that style is chosen; a `bandOverride` is a deliberate discrete choice
+    /// from the caller regardless of style, so it stays exactly as `band.color(accent:)` renders it.
+    private var barColor: Color {
+        guard window.bandOverride == nil, colorTransitionStyle == .ramp else {
+            return band.color(accent: accentColor)
+        }
+        return UsageBand.rampColor(for: window.usedFraction ?? 0, watchLimit: watchLimit, accent: accentColor)
     }
     private var trackWidth: CGFloat { NotchLayout.cardWidth - 2 * NotchLayout.cardPadding - inset }
     private var fillWidth: CGFloat {
@@ -474,7 +483,7 @@ private struct LimitWindowRow: View {
                 if window.usedFraction != nil {
                     ZStack(alignment: .leading) {
                         Capsule().fill(Palette.barTrack)
-                        Capsule().fill(band.color(accent: accentColor)).frame(width: fillWidth)
+                        Capsule().fill(barColor).frame(width: fillWidth)
                     }
                     .frame(width: trackWidth, height: NotchLayout.barHeight)
                     .padding(.top, NotchLayout.labelToBar)
@@ -498,6 +507,15 @@ private struct MoneyBreakdownView: View {
     @Environment(\.codenotchAccentColor) private var accentColor
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
+    @Environment(\.colorTransitionStyle) private var colorTransitionStyle
+
+    private var barColor: Color {
+        guard colorTransitionStyle == .ramp else {
+            return UsageBand.band(for: money.spentFraction, watchLimit: watchLimit, criticalLimit: criticalLimit)
+                .color(accent: accentColor)
+        }
+        return UsageBand.rampColor(for: money.spentFraction, watchLimit: watchLimit, accent: accentColor)
+    }
 
     private var symbol: String {
         switch money.currency.uppercased() {
@@ -519,7 +537,7 @@ private struct MoneyBreakdownView: View {
             GeometryReader { proxy in
                 HStack(spacing: 0) {
                     Rectangle()
-                        .fill(UsageBand.band(for: money.spentFraction, watchLimit: watchLimit, criticalLimit: criticalLimit).color(accent: accentColor))
+                        .fill(barColor)
                         .frame(width: proxy.size.width * CGFloat(money.spentFraction))
                     Rectangle().fill(Palette.barTrack)
                 }

@@ -37,6 +37,7 @@ struct ProviderRing: View {
     @Environment(\.codenotchReduceTransparency) private var reduceTransparency
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
+    @Environment(\.colorTransitionStyle) private var colorTransitionStyle
     @Environment(\.codenotchAccentColor) private var accentColor
     @Environment(\.weeklyRingDashed) private var weeklyRingDashed
     @State private var spin: Double = 0
@@ -58,10 +59,26 @@ struct ProviderRing: View {
         isStale ? Palette.textSecondary : band.color(accent: accentColor)
     }
 
+    /// The ring's actual stroke colour: a continuous ramp when that style is chosen, falling
+    /// back to the discrete `band.color(accent:)` in hard-step mode and everywhere `band` itself
+    /// special-cases — blocked (no fraction is meaningful once a limit is spent) and an explicit
+    /// override from the caller (a deliberate discrete choice, not a reading to interpolate).
+    private var primaryRingColor: Color {
+        guard !isBlocked, bandOverride == nil, colorTransitionStyle == .ramp else {
+            return band.color(accent: accentColor)
+        }
+        return UsageBand.rampColor(for: usedFraction ?? 0, watchLimit: watchLimit, accent: accentColor)
+    }
+
     private var weeklyBand: UsageBand {
         isBlocked ? .exhausted : UsageBand.band(for: weeklyFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
     }
     private var weeklySweep: CGFloat { CGFloat(min(max(weeklyFraction ?? 0, 0), 1)) }
+    /// Same fallback rule as `primaryRingColor`, minus `bandOverride` — the weekly ring has none.
+    private var weeklyRingColor: Color {
+        guard !isBlocked, colorTransitionStyle == .ramp else { return weeklyBand.color(accent: accentColor) }
+        return UsageBand.rampColor(for: weeklyFraction ?? 0, watchLimit: watchLimit, accent: accentColor)
+    }
 
     /// Inside, the weekly ring and the working indicator want the same band —
     /// 1.03pt apart, one of them spinning. Rather than shave both until neither
@@ -104,7 +121,7 @@ struct ProviderRing: View {
                         .inset(by: NotchLayout.trackStroke / 2)
                         .trim(from: 0, to: sweep)
                         .stroke(
-                            band.color(accent: accentColor),
+                            primaryRingColor,
                             style: StrokeStyle(lineWidth: NotchLayout.progressStroke, lineCap: .round)
                         )
                         // Refreshing spins the reading itself rather than
@@ -147,7 +164,7 @@ struct ProviderRing: View {
                         .inset(by: inset)
                         .trim(from: 0, to: weeklySweep)
                         .stroke(
-                            weeklyBand.color(accent: accentColor),
+                            weeklyRingColor,
                             style: StrokeStyle(lineWidth: NotchLayout.weeklyRingStroke,
                                                lineCap: weeklyRingDashed ? .butt : .round,
                                                dash: weeklyRingDashed ? [4, 2] : [])
