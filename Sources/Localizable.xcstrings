@@ -1,6 +1,218 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Free balance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费额度余额"
+          }
+        }
+      }
+    },
+    "Amp": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp"
+          }
+        }
+      }
+    },
+    "Amp CLI": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp CLI"
+          }
+        }
+      }
+    },
+    "Agent usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent 用量"
+          }
+        }
+      }
+    },
+    "Orb usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orb 用量"
+          }
+        }
+      }
+    },
+    "Renewal": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "续期"
+          }
+        }
+      }
+    },
+    "About 1 day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约 1 天"
+          }
+        }
+      }
+    },
+    "About %lld days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约 %lld 天"
+          }
+        }
+      }
+    },
+    "Free": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费"
+          }
+        }
+      }
+    },
+    "Free allowance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费额度"
+          }
+        }
+      }
+    },
+    "%@ of %@ left": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剩余 %1$@，共 %2$@"
+          }
+        }
+      }
+    },
+    "Replenishment": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补充速率"
+          }
+        }
+      }
+    },
+    "%@/hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/小时"
+          }
+        }
+      }
+    },
+    "Couldn't read Amp's secrets.json. Check its file permissions or run amp login again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 Amp 的 secrets.json。请检查文件权限或重新运行 amp login。"
+          }
+        }
+      }
+    },
+    "Amp's secrets.json is invalid. Run amp login again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp 的 secrets.json 无效。请重新运行 amp login。"
+          }
+        }
+      }
+    },
+    "Amp returned an unrecognized usage response. Try again later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法识别 Amp 返回的用量数据。请稍后重试。"
+          }
+        }
+      }
+    },
+    "Couldn't reach Amp. Check your connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接到 Amp。请检查网络连接。"
+          }
+        }
+      }
+    },
+    "Run amp login in Terminal — the notch reads ~/.local/share/amp/secrets.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 amp login，Codenotch 会读取 ~/.local/share/amp/secrets.json。"
+          }
+        }
+      }
+    },
+    "Run amp login in Terminal to read your usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 amp login 以读取用量"
+          }
+        }
+      }
+    },
+    "Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.": {
+      "extractionState": "manual"
+    },
     "just now": {
       "extractionState": "manual",
       "localizations": {
