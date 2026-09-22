@@ -351,8 +351,15 @@ final class NotchViewModel: ObservableObject {
 
     /// The mirror of `trailingExtent` at the near end — the room the move
     /// handle needs before the notch's own start.
+    ///
+    /// Nothing when the handle is switched off, unlike `trailingExtent`: the
+    /// settings orb is always there to be revealed, but a hidden handle is
+    /// hidden for the session. Reserving its room anyway kept the notch from
+    /// sliding to the leading end of its edge, which is a place ⌥-drag is
+    /// meant to reach.
     var leadingExtent: CGFloat {
-        (max(0, -moveAlong + NotchLayout.orbHotZone / 2) * sizeScale).rounded(.up)
+        guard showsMoveHandle else { return 0 }
+        return (max(0, -moveAlong + NotchLayout.orbHotZone / 2) * sizeScale).rounded(.up)
     }
 
     /// Where the bar's far corner actually turns, along the stack.
