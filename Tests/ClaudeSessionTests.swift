@@ -279,12 +279,25 @@ final class ClaudeOwnSessionFilterTests: XCTestCase {
     /// is the filter.
     private var livePID: Int32 { ProcessInfo.processInfo.processIdentifier }
 
-    private func writeSession(pid: Int32, name: String) throws {
+    private func writeSession(pid: Int32, name: String, cwd: String = "/Users/vinz/app") throws {
         let json = """
-        { "pid": \(pid), "sessionId": "\(name)", "cwd": "/Users/vinz/app",
+        { "pid": \(pid), "sessionId": "\(name)", "cwd": "\(cwd)",
           "name": "\(name)", "entrypoint": "claude-desktop" }
         """
         try Data(json.utf8).write(to: directory.appendingPathComponent("\(pid).json"))
+    }
+
+    /// The `/usage` probe runs from `ClaudeUsageCLI.scratchDirectory`, and a
+    /// session filed from there is Codenotch's whichever pid wrote it. Seen on
+    /// a real machine as a "usage-scratch-e1 finished" banner: the probe ran
+    /// `busy`, vanished, and was announced as a turn that ended.
+    func testASessionFromTheUsageScratchDirectoryIsLeftOut() throws {
+        let scratch = ClaudeUsageCLI.scratchLocation(applicationSupport: directory)
+        try writeSession(pid: livePID, name: "usage-scratch-e1", cwd: scratch.path + "/")
+        try writeSession(pid: getppid(), name: "theirs")
+        let found = ClaudeSessionMonitor.read(directory: directory,
+                                              ignoringDirectories: [scratch.path])
+        XCTAssertEqual(found.map(\.name), ["theirs"])
     }
 
     func testTheSessionIsReadWhenNothingIsIgnored() throws {

@@ -5,6 +5,14 @@ import Foundation
 @MainActor
 final class UsageLimitWatcher {
     private struct TrackedLimit {
+        /// False until this window has been read once. The first reading of a
+        /// window only records: a limit already spent when Codenotch starts is
+        /// not news. Kept per window rather than per provider because the
+        /// windows do not arrive together: the store's first publication can
+        /// be a placeholder with no window at all, and the weekly window can
+        /// appear a fetch after the session one. Counting the placeholder as
+        /// the baseline is what announced "limit reached" at launch.
+        var seeded = false
         var isExhausted: Bool = false
         var resetsAt: Date?
         var fraction: Double = 0
@@ -34,8 +42,13 @@ final class UsageLimitWatcher {
     }
 
     private func observe(_ snapshot: ProviderSnapshot) {
+        // Same rule as the reset watcher: an archived (stale) reading is not a
+        // baseline, so the first live reading after one only records.
+        guard !snapshot.status.isStale else {
+            states.removeValue(forKey: snapshot.id)
+            return
+        }
         var state = states[snapshot.id] ?? ProviderLimitState()
-        let isFirstObservation = states[snapshot.id] == nil
 
         // 1. Session limit (headline window)
         if let headline = snapshot.headline, let fraction = snapshot.usedFraction {
@@ -50,7 +63,10 @@ final class UsageLimitWatcher {
                 state.session.isExhausted = false
             }
 
-            if isExhausted && !state.session.isExhausted && !isFirstObservation && !isMuted(snapshot.id) {
+            if !state.session.seeded {
+                state.session.seeded = true
+                state.session.isExhausted = isExhausted
+            } else if isExhausted && !state.session.isExhausted && !isMuted(snapshot.id) {
                 state.session.isExhausted = true
                 deliver(UsageAlertEvent(
                     kind: .sessionLimitReached,
@@ -62,8 +78,6 @@ final class UsageLimitWatcher {
                     currentFraction: fraction,
                     resetsAt: headline.resetsAt
                 ))
-            } else if isFirstObservation && isExhausted {
-                state.session.isExhausted = true
             }
 
             state.session.fraction = fraction
@@ -83,7 +97,10 @@ final class UsageLimitWatcher {
                 state.weekly.isExhausted = false
             }
 
-            if isWeeklyExhausted && !state.weekly.isExhausted && !isFirstObservation && !isMuted(snapshot.id) {
+            if !state.weekly.seeded {
+                state.weekly.seeded = true
+                state.weekly.isExhausted = isWeeklyExhausted
+            } else if isWeeklyExhausted && !state.weekly.isExhausted && !isMuted(snapshot.id) {
                 state.weekly.isExhausted = true
                 deliver(UsageAlertEvent(
                     kind: .weeklyLimitReached,
@@ -95,8 +112,6 @@ final class UsageLimitWatcher {
                     currentFraction: weeklyFraction,
                     resetsAt: weekly.resetsAt
                 ))
-            } else if isFirstObservation && isWeeklyExhausted {
-                state.weekly.isExhausted = true
             }
 
             state.weekly.fraction = weeklyFraction
