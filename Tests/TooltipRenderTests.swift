@@ -9,6 +9,70 @@ import SwiftUI
 /// `TOOLTIP_RENDER_PATH` and the frame is written there.
 @MainActor
 final class TooltipRenderTests: XCTestCase {
+    func testAmpDetailsRenderBesideTheHoveredRing() throws {
+        let reading = try AmpUsage.parse(AmpFixture.tier)
+        let model = NotchViewModel()
+        model.edge = .right
+        model.snapshots = [ProviderSnapshot(
+            id: "amp", displayName: "Amp", glyph: .amp, fidelity: reading.fidelity,
+            status: .ok, windows: reading.windows, headlineID: reading.headlineID, plan: reading.plan
+        )]
+        model.isExpanded = true
+        model.hoveredIndex = 0
+        for style in [NotchSurfaceStyle.solid, .glass] {
+            model.surfaceStyle = style
+            let renderer = ImageRenderer(content: NotchRootView(model: model)
+                .frame(width: model.panelSize.width, height: model.panelSize.height)
+                .environment(\.colorScheme, .dark)
+                .environment(\.codenotchHeadlessGlass, true))
+            let image = try XCTUnwrap(renderer.cgImage)
+            let pixels = NSBitmapImageRep(cgImage: image)
+            var ink = 0
+            for x in stride(from: 0, to: Int(NotchLayout.cardWidth), by: 2) {
+                for y in stride(from: 0, to: pixels.pixelsHigh, by: 2) {
+                    if (pixels.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.5 { ink += 1 }
+                }
+            }
+            XCTAssertGreaterThan(ink, 100, "\(style): no card content beside the hovered ring")
+        }
+    }
+
+    func testAmpSubscriptionAndFreeCardsRenderWithTheirGlyph() throws {
+        XCTAssertNotNil(NSImage(named: ProviderGlyph.amp.assetName))
+        for (name, data) in [("subscription", AmpFixture.tier), ("free", AmpFixture.free)] {
+            let reading = try AmpUsage.parse(data)
+            let snapshot = ProviderSnapshot(
+                id: "amp", displayName: "Amp", glyph: .amp, fidelity: reading.fidelity,
+                status: .ok, windows: reading.windows, headlineID: reading.headlineID, plan: reading.plan
+            )
+            let view = HStack(spacing: 20) {
+                VStack {
+                    ProviderRing(usedFraction: snapshot.usedFraction, glyph: .amp)
+                    Text(snapshot.headlineText).foregroundStyle(.white)
+                }
+                TooltipCard(snapshot: snapshot, now: Date(), direction: .trailing)
+            }
+            .padding(20)
+            .background(Color.black)
+            .environment(\.colorScheme, .dark)
+            .environment(\.notchSurfaceStyle, .solid)
+            .environment(\.codenotchAccentColor, .blue)
+            .environment(\.codenotchHeadlessGlass, true)
+
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 3
+            let image = try XCTUnwrap(renderer.nsImage)
+            XCTAssertGreaterThan(image.size.width, NotchLayout.cardWidth)
+            XCTAssertGreaterThan(image.size.height, 100)
+            let tiff = try XCTUnwrap(image.tiffRepresentation)
+            let png = try XCTUnwrap(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
+            let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+            attachment.name = "amp-\(name)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
     private func session(_ name: String, _ state: AgentSession.State,
                          minutes: Int) -> AgentSession {
         AgentSession(id: name, name: name, detail: "Terminal · usage-notch",
