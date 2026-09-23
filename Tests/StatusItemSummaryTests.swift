@@ -346,8 +346,24 @@ final class StatusItemSummaryTests: XCTestCase {
         let on = try XCTUnwrap(summary([claude(0.32, resetIn: hour)], weekly: true).entries.first)
         XCTAssertNil(off.weeklyFraction, "the new presentation is opt-in")
         XCTAssertEqual(on.weeklyFraction, 0.31)
-        XCTAssertTrue(on.detail.contains("Weekly Limit: 31% Used · 69% left"), on.detail)
+        // The window's own label, which for Claude's second window is the one
+        // the provider declared. The line used to say "Weekly Limit" whatever
+        // the window was, which misnamed this one and would misname a monthly
+        // allowance too.
+        XCTAssertTrue(on.detail.contains("All models: 31% Used · 69% left"), on.detail)
         XCTAssertEqual(on.percent, "32%", "weekly usage never replaces the existing session share")
+    }
+
+    /// A provider whose second window is not a week still gets its own name for
+    /// it: the label comes from the window, not from a string baked into the
+    /// menu bar.
+    func testTheWeeklyLineNamesWhateverWindowTheProviderDeclared() throws {
+        var snapshot = claude(0.32, resetIn: hour)
+        snapshot.windows[1] = LimitWindow(id: "weekly_all", label: "Monthly limit",
+                                          usedFraction: 0.31, duration: 30 * 86400)
+        let entry = try XCTUnwrap(summary([snapshot], weekly: true).entries.first)
+        XCTAssertTrue(entry.detail.contains("Monthly limit: 31% Used · 69% left"), entry.detail)
+        XCTAssertFalse(entry.detail.contains("Weekly"), entry.detail)
     }
 
     func testWeeklyRingOmitsUnavailableInvalidAndExpiredReadings() throws {
