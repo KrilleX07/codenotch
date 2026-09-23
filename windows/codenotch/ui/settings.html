@@ -75,6 +75,10 @@
   .pane > .group:first-child{margin-top:6px}
   .group > * + *{border-top:1px solid var(--sep)}
   .item{padding:9px 12px;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  /* A segmented control that does not fit beside its label (three Russian options do not) moves under it,
+     still on the right, rather than running out of the window */
+  .item:has(> .seg){flex-wrap:wrap;row-gap:8px}
+  .item > .seg{margin-left:auto}
   .item.cap{min-height:0;padding:8px 12px;font-size:12px;color:var(--text2);display:block}
   .item .hint{font-size:12px;color:var(--text2)}
   .value{color:var(--text2)}
@@ -1466,8 +1470,10 @@ document.getElementById('author').addEventListener('click', () => {
    was asked for rather than interrupting anything. */
 const updBtn = document.getElementById('btn-update');
 const updStatus = document.getElementById('update-status');
+/* The state arrives before the language does, so the row keeps it and is drawn again by renderAll */
+let updState = null;
 function renderUpdate(st){
-  st = st || {};
+  st = updState = st || {};
   const busy = !!(st.checking || st.installing);
   updBtn.disabled = busy;
   if(st.installing){ updStatus.textContent = ui('Installing…', 'Installing…'); updBtn.textContent = ui('Update', 'Update'); return; }
@@ -1501,6 +1507,7 @@ function renderAll(){
   renderWeekly();
   drawSwitch(document.getElementById('sw-autostart'), autostart);
   drawSwitch(document.getElementById('sw-move'), moveHandle);
+  if(updState) renderUpdate(updState);
   document.getElementById('title').textContent = ui(TITLES[curTab], TITLES[curTab]);
 }
 function boot(){
