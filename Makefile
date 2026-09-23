@@ -172,6 +172,7 @@ dmg: archive
 	cp -R $(RELEASE_DIR)/$(APP_NAME).app $(RELEASE_DIR)/stage/
 	create-dmg \
 		--volname "$(APP_NAME)" \
+		--window-pos 400 300 \
 		--window-size 600 460 \
 		--icon-size 128 \
 		--icon "$(APP_NAME).app" 120 99 \
@@ -349,6 +350,7 @@ dmg-ci: build-ci
 	for i in 1 2 3; do \
 		create-dmg \
 			--volname "$(APP_NAME)" \
+			--window-pos 400 300 \
 			--window-size 600 460 \
 			--icon-size 128 \
 			--icon "$(APP_NAME).app" 120 99 \
