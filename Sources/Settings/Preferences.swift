@@ -200,6 +200,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(claudeDailyPaceRing, forKey: Keys.claudeDailyPaceRing) }
     }
 
+    /// Whether the big ring shows the weekly limit instead of the shorter
+    /// window, for every provider that has both. See `WeeklyHeadline`.
+    @Published var weeklyHeadline: Bool {
+        didSet { defaults.set(weeklyHeadline, forKey: Keys.weeklyHeadline) }
+    }
+
     /// Whether Spark and code-review Codex windows appear in the hover card.
     /// On by default so a first launch shows them; the ring still follows
     /// the main Codex window either way.
@@ -482,6 +488,7 @@ final class Preferences: ObservableObject {
         static let weeklyRing = "weeklyRing"
         static let weeklyRingDashed = "weeklyRingDashed"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
+        static let weeklyHeadline = "weeklyHeadline"
         static let showsMoveHandle = "showsMoveHandle"
         static let notchSurfaceStyle = "notchSurfaceStyle"
         static let watchLimit = "watchLimit"
@@ -774,6 +781,8 @@ final class Preferences: ObservableObject {
         // Off by default: it swaps what Claude's ring means, and that is a
         // choice for whoever budgets their week that way.
         self.claudeDailyPaceRing = defaults.bool(forKey: Keys.claudeDailyPaceRing)
+        // Off by default for the same reason: it changes what every ring means.
+        self.weeklyHeadline = defaults.bool(forKey: Keys.weeklyHeadline)
         self.showCodexExtraLimits = Self.storedShowCodexExtraLimits(defaults: defaults)
         self.deepSeekPricingEnabled = defaults.object(forKey: Keys.deepSeekPricingEnabled) as? Bool ?? true
         if let data = defaults.data(forKey: Keys.deepSeekPricingSchedule),
