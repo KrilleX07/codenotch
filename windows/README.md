@@ -174,6 +174,14 @@ choice is stored as `notch_edge`, `notch_monitor` (the device name, e.g. `\\.\DI
 attached falls back to the primary one, so unplugging a screen cannot strand the notch off-screen;
 **Recentre** centres it on the edge it is on, or on the primary screen's right-hand edge when the screen it was on is gone.
 
+Folded (**Appearance → Show → Show on hover**), the notch rests as a small pill at the edge, in
+**Theme**'s colour, with an edge that shows even against a backdrop of that colour.
+**Appearance → Adaptive pill**, off unless switched on, makes it follow what is behind it instead:
+light over a dark backdrop, black over a light one, the way the iPhone's home indicator does. To tell
+which, Codenotch reads a thin strip of the screen beside the pill twice a second while it is folded,
+and keeps only its average brightness, which is never stored or sent. With the switch off, the notch
+open, or Show set to Always show, nothing is read.
+
 ### Icons
 
 Provider marks are the SVGs from [`@lobehub/icons-static-svg`](https://github.com/lobehub/lobe-icons)
