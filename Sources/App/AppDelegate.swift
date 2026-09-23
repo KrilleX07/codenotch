@@ -593,6 +593,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
 
+            preferences.$accountNicknames
+                .receive(on: RunLoop.main)
+                .sink { [weak store] in store?.nicknames = $0 }
+                .store(in: &cancellables)
+
             preferences.$ollamaEndpoint
                 .receive(on: RunLoop.main)
                 .sink { [weak store] address in
