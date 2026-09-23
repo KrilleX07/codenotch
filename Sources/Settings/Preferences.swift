@@ -608,6 +608,18 @@ final class Preferences: ObservableObject {
         return endpoints
     }
 
+    nonisolated static func updateStoredCustomEndpoint(
+        _ endpoint: CustomEndpoint,
+        defaults: UserDefaults = .standard
+    ) {
+        var endpoints = storedCustomEndpoints(defaults: defaults)
+        guard let index = endpoints.firstIndex(where: { $0.id == endpoint.id }) else { return }
+        endpoints[index] = endpoint
+        if let data = try? JSONEncoder().encode(endpoints) {
+            defaults.set(data, forKey: Keys.customEndpoints)
+        }
+    }
+
     /// The MiniMax region read straight from disk, off the main actor.
     ///
     /// The provider is an actor and asks for this on every fetch, and

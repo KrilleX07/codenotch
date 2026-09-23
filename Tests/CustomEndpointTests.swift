@@ -245,4 +245,29 @@ final class CustomEndpointTests: XCTestCase {
         XCTAssertNil(decodedLegacy.monthlyBudgetTokensM)
         XCTAssertNil(decodedLegacy.currentTokensUsedM)
     }
+    func testJSONUsageParserFiltersModelAndConvertsTokensToMillions() {
+        let data = Data(#"""
+        {
+          "model_token_usage": [
+            {"model": "other", "total_tokens": 9000},
+            {"model": "mimo", "total_tokens": 7347},
+            {"model": "mimo", "total_tokens": 1760}
+          ]
+        }
+        """#.utf8)
+
+        let millions = CustomEndpointNetwork.parseJSONUsage(
+            data: data,
+            recordsPath: "model_token_usage",
+            modelField: "model",
+            tokenField: "total_tokens",
+            modelFilter: "mimo"
+        )
+
+        guard let millions else {
+            XCTFail("Expected a matching usage record")
+            return
+        }
+        XCTAssertEqual(millions, 0.009107, accuracy: 0.000000001)
+    }
 }

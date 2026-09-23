@@ -106,6 +106,74 @@ public actor CustomEndpointNetwork {
         }
     }
 
+    public func fetchJSONUsage(
+        usageURL: String,
+        apiKey: String,
+        headerKey: String,
+        recordsPath: String,
+        modelField: String,
+        tokenField: String,
+        modelFilter: String?
+    ) async -> Double? {
+        guard let url = URL(string: usageURL), CustomEndpoint.isValidURL(usageURL) else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 6.0
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedKey.isEmpty {
+            let header = headerKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            if header.lowercased() == "authorization" && !trimmedKey.lowercased().hasPrefix("bearer ") {
+                request.setValue("Bearer \(trimmedKey)", forHTTPHeaderField: "Authorization")
+            } else {
+                request.setValue(trimmedKey, forHTTPHeaderField: header.isEmpty ? "Authorization" : header)
+            }
+        }
+        guard let (data, response) = try? await URLSession.shared.data(for: request, delegate: noRedirects),
+              let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            return nil
+        }
+        return Self.parseJSONUsage(
+            data: data,
+            recordsPath: recordsPath,
+            modelField: modelField,
+            tokenField: tokenField,
+            modelFilter: modelFilter
+        )
+    }
+
+    static func parseJSONUsage(
+        data: Data,
+        recordsPath: String,
+        modelField: String,
+        tokenField: String,
+        modelFilter: String?
+    ) -> Double? {
+        guard let root = try? JSONSerialization.jsonObject(with: data),
+              let records = value(at: recordsPath, in: root) as? [[String: Any]],
+              !records.isEmpty else { return nil }
+        let selected = records.filter { record in
+            guard let modelFilter, !modelFilter.isEmpty else { return true }
+            return (value(at: modelField, in: record) as? String) == modelFilter
+        }
+        guard !selected.isEmpty else { return nil }
+        let tokens = selected.compactMap { (value(at: tokenField, in: $0) as? NSNumber)?.doubleValue }
+        guard tokens.count == selected.count else { return nil }
+        return tokens.reduce(0, +) / 1_000_000
+    }
+
+    private static func value(at path: String, in root: Any) -> Any? {
+        path.split(separator: ".").reduce(root) { value, component in
+            if let object = value as? [String: Any] {
+                return object[String(component)]
+            }
+            if let array = value as? [Any], let index = Int(component), array.indices.contains(index) {
+                return array[index]
+            }
+            return nil
+        }
+    }
+
     public func scanCommonLocalPorts() async -> [CustomEndpointPreset] {
         let candidates: [(name: String, port: Int, defaultModel: String, glyph: String, color: String)] = [
             ("Local vLLM", 8000, "", "ollama", "#10B981"),
@@ -215,6 +283,14 @@ actor CustomEndpointProvider: UsageProvider {
 
     nonisolated func forgetCachedCredential() {}
 
+    private static func usageDayKey(_ date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
     private static func nextMonthlyResetDate() -> Date {
         let calendar = Calendar.current
         let now = Date()
@@ -226,7 +302,7 @@ actor CustomEndpointProvider: UsageProvider {
     }
 
     func fetchSnapshot() async throws -> ProviderSnapshot {
-        guard let current = Self.storedEndpoint(id: endpointID) else {
+        guard var current = Self.storedEndpoint(id: endpointID) else {
             throw UsageProviderError.needsAuth
         }
         guard current.isEnabled else {
@@ -236,8 +312,28 @@ actor CustomEndpointProvider: UsageProvider {
             throw UsageProviderError.badResponse(status: 400)
         }
 
+        let needsUsageKey = current.usageSource != .jsonEndpoint
+            || current.usageAuthentication == .apiKey
+        let apiKey = needsUsageKey ? (current.apiKey ?? "") : ""
+        var usageTokens: Double?
+        if current.usageSource == .jsonEndpoint,
+           current.trackingUnit == .tokens,
+           let usageURL = current.usageURL,
+           let recordsPath = current.usageRecordsPath,
+           let modelField = current.usageModelField,
+           let tokenField = current.usageTokenField {
+            usageTokens = await CustomEndpointNetwork.shared.fetchJSONUsage(
+                usageURL: usageURL,
+                apiKey: apiKey,
+                headerKey: current.headerKey,
+                recordsPath: recordsPath,
+                modelField: modelField,
+                tokenField: tokenField,
+                modelFilter: current.usageModelFilter
+            )
+        }
+
         // Live network probe to verify reachability and authentication
-        let apiKey = current.apiKey ?? ""
         let probe = await CustomEndpointNetwork.shared.testEndpoint(
             baseURL: current.baseURL,
             apiKey: apiKey,
@@ -245,10 +341,23 @@ actor CustomEndpointProvider: UsageProvider {
         )
 
         if probe.health == .unreachable {
-            if let err = probe.error, err.contains("401") || err.contains("403") {
+            if usageTokens != nil {
+                // A public usage endpoint is enough to populate this provider.
+            } else if let err = probe.error, err.contains("401") || err.contains("403") {
                 throw UsageProviderError.needsAuth
+            } else {
+                throw UsageProviderError.badResponse(status: 503)
             }
-            throw UsageProviderError.badResponse(status: 503)
+        }
+
+        if let tokens = usageTokens {
+            let totalTokens = max(0, Int((tokens * 1_000_000).rounded()))
+            let day = Self.usageDayKey()
+            var history = current.usageHistory.filter { $0.day != day }
+            history.append(CustomEndpointUsageDay(day: day, totalTokens: totalTokens))
+            current.usageHistory = Array(history.sorted { $0.day < $1.day }.suffix(31))
+            current.currentTokensUsedM = tokens
+            Preferences.updateStoredCustomEndpoint(current)
         }
 
         var windows: [LimitWindow] = []
@@ -378,6 +487,7 @@ actor CustomEndpointProvider: UsageProvider {
             kind: .usage
         )
         snapshot.customIconFilename = current.customIconFilename
+        snapshot.customUsageHistory = current.usageHistory.isEmpty ? nil : current.usageHistory
         return snapshot
     }
 }

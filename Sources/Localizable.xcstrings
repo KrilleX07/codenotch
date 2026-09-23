@@ -39490,6 +39490,39 @@
           }
         }
       }
+    },
+    "Usage source": {
+      "extractionState": "manual"
+    },
+    "Manual": {
+      "extractionState": "manual"
+    },
+    "JSON endpoint": {
+      "extractionState": "manual"
+    },
+    "Usage URL": {
+      "extractionState": "manual"
+    },
+    "Records path": {
+      "extractionState": "manual"
+    },
+    "Model field": {
+      "extractionState": "manual"
+    },
+    "Token field": {
+      "extractionState": "manual"
+    },
+    "Model filter (optional)": {
+      "extractionState": "manual"
+    },
+    "Usage authentication": {
+      "extractionState": "manual"
+    },
+    "API key": {
+      "extractionState": "manual"
+    },
+    "Public": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

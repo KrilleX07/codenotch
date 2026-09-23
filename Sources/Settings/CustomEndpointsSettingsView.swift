@@ -565,6 +565,65 @@ struct CustomEndpointsSettingsView: View {
 
                 if (editingEndpoint?.trackingUnit ?? .currency) == .tokens {
                     HStack {
+                        Text(L10n.t("Usage source"))
+                            .frame(width: 120, alignment: .leading)
+                        Picker("", selection: Binding(
+                            get: { editingEndpoint?.usageSource ?? .manual },
+                            set: { editingEndpoint?.usageSource = $0 }
+                        )) {
+                            Text(L10n.t("Manual")).tag(CustomEndpointUsageSource.manual)
+                            Text(L10n.t("JSON endpoint")).tag(CustomEndpointUsageSource.jsonEndpoint)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    if editingEndpoint?.usageSource == .jsonEndpoint {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField(L10n.t("Usage URL"), text: Binding(
+                                get: { editingEndpoint?.usageURL ?? "" },
+                                set: { editingEndpoint?.usageURL = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                            TextField(L10n.t("Records path"), text: Binding(
+                                get: { editingEndpoint?.usageRecordsPath ?? "" },
+                                set: { editingEndpoint?.usageRecordsPath = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                            HStack {
+                                Text(L10n.t("Usage authentication"))
+                                    .frame(width: 160, alignment: .leading)
+                                Picker("", selection: Binding(
+                                    get: { editingEndpoint?.usageAuthentication ?? .apiKey },
+                                    set: { editingEndpoint?.usageAuthentication = $0 }
+                                )) {
+                                    Text(L10n.t("API key")).tag(CustomEndpointUsageAuthentication.apiKey)
+                                    Text(L10n.t("Public")).tag(CustomEndpointUsageAuthentication.none)
+                                }
+                                .pickerStyle(.segmented)
+                            }
+                            HStack(spacing: 8) {
+                                TextField(L10n.t("Model field"), text: Binding(
+                                    get: { editingEndpoint?.usageModelField ?? "" },
+                                    set: { editingEndpoint?.usageModelField = $0 }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                                TextField(L10n.t("Token field"), text: Binding(
+                                    get: { editingEndpoint?.usageTokenField ?? "" },
+                                    set: { editingEndpoint?.usageTokenField = $0 }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                            }
+                            TextField(L10n.t("Model filter (optional)"), text: Binding(
+                                get: { editingEndpoint?.usageModelFilter ?? "" },
+                                set: { editingEndpoint?.usageModelFilter = $0.isEmpty ? nil : $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                }
+
+                if (editingEndpoint?.trackingUnit ?? .currency) == .tokens {
+                    HStack {
                         Text(L10n.t("Monthly Budget (M tokens)"))
                             .frame(width: 120, alignment: .leading)
                         TextField(L10n.t("e.g. 10.0 (leave empty for unlimited)"), text: Binding(

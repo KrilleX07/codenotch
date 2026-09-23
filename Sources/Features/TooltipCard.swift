@@ -1096,7 +1096,7 @@ struct TooltipCard: View {
             sessionCap: sessionCap,
             statusMessage: snapshot.statusMessage,
             blockMessage: snapshot.block?.summary(now: now),
-            hasTokenUsage: snapshot.tokenUsage != nil,
+            hasTokenUsage: snapshot.tokenUsage != nil || snapshot.customUsageHistory != nil,
             hasPlan: snapshot.plan != nil,
             hasResetCredits: snapshot.hasAvailableResetCredits,
             localModelName: snapshot.localModel?.name,
@@ -1123,6 +1123,8 @@ struct TooltipCard: View {
                     }
                     if let tokenUsage = snapshot.tokenUsage {
                         CodexUsageSection(usage: tokenUsage, now: now)
+                    } else if let history = snapshot.customUsageHistory {
+                        CodexUsageSection(usage: history.codexUsage, now: now)
                     }
                     if let usageDetail = snapshot.usageDetail, usageDetail.hasUsage {
                         DeepSeekUsageDetail(detail: usageDetail, now: now,

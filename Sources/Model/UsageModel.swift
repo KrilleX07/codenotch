@@ -355,6 +355,9 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// breakdown and daily token/cost series.
     var usageDetail: ProviderUsageDetail? = nil
 
+    /// Locally sampled cumulative token usage for a custom endpoint.
+    var customUsageHistory: [CustomEndpointUsageDay]? = nil
+
     /// The number on the cell: the provider's declared primary window — for
     /// Claude, the current session.
     ///
