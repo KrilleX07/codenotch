@@ -17,21 +17,21 @@
     --btn:rgba(255,255,255,.10); --btn-hover:rgba(255,255,255,.16);
     --danger-bg:rgba(255,99,99,.14); --danger:#ff8a8a;
   }
-  @media (prefers-color-scheme: light){
-    :root{
+  /* Rust says which appearance this is (get_theme_resolved), so a forced Light or Dark lands here
+     whatever Windows is set to — WebView2's own scheme does not follow a live theme change. */
+  :root[data-theme="light"]{
       --text:#1d1d1f; --text2:rgba(60,60,67,.70); --text3:rgba(60,60,67,.45);
       --pane:rgba(255,255,255,.50); --side:rgba(0,0,0,.06); --group:rgba(255,255,255,.72);
       --line:rgba(0,0,0,.07); --hi:rgba(255,255,255,.80); --sep:rgba(0,0,0,.07);
       --seg-bg:rgba(0,0,0,.06); --hover:rgba(0,0,0,.04); --sel-soft:rgba(0,0,0,.05);
       --btn:rgba(0,0,0,.05); --btn-hover:rgba(0,0,0,.09);
       --danger-bg:rgba(196,43,28,.10); --danger:#c42b1c;
-    }
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none}
   body{font:13.5px/1.35 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:var(--text)}
   body.solid{--pane:#3d3d40;--side:#1f2022;--group:#48484b;--hi:transparent;background:#2b2b2e}
-  @media (prefers-color-scheme: light){ body.solid{--pane:#f0f0f2;--side:#e2e2e6;--group:#ffffff;background:#f0f0f2} }
+  :root[data-theme="light"] body.solid{--pane:#f0f0f2;--side:#e2e2e6;--group:#ffffff;background:#f0f0f2}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   button{font:inherit;color:inherit}
   html[lang="ko"] body{word-break:keep-all}
@@ -150,6 +150,8 @@
           <div class="item cap" id="cap-show" data-dynamic></div>
           <div class="item"><span>Size</span><span class="seg" id="seg-size"><button data-v="0.8">Small</button><button data-v="1">Medium</button><button data-v="1.25">Large</button></span></div>
           <div class="item cap" id="cap-size" data-dynamic></div>
+          <div class="item"><span>Theme</span><span class="seg" id="seg-theme"><button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></span></div>
+          <div class="item cap" id="cap-theme" data-dynamic></div>
           <div class="item"><span>Weekly ring</span><span class="seg" id="seg-weekly"><button data-v="off">Off</button><button data-v="inside">Inside</button><button data-v="outside">Outside</button></span></div>
           <div class="item cap" id="cap-weekly" data-dynamic></div>
           <div class="item"><span>Edge</span><span class="seg" id="seg-edge"><button data-v="left">Left</button><button data-v="right">Right</button><button data-v="top">Top</button><button data-v="bottom">Bottom</button></span></div>
@@ -900,13 +902,19 @@ function toast(msg){
    used the way Windows 11's own controls use it: Accent Light 2 with black text in dark mode, Accent
    Dark 1 with white text in light mode. Both are asked for again whenever the window comes forward,
    so an accent changed in Settings shows up without reopening this one. */
-const dark = matchMedia('(prefers-color-scheme: dark)');
+/* Which appearance is on: the attribute Rust's answer sets, not the system scheme, so a forced
+   Light on a dark Windows picks the accent that belongs with the page it is drawn on. */
+const isDark = () => document.documentElement.dataset.theme !== 'light';
+function applyTheme(name){
+  document.documentElement.dataset.theme = name === 'light' ? 'light' : 'dark';
+  applyAccent();
+}
 let palette = null;
 function applyAccent(){
   const root = document.documentElement.style;
   if(!palette){ root.removeProperty('--accent'); root.removeProperty('--on-accent'); return; }
-  root.setProperty('--accent', dark.matches ? palette[1] : palette[4]);
-  root.setProperty('--on-accent', dark.matches ? '#000000' : '#ffffff');
+  root.setProperty('--accent', isDark() ? palette[1] : palette[4]);
+  root.setProperty('--on-accent', isDark() ? '#000000' : '#ffffff');
 }
 function loadLook(){
   call('get_system_look', undefined, null).then(look => {
@@ -916,7 +924,7 @@ function loadLook(){
     applyAccent();
   });
 }
-dark.addEventListener('change', applyAccent);
+try { window.__TAURI__.event.listen('theme_resolved', e => { if(e.payload) applyTheme(e.payload); }); } catch(e) { /* asked for again below */ }
 
 /* ---- the sidebar -------------------------------------------------------- */
 const TABS = ['accounts', 'appearance', 'general'];
@@ -1296,6 +1304,39 @@ function refreshScreens(){
   });
 }
 
+/* ---- Appearance: theme ----------------------------------------------------- */
+const THEME_WHY = {
+  system: 'The notch and this window follow the Windows app colour.',
+  light: 'A light notch and card, whatever Windows is set to.',
+  dark: 'The dark notch, whatever Windows is set to.'
+};
+let theme = 'system', themeBusy = false;
+function renderTheme(){
+  for(const b of document.querySelectorAll('#seg-theme button')){
+    const on = b.dataset.v === theme;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.disabled = themeBusy;
+  }
+  const why = THEME_WHY[theme] || '';
+  document.getElementById('cap-theme').textContent = ui(why, why);
+}
+document.getElementById('seg-theme').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(!b || b.disabled || b.dataset.v === theme) return;
+  const want = b.dataset.v;
+  themeBusy = true;
+  theme = want;
+  renderTheme();
+  invoke('set_theme', { theme: want })
+    .then(v => { theme = typeof v === 'string' ? v : want; toast(); })
+    .catch(err => {
+      strip('set_theme failed: ' + errText(err));
+      return call('get_theme', undefined, null).then(v => { if(typeof v === 'string') theme = v; });
+    })
+    .then(() => { themeBusy = false; renderTheme(); });
+});
+
 /* ---- Appearance: the weekly ring ------------------------------------------- */
 const WEEKLY_WHY = {
   off: 'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.',
@@ -1429,6 +1470,8 @@ function boot(){
   call('get_notch_edge', undefined, null).then(v => { if(typeof v === 'string') notchEdge = v; renderEdge(); });
   refreshScreens();
   call('get_weekly_ring', undefined, null).then(v => { if(typeof v === 'string') weeklyRing = v; renderWeekly(); });
+  call('get_theme', undefined, null).then(v => { if(typeof v === 'string') theme = v; renderTheme(); });
+  call('get_theme_resolved', undefined, null).then(v => { if(typeof v === 'string') applyTheme(v); });
   call('get_ui_flags', undefined, null).then(v => { if(v && typeof v === 'object') flags = readFlags(v); renderFlags(); });
   Promise.all([call('get_lang', undefined, 'auto'), call('get_lang_resolved', undefined, 'en')]).then(([raw, resolved]) => {
     const l = (typeof raw === 'string' && LANGS.indexOf(raw) >= 0) ? raw : 'auto';
