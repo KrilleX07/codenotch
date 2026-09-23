@@ -101,7 +101,13 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// is installed but signed out costs a process on every tick, forever.
     private var lastCLIAttempt: Date?
 
+    /// `displayName` is injected only so a set of profiles can be named
+    /// together: two accounts on one provider derive the same name from their
+    /// addresses, and only the caller holding all of them can see the clash.
+    /// Nil is the profile's own answer, which is what every other caller wants.
+    /// See `ClaudeProfile.displayNames(for:)`.
     init(profile: ClaudeProfile = .default(),
+         displayName: String? = nil,
          session: URLSession = .shared,
          archive: UsageArchive = UsageArchive(),
          loadCredentials: (@Sendable () throws -> ClaudeCredentials)? = nil,
@@ -117,7 +123,7 @@ actor ClaudeOAuthProvider: UsageProvider {
         self.desktopRescanInterval = desktopRescanInterval
         self.profile = profile
         self.id = profile.id
-        self.displayName = profile.displayName
+        self.displayName = displayName ?? profile.displayName
         let keychain = ClaudeKeychain(profile: profile)
         self.keychain = keychain
         self.loadCredentials = loadCredentials ?? { try keychain.load() }
