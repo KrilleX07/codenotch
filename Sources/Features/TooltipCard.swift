@@ -799,9 +799,9 @@ private struct CodexDailyUsageChart: View {
     }
 }
 
-/// Unused rate-limit resets on the Codex account.
-private struct CodexResetCreditsSection: View {
-    let credits: CodexResetCredits
+/// Unused rate-limit resets on this account.
+private struct UsageResetCreditsSection: View {
+    let credits: UsageResetCredits
     let now: Date
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
@@ -1098,7 +1098,7 @@ struct TooltipCard: View {
             blockMessage: snapshot.block?.summary(now: now),
             hasTokenUsage: snapshot.tokenUsage != nil,
             hasPlan: snapshot.plan != nil,
-            hasResetCredits: snapshot.hasAvailableResetCredits,
+            hasResetCredits: snapshot.availableResetCredits(at: now) != nil,
             localModelName: snapshot.localModel?.name,
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
@@ -1117,9 +1117,8 @@ struct TooltipCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ProviderTooltip(activityNote: localActivityNote, snapshot: snapshot, now: now, resetTimeFormat: resetTimeFormat,
                                     showUsagePace: showUsagePace)
-                    if let resetCredits = snapshot.resetCredits,
-                       snapshot.hasAvailableResetCredits {
-                        CodexResetCreditsSection(credits: resetCredits, now: now)
+                    if let resetCredits = snapshot.availableResetCredits(at: now) {
+                        UsageResetCreditsSection(credits: resetCredits, now: now)
                     }
                     if let tokenUsage = snapshot.tokenUsage {
                         CodexUsageSection(usage: tokenUsage, now: now)

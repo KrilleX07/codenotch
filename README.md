@@ -361,6 +361,17 @@ ones take over. Bodies are `content-encoding: zstd` and macOS ships no decoder,
 so a decode-only build of Zstandard is vendored under
 [`Sources/Vendor/zstd`](Sources/Vendor/zstd) (BSD-3-Clause).
 
+**Claude's unused resets (macOS):** the hover card shows the remaining resets
+and their expiry, using the same section as Codex. Open **Settings → Usage**
+in Claude Desktop for the same account to populate its reset data. That data
+is read from Desktop's usage cache and must be less than 30 minutes old;
+ordinary usage refreshes do not extend its freshness. Used, paused, future,
+and expired grants are hidden. There is no built-in promotion date or assumed
+entitlement. As checked on September 23, 2026, the OAuth usage endpoint does
+not expose the grants (`ineligible_reason: surface`), so a CLI/OAuth-only
+setup cannot show them yet. Codenotch displays availability only; redeem a
+reset in Claude. See [the provider notes](docs/providers/claude-resets.md).
+
 **Keychain:** Claude's readings do not use it where Claude Code is installed.
 Claude Code files a *new* keychain item on every token rotation, and the new
 item's access list does not carry this app, so an "Always Allow" granted

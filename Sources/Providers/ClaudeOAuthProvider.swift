@@ -31,7 +31,7 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// This profile's token, behind its own cache — see `ClaudeKeychain`.
     nonisolated private let keychain: ClaudeKeychain
 
-    private let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
+    private let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage?cedar_ember=1")!
     private let session: URLSession
     /// Held between refreshes so the keychain is read once per token, not once
     /// per minute — a keychain read can put a prompt in front of the user.
@@ -171,8 +171,10 @@ actor ClaudeOAuthProvider: UsageProvider {
         // Ahead of both the CLI and the back-off check. This is the cheapest
         // source and the only one that can never interrupt anyone: it reads a
         // file Claude Desktop has already written.
-        if let windows = await desktopWindows() {
-            return snapshot(windows: windows)
+        let desktop = await desktopReading()
+        let resets = desktop?.resets?.credits(at: Date(), within: desktopFreshness)
+        if let desktop, !Self.hasExpiredWindow(desktop.windows, at: Date()) {
+            return snapshot(windows: desktop.windows, resetCredits: resets)
         }
         // Ahead of the back-off check on purpose. That deadline is the
         // endpoint's, and the CLI does not share the endpoint's rate limit —
@@ -186,9 +188,11 @@ actor ClaudeOAuthProvider: UsageProvider {
         // with the same figure. Named profiles read their own token instead.
         if Self.cliEstimateApplies(slug: profile.slug, loginCount: Self.loginCount),
            let windows = await cliWindows() {
-            return snapshot(windows: windows, plan: lastCLIPlan)
+            return snapshot(windows: windows, plan: lastCLIPlan, resetCredits: resets)
         }
-        return try await fetchFromKeychain()
+        var result = try await fetchFromKeychain()
+        if result.resetCredits == nil { result.resetCredits = resets }
+        return result
     }
 
     /// The CLI's estimate is "based on local sessions on this machine", all
@@ -241,7 +245,8 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// The snapshot shape every source produces. One place, so a window order or
     /// a headline changed for the endpoint cannot quietly differ from the CLI's or
     /// Desktop's — the three are the same reading taken from three places.
-    private func snapshot(windows: [LimitWindow], plan: String? = nil) -> ProviderSnapshot {
+    private func snapshot(windows: [LimitWindow], plan: String? = nil,
+                          resetCredits: UsageResetCredits? = nil) -> ProviderSnapshot {
         ProviderSnapshot(
             id: id,
             displayName: displayName,
@@ -253,7 +258,8 @@ actor ClaudeOAuthProvider: UsageProvider {
             // #102's second ring. The helper is the only place a Claude
             // snapshot is built now, so this is the only place it can go.
             weeklyID: "weekly_all",
-            plan: plan?.nonEmptyPlan
+            plan: plan?.nonEmptyPlan,
+            resetCredits: resetCredits
         )
     }
 
@@ -270,7 +276,7 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// good reading to `UsageStore`, which already re-shows it with the age it
     /// actually has and dims it — where returning it here would present numbers
     /// from an hour ago as a live `.ok`.
-    private func desktopWindows() async -> [LimitWindow]? {
+    private func desktopReading() async -> ClaudeDesktopUsageCache.Reading? {
         guard let desktopCache else { return nil }
         let now = Date()
         // A recent miss means the next read would be a full scan for something
@@ -304,17 +310,11 @@ actor ClaudeOAuthProvider: UsageProvider {
             Log.usage.debug("\(self.id, privacy: .public): claude desktop snapshot is too old to show as live")
             return nil
         }
-        // Inside the freshness window but describing a period that has already
-        // ended. Desktop can hold such an entry for half an hour, which is long
-        // enough to hide a reset entirely.
-        guard !Self.hasExpiredWindow(reading.windows, at: now) else {
-            lastDesktopMiss = now
-            Log.usage.debug("\(self.id, privacy: .public): claude desktop snapshot describes a window that has already reset")
-            return nil
-        }
+        // The caller rejects expired usage windows separately: the unused
+        // reset grant can still be current when a five-hour window has ended.
         lastDesktopMiss = nil
         Log.usage.debug("\(self.id, privacy: .public): read \(reading.windows.count) windows from the claude desktop cache entry \(reading.entry.lastPathComponent, privacy: .public)")
-        return reading.windows
+        return reading
     }
 
     /// Whether any window in a reading names a reset time that has already
@@ -416,7 +416,8 @@ actor ClaudeOAuthProvider: UsageProvider {
                 L10n.t("Claude answered, but listed no usage limits for this account. Some Enterprise and team plans don't report them.")
             )
         }
-        return snapshot(windows: windows, plan: credentials?.subscriptionType)
+        return snapshot(windows: windows, plan: credentials?.subscriptionType,
+                        resetCredits: payload.cedarEmber?.credits(at: Date()))
     }
 
     private func currentToken() throws -> String {
@@ -587,6 +588,24 @@ struct UsageResponse: Decodable {
     let limits: [Limit]?
     let fiveHour: Window?
     let sevenDay: Window?
+    let cedarEmber: ClaudeResetCredits?
+    let reportsResetCredits: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case limits, fiveHour, sevenDay, cedarEmber
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        limits = try container.decodeIfPresent([Limit].self, forKey: .limits)
+        fiveHour = try container.decodeIfPresent(Window.self, forKey: .fiveHour)
+        sevenDay = try container.decodeIfPresent(Window.self, forKey: .sevenDay)
+        // Optional enrichment must never cost the usage reading. A malformed
+        // non-null block also supersedes older cached reset data.
+        reportsResetCredits = container.contains(.cedarEmber)
+            && (try? container.decodeNil(forKey: .cedarEmber)) == false
+        cedarEmber = try? container.decodeIfPresent(ClaudeResetCredits.self, forKey: .cedarEmber)
+    }
 
     /// How this response is read, wherever it is read from.
     ///

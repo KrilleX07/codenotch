@@ -80,6 +80,50 @@ final class TooltipRenderTests: XCTestCase {
                      since: Date().addingTimeInterval(Double(-minutes) * 60))
     }
 
+    func testClaudeCardRendersUnusedResetsAndShrinksAfterExpiry() throws {
+        let now = Date()
+        let response = try UsageResponse.decoder.decode(UsageResponse.self, from: ClaudeResetFixture.futureUsage)
+        let snapshot = ProviderSnapshot(
+            id: "claude", displayName: "Claude", glyph: .claude, fidelity: .official,
+            status: .ok, windows: response.limitWindows(),
+            resetCredits: response.cedarEmber?.credits(at: now)
+        )
+        let withResets = try renderClaudeResets(snapshot, now: now)
+        let expiry = try XCTUnwrap(snapshot.resetCredits?.nextExpiry)
+        let expired = try renderClaudeResets(snapshot, now: expiry)
+        XCTAssertGreaterThan(withResets.size.height, expired.size.height)
+    }
+
+    /// Explicit manual QA only: normal tests never read the user's cache.
+    func testLiveClaudeResetCard() async throws {
+        guard let path = ProcessInfo.processInfo.environment["CLAUDE_RESET_LIVE_RENDER_PATH"] else {
+            throw XCTSkip("Set CLAUDE_RESET_LIVE_RENDER_PATH to verify the live Desktop cache and card")
+        }
+        let provider = ClaudeOAuthProvider(
+            loadCredentials: { throw UsageProviderError.needsAuth }, cli: nil,
+            desktopCache: ClaudeDesktopUsageCache()
+        )
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertTrue(snapshot.hasAvailableResetCredits)
+        let image = try renderClaudeResets(snapshot, now: Date())
+        let tiff = try XCTUnwrap(image.tiffRepresentation)
+        let png = try XCTUnwrap(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
+        try png.write(to: URL(fileURLWithPath: path))
+    }
+
+    private func renderClaudeResets(_ snapshot: ProviderSnapshot, now: Date) throws -> NSImage {
+        let view = TooltipCard(snapshot: snapshot, now: now, direction: .trailing)
+            .padding(20)
+            .background(Color.black)
+            .environment(\.colorScheme, .dark)
+            .environment(\.notchSurfaceStyle, .solid)
+            .environment(\.codenotchAccentColor, .blue)
+            .environment(\.codenotchHeadlessGlass, true)
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 3
+        return try XCTUnwrap(renderer.nsImage)
+    }
+
     func testUsagePaceFitsTheExistingSummaryLine() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let window = LimitWindow(id: "weekly", label: "Weekly limit", usedFraction: 1,

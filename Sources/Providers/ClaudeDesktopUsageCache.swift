@@ -48,6 +48,7 @@ struct ClaudeDesktopUsageCache: Sendable {
         /// alternating keys answered is the first thing worth knowing when a
         /// reading looks wrong.
         let entry: URL
+        var resets: ResetReading? = nil
 
         /// Whether these numbers may still be presented as live.
         func isFresh(at now: Date = Date(), within window: TimeInterval) -> Bool {
@@ -56,6 +57,16 @@ struct ClaudeDesktopUsageCache: Sendable {
             // server's — not a reading from the future. Treat a small one as
             // current rather than as infinitely stale.
             return age < window && age > -window
+        }
+    }
+
+    struct ResetReading: Equatable, Sendable {
+        let value: ClaudeResetCredits?
+        let capturedAt: Date
+
+        func credits(at now: Date, within freshness: TimeInterval) -> UsageResetCredits? {
+            guard abs(now.timeIntervalSince(capturedAt)) < freshness else { return nil }
+            return value?.credits(at: now)
         }
     }
 
@@ -129,10 +140,18 @@ struct ClaudeDesktopUsageCache: Sendable {
     func read(organization: String, now: Date = Date()) -> Reading? {
         // Newest first, so in practice this finds the live entry within a
         // handful of files and the cap is never reached.
-        return recentEntries()
-            .lazy
-            .compactMap { reading(from: $0, organization: organization, now: now) }
-            .first
+        var newest: Reading?
+        var resets: ResetReading?
+        for entry in recentEntries() {
+            guard let reading = reading(from: entry, organization: organization, now: now) else { continue }
+            if newest == nil { newest = reading }
+            if resets == nil { resets = reading.resets }
+            if resets != nil { break }
+        }
+        // Desktop refreshes the plain and cedar_ember usage keys separately.
+        // Keep the newest windows while dating the reset block by its own entry.
+        newest?.resets = resets
+        return newest
     }
 
     /// Candidate entry files, most recently modified first, capped.
@@ -193,10 +212,13 @@ struct ClaudeDesktopUsageCache: Sendable {
         // with a hole in it rather than falling through to a source that works.
         guard !windows.isEmpty else { return nil }
 
+        let capturedAt = parsed.date ?? file.modified ?? now
         return Reading(
             windows: windows,
-            capturedAt: parsed.date ?? file.modified ?? now,
-            entry: entry
+            capturedAt: capturedAt,
+            entry: entry,
+            resets: response.reportsResetCredits || parsed.requestsResetCredits
+                ? ResetReading(value: response.cedarEmber, capturedAt: capturedAt) : nil
         )
     }
 
@@ -270,6 +292,7 @@ struct ClaudeDesktopUsageCache: Sendable {
         let organization: String
         /// From the response's `Date:` header, when it was found.
         let date: Date?
+        let requestsResetCredits: Bool
     }
 
     /// Pulls the usage JSON, its organization and its `Date:` out of one entry.
@@ -309,7 +332,9 @@ struct ClaudeDesktopUsageCache: Sendable {
                       // next, which is where the header block lives. Bounding the
                       // search to it keeps `date:` from being found in the body's
                       // own JSON.
-                      date: httpDate(inTrailer: Array(frame[body.frameSize...])))
+                      date: httpDate(inTrailer: Array(frame[body.frameSize...])),
+                      requestsResetCredits: key.split(separator: "?").dropFirst().first?
+                        .split(separator: "&").contains("cedar_ember=1") == true)
     }
 
     /// The cache key an entry begins with, or nil when these bytes are not a
