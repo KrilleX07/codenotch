@@ -1,0 +1,470 @@
+import AppKit
+import SwiftUI
+import XCTest
+@testable import Codenotch
+
+/// The menu bar's menu *is* the detailed presentation.
+///
+/// What is pinned here is that there is nowhere else to go: the cards are in
+/// the menu that opens, they are the same view the notch's tooltip starts
+/// from, and nothing in the menu offers a second surface to see them on.
+@MainActor
+final class MenuUsageCardTests: XCTestCase {
+    private func makeDefaults() throws -> (UserDefaults, String) {
+        let name = "MenuUsageCardTests.\(UUID().uuidString)"
+        return (try XCTUnwrap(UserDefaults(suiteName: name)), name)
+    }
+
+    private func session(_ name: String, _ state: AgentSession.State) -> AgentSession {
+        AgentSession(id: name, name: name, detail: "Terminal", state: state,
+                     waitingFor: nil, since: Date().addingTimeInterval(-90))
+    }
+
+    private func claude(session used: Double = 0.62, weekly: Double? = 0.81) -> ProviderSnapshot {
+        var windows = [LimitWindow(id: "session", label: "Current session", usedFraction: used,
+                                   resetsAt: Date().addingTimeInterval(2 * 3600))]
+        if let weekly {
+            windows.append(LimitWindow(id: "weekly", label: "All models", usedFraction: weekly,
+                                       resetsAt: Date().addingTimeInterval(3 * 86400)))
+        }
+        return ProviderSnapshot(id: "claude", displayName: "Claude", glyph: .claude,
+                                fidelity: .official, status: .ok, windows: windows)
+    }
+
+    private func render(_ view: some View) throws -> NSImage {
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+        return try XCTUnwrap(renderer.nsImage)
+    }
+
+    // MARK: - One screen, no second one
+
+    /// Opening the menu is the whole interaction: the cards are already there,
+    /// and there is nothing to click to reach them.
+    func testTheMenuOpensStraightOntoTheCards() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        let cards = menu.items.filter { $0.representedObject is String }
+        XCTAssertEqual(cards.map { $0.representedObject as? String },
+                       ["claude", "openai", "third"])
+        XCTAssertTrue(cards.allSatisfy { $0.view != nil }, "a provider was drawn as text")
+
+        // The cards come first, before anything that acts on them.
+        let firstUtility = try XCTUnwrap(menu.items.firstIndex { $0.isSeparatorItem })
+        XCTAssertTrue(menu.items.prefix(firstUtility).allSatisfy { $0.representedObject is String })
+    }
+
+    /// The cards are the whole of it: nothing in the menu is a way *to* a
+    /// provider's readings, because they are already on screen. The switch
+    /// that opens one out lives on its card, not among the menu's items.
+    func testNothingInTheMenuOpensASecondSurface() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        let titles = menu.items.map(\.title)
+        let joined = titles.joined(separator: "\n")
+        XCTAssertFalse(titles.contains(L10n.t("Detail")), joined)
+
+        // Only the utilities are commands; every provider row is inert.
+        let commands = menu.items.filter { $0.action != nil }.map(\.title)
+        XCTAssertEqual(Set(commands).subtracting([
+            L10n.t("Show limit information in menu bar"),
+            L10n.t("Refresh all"),
+            L10n.t("Connect Phone…"),
+            L10n.t("Settings…"),
+            L10n.t("Quit Codenotch")
+        ]), [], commands.joined(separator: "\n"))
+    }
+
+    /// The utilities are still there, still in order, still below the cards.
+    func testTheUtilitiesSurviveTheChange() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        let titles = menu.items.map(\.title)
+        let joined = titles.joined(separator: "\n")
+        let toggle = try XCTUnwrap(titles.firstIndex(of: L10n.t("Show limit information in menu bar")), joined)
+        let refresh = try XCTUnwrap(titles.firstIndex(of: L10n.t("Refresh all")), joined)
+        let settings = try XCTUnwrap(titles.firstIndex(of: L10n.t("Settings…")), joined)
+        let quit = try XCTUnwrap(titles.firstIndex(of: L10n.t("Quit Codenotch")), joined)
+        XCTAssertTrue(toggle < refresh && refresh < settings && settings < quit, joined)
+        XCTAssertTrue(menu.items[toggle - 1].isSeparatorItem, joined)
+
+        var refreshed = 0
+        controller.onRefreshAll = { refreshed += 1 }
+        let item = menu.items[refresh]
+        _ = controller.perform(try XCTUnwrap(item.action), with: item)
+        XCTAssertEqual(refreshed, 1)
+    }
+
+    /// Nothing read yet is still a sentence rather than an empty menu.
+    func testItSaysSoBeforeTheFirstReading() {
+        let controller = StatusItemController(onOpenSettings: {})
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+        XCTAssertEqual(menu.items.first?.title, L10n.t("Waiting for the first reading…"))
+        XCTAssertNil(menu.items.first?.view)
+    }
+
+    // MARK: - What gets a card
+
+    func testEveryProviderGetsACardAndALocalRuntimeGetsOnePerModel() {
+        let cloud = Fixtures.snapshots()[0]
+        let runtime = ProviderSnapshot(
+            id: "ollama-local", displayName: "Ollama", glyph: .ollamaLocal,
+            fidelity: .official, status: .ok, windows: [], kind: .localRuntime,
+            localRuntime: LocalRuntimeReading(models: [
+                LocalRuntimeReading.Model(name: "qwen3:8b", memoryBytes: 8_000_000_000,
+                                          contextLength: 32_768, quantizationLevel: "Q4_K_M"),
+                LocalRuntimeReading.Model(name: "gemma3:12b", memoryBytes: 12_000_000_000,
+                                          contextLength: 8_192, quantizationLevel: "Q4_0")
+            ]))
+
+        let cells = ProviderOrder.cells(from: [cloud, runtime], keeping: [])
+        let drawn = StatusItemController.cardsToDraw(for: [cloud, runtime], cells: cells)
+        XCTAssertEqual(drawn.count, 3, "one for the cloud provider, one per loaded model")
+        XCTAssertEqual(drawn.first?.id, cloud.id)
+        XCTAssertTrue(drawn.dropFirst().allSatisfy { $0.localModel != nil })
+
+        // Nothing loaded: the runtime keeps its own card rather than vanishing.
+        let empty = ProviderSnapshot(id: "ollama-local", displayName: "Ollama", glyph: .ollamaLocal,
+                                     fidelity: .official, status: .ok, windows: [], kind: .localRuntime,
+                                     localRuntime: LocalRuntimeReading(models: []))
+        XCTAssertEqual(StatusItemController.cardsToDraw(for: [empty], cells: []).map(\.id),
+                       ["ollama-local"])
+    }
+
+    /// A card is as tall as the provider has limits — never a reserved row for
+    /// one it does not publish.
+    func testTheCardGrowsWithWhatTheProviderPublishes() throws {
+        let now = Date()
+        let one = try render(MenuUsageCard(snapshot: claude(weekly: nil), now: now).fixedSize())
+        let two = try render(MenuUsageCard(snapshot: claude(), now: now).fixedSize())
+        XCTAssertGreaterThan(two.size.height, one.size.height)
+        XCTAssertEqual(one.size.width, two.size.width, "the card's width is the menu's")
+    }
+
+    /// The menu's card is the notch's limits, and only those: what the notch
+    /// adds on top of them — its live sessions — belongs to the notch.
+    func testTheCardIsTheNotchsLimitsAndTheNotchStillAddsToThem() throws {
+        let snapshot = claude()
+        let activity = ActivitySummary(sessions: [session("codenotch", .busy)])
+        let now = Date()
+
+        let limits = try render(
+            ProviderLimitsContent(snapshot: snapshot, now: now)
+                .fixedSize().background(Color.black)
+        )
+        let notch = try render(
+            ProviderDetailContent(snapshot: snapshot, activity: activity, now: now)
+                .fixedSize().background(Color.black)
+        )
+        XCTAssertGreaterThan(notch.size.height, limits.size.height,
+                             "the notch stopped adding its sessions")
+        XCTAssertGreaterThan(limits.size.height, 0)
+    }
+
+    // MARK: - The readings behind the cards
+
+    /// The cards are drawn from the fleet's own model, so Watch and Critical,
+    /// the accent and the reset wording are one setting each — not a second
+    /// set the menu keeps.
+    func testTheCardsFollowTheNotchsSettings() {
+        let fleet = NotchFleet(scope: .mainDisplay, edge: .right)
+        fleet.apply(watchLimit: 0.3, criticalLimit: 0.6)
+        fleet.apply(resetTimeFormat: .remaining)
+        fleet.apply(accentColor: .blue)
+
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.model = fleet.menuModel
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        XCTAssertEqual(fleet.menuModel.watchLimit, 0.3)
+        XCTAssertEqual(fleet.menuModel.criticalLimit, 0.6)
+        XCTAssertEqual(fleet.menuModel.resetTimeFormat, .remaining)
+        XCTAssertEqual(UsageBand.band(for: 0.47, watchLimit: fleet.menuModel.watchLimit,
+                                      criticalLimit: fleet.menuModel.criticalLimit), .watch)
+        XCTAssertFalse(menu.items.filter { $0.representedObject is String }.isEmpty)
+    }
+
+    /// Building the menu reads nothing: it draws the snapshots that already
+    /// arrived, and asks no provider for anything.
+    func testOpeningTheMenuFetchesNothing() {
+        let controller = StatusItemController(onOpenSettings: { XCTFail("no settings") })
+        controller.onRefreshAll = { XCTFail("the menu refreshed on open") }
+        controller.snapshots = Fixtures.snapshots()
+        let before = controller.snapshots
+
+        let menu = NSMenu()
+        controller.menuWillOpen(menu)
+        defer { controller.menuDidClose(menu) }
+
+        XCTAssertEqual(controller.snapshots.map(\.id), before.map(\.id))
+        XCTAssertEqual(controller.snapshots.map(\.usedFraction), before.map(\.usedFraction))
+    }
+
+    /// A reading that lands while the menu is up reaches the cards without the
+    /// menu being torn down and rebuilt under AppKit.
+    func testAReadingThatLandsWhileOpenRedrawsTheCards() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+        let card = try XCTUnwrap(menu.items.first { $0.representedObject as? String == "claude" })
+        let view = try XCTUnwrap(card.view)
+
+        var moved = Fixtures.snapshots()
+        moved[0].windows[0] = LimitWindow(id: moved[0].windows[0].id,
+                                          label: moved[0].windows[0].label,
+                                          usedFraction: 0.99)
+        controller.snapshots = moved
+
+        XCTAssertTrue(menu.items.first { $0.representedObject as? String == "claude" }?.view === view,
+                      "the menu was rebuilt rather than redrawn")
+    }
+
+    /// Every card is told which appearance to draw in, and told the Mac's.
+    ///
+    /// Left untold, a hosting view built before it is installed resolves its
+    /// colours against nothing in particular. Told the *menu bar's* tone — the
+    /// status item button's, which macOS tints to the desktop behind it — the
+    /// cards came out black under light menu items on a Mac in Light mode.
+    func testEveryCardIsDrawnInTheMacsOwnAppearance() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        let expected = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+        let cards = menu.items.filter { $0.representedObject is String }
+        XCTAssertFalse(cards.isEmpty)
+        for card in cards {
+            let view = try XCTUnwrap(card.view)
+            XCTAssertNotNil(view.appearance, "a card was left to resolve its own colours")
+            XCTAssertEqual(view.appearance?.name, expected,
+                           "a card is drawn in an appearance the menu around it does not use")
+        }
+    }
+
+    // MARK: - Light and dark
+
+    private func render(_ view: some View, under name: NSAppearance.Name) throws -> NSBitmapImageRep {
+        let appearance = try XCTUnwrap(NSAppearance(named: name))
+        var rep: NSBitmapImageRep?
+        appearance.performAsCurrentDrawingAppearance {
+            let renderer = ImageRenderer(
+                content: view.environment(\.colorScheme, name == .darkAqua ? .dark : .light)
+            )
+            renderer.scale = 1
+            rep = renderer.nsImage?.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:))
+        }
+        return try XCTUnwrap(rep)
+    }
+
+    private func luminance(_ rep: NSBitmapImageRep) -> (mean: Double, min: Double, max: Double) {
+        var total = 0.0, low = 1.0, high = 0.0, count = 0.0
+        for y in stride(from: 0, to: rep.pixelsHigh, by: 2) {
+            for x in stride(from: 0, to: rep.pixelsWide, by: 2) {
+                guard let colour = rep.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
+                let value = 0.2126 * Double(colour.redComponent)
+                    + 0.7152 * Double(colour.greenComponent)
+                    + 0.0722 * Double(colour.blueComponent)
+                total += value
+                low = Swift.min(low, value)
+                high = Swift.max(high, value)
+                count += 1
+            }
+        }
+        return count == 0 ? (0, 0, 0) : (total / count, low, high)
+    }
+
+    /// The card belongs to whichever appearance the Mac is in: the surface
+    /// follows it, and the ink stays off the surface either way.
+    func testTheCardFollowsLightAndDarkAppearance() throws {
+        let now = Date()
+        let stack = VStack(spacing: 0) {
+            MenuUsageCard(snapshot: claude(), now: now, resetTimeFormat: .remaining)
+            MenuUsageCard(snapshot: Fixtures.snapshots()[1], now: now, resetTimeFormat: .remaining)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+
+        let lightRender = try render(stack, under: .aqua)
+        let darkRender = try render(stack, under: .darkAqua)
+        // Set MENU_CARD_RENDER_PATH and both are written there, so the menu
+        // can be looked at rather than only measured.
+        if let directory = ProcessInfo.processInfo.environment["MENU_CARD_RENDER_PATH"] {
+            for (name, rep) in [("light", lightRender), ("dark", darkRender)] {
+                guard let png = rep.representation(using: .png, properties: [:]) else { continue }
+                try png.write(to: URL(fileURLWithPath: directory)
+                    .appendingPathComponent("menu-card-\(name).png"))
+            }
+        }
+
+        let light = luminance(lightRender)
+        let dark = luminance(darkRender)
+        XCTAssertGreaterThan(light.mean, dark.mean, "the card did not follow the appearance")
+        for (name, reading) in [("light", light), ("dark", dark)] {
+            XCTAssertGreaterThan(reading.max - reading.min, 0.4,
+                                 "\(name) left the ink and the surface too close together")
+        }
+    }
+
+    // MARK: - The Detail switch
+
+    /// Closed is the base state, and it is remembered per provider — never one
+    /// switch for the lot, and never forgotten when the menu closes.
+    func testTheSwitchIsPerProviderAndSurvivesARelaunch() throws {
+        let (defaults, name) = try makeDefaults()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let preferences = Preferences(defaults: defaults)
+
+        XCTAssertFalse(preferences.isDetailExpanded("claude"), "closed is the base state")
+        preferences.setDetailExpanded(true, for: "claude")
+        XCTAssertTrue(preferences.isDetailExpanded("claude"))
+        XCTAssertFalse(preferences.isDetailExpanded("codex"), "one provider, not all of them")
+
+        let reopened = Preferences(defaults: try XCTUnwrap(UserDefaults(suiteName: name)))
+        XCTAssertTrue(reopened.isDetailExpanded("claude"), "the choice survives a relaunch")
+        XCTAssertFalse(reopened.isDetailExpanded("codex"))
+    }
+
+    /// A click asks for the opposite of what its card is showing, and asks
+    /// once. The controller decides nothing itself — the answer comes back
+    /// through `expandedDetail`.
+    func testTheSwitchAsksForTheOppositeAndKeepsNoAnswerOfItsOwn() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        var asked: [(String, Bool)] = []
+        controller.onToggleDetail = { asked.append(($0, $1)) }
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        let card = try XCTUnwrap(menu.items.first { $0.representedObject as? String == "claude" })
+        let hosting = try XCTUnwrap(card.view as? MenuCardHostingView<AnyView>)
+        hosting.onInteract?()
+        XCTAssertEqual(asked.map(\.0), ["claude"])
+        XCTAssertEqual(asked.map(\.1), [true])
+
+        // Nothing moved until the preference came back.
+        XCTAssertTrue(controller.expandedDetail.isEmpty)
+        controller.expandedDetail = ["claude"]
+        hosting.onInteract?()
+        XCTAssertEqual(asked.map(\.1), [true, false], "it did not ask to close what is open")
+    }
+
+    /// Opening a card makes it taller, and the item it is in is re-measured —
+    /// otherwise the menu would keep the height it laid out with and clip
+    /// everything the switch just revealed.
+    func testOpeningACardMakesItsItemTaller() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        controller.activity = { _ in
+            ActivitySummary(sessions: [self.session("codenotch", .busy),
+                                       self.session("hivinz", .idle)])
+        }
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+        let card = try XCTUnwrap(menu.items.first { $0.representedObject as? String == "claude" })
+        let closed = try XCTUnwrap(card.view).frame.height
+
+        controller.expandedDetail = ["claude"]
+        let opened = try XCTUnwrap(card.view).frame.height
+        XCTAssertGreaterThan(opened, closed, "the card did not grow into its detail")
+
+        controller.expandedDetail = []
+        XCTAssertEqual(try XCTUnwrap(card.view).frame.height, closed, accuracy: 0.5,
+                       "the card did not come back to its limits")
+    }
+
+    /// Closed, the card is the limits. Open, it is what the notch draws.
+    func testClosedIsTheLimitsAndOpenIsTheNotchsCard() throws {
+        let snapshot = claude()
+        let activity = ActivitySummary(sessions: [session("codenotch", .busy),
+                                                  session("hivinz", .idle)])
+        let now = Date()
+
+        let closed = try render(MenuUsageCard(snapshot: snapshot, activity: activity, now: now,
+                                              isExpanded: false).fixedSize())
+        let open = try render(MenuUsageCard(snapshot: snapshot, activity: activity, now: now,
+                                            isExpanded: true).fixedSize())
+        XCTAssertGreaterThan(open.size.height, closed.size.height)
+        XCTAssertEqual(open.size.width, closed.size.width, "the switch changed the card's width")
+
+        // And what it grew by is the notch's own extra — the same view, from
+        // the same snapshot.
+        let limits = try render(ProviderLimitsContent(snapshot: snapshot, now: now)
+            .frame(width: MenuUsageCard.contentWidth).fixedSize())
+        let notch = try render(ProviderDetailContent(snapshot: snapshot, activity: activity, now: now)
+            .frame(width: MenuUsageCard.contentWidth).fixedSize())
+        XCTAssertEqual(open.size.height - closed.size.height,
+                       notch.size.height - limits.size.height, accuracy: 1,
+                       "the menu grew by something other than the notch's sections")
+    }
+
+    /// The notch asks for nothing and gets everything: its card has no switch
+    /// on it, and the default has to keep it that way.
+    func testTheNotchIsUnaffectedByTheSwitch() throws {
+        let snapshot = claude()
+        let activity = ActivitySummary(sessions: [session("codenotch", .busy)])
+        let now = Date()
+
+        let byDefault = try render(
+            ProviderDetailContent(snapshot: snapshot, activity: activity, now: now)
+                .fixedSize().background(Color.black))
+        let explicit = try render(
+            ProviderDetailContent(snapshot: snapshot, activity: activity, now: now,
+                                  showsExtendedDetail: true)
+                .fixedSize().background(Color.black))
+        XCTAssertEqual(byDefault.size, explicit.size)
+    }
+
+    // MARK: - A switch that stays put
+
+    /// Where a card's switch lands inside its menu item, laid out the way the
+    /// menu lays it out.
+    private func switchFrame(for snapshot: ProviderSnapshot, expanded: Bool, now: Date) throws -> CGRect {
+        var frame: CGRect?
+        let hosting = MenuCardHostingView(rootView: MenuUsageCardItem.root(
+            snapshot: snapshot, activity: ActivitySummary(sessions: [session("codenotch", .busy)]),
+            now: now, resetTimeFormat: .automatic, deepSeekPricingEnabled: true,
+            deepSeekPricingSchedule: .current, sessionCap: 5, accentColor: .blue,
+            watchLimit: 0.7, criticalLimit: 0.9, isExpanded: expanded, onToggle: {},
+            onSwitchFrame: { frame = $0 }))
+        MenuUsageCardItem.resize(hosting)
+        hosting.layoutSubtreeIfNeeded()
+        return try XCTUnwrap(frame, "the card never reported its switch")
+    }
+
+    /// Flipping Detail changes what is under the header, never where the
+    /// header's switch is — with or without a tier named under the title.
+    ///
+    /// The item is its card's fitting height rounded up to a whole point, and
+    /// a card centred in that leftover moved by a different fraction open
+    /// than closed.
+    func testTheSwitchDoesNotMoveWhenItIsFlipped() throws {
+        let now = Date()
+        var tiered = claude(session: 0, weekly: 0.59)
+        tiered.plan = "plus"
+        for snapshot in [claude(session: 0.09, weekly: 0.5), tiered] {
+            let closed = try switchFrame(for: snapshot, expanded: false, now: now)
+            let open = try switchFrame(for: snapshot, expanded: true, now: now)
+            XCTAssertEqual(closed.minY, open.minY, accuracy: 0.001, "the switch moved vertically")
+            XCTAssertEqual(closed.minX, open.minX, accuracy: 0.001, "the switch moved horizontally")
+            XCTAssertEqual(closed.size, open.size)
+        }
+        // And a tier line under the title does not push the switch down onto it.
+        let plain = try switchFrame(for: claude(), expanded: false, now: now)
+        let withTier = try switchFrame(for: tiered, expanded: false, now: now)
+        XCTAssertEqual(plain.midY, withTier.midY, accuracy: 1,
+                       "the switch followed the tier line instead of the title")
+    }
+}

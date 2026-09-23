@@ -429,21 +429,35 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertFalse(summary(Array(many.prefix(2))).isCompact)
     }
 
-    /// The items to the left of this one shift whenever it changes width, so
-    /// it keeps one width through the ordinary run of a window: single-digit
-    /// shares, the last hour, the last minute, an unknown reset.
-    func testTheItemKeepsOneWidthAsTheFiguresMove() {
+    /// Variable figures occupy only their rendered width. The mark, separator,
+    /// and their intentional gaps stay unchanged, so each artwork-width change
+    /// is exactly the change in the text it currently displays.
+    func testTheItemFollowsTheCurrentFigureWidths() {
         let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         func width(_ used: Double, _ resetIn: TimeInterval?) -> CGFloat {
             StatusItemArtwork(summary: summary([claude(used, resetIn: resetIn)]), font: font, height: 22).size.width
         }
-        let reference = width(0.72, 2 * hour + 18 * minute)
-        for (used, resetIn) in [(0.07, 2 * hour + 18 * minute), (0.0, 4 * hour + 59 * minute),
-                                (0.003, 3 * hour), (0.72, 47 * minute), (0.72, 8 * minute),
-                                (0.72, 30), (0.72, nil)] as [(Double, TimeInterval?)] {
-            XCTAssertEqual(width(used, resetIn), reference, "\(used) with \(String(describing: resetIn))s left")
+        func textWidth(_ text: String) -> CGFloat {
+            (text as NSString).size(withAttributes: [.font: font]).width
         }
-        XCTAssertLessThan(width(0.72, nil), 150, "one reading should stay compact")
+
+        let hours = width(0.72, 2 * hour + 18 * minute)
+        let minutes = width(0.72, 47 * minute)
+        let oneDigitMinute = width(0.72, 8 * minute)
+        XCTAssertGreaterThan(hours, minutes)
+        XCTAssertGreaterThan(minutes, oneDigitMinute)
+        XCTAssertEqual(hours - minutes, textWidth("2h 18m") - textWidth("47m"), accuracy: 1)
+        XCTAssertEqual(minutes - oneDigitMinute, textWidth("47m") - textWidth("8m"), accuracy: 1)
+
+        let hundredPercent = width(1, 47 * minute)
+        let ninetyNinePercent = width(0.99, 47 * minute)
+        let ninePercent = width(0.09, 47 * minute)
+        XCTAssertGreaterThan(hundredPercent, ninetyNinePercent)
+        XCTAssertGreaterThan(ninetyNinePercent, ninePercent)
+        XCTAssertEqual(hundredPercent - ninetyNinePercent,
+                       textWidth("100%") - textWidth("99%"), accuracy: 1)
+        XCTAssertEqual(ninetyNinePercent - ninePercent,
+                       textWidth("99%") - textWidth("9%"), accuracy: 1)
     }
 
     /// A template, as the icon it stands in for is, so macOS tints it for

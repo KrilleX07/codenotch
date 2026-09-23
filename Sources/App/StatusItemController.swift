@@ -1,5 +1,6 @@
 import AppKit
 import QuartzCore
+import SwiftUI
 
 /// The menu bar icon, present only while `AppPresence.menuBar` is chosen.
 ///
@@ -19,8 +20,6 @@ import QuartzCore
 final class StatusItemController: NSObject, NSMenuDelegate {
     private var item: NSStatusItem?
     private let onOpenSettings: () -> Void
-    /// Refetch one provider, leaving the others alone.
-    var onRefreshProvider: ((String) -> Void)?
     /// Refetch every provider.
     var onRefreshAll: (() -> Void)?
     /// Switch limits in the bar on or off — the same Settings preference,
@@ -28,12 +27,35 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// controller stores no answer of its own: it asks `limits.isOn`, which is
     /// the preference mirrored in, and so the tick and Settings are one thing.
     var onToggleLimits: ((Bool) -> Void)?
+    /// Open or close one provider's card. Written back through Preferences the
+    /// way `onToggleLimits` is, and read back through `expandedDetail`, so the
+    /// switch and what the card draws are one thing rather than two.
+    var onToggleDetail: ((String, Bool) -> Void)?
+
+    /// Which cards are opened out, mirrored from Preferences.
+    ///
+    /// The controller keeps no answer of its own: a click asks for the
+    /// opposite of what is here, the preference is written, and the new value
+    /// arrives back through this — which is what re-measures and redraws the
+    /// card, so the menu can be open while it happens.
+    var expandedDetail: Set<String> = [] {
+        didSet {
+            guard expandedDetail != oldValue else { return }
+            redrawOpenCards(now: Date())
+        }
+    }
 
     /// The latest readings, mirrored from the store. The menu is rebuilt from
     /// these every time it opens, so reset countdowns and ages are fresh; the
     /// item's own summary is redrawn from them as they land.
     var snapshots: [ProviderSnapshot] = [] {
-        didSet { updateButton() }
+        didSet {
+            updateButton()
+            // The menu is built when it opens, but a reading can land while it
+            // is still up — and a menu bar utility that showed a stale number
+            // for as long as you held it open would be the wrong way round.
+            redrawOpenCards(now: Date())
+        }
     }
     /// Whether the item shows limits at all, and whose — from Settings. Only
     /// the item's face follows it: the menu still lists every provider read.
@@ -86,6 +108,25 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// and the menu says the same things the cells do.
     var cells: () -> [ProviderSnapshot] = { [] }
     var activity: (ProviderSnapshot) -> ActivitySummary? = { _ in nil }
+    /// The fleet's panel-less view model: the same readings every notch is
+    /// handed, and the same Appearance settings — Watch and Critical, the
+    /// accent, how a reset is worded. The cards are drawn from it, so what the
+    /// menu says and what the notch says are one thing read twice, never two
+    /// things that could drift.
+    ///
+    /// Held weakly: the fleet owns it for the life of the app, and an item
+    /// that outlived it would be holding a model nobody feeds.
+    weak var model: NotchViewModel?
+    /// Keeps the countdowns on the cards from ageing while the menu is held
+    /// open. Only the clock — nothing here reads a provider.
+    private var menuClock: Timer?
+    /// The menu this controller last filled.
+    ///
+    /// Held rather than reached for through the status item, because the cards
+    /// have to be re-measured and redrawn in whatever menu they were put in —
+    /// including one handed straight to `rebuild`, which is how the menu is
+    /// read in a test. Weak: the menu belongs to the item, or to the caller.
+    private weak var builtMenu: NSMenu?
 
     init(onOpenSettings: @escaping () -> Void) {
         self.onOpenSettings = onOpenSettings
@@ -273,25 +314,51 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// reading lands.
     func menuWillOpen(_ menu: NSMenu) {
         rebuild(menu: menu, now: Date())
+        startMenuClock(menu)
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        menuClock?.invalidate()
+        menuClock = nil
+    }
+
+    /// A menu held open would otherwise show the countdowns it was built with.
+    /// `.common` mode, because AppKit runs a menu in its own tracking mode and
+    /// a timer in the default mode would not fire until the menu closed —
+    /// which is exactly when it is no longer needed.
+    private func startMenuClock(_ menu: NSMenu) {
+        menuClock?.invalidate()
+        _ = menu
+        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let now = Date()
+                self.model?.now = now
+                self.redrawOpenCards(now: now)
+            }
+        }
+        timer.tolerance = 1
+        RunLoop.main.add(timer, forMode: .common)
+        menuClock = timer
     }
 
     /// Exposed for tests: what the menu says without needing a status item.
     func rebuild(menu: NSMenu, now: Date) {
+        builtMenu = menu
+        // The menu is mostly Codenotch's own drawing now, and an opaque card
+        // cannot follow a material. Left alone, macOS gives a menu dropped
+        // over a dark desktop a dark material while its *appearance* stays
+        // Light — which put white cards, correctly drawn for Light, on a menu
+        // that looked dark. Asking for the plain system appearance settles it
+        // for the cards and for the items around them at once.
         menu.removeAllItems()
         if snapshots.isEmpty {
             let empty = NSMenuItem(title: L10n.t("Waiting for the first reading…"), action: nil, keyEquivalent: "")
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
-            let cells = cells()
-            for snapshot in snapshots {
-                menu.addItem(headerItem(for: snapshot, now: now))
-                for line in Self.detailLines(for: snapshot, cells: cells, activity: activity, now: now) {
-                    let row = NSMenuItem(title: line, action: nil, keyEquivalent: "")
-                    row.isEnabled = false
-                    row.indentationLevel = 1
-                    menu.addItem(row)
-                }
+            for snapshot in Self.cardsToDraw(for: snapshots, cells: cells()) {
+                menu.addItem(cardItem(for: snapshot, now: now))
             }
         }
         menu.addItem(.separator())
@@ -352,11 +419,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func openSettings() { onOpenSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
 
-    @objc private func refreshProvider(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String else { return }
-        onRefreshProvider?(id)
-    }
-
     @objc private func refreshAll() { onRefreshAll?() }
 
     /// Asks for the opposite of what is on now. The answer comes back the way
@@ -365,17 +427,143 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// the menu opens whichever switch was used.
     @objc private func toggleLimits() { onToggleLimits?(!limits.isOn) }
 
-    /// The provider's own row: name, headline figure, and age when stale — the
-    /// same three facts the tooltip header shows. Clicking re-reads it.
-    private func headerItem(for snapshot: ProviderSnapshot, now: Date) -> NSMenuItem {
-        var title = "\(snapshot.displayName) — \(Self.headline(for: snapshot))"
+    /// One provider's card, as a menu item.
+    ///
+    /// Drawn from `model` — the fleet's panel-less view model, the same
+    /// readings and the same Appearance settings every notch is handed — so
+    /// the menu and the notch cannot disagree about a percentage, a band or
+    /// the wording of a reset. Nothing is fetched to build it.
+    private func cardItem(for snapshot: ProviderSnapshot, now: Date) -> NSMenuItem {
+        let item = MenuUsageCardItem.make(root: card(for: snapshot, now: now),
+                                          title: Self.headerTitle(for: snapshot, now: now),
+                                          appearance: menuAppearance,
+                                          onToggle: { [weak self] in self?.toggleDetail(for: snapshot.id) })
+        // The card is a picture to VoiceOver. These are the same facts in
+        // words — the header, then one line per limit — so the menu is as
+        // readable aloud as it is on screen.
+        let spoken = [Self.headerTitle(for: snapshot, now: now)]
+            + Self.detailLines(for: snapshot, cells: cells(), activity: activity, now: now)
+        item.setAccessibilityLabel(spoken.joined(separator: ", "))
+        item.representedObject = snapshot.id
+        return item
+    }
+
+    /// Ask for the opposite of what this card is showing.
+    ///
+    /// Nothing is decided here: the preference is written, and the answer
+    /// comes back through `expandedDetail`, which is what re-measures the card
+    /// and tells the menu its item changed height.
+    private func toggleDetail(for providerID: String) {
+        onToggleDetail?(providerID, !expandedDetail.contains(providerID))
+    }
+
+    /// Light or dark, as the Mac is.
+    ///
+    /// The menu's own items follow the system appearance, so the cards beside
+    /// them have to as well — an opaque card cannot work it out for itself,
+    /// because a hosting view built before it is installed resolves its colours
+    /// against nothing in particular.
+    ///
+    /// Deliberately *not* the status item button's tone. macOS tints the menu
+    /// bar to the desktop behind it, so the button reads dark over a dark
+    /// wallpaper while the Mac is in Light — and taking the tone from there
+    /// gave black cards under light menu items. The menu bar's tint is about
+    /// the bar; the menu is about the Mac.
+    private var menuAppearance: NSAppearance? {
+        NSAppearance(named: NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua)
+    }
+
+    /// One card, with the Appearance settings the notch is drawn with.
+    ///
+    /// Read off `model` — the fleet's own — with the shipped defaults as the
+    /// fallback for a controller standing on its own. Nothing here is a second
+    /// copy of a setting: it is the same object Settings writes through.
+    private func card(for snapshot: ProviderSnapshot, now: Date) -> AnyView {
+        MenuUsageCardItem.root(
+            snapshot: snapshot,
+            activity: activity(snapshot),
+            now: now,
+            resetTimeFormat: model?.resetTimeFormat ?? resetTimeFormat,
+            deepSeekPricingEnabled: model?.deepSeekPricingEnabled ?? true,
+            deepSeekPricingSchedule: model?.deepSeekPricingSchedule ?? .current,
+            // The notch's own budget: as many sessions as the display it is on
+            // has room for, so an opened card says what its tooltip says.
+            sessionCap: model?.sessionCap ?? NotchLayout.defaultSessionCap,
+            accentColor: (model?.accentColor ?? .system).color,
+            watchLimit: model?.watchLimit ?? 0.50,
+            criticalLimit: model?.criticalLimit ?? 0.70,
+            isExpanded: expandedDetail.contains(snapshot.id),
+            onToggle: { [weak self] in self?.toggleDetail(for: snapshot.id) },
+            // The card reports where its switch landed; the item hit-tests
+            // against it, because a menu runs its own event-tracking loop and
+            // a hosted control cannot be relied on to see the click itself.
+            onSwitchFrame: { [weak self] frame in
+                self?.setSwitchFrame(frame, forCardWith: snapshot.id)
+            }
+        )
+    }
+
+    private func setSwitchFrame(_ frame: CGRect, forCardWith providerID: String) {
+        guard let hosting = builtMenu?.items
+            .first(where: { $0.representedObject as? String == providerID })?
+            .view as? MenuCardHostingView<AnyView> else { return }
+        hosting.interactiveRect = frame
+    }
+
+    /// Redraw the cards of a menu that is already open.
+    ///
+    /// A reading that lands while the menu is up, or a countdown that has run
+    /// down, changes what a card should say. Rebuilding the menu under AppKit
+    /// while it is tracking is the one thing not to do, so each card's hosting
+    /// view is handed a fresh root instead: same item, same frame, new
+    /// contents. Nothing is fetched — this is the state that already arrived.
+    private func redrawOpenCards(now: Date) {
+        guard let menu = builtMenu else { return }
+        let drawn = Self.cardsToDraw(for: snapshots, cells: cells())
+        for menuItem in menu.items {
+            guard let id = menuItem.representedObject as? String,
+                  let hosting = menuItem.view as? MenuCardHostingView<AnyView>,
+                  let snapshot = drawn.first(where: { $0.id == id })
+            else { continue }
+            hosting.appearance = menuAppearance
+            hosting.rootView = card(for: snapshot, now: now)
+            // A card that has just opened or closed is a different height, and
+            // the menu laid itself out around the old one. Re-measuring and
+            // then telling the menu the item changed is what makes it take the
+            // new height while it is still on screen.
+            MenuUsageCardItem.resize(hosting)
+            menu.itemChanged(menuItem)
+        }
+    }
+
+    /// What gets a card, in the order the menu draws them.
+    ///
+    /// A local runtime is one card per loaded model, which is what the notch
+    /// makes of it — the runtime itself has no quota, its models have. With
+    /// nothing loaded there are no model cells, and the runtime keeps a card
+    /// of its own so "no models loaded" is still said rather than the provider
+    /// silently disappearing from the menu.
+    ///
+    /// Pure, so the rule can be read off a test without a status item.
+    static func cardsToDraw(for snapshots: [ProviderSnapshot],
+                            cells: [ProviderSnapshot]) -> [ProviderSnapshot] {
+        snapshots.flatMap { snapshot -> [ProviderSnapshot] in
+            let models = cells.filter { $0.providerID == snapshot.id && $0.localModel != nil }
+            return models.isEmpty ? [snapshot] : models
+        }
+    }
+
+    /// The provider's name, its headline figure, and its age when stale — the
+    /// same three facts the card's header shows, as one line of text.
+    static func headerTitle(for snapshot: ProviderSnapshot, now: Date) -> String {
+        if let model = snapshot.localModel {
+            return "\(snapshot.displayName) — \(model.name)"
+        }
+        var title = "\(snapshot.displayName) — \(headline(for: snapshot))"
         if snapshot.kind == .usage, let since = snapshot.status.staleSince, since != .distantPast {
             title += " · \(ElapsedCopy.ago(since: since, now: now))"
         }
-        let header = NSMenuItem(title: title, action: #selector(refreshProvider(_:)), keyEquivalent: "")
-        header.target = self
-        header.representedObject = snapshot.id
-        return header
+        return title
     }
 
     /// A runtime has no headline figure of its own; its models have. The row
@@ -397,6 +585,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                             now: Date) -> [String] {
         let now = now
         if snapshot.kind == .localRuntime {
+            // A cell *is* one model, so it describes itself. Without this a
+            // model card had nothing to say: the filter below looks for cells
+            // belonging to a runtime, and a cell is not a runtime.
+            if snapshot.localModel != nil {
+                return [modelLine(for: snapshot, activity: activity(snapshot))]
+            }
             let models = cells.filter { $0.providerID == snapshot.id && $0.localModel != nil }
             guard models.isEmpty else { return models.map { modelLine(for: $0, activity: activity($0)) } }
             // The header already says "No models loaded"; only a failure to

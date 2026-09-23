@@ -170,8 +170,8 @@ struct StatusItemArtwork {
     let font: NSFont
     let height: CGFloat
 
-    /// The menu bar's own type size, with figures of one width: "72%" and
-    /// "18%" take the same room, so nothing jitters as the numbers move.
+    /// The menu bar's own type size. Monospaced digits keep equal-length
+    /// figures steady while the artwork itself follows the current content.
     init(summary: StatusItemSummary,
          activeProviderIDs: Set<String> = [],
          activeGlyphOpacity: CGFloat = 1,
@@ -200,17 +200,6 @@ struct StatusItemArtwork {
     /// Lighter than the figures on either side of it: it divides, it does not
     /// say anything.
     private var ruleAlpha: CGFloat { 0.35 }
-
-    /// The widest either figure gets in the ordinary run of a window, measured
-    /// in the current language. Each is given at least this much room, so the
-    /// item keeps one width from the start of a window to its reset — the
-    /// items to its left would otherwise shuffle every time "10%" became "9%"
-    /// or "1h 00m" became "59m".
-    private var percentRoom: CGFloat { width("00%") }
-    private var countdownRoom: CGFloat {
-        let now = Date(timeIntervalSinceReferenceDate: 0)
-        return width(ResetCopy.countdown(to: now.addingTimeInterval(5 * 3600 - 30), now: now) ?? "")
-    }
 
     var size: NSSize { NSSize(width: layout().width, height: height) }
 
@@ -279,15 +268,10 @@ struct StatusItemArtwork {
                 text(StatusItemSummary.Entry.unknown, alpha: alpha)
                 continue
             }
-            // Right-aligned, so the "%" stays put and the figure grows leftward.
-            let percentWidth = width(entry.percent)
-            x += max(0, percentRoom - percentWidth)
             text(entry.percent, alpha: alpha)
             if !summary.isCompact {
                 text(separator, alpha: alpha)
-                let start = x
                 text(entry.countdown, alpha: alpha)
-                x = max(x, start + countdownRoom)
             }
         }
         return (x.rounded(.up), marks, glyphFrames)
