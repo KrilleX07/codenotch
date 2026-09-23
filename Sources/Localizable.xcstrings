@@ -9,6 +9,12 @@
             "state": "translated",
             "value": "免费额度余额"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saldo gratis"
+          }
         }
       }
     },
@@ -16,6 +22,12 @@
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp"
+          }
+        },
+        "id": {
           "stringUnit": {
             "state": "translated",
             "value": "Amp"
@@ -31,6 +43,12 @@
             "state": "translated",
             "value": "Amp CLI"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp CLI"
+          }
         }
       }
     },
@@ -41,6 +59,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Agent 用量"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Penggunaan agen"
           }
         }
       }
@@ -53,6 +77,12 @@
             "state": "translated",
             "value": "Orb 用量"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Penggunaan Orb"
+          }
         }
       }
     },
@@ -63,6 +93,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "续期"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perpanjangan"
           }
         }
       }
@@ -75,6 +111,12 @@
             "state": "translated",
             "value": "约 1 天"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sekitar 1 hari"
+          }
         }
       }
     },
@@ -85,6 +127,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "约 %lld 天"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sekitar %lld hari"
           }
         }
       }
@@ -97,6 +145,12 @@
             "state": "translated",
             "value": "免费"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gratis"
+          }
         }
       }
     },
@@ -107,6 +161,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "免费额度"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kuota gratis"
           }
         }
       }
@@ -119,6 +179,12 @@
             "state": "translated",
             "value": "剩余 %1$@，共 %2$@"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tersisa %@ dari %@"
+          }
         }
       }
     },
@@ -129,6 +195,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "补充速率"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengisian ulang"
           }
         }
       }
@@ -141,6 +213,12 @@
             "state": "translated",
             "value": "%@/小时"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/jam"
+          }
         }
       }
     },
@@ -151,6 +229,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法读取 Amp 的 secrets.json。请检查文件权限或重新运行 amp login。"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak dapat membaca secrets.json milik Amp. Periksa izin file tersebut atau jalankan amp login lagi."
           }
         }
       }
@@ -163,6 +247,12 @@
             "state": "translated",
             "value": "Amp 的 secrets.json 无效。请重新运行 amp login。"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "secrets.json milik Amp tidak valid. Jalankan amp login lagi."
+          }
         }
       }
     },
@@ -173,6 +263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法识别 Amp 返回的用量数据。请稍后重试。"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp mengembalikan respons penggunaan yang tidak dikenali. Coba lagi nanti."
           }
         }
       }
@@ -185,6 +281,12 @@
             "state": "translated",
             "value": "无法连接到 Amp。请检查网络连接。"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak dapat terhubung ke Amp. Periksa koneksi Anda."
+          }
         }
       }
     },
@@ -196,6 +298,12 @@
             "state": "translated",
             "value": "在终端运行 amp login，Codenotch 会读取 ~/.local/share/amp/secrets.json。"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jalankan amp login di Terminal — notch membaca ~/.local/share/amp/secrets.json."
+          }
         }
       }
     },
@@ -206,6 +314,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在终端运行 amp login 以读取用量"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jalankan amp login di Terminal untuk membaca penggunaan Anda"
           }
         }
       }
@@ -247,6 +361,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch membaca penggunaan dari alat yang sudah login di Mac ini — Codenotch tidak pernah meminta kata sandi Anda. Instal dan login ke salah satu dari Claude Code (alat terminal, bukan aplikasi Claude), Cursor (editor atau cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, atau kunci API Gemini (melalui Gemini CLI, OpenCode, atau Hermes), dan cincinnya akan muncul di notch."
           }
         }
       }
@@ -38932,7 +39052,15 @@
       }
     },
     "Adds a compact weekly-usage ring around each chosen provider that publishes it.": {
-      "extractionState": "manual"
+      "extractionState": "manual",
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menambahkan cincin penggunaan mingguan yang ringkas di sekitar setiap penyedia pilihan yang menyediakannya."
+          }
+        }
+      }
     },
     "Show limit information in menu bar": {
       "extractionState": "manual",
@@ -39006,7 +39134,15 @@
       }
     },
     "Show weekly limit in menu bar": {
-      "extractionState": "manual"
+      "extractionState": "manual",
+      "localizations": {
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tampilkan batas mingguan di bar menu"
+          }
+        }
+      }
     },
     "Swaps the icon for each chosen provider's five-hour limit — how much is used and how long until it resets.": {
       "extractionState": "manual",
@@ -43638,6 +43774,12 @@
             "state": "translated",
             "value": "Windows 자동 업데이트, 메뉴 막대의 5시간 한도 표시, 접을 수 있는 노치를 추가합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows memperbarui dirinya sendiri, batas lima jam di bar menu, dan notch yang bisa Anda sembunyikan."
+          }
         }
       }
     },
@@ -43648,6 +43790,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "메뉴 막대의 5시간 한도 표시"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batas lima jam di bar menu"
           }
         }
       }
@@ -43660,6 +43808,12 @@
             "state": "translated",
             "value": "표시할 계정을 직접 선택하면 노치와 함께 메뉴 막대에도 세션 사용 비율과 남은 시간을 표시합니다. 기본적으로는 꺼져 있습니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nonaktif sampai Anda memintanya: pilih akun mana yang ingin ditampilkan, dan bar menu menampilkan persentase sesi serta hitung mundur masing-masing akun, di samping notch, bukan sebagai penggantinya."
+          }
         }
       }
     },
@@ -43670,6 +43824,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "모든 Antigravity 계정 지원"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setiap akun Antigravity"
           }
         }
       }
@@ -43682,6 +43842,12 @@
             "state": "translated",
             "value": "여러 Antigravity 프로필을 읽으며 각 프로필에 별도의 링과 키체인 접근 권한 응답을 적용합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kini dapat membaca lebih dari satu profil Antigravity, masing-masing dengan cincinnya sendiri dan responsnya sendiri terhadap permintaan Keychain."
+          }
         }
       }
     },
@@ -43692,6 +43858,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "더 선명한 유리 효과"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaca yang lebih jernih"
           }
         }
       }
@@ -43704,6 +43876,12 @@
             "state": "translated",
             "value": "다크 모드의 Liquid Glass 뒤에 밝은 배경화면이 있어도 툴팁의 보조 설명이 흐려지지 않고 잘 보입니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teks tooltip tetap jelas di atas Liquid Glass dalam mode gelap, saat latar desktop pucat di belakangnya dulu membuat baris sekunder sulit terlihat."
+          }
         }
       }
     },
@@ -43714,6 +43892,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Windows 자동 업데이트"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows selalu diperbarui secara otomatis"
           }
         }
       }
@@ -43726,6 +43910,12 @@
             "state": "translated",
             "value": "시작 직후 새 버전을 확인하고 다운로드 서명을 검증한 뒤 자동으로 설치할 수 있습니다. 이전에는 Windows 설치본이 처음 설치한 버전에 머물렀습니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ini mencari versi baru tak lama setelah dijalankan dan dapat memasangnya untuk Anda, setelah terlebih dahulu memeriksa tanda tangan unduhan. Sampai sekarang, instalasi Windows tetap menggunakan build asalnya."
+          }
         }
       }
     },
@@ -43736,6 +43926,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "이동 가능한 Windows 노치"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Windows yang dapat berpindah"
           }
         }
       }
@@ -43748,6 +43944,12 @@
             "state": "translated",
             "value": "핸들로 모니터 사이를 옮기고, Alt 키를 누른 채 가장자리를 따라 이동할 수 있습니다. 사용하지 않을 때는 Mac의 ‘마우스를 올리면 표시’처럼 작은 필로 접을 수 있습니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pindahkan di antara monitor melalui gagangnya, geser di sepanjang tepi sambil menahan Alt, dan lipat menjadi bentuk pil saat tidak digunakan, seperti yang dilakukan Show on hover di Mac."
+          }
         }
       }
     },
@@ -43758,6 +43960,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Windows에서 Z.AI와 모든 Claude 계정 지원"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Z.AI dan setiap akun Claude di Windows"
           }
         }
       }
@@ -43770,6 +43978,12 @@
             "state": "translated",
             "value": "Z.AI Coding Plan 링을 추가하고 기본 계정뿐 아니라 모든 Claude 계정에 개별 링을 표시합니다. 카드에서 직접 Claude에 로그인할 수도 있습니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cincin untuk Z.AI Coding Plan, satu untuk setiap akun Claude, bukan hanya akun default, serta kemampuan masuk ke Claude langsung dari kartunya."
+          }
         }
       }
     },
@@ -43780,6 +43994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "日本語 및 러시아어 노치 배치 설정"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa Jepang, dan penempatan notch dalam bahasa Rusia"
           }
         }
       }
@@ -43792,6 +44012,12 @@
             "state": "translated",
             "value": "릴리스 노트를 일본어로, Windows 노치 배치 설정을 러시아어로 제공합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Catatan rilis dapat dibaca dalam bahasa Jepang, dan pengaturan penempatan notch Windows tersedia dalam bahasa Rusia."
+          }
         }
       }
     },
@@ -43802,6 +44028,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "QianwenAI 조회를 복구하고 잘못된 알림을 줄였으며 Windows 노치의 동작을 안정화했습니다."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI kembali dapat membaca, lebih sedikit peringatan palsu, dan notch Windows yang lebih stabil."
           }
         }
       }
@@ -43814,6 +44046,12 @@
             "state": "translated",
             "value": "QianwenAI 조회 복구"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI kembali dapat membaca"
+          }
         }
       }
     },
@@ -43824,6 +44062,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "실제 재설정만 알림"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hanya reset sungguhan"
           }
         }
       }
@@ -43836,6 +44080,12 @@
             "state": "translated",
             "value": "남은 시간이 몇 초 바뀌는 것만으로는 재설정 알림을 보내지 않으며, 실제 재설정 시에는 계속 알립니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hitung mundur yang meleset beberapa detik tidak lagi mengumumkan reset, sementara reset yang sebenarnya tetap diumumkan."
+          }
         }
       }
     },
@@ -43846,6 +44096,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "창 없이 실행한 Grok도 감지"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grok, bahkan tanpa antarmuka"
           }
         }
       }
@@ -43858,6 +44114,12 @@
             "state": "translated",
             "value": "grok 자체 창뿐 아니라 grok -p로 실행한 경우에도 작업 중으로 표시합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grok ditampilkan sebagai sedang bekerja saat grok -p dijalankan, bukan hanya di jendelanya sendiri."
+          }
         }
       }
     },
@@ -43868,6 +44130,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Windows 노치가 작업 표시줄을 피하도록 개선"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Windows tetap tidak bertumpang tindih dengan taskbar"
           }
         }
       }
@@ -43880,6 +44148,12 @@
             "state": "translated",
             "value": "작업 영역 안에 배치하고 작업 표시줄이 이동하면 가장자리를 다시 찾습니다. Mac처럼 링 끝을 둥글게 표시하며 측정값이 오래되면 흐리게 표시합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch ini berada di dalam area kerja dan kembali menemukan tepinya saat taskbar berpindah, sementara cincin-cincinnya meredup saat hasil pembacaan sudah lama, dengan ujung-ujung membulat, seperti di Mac."
+          }
         }
       }
     },
@@ -43890,6 +44164,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "새로운 설정, QianwenAI, 중국어 번체, 원하는 가장자리로 옮길 수 있는 Windows 노치를 추가합니다."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengaturan baru, QianwenAI, bahasa Tionghoa Tradisional, dan notch Windows yang dapat dipindahkan ke tepi mana pun."
           }
         }
       }
@@ -43902,6 +44182,12 @@
             "state": "translated",
             "value": "새로운 설정 화면"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pengaturan baru"
+          }
         }
       }
     },
@@ -43913,6 +44199,12 @@
             "state": "translated",
             "value": "차분한 어두운 화면에 각 패널 제목과 제공자 고유 로고를 표시하고 DeepSeek, Ollama, LM Studio를 ‘계정’ 아래에 모았습니다. 포인터에 따라 각 요소가 반응하며 새 버전이 있으면 버전 옆에 업데이트 버튼을 표시합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelap dan tenang, dengan judul di atas setiap panel, logo penyedia masing-masing, serta DeepSeek, Ollama, dan LM Studio yang dikelompokkan di bawah Akun. Semuanya merespons kursor, dan tombol Perbarui muncul di samping versi jika tersedia."
+          }
         }
       }
     },
@@ -43920,6 +44212,12 @@
       "extractionState": "manual",
       "localizations": {
         "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI"
+          }
+        },
+        "id": {
           "stringUnit": {
             "state": "translated",
             "value": "QianwenAI"
@@ -43935,6 +44233,12 @@
             "state": "translated",
             "value": "Codenotch에서 로그인하는 QianwenAI Token Plan 링을 추가합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indikator lingkaran untuk Token Plan QianwenAI, dengan login dari Codenotch."
+          }
         }
       }
     },
@@ -43945,6 +44249,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "繁體中文 추가 및 언어별 번역 완성"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa Tionghoa Tradisional, dan semua bahasa kini lengkap"
           }
         }
       }
@@ -43957,6 +44267,12 @@
             "state": "translated",
             "value": "Mac과 Windows에 중국어 번체를 추가해 대만과 홍콩에서 자동으로 선택합니다. 중국어 간체와 우크라이나어도 모든 문자열을 번역했습니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa Tionghoa Tradisional di Mac dan Windows, dipilih otomatis di Taiwan dan Hong Kong, serta bahasa Tionghoa Sederhana dan bahasa Ukraina kini mencakup semua teks."
+          }
         }
       }
     },
@@ -43967,6 +44283,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Windows 노치를 원하는 곳으로 이동"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Windows, dapat dipindahkan ke mana saja"
           }
         }
       }
@@ -43979,6 +44301,12 @@
             "state": "translated",
             "value": "핸들을 드래그해 원하는 가장자리로 옮기고, 구체 버튼으로 설정을 열 수 있습니다. 링을 클릭하면 다시 조회하고 오른쪽 버튼을 클릭하면 추가 메뉴를 엽니다. 호버 카드는 작업 표시줄을 피해서 표시합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seret melalui pegangannya ke tepi mana pun, buka Pengaturan dari bulatannya, klik indikator untuk membacanya kembali atau klik kanan untuk opsi lainnya, dan kartu saat diarahkan tetap tidak menghalangi bilah tugas."
+          }
         }
       }
     },
@@ -43989,6 +44317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "새 로고"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logo baru"
           }
         }
       }
@@ -44001,6 +44335,12 @@
             "state": "translated",
             "value": "MiniMax, QianwenAI, Z.ai, Kimi, OpenCode, Command Code의 고유 로고를 표시합니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MiniMax, QianwenAI, Z.ai, Kimi, OpenCode, dan Command Code kini menampilkan logo mereka sendiri."
+          }
         }
       }
     },
@@ -44011,6 +44351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "OpenAI 호환 API, 로컬 런타임 및 사용자 지정 프록시입니다."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API yang kompatibel dengan OpenAI, runtime lokal, dan proxy khusus."
           }
         }
       }
@@ -44023,6 +44369,12 @@
             "state": "translated",
             "value": "새로 고칠 때마다 링에 ‘HTTP 0’이 표시되던 문제를 수정하고, QianwenAI가 요청을 거부하면 명확히 알립니다."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indikator tidak lagi menampilkan \"HTTP 0\" setiap kali dimuat ulang, dan menyatakannya dengan jelas saat QianwenAI menolak permintaan."
+          }
         }
       }
     },
@@ -44033,6 +44385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 확인이 ‘확인 중…’에서 멈추지 않으며 컨텍스트 사용량이 적어도 호를 표시합니다. Claude 계정 파일은 변경될 때만 다시 읽고, 중국어 번체는 대만에서 쓰는 표현으로 다듬었습니다."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pemeriksaan pembaruan tidak lagi macet di \"Memeriksa…\", pembacaan konteks kecil tetap menampilkan busur, berkas akun Claude hanya dibaca ulang saat berubah, dan bahasa Tionghoa Tradisional menggunakan istilah khas Taiwan."
           }
         }
       }
@@ -44045,6 +44403,12 @@
             "state": "translated",
             "value": "Dar nome a esta conta"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beri nama akun ini"
+          }
         }
       }
     },
@@ -44055,6 +44419,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Como o notch, a barra de menu e as notificações chamam esta conta. Vazio volta para %@."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nama yang digunakan notch, bar menu, dan notifikasi untuk akun ini. Jika dikosongkan, akan kembali ke %@."
           }
         }
       }
@@ -44067,6 +44437,12 @@
             "state": "translated",
             "value": "Your own endpoints, 한국어 and Oʻzbekcha, and a notch that knows whose account it is."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint Anda sendiri, 한국어 dan Oʻzbekcha, serta notch yang mengenali akun pemiliknya."
+          }
         }
       }
     },
@@ -44077,6 +44453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your own endpoints"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint Anda sendiri"
           }
         }
       }
@@ -44089,6 +44471,12 @@
             "state": "translated",
             "value": "Add any OpenAI-compatible endpoint and give it a ring: a name, an icon, a colour, a monthly budget in dollars or tokens, and a live check that says whether it is actually answering. The key goes to the keychain. A scan finds the usual local ports, so a model running on this Mac does not have to be typed in."
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tambahkan endpoint apa pun yang kompatibel dengan OpenAI dan beri ring: nama, ikon, warna, anggaran bulanan dalam dolar atau token, serta pemeriksaan langsung yang menunjukkan apakah endpoint tersebut benar-benar merespons. Kunci tersebut disimpan di keychain. Pemindaian menemukan port lokal yang umum digunakan, sehingga model yang berjalan di Mac ini tidak perlu diketikkan."
+          }
         }
       }
     },
@@ -44099,6 +44487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "A ring for the Amp CLI, read from the sign-in it already has."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring untuk Amp CLI, diambil dari info masuk yang sudah dimilikinya."
           }
         }
       }
@@ -44111,6 +44505,12 @@
             "state": "translated",
             "value": "한국어 and Oʻzbekcha"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한국어 dan Oʻzbekcha"
+          }
         }
       }
     },
@@ -44121,6 +44521,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Korean is the most completely translated language in the app, on the Mac and on Windows. Uzbek joins in Latin script. The release notes you are reading were the last thing missing from several languages, and are now in the catalogue too."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bahasa Korea adalah bahasa dengan terjemahan paling lengkap di aplikasi ini, baik di Mac maupun Windows. Bahasa Uzbek hadir dalam aksara Latin. Catatan rilis yang sedang Anda baca adalah bagian terakhir yang belum tersedia dalam beberapa bahasa, dan kini juga sudah ada di katalog."
           }
         }
       }
@@ -44133,6 +44539,12 @@
             "state": "translated",
             "value": "Rings that know whose account they are"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring yang mengenali akun pemiliknya"
+          }
         }
       }
     },
@@ -44143,6 +44555,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "A Claude ring is named after the account behind it rather than the folder it was found in, a session the desktop app hosts is drawn against the account that owns it, and every Codex conversation is named and counted separately. You can rename any account, and the new name is used everywhere at once."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ring Claude dinamai berdasarkan akun di baliknya, bukan folder tempat ring itu ditemukan, sesi yang dihosting aplikasi desktop ditampilkan bersama akun pemiliknya, dan setiap percakapan Codex diberi nama serta dihitung secara terpisah. Anda dapat mengganti nama akun apa pun, dan nama baru tersebut langsung digunakan di mana-mana."
           }
         }
       }
@@ -44155,6 +44573,12 @@
             "state": "translated",
             "value": "Quieter"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lebih senyap"
+          }
         }
       }
     },
@@ -44165,6 +44589,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opening Codenotch no longer announces a limit that was reached long before: a reading kept from last time is no longer mistaken for something that just happened. Clicking the notch to hold it open lasts the session rather than for good, so the full-screen fold is never disabled behind your back."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membuka Codenotch tidak lagi mengumumkan batas yang sudah tercapai jauh sebelumnya: data pembacaan yang tersimpan dari sebelumnya tidak lagi disalahartikan sebagai sesuatu yang baru saja terjadi. Mengklik notch agar tetap terbuka kini berlaku selama sesi, bukan selamanya, sehingga fitur lipatan layar penuh tidak pernah dinonaktifkan tanpa sepengetahuan Anda."
           }
         }
       }
@@ -44177,6 +44607,12 @@
             "state": "translated",
             "value": "The menu bar shows more"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bar menu menampilkan lebih banyak"
+          }
         }
       }
     },
@@ -44187,6 +44623,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Weekly usage beside the five-hour window, and its own switch reachable from the menu bar itself."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Penggunaan mingguan di samping jendela lima jam, serta sakelar tersendiri yang dapat diakses langsung dari bar menu."
           }
         }
       }
@@ -44199,6 +44641,12 @@
             "state": "translated",
             "value": "A lighter Windows notch"
           }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notch Windows yang lebih ringan"
+          }
         }
       }
     },
@@ -44209,6 +44657,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "A Theme row — System, Light or Dark — that the notch, the settings window and the drag overlay all follow. Português (Brasil) joins the Windows port, and the move handle stays on screen while you drag it."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baris Tema — Sistem, Terang, atau Gelap — yang diikuti oleh notch, jendela pengaturan, dan overlay saat menyeret. Português (Brasil) ditambahkan ke port Windows, dan pegangan pemindahan tetap terlihat di layar saat Anda menyeretnya."
           }
         }
       }
