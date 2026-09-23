@@ -170,9 +170,15 @@ dmg: archive
 	rm -rf $(RELEASE_DIR)/stage
 	mkdir -p $(RELEASE_DIR)/stage
 	cp -R $(RELEASE_DIR)/$(APP_NAME).app $(RELEASE_DIR)/stage/
-	ln -s /Applications $(RELEASE_DIR)/stage/Applications
-	hdiutil create -volname "$(APP_NAME)" -srcfolder $(RELEASE_DIR)/stage \
-		-ov -format UDZO $(DMG)
+	create-dmg \
+		--volname "$(APP_NAME)" \
+		--window-size 600 460 \
+		--icon-size 128 \
+		--icon "$(APP_NAME).app" 120 99 \
+		--app-drop-link 490 258 \
+		--hide-extension "$(APP_NAME).app" \
+		--background "assets/dmg-background.png" \
+		$(DMG) $(RELEASE_DIR)/stage
 	codesign --force --sign "Developer ID Application" --timestamp $(DMG)
 	@# The app is inside the dmg now. Leaving the loose copies around is how
 	@# three spare "Codenotch" entries end up in Spotlight; everything
@@ -336,13 +342,20 @@ build-ci: gen
 # executable bit on the way, which takes an .app bundle apart — the framework
 # inside it is symlinks. A dmg arrives as a single opaque file instead.
 dmg-ci: build-ci
+	rm -f $(CI_DMG)
 	rm -rf $(CI_DIR)/stage
 	mkdir -p $(CI_DIR)/stage
 	cp -R $(CI_APP) $(CI_DIR)/stage/
-	ln -s /Applications $(CI_DIR)/stage/Applications
 	for i in 1 2 3; do \
-		hdiutil create -volname "$(APP_NAME)" -srcfolder $(CI_DIR)/stage \
-			-ov -format UDZO $(CI_DMG) && break || sleep 2; \
+		create-dmg \
+			--volname "$(APP_NAME)" \
+			--window-size 600 460 \
+			--icon-size 128 \
+			--icon "$(APP_NAME).app" 120 99 \
+			--app-drop-link 490 258 \
+			--hide-extension "$(APP_NAME).app" \
+			--background "assets/dmg-background.png" \
+			$(CI_DMG) $(CI_DIR)/stage && break || sleep 2; \
 	done
 	rm -rf $(CI_DIR)/stage
 	@echo "Unsigned disk image: $(CI_DMG)"
