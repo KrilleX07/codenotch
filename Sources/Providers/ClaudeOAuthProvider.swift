@@ -97,9 +97,11 @@ actor ClaudeOAuthProvider: UsageProvider {
     private var lastCLIWindows: (windows: [LimitWindow], at: Date)?
     /// The named tier the last `/usage` print named, if it named one.
     private var lastCLIPlan: String?
-    /// Stamped on every spawn, successful or not. Without it a Claude Code that
-    /// is installed but signed out costs a process on every tick, forever.
-    private var lastCLIAttempt: Date?
+    /// Stamped when Claude Code fails with `needsAuth` (signed out). Without it,
+    /// a Claude Code that is installed but signed out costs a process on every tick,
+    /// forever. Transient failures do not set this so a momentary blip can retry
+    /// on the next tick without locking out the CLI for five minutes.
+    private var lastCLIFailure: Date?
 
     /// `displayName` is injected only so a set of profiles can be named
     /// together: two accounts on one provider derive the same name from their
@@ -351,19 +353,22 @@ actor ClaudeOAuthProvider: UsageProvider {
            !Self.hasExpiredWindow(last.windows, at: now) {
             return last.windows
         }
-        if let lastCLIAttempt, now.timeIntervalSince(lastCLIAttempt) < cliRefreshInterval {
+        if let lastCLIFailure, now.timeIntervalSince(lastCLIFailure) < cliRefreshInterval {
             return nil
         }
-        lastCLIAttempt = now
 
         do {
             let reading = try await cli.readWithPlan(profile: profile, now: now)
             lastCLIWindows = (reading.windows, now)
             lastCLIPlan = reading.plan
+            lastCLIFailure = nil
             Log.usage.debug("\(self.id, privacy: .public): read \(reading.windows.count) windows from claude /usage")
             return reading.windows
         } catch {
             Log.usage.debug("\(self.id, privacy: .public): claude /usage did not answer, falling back to the token")
+            if case UsageProviderError.needsAuth = error {
+                lastCLIFailure = now
+            }
             return nil
         }
     }
