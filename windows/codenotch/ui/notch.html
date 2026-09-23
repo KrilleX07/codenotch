@@ -306,7 +306,7 @@ function applyTheme(name){
 invoke('get_theme_resolved').then(applyTheme).catch(()=>{});
 listen('theme_resolved',e=>applyTheme(e.payload)).catch(()=>{});
 let colorTransition='hard_step';
-const stepTone=f=> f>=0.8?CRIT : f>=0.5?WATCH : AMPLE;
+const stepTone=f=> f>=0.7?CRIT : f>=0.5?WATCH : AMPLE;
 // A continuous sRGB ramp across the whole range: the Windows watch cut has always been 50%, so
 // this is a named equivalence rather than a magic number. Windows has no watch-limit slider.
 const WATCH_AT=0.5;
