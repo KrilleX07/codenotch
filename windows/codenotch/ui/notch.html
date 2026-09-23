@@ -3,24 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <style>
+  /* The palette. Dark is the notch as it has always been drawn; light is the same shapes in the
+     inks Settings already uses, plus the Mac's own light secondary (#6b6b6b, Palette.textSecondary).
+     Which of the two is drawn is Rust's answer to get_theme_resolved, never a guess made here. */
+  :root{
+    --pill:#000; --edge:#2e2e2e; --card:#0a0a0a; --card-line:#242424; --card-rule:#1e1e1e;
+    --bar:#2d2d2d; --track:#303030; --hole:#2a2a2a;
+    --ample:#00FF88; --watch:#F2FF00; --crit:#FF3F00;
+    --ink:#ffffff; --ink-2:#e8e8ea; --ink-3:#c8c8c8; --ink-4:#b0b0b3; --ink-dim:#808080;
+    --btn:#252525; --btn-line:#555; --btn-hover:#383838; --btn-line-hover:#aaa;
+    --armed:rgba(0,0,0,.72);
+  }
+  /* Rust resolves the choice — Light, Dark, or what Windows is set to — and the page is told, rather
+     than reading prefers-color-scheme: correcting a live window's theme does not reliably reach
+     WebView2's own scheme, which left a dark page under a light Mica. */
+  :root[data-theme="light"]{
+    --pill:#f5f5f7; --edge:#d2d2d7; --card:#ffffff; --card-line:#e4e4e8; --card-rule:#e8e8ec;
+    --bar:rgba(0,0,0,.15); --track:rgba(0,0,0,.16); --hole:#ffffff;
+    /* Palette.ample and .watch carry a light value of their own; .critical is "already 3.5:1 on
+       white", in its words, so it is the one band that does not change. */
+    --ample:#00A356; --watch:#B08800; --crit:#FF3F00;
+    --ink:#1d1d1f; --ink-2:#1d1d1f; --ink-3:#3c3c43; --ink-4:#4a4a4f; --ink-dim:#6b6b6b;
+    --btn:#ffffff; --btn-line:#c6c6cc; --btn-hover:#f0f0f2; --btn-line-hover:#8e8e93;
+    --armed:rgba(255,255,255,.78);
+  }
   .c-auth{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-  .c-auth button{font:inherit;font-size:11px;color:#fff;background:#252525;border:1px solid #555;border-radius:7px;padding:6px 9px;cursor:pointer}
-  .c-auth button:hover,.c-auth button:focus-visible{background:#383838;border-color:#aaa}
+  .c-auth button{font:inherit;font-size:11px;color:var(--ink);background:var(--btn);border:1px solid var(--btn-line);border-radius:7px;padding:6px 9px;cursor:pointer}
+  .c-auth button:hover,.c-auth button:focus-visible{background:var(--btn-hover);border-color:var(--btn-line-hover)}
   .c-auth button:disabled{opacity:.5;cursor:wait}
-  .c-auth-status{font-size:10px;line-height:1.4;color:#b9b9b9;margin-top:6px;overflow-wrap:anywhere}
+  .c-auth-status{font-size:10px;line-height:1.4;color:var(--ink-3);margin-top:6px;overflow-wrap:anywhere}
   /* Visual reference: upstream docs/specs/2026-08-28-usage-notch-design.md, reproduced for Windows */
   *{box-sizing:border-box} /* content-box padding once pushed the card past the window's left edge */
   html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden;user-select:none}
-  body{font-family:"Segoe UI",system-ui,sans-serif;color:#fff}
+  body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
   #root{position:relative;width:100%;height:100%}
 
   /* The pill on the right edge */
   #pill{
     position:absolute;right:0;top:50%;transform:translateY(-50%);
-    width:70px;padding:18px 0;background:#000;
+    width:70px;padding:18px 0;background:var(--pill);
     border-radius:20px 0 0 20px;
     /* Stays visible on dark wallpapers: a thin stroke plus a faint glow, the only outline when black sits on black */
-    border:1px solid #2e2e2e;border-right:none;
+    border:1px solid var(--edge);border-right:none;
     box-shadow:none;
     display:flex;flex-direction:column;align-items:center;gap:14px;cursor:pointer;
   }
@@ -36,11 +60,11 @@
   #pill{--fillet:38.7px}
   #pill::before{
     top:calc(-1 * var(--fillet)); /* covers the 1 px stroke along the pill's top edge so there is no seam */
-    background:radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+    background:radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px));
   }
   #pill::after{
     bottom:calc(-1 * var(--fillet));
-    background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px));
+    background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px));
   }
   .cell{display:flex;flex-direction:column;align-items:center;gap:6px}
   /* The ring takes the Mac's own share of the body, NotchLayout.ringDiameter against sideBodyDepth: 44 in
@@ -53,18 +77,18 @@
   .ringwrap > svg.ring,.ringwrap > svg.reading,.ringwrap > svg.activity{position:absolute;inset:0;overflow:visible} /* pins only the ring itself; an inline logo svg must not match this or it ends up in the top-left corner */
   .glyph{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-size:calc(20px * var(--k));font-weight:700;color:#e8e8ea;letter-spacing:-.5px;
+    font-size:calc(20px * var(--k));font-weight:700;color:var(--ink-2);letter-spacing:-.5px;
   }
   .glyph.small{font-size:calc(15px * var(--k))}
   /* Glyphs: mark = the provider's own brand mark (monochrome, shown white); appicon = the installed app's icon (colour, rounded and shrunk) */
   .glyph img,.glyph svg{display:block;pointer-events:none;user-select:none}
-  .glyph .mark{display:block;width:calc(26px * var(--k));height:calc(26px * var(--k));color:#e8e8ea}
+  .glyph .mark{display:block;width:calc(26px * var(--k));height:calc(26px * var(--k));color:var(--ink-2)}
   .glyph .mark svg{width:calc(26px * var(--k));height:calc(26px * var(--k));fill:currentColor} /* inline SVG follows currentColor, so it dims together with the cell */
   .glyph img.png{width:calc(26px * var(--k));height:calc(26px * var(--k));object-fit:contain}
   .glyph img.appicon{width:calc(30px * var(--k));height:calc(30px * var(--k));border-radius:calc(8px * var(--k));object-fit:cover}
-  .c-head .mark{display:inline-block;width:16px;height:16px;color:#e8e8ea;margin-right:2px}
+  .c-head .mark{display:inline-block;width:16px;height:16px;color:var(--ink-2);margin-right:2px}
   .c-head .mark svg{width:16px;height:16px;fill:currentColor}
-  .pct{font-size:15px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums}
+  .pct{font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
   .dim{opacity:.55}
   /* A stale reading dims the reading only. The track, the week and the glyph are all saying the same
      old thing, but whether an agent is running right now is current either way, so the activity arc
@@ -87,7 +111,7 @@
     /* Anchored on both sides = fluid width: whatever the WebView's real logical width, the card cannot
        extend past the window's left edge (a fixed max-width got clipped when the DPI disagreed).
        The 246 cap matches the upstream spec. */
-    max-width:246px;margin-left:auto;background:#0a0a0a;border-radius:16px;padding:16px;
+    max-width:246px;margin-left:auto;background:var(--card);border-radius:16px;padding:16px;
     overflow-wrap:anywhere;min-width:0;
     max-height:calc(100% - 16px);overflow-x:hidden;overflow-y:auto;scrollbar-width:thin; /* actions stay reachable in a tall card */
     display:none;
@@ -98,27 +122,27 @@
      than ::after, so the card's overflow cannot clip it and it can be reported as hot. It spans the
      whole gap, its tip tucked 1 px under the pill's edge so the two meet. */
   #tail{
-    position:absolute;right:69px;width:32px;height:36px;background:#0a0a0a;display:none;
+    position:absolute;right:69px;width:32px;height:36px;background:var(--card);display:none;
     clip-path:path('M0 0C0 9 18.56 13.68 32 18C18.56 22.32 0 27 0 36Z');
   }
   #card.show + #tail{display:block}
   .c-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
   .c-title{font-size:14px;font-weight:700}
-  .c-sub{font-size:11px;color:#808080;margin-bottom:10px}
+  .c-sub{font-size:11px;color:var(--ink-dim);margin-bottom:10px}
   .win{margin-top:10px}
   .w-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;flex-wrap:wrap;column-gap:8px}
-  .w-label{color:#e8e8ea;font-weight:600;white-space:nowrap}
-  .w-reset{color:#808080;font-size:11px;white-space:nowrap;margin-left:auto} /* wrap as a whole when it does not fit; never break inside a word */
-  .w-track{height:4px;border-radius:2px;background:#2d2d2d;margin:6px 0 4px;overflow:hidden}
+  .w-label{color:var(--ink-2);font-weight:600;white-space:nowrap}
+  .w-reset{color:var(--ink-dim);font-size:11px;white-space:nowrap;margin-left:auto} /* wrap as a whole when it does not fit; never break inside a word */
+  .w-track{height:4px;border-radius:2px;background:var(--bar);margin:6px 0 4px;overflow:hidden}
   .w-fill{height:100%;border-radius:2px}
-  .w-used{font-size:11px;color:#808080}
-  .g-head{font-size:12px;font-weight:700;color:#e8e8ea;margin-top:12px}
-  .g-box{border:1px solid #242424;border-radius:10px;padding:0 10px 8px;margin-top:6px}
-  .c-note{font-size:12px;color:#c8c8c8;line-height:1.5;margin-top:6px}
-  .c-sessions{margin-top:12px;border-top:1px solid #1e1e1e;padding-top:8px}
-  .s-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#b0b0b3;padding:2px 0}
+  .w-used{font-size:11px;color:var(--ink-dim)}
+  .g-head{font-size:12px;font-weight:700;color:var(--ink-2);margin-top:12px}
+  .g-box{border:1px solid var(--card-line);border-radius:10px;padding:0 10px 8px;margin-top:6px}
+  .c-note{font-size:12px;color:var(--ink-3);line-height:1.5;margin-top:6px}
+  .c-sessions{margin-top:12px;border-top:1px solid var(--card-rule);padding-top:8px}
+  .s-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-4);padding:2px 0}
   .s-dot{width:6px;height:6px;border-radius:3px;flex:0 0 auto}
-  .s-more{font-size:11px;color:#808080;padding:2px 0}
+  .s-more{font-size:11px;color:var(--ink-dim);padding:2px 0}
 
   /* ---- The other three edges -------------------------------------------------
      The rules above draw the right-hand edge, the original layout and still the default. Each block
@@ -131,10 +155,10 @@
      is the concave arc between the two. */
 
   /* Left: the right-hand layout mirrored. */
-  body[data-edge="left"] #pill{right:auto;left:0;border-radius:0 20px 20px 0;border-right:1px solid #2e2e2e;border-left:none}
+  body[data-edge="left"] #pill{right:auto;left:0;border-radius:0 20px 20px 0;border-right:1px solid var(--edge);border-left:none}
   body[data-edge="left"] #pill::before,body[data-edge="left"] #pill::after{right:auto;left:0}
-  body[data-edge="left"] #pill::before{background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px))}
-  body[data-edge="left"] #pill::after{background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px))}
+  body[data-edge="left"] #pill::before{background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
+  body[data-edge="left"] #pill::after{background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
   body[data-edge="left"] #card{left:100px;right:10px;margin-left:0;margin-right:auto}
   body[data-edge="left"] #tail{right:auto;left:69px;clip-path:path('M32 0C32 9 13.44 13.68 0 18C13.44 22.32 32 27 32 36Z')}
 
@@ -147,11 +171,11 @@
   body[data-edge="top"] #pill::before,body[data-edge="top"] #pill::after,
   body[data-edge="bottom"] #pill::before,body[data-edge="bottom"] #pill::after{right:auto;top:auto;bottom:auto}
   body[data-edge="top"] #pill{top:0;border-radius:0 0 20px 20px;border-top:none}
-  body[data-edge="top"] #pill::before{top:0;left:calc(-1 * var(--fillet));background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px))}
-  body[data-edge="top"] #pill::after{top:0;right:calc(-1 * var(--fillet));background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px))}
+  body[data-edge="top"] #pill::before{top:0;left:calc(-1 * var(--fillet));background:radial-gradient(circle at 0 100%, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
+  body[data-edge="top"] #pill::after{top:0;right:calc(-1 * var(--fillet));background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
   body[data-edge="bottom"] #pill{bottom:0;border-radius:20px 20px 0 0;border-bottom:none}
-  body[data-edge="bottom"] #pill::before{bottom:0;left:calc(-1 * var(--fillet));background:radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px))}
-  body[data-edge="bottom"] #pill::after{bottom:0;right:calc(-1 * var(--fillet));background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), #2e2e2e calc(var(--fillet) - 0.5px), #000 calc(var(--fillet) + 0.5px))}
+  body[data-edge="bottom"] #pill::before{bottom:0;left:calc(-1 * var(--fillet));background:radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
+  body[data-edge="bottom"] #pill::after{bottom:0;right:calc(-1 * var(--fillet));background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
   /* A fixed width here, not the fluid one the upright edges use: `placeCard` measures the card to
      centre it, and a shrink-to-fit width would change as it moves. 246 is the upstream cap either way. */
   body[data-edge="top"] #card,body[data-edge="bottom"] #card{
@@ -176,12 +200,12 @@
   body[data-edge="top"] #pill,body[data-edge="bottom"] #pill{--clip-open:inset(-1px -40px -1px -40px round 0)}
   body[data-edge="top"] #pill{--clip-rest:inset(0 calc(50% - 39.5px) calc(100% - 10px) calc(50% - 39.5px) round 0 0 6px 6px)}
   body[data-edge="bottom"] #pill{--clip-rest:inset(calc(100% - 10px) calc(50% - 39.5px) 0 calc(50% - 39.5px) round 6px 6px 0 0)}
-  #rest{position:absolute;box-sizing:border-box;background:#000;border:1px solid #2e2e2e;pointer-events:none;
+  #rest{position:absolute;box-sizing:border-box;background:var(--pill);border:1px solid var(--edge);pointer-events:none;
     right:0;top:50%;translate:0 -50%;width:10px;height:79px;border-right:none;border-radius:6px 0 0 6px;
     opacity:0;transition:opacity .16s ease}
   body.folded #rest{opacity:1;transition:opacity .2s ease .18s} /* arrives as the clip does */
-  body[data-edge="left"] #rest{right:auto;left:0;border-right:1px solid #2e2e2e;border-left:none;border-radius:0 6px 6px 0}
-  body[data-edge="top"] #rest,body[data-edge="bottom"] #rest{right:auto;left:50%;top:auto;translate:-50% 0;width:79px;height:10px;border:1px solid #2e2e2e}
+  body[data-edge="left"] #rest{right:auto;left:0;border-right:1px solid var(--edge);border-left:none;border-radius:0 6px 6px 0}
+  body[data-edge="top"] #rest,body[data-edge="bottom"] #rest{right:auto;left:50%;top:auto;translate:-50% 0;width:79px;height:10px;border:1px solid var(--edge)}
   body[data-edge="top"] #rest{top:0;border-top:none;border-radius:0 0 6px 6px}
   body[data-edge="bottom"] #rest{bottom:0;border-bottom:none;border-radius:6px 6px 0 0}
   /* The rings leave by fading and sliding a little toward the edge, one after another — the Mac's
@@ -205,14 +229,16 @@
   .handle.hover{cursor:pointer}
   .handle > *{position:absolute;left:50%;top:50%;pointer-events:none;transition:opacity .2s,transform .36s cubic-bezier(.34,1.3,.64,1)}
   .h-rest{width:72px;height:72px;margin:-36px 0 0 -36px;overflow:visible;transform:rotate(var(--arc)) scale(1)}
-  .h-disc{width:46.6px;height:46.6px;margin:-23.3px 0 0 -23.3px;border-radius:50%;background:#000;border:1px solid #2e2e2e;opacity:0;transform:scale(1.1)}
-  .h-glyph{width:21px;height:21px;margin:-10.5px 0 0 -10.5px;fill:#e8e8ea;opacity:0;
+  .h-disc{width:46.6px;height:46.6px;margin:-23.3px 0 0 -23.3px;border-radius:50%;background:var(--pill);border:1px solid var(--edge);opacity:0;transform:scale(1.1)}
+  .h-ring{stroke:var(--edge)}
+  .h-fill{stroke:var(--pill)}
+  .h-glyph{width:21px;height:21px;margin:-10.5px 0 0 -10.5px;fill:var(--ink-2);opacity:0;
     transform:rotate(calc(var(--spins,0) * 360deg - 60deg)) scale(.5);transition:opacity .2s,transform .55s cubic-bezier(.34,1.2,.64,1)}
   .handle.hover .h-rest{opacity:0;transform:rotate(var(--arc)) scale(.86)}
   .handle.hover .h-disc{opacity:1;transform:scale(1)}
   .handle.hover .h-glyph{opacity:1;transform:rotate(calc(var(--spins,0) * 360deg)) scale(1)}
   /* Carrying: the disc goes dashed and the hand stops turning — it is being held now, not offered */
-  #move.armed .h-disc{border:2px dashed #e8e8ea;background:rgba(0,0,0,.72)}
+  #move.armed .h-disc{border:2px dashed var(--ink-2);background:var(--armed)}
   /* The quarter that faces the fillet: up and outward past the far end on the right, and the same two
      directions mirrored along the stack at the near end */
   body[data-edge="left"] #orb,body[data-edge="top"] #orb{--arc:180deg}
@@ -229,8 +255,8 @@
   <div id="tail"></div>
   <div id="move" class="handle">
     <svg class="h-rest" viewBox="-36 -36 72 72" aria-hidden="true">
-      <circle r="28.5" fill="none" stroke="#2e2e2e" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
-      <circle r="28.5" fill="none" stroke="#000" stroke-width="6.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
+      <circle class="h-ring" r="28.5" fill="none" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
+      <circle class="h-fill" r="28.5" fill="none" stroke-width="6.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
     </svg>
     <div class="h-disc"></div>
     <!-- A hand, as on the Mac: the gesture is a carry, not a nudge, which is what arrows would say -->
@@ -240,8 +266,8 @@
   </div>
   <div id="orb" class="handle">
     <svg class="h-rest" viewBox="-36 -36 72 72" aria-hidden="true">
-      <circle r="28.5" fill="none" stroke="#2e2e2e" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
-      <circle r="28.5" fill="none" stroke="#000" stroke-width="6.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
+      <circle class="h-ring" r="28.5" fill="none" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
+      <circle class="h-fill" r="28.5" fill="none" stroke-width="6.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
     </svg>
     <div class="h-disc"></div>
     <svg class="h-glyph" viewBox="0 0 12 12" aria-hidden="true"><path fill-rule="evenodd" d="M5.1.6h1.8l.3 1.5 1.1.5 1.3-.8 1.3 1.3-.8 1.3.5 1.1 1.5.3v1.8l-1.5.3-.5 1.1.8 1.3-1.3 1.3-1.3-.8-1.1.5-.3 1.5H5.1l-.3-1.5-1.1-.5-1.3.8-1.3-1.3.8-1.3-.5-1.1L.6 6.9V5.1l1.5-.3.5-1.1-.8-1.3 1.3-1.3 1.3.8 1.1-.5zM6 4.1a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8z"/></svg>
@@ -255,10 +281,30 @@ const invoke = window.__TAURI__.core.invoke;
 const listen = window.__TAURI__.event.listen;
 
 /* Colour ramp (upstream palette values) */
-const AMPLE='#00FF88', WATCH='#F2FF00', CRIT='#FF3F00';
+let AMPLE='#00FF88', WATCH='#F2FF00', CRIT='#FF3F00';
 // The status arc is neutral on purpose: the ring behind it is coloured by how much of the limit
 // is gone, and a green arc inside it reads as part of that scale. Waiting borrows the warning yellow.
-const TRACK='#303030', INK='#ffffff', DIM='#808080';
+let TRACK='#303030', INK='#ffffff', DIM='#808080', HOLE='#2a2a2a';
+// The arcs and the card's dots are drawn into SVG and inline styles, where `var()` does not reach,
+// so the palette is read back out of the page instead of written down twice.
+function readPalette(){
+  const s=getComputedStyle(document.documentElement);
+  const v=(name,fallback)=>s.getPropertyValue(name).trim()||fallback;
+  TRACK=v('--track',TRACK); INK=v('--ink',INK); DIM=v('--ink-dim',DIM); HOLE=v('--hole',HOLE);
+  AMPLE=v('--ample',AMPLE); WATCH=v('--watch',WATCH); CRIT=v('--crit',CRIT);
+}
+readPalette();
+/* The palette switches on this attribute, and what is drawn into SVG is redrawn by hand, since
+   var() does not reach it. `dark` is the default the CSS already holds, so a failed ask changes
+   nothing rather than leaving the page half-painted. */
+function applyTheme(name){
+  document.documentElement.dataset.theme = name === 'light' ? 'light' : 'dark';
+  readPalette();
+  renderRing();
+  if(card&&card.classList.contains('show')) renderCard();
+}
+invoke('get_theme_resolved').then(applyTheme).catch(()=>{});
+listen('theme_resolved',e=>applyTheme(e.payload)).catch(()=>{});
 const tone=f=> f>=0.8?CRIT : f>=0.5?WATCH : AMPLE;
 // Whole percents, except where rounding would read as nothing used or nothing left, as the Mac's Percent does
 function smallPct(v){
@@ -1018,7 +1064,7 @@ function renderRing(){
     const cell=pill.querySelector(`.cell[data-p="${p.id}"]`); if(!cell) continue;
     const svg=cell.querySelector('svg.ring'), reading=cell.querySelector('svg.reading'), activity=cell.querySelector('svg.activity'), pct=cell.querySelector('.pct'), glyph=cell.querySelector('.glyph'), wrap=cell.querySelector('.ringwrap');
     const h=headlineOf(p.snap,p.base);
-    let inner=`<circle cx="28" cy="28" r="22" fill="#2a2a2a"/><circle cx="28" cy="28" r="25" fill="none" stroke="${TRACK}" stroke-width="5"/>`;
+    let inner=`<circle cx="28" cy="28" r="22" fill="${HOLE}"/><circle cx="28" cy="28" r="25" fill="none" stroke="${TRACK}" stroke-width="5"/>`;
     wrap.classList.toggle('pressed',!!refreshing[p.id]);
     reading.innerHTML=h && h.count==null?svgArc(25,Math.min(h.used,1),tone(h.used),5):'';
     if(weeklyRing!=='off'){ // the week, thinner and at its own radius, in its own colour: a session at 12% beside a week at 91% is the case this exists for

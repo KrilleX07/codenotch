@@ -32,6 +32,28 @@ final class UsageStore: ObservableObject {
 
     private var providers: [UsageProvider]
 
+    /// Names chosen in Settings, by provider id. Applied to every snapshot the
+    /// store publishes, so the notch, the menu bar, the cards and the
+    /// notifications all call an account what its owner does.
+    var nicknames: [String: String] = [:] {
+        didSet {
+            guard nicknames != oldValue else { return }
+            snapshots = snapshots.map(named)
+        }
+    }
+
+    /// The snapshot with the chosen name, or the provider's own one back when
+    /// the name was cleared.
+    private func named(_ snapshot: ProviderSnapshot) -> ProviderSnapshot {
+        var snapshot = snapshot
+        if let nickname = nicknames[snapshot.id] {
+            snapshot.displayName = nickname
+        } else if let provider = providers.first(where: { $0.id == snapshot.id }) {
+            snapshot.displayName = provider.displayName
+        }
+        return snapshot
+    }
+
     func registerCustomProviders(_ custom: [UsageProvider]) {
         providers.removeAll { $0.id.hasPrefix("custom-endpoint-") }
         providers.append(contentsOf: custom)
@@ -502,7 +524,7 @@ final class UsageStore: ObservableObject {
     private func publish(_ snapshot: ProviderSnapshot) {
         guard !disconnected.contains(snapshot.id) else { return }
         var current = Dictionary(uniqueKeysWithValues: snapshots.map { ($0.id, $0) })
-        current[snapshot.id] = snapshot
+        current[snapshot.id] = named(snapshot)
         snapshots = orderedProviders.compactMap { disconnected.contains($0.id) ? nil : current[$0.id] }
     }
 

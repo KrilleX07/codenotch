@@ -32,6 +32,40 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.17.0",
+                headline: L10n.t("Your own endpoints, 한국어 and Oʻzbekcha, and a notch that knows whose account it is."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Your own endpoints"),
+                        detail: L10n.t("Add any OpenAI-compatible endpoint and give it a ring: a name, an icon, a colour, a monthly budget in dollars or tokens, and a live check that says whether it is actually answering. The key goes to the keychain. A scan finds the usual local ports, so a model running on this Mac does not have to be typed in.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Amp"),
+                        detail: L10n.t("A ring for the Amp CLI, read from the sign-in it already has.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("한국어 and Oʻzbekcha"),
+                        detail: L10n.t("Korean is the most completely translated language in the app, on the Mac and on Windows. Uzbek joins in Latin script. The release notes you are reading were the last thing missing from several languages, and are now in the catalogue too.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Rings that know whose account they are"),
+                        detail: L10n.t("A Claude ring is named after the account behind it rather than the folder it was found in, a session the desktop app hosts is drawn against the account that owns it, and every Codex conversation is named and counted separately. You can rename any account, and the new name is used everywhere at once.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Quieter"),
+                        detail: L10n.t("Opening Codenotch no longer announces a limit that was reached long before: a reading kept from last time is no longer mistaken for something that just happened. Clicking the notch to hold it open lasts the session rather than for good, so the full-screen fold is never disabled behind your back.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The menu bar shows more"),
+                        detail: L10n.t("Weekly usage beside the five-hour window, and its own switch reachable from the menu bar itself.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A lighter Windows notch"),
+                        detail: L10n.t("A Theme row — System, Light or Dark — that the notch, the settings window and the drag overlay all follow. Português (Brasil) joins the Windows port, and the move handle stays on screen while you drag it.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.16.0",
                 headline: L10n.t("Windows updates itself, five-hour limits in the menu bar, and a notch you can fold away."),
                 changes: [

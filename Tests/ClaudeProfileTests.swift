@@ -32,12 +32,17 @@ final class ClaudeProfileTests: XCTestCase {
 
     /// The default keeps the id it has always had, so archived readings and
     /// connection choices survive the update.
-    func testTheDefaultProfileIsUnchanged() {
-        let profile = ClaudeProfile.default(home: URL(fileURLWithPath: "/Users/vinz"))
+    func testTheDefaultProfileIsUnchanged() throws {
+        // A home that cannot be anybody's. `/Users/vinz` was standing in for a
+        // synthetic one, which it is on CI and is not on the machine this was
+        // written on: once `displayName` began reading `.claude.json`, the test
+        // started naming the developer's own account.
+        let home = try home([:])
+        let profile = ClaudeProfile.default(home: home)
         XCTAssertNil(profile.slug)
         XCTAssertEqual(profile.id, "claude")
         XCTAssertEqual(profile.displayName, "Claude")
-        XCTAssertEqual(profile.sessionsDirectory.path, "/Users/vinz/.claude/sessions")
+        XCTAssertEqual(profile.sessionsDirectory.path, home.appendingPathComponent(".claude/sessions").path)
         XCTAssertEqual(profile.sourceName, "Claude Code")
         XCTAssertEqual(profile.signInCommand, "claude")
     }
@@ -245,11 +250,13 @@ final class ClaudeProfileTests: XCTestCase {
     /// Two providers, one id each, both drawn: the store has no idea they are
     /// the same tool and must not collapse them.
     @MainActor
-    func testTwoProfilesAreTwoCells() {
+    func testTwoProfilesAreTwoCells() throws {
         let name = "ClaudeProfileTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
         defaults.removePersistentDomain(forName: name)
-        let home = URL(fileURLWithPath: "/Users/vinz")
+        // Signed out, so the names come from the directories rather than from
+        // whichever account happens to be signed in on this machine.
+        let home = try home([:])
         let store = UsageStore(
             providers: [
                 // `cli: nil` throughout: this is about two profiles being two
@@ -366,5 +373,153 @@ final class ClaudeProfileTests: XCTestCase {
             try FileManager.default.setAttributes([.modificationDate: stamp],
                                                   ofItemAtPath: url.path)
         }
+    }
+}
+
+
+/// A Claude ring named after the account it is for, rather than after the
+/// directory that account happens to live in.
+///
+/// The directory could never answer the question two rings raise. The default
+/// profile is always `~/.claude`, so the account most people use every day was
+/// the one ring with no name on it at all — just "Claude" — and a second login
+/// was named for its folder, `Claude (work)`, whoever was actually signed in to
+/// it. The address Claude Code already writes into `.claude.json` is the real
+/// answer, and reading it costs no keychain prompt.
+final class ClaudeAccountNameTests: XCTestCase {
+
+    // MARK: - The label itself
+
+    func testTheDomainNamesTheAccount() {
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "someone@gmail.com"), "Gmail")
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "someone@hotmail.com"), "Hotmail")
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "vinz@acme.co.uk"), "Acme")
+    }
+
+    /// The local part is the same word on every account one person owns; the
+    /// domain is what tells a personal login from a work one.
+    func testTheLocalPartIsNotTheLabel() {
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "gmail@acme.com"), "Acme")
+    }
+
+    /// An address with more than one `@` is not ours to reject — take the last
+    /// one, as every mail system does.
+    func testTheLastAtWins() {
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "a@b@acme.com"), "Acme")
+    }
+
+    /// Capitalisation only, never a rewrite: a domain written in caps stays
+    /// readable rather than being lowercased into something it is not.
+    func testOnlyTheFirstLetterIsTouched() {
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "someone@IBM.com"), "IBM")
+        XCTAssertEqual(ClaudeProfile.accountLabel(forAddress: "someone@McMail.com"), "McMail")
+    }
+
+    /// Every way there is no label to give. `Claude` alone beats `Claude 1`.
+    func testNoLabelRatherThanANonsenseOne() {
+        XCTAssertNil(ClaudeProfile.accountLabel(forAddress: nil))
+        XCTAssertNil(ClaudeProfile.accountLabel(forAddress: ""))
+        XCTAssertNil(ClaudeProfile.accountLabel(forAddress: "no-at-sign"))
+        XCTAssertNil(ClaudeProfile.accountLabel(forAddress: "someone@"))
+        XCTAssertNil(ClaudeProfile.accountLabel(forAddress: "someone@.com"))
+        XCTAssertNil(ClaudeProfile.accountLabel(forAddress: "someone@123.45"))
+    }
+
+    // MARK: - The name a ring is drawn with
+
+    func testTheDefaultProfileIsNamedForItsAccount() throws {
+        let home = try home(default: "paulo@gmail.com")
+        XCTAssertEqual(ClaudeProfile.default(home: home).displayName, "Claude Gmail")
+    }
+
+    func testANamedProfileIsNamedForItsAccountToo() throws {
+        let home = try home(default: "paulo@gmail.com", work: "paulo@hotmail.com")
+        XCTAssertEqual(profile(slug: "work", in: home).displayName, "Claude Hotmail")
+    }
+
+    /// The old spelling is the fallback, not a thing of the past: a profile
+    /// signed out, or one Claude Code has not written `.claude.json` for yet,
+    /// still has to be called something.
+    func testWithoutAnAccountFileTheDirectoryStillNamesIt() throws {
+        let home = try home()
+        XCTAssertEqual(ClaudeProfile.default(home: home).displayName, "Claude")
+        XCTAssertEqual(profile(slug: "work", in: home).displayName, "Claude (work)")
+    }
+
+    // MARK: - Two accounts that would be called the same thing
+
+    /// Two gmail logins would both derive `Claude Gmail`, which is worse than
+    /// the directory names this replaced. Only a caller holding every profile
+    /// can see the clash, so only it can settle it.
+    func testTwoAccountsOnOneProviderFallBackToTheAddress() throws {
+        let home = try home(default: "paulo@gmail.com", work: "eureka@gmail.com")
+        let profiles = [ClaudeProfile.default(home: home), profile(slug: "work", in: home)]
+
+        let names = ClaudeProfile.displayNames(for: profiles)
+
+        XCTAssertEqual(names["claude"], "Claude paulo@gmail.com")
+        XCTAssertEqual(names["claude-work"], "Claude eureka@gmail.com")
+    }
+
+    /// And the profiles that do not clash keep the short name — nobody pays
+    /// for somebody else's collision.
+    func testDistinctAccountsKeepTheShortName() throws {
+        let home = try home(default: "paulo@gmail.com", work: "paulo@hotmail.com")
+        let profiles = [ClaudeProfile.default(home: home), profile(slug: "work", in: home)]
+
+        let names = ClaudeProfile.displayNames(for: profiles)
+
+        XCTAssertEqual(names["claude"], "Claude Gmail")
+        XCTAssertEqual(names["claude-work"], "Claude Hotmail")
+    }
+
+    /// A clash between two profiles that have no address to fall back to — two
+    /// directories called the same thing cannot happen, so this only asks that
+    /// nothing is dropped.
+    func testEveryProfileIsNamedEvenWithNothingToReadFrom() throws {
+        let home = try home()
+        let profiles = [ClaudeProfile.default(home: home), profile(slug: "work", in: home)]
+
+        let names = ClaudeProfile.displayNames(for: profiles)
+
+        XCTAssertEqual(names.count, 2)
+        XCTAssertEqual(names["claude"], "Claude")
+        XCTAssertEqual(names["claude-work"], "Claude (work)")
+    }
+
+    // MARK: -
+
+    /// A home with `~/.claude`, `~/.claude-work`, and an account file for
+    /// whichever of them was given an address. The default profile's file sits
+    /// *beside* its directory and a named profile's sits *inside* it, which is
+    /// Claude Code's own rule — see `ClaudeProfile.accountFileURL`.
+    private func home(default defaultAddress: String? = nil,
+                      work workAddress: String? = nil) throws -> URL {
+        let home = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ClaudeAccountNameTests.\(UUID().uuidString)",
+                                    isDirectory: true)
+        for directory in [".claude", ".claude-work"] {
+            try FileManager.default.createDirectory(
+                at: home.appendingPathComponent(directory), withIntermediateDirectories: true)
+        }
+        addTeardownBlock { try? FileManager.default.removeItem(at: home) }
+
+        if let defaultAddress {
+            try write(defaultAddress, to: home.appendingPathComponent(".claude.json"))
+        }
+        if let workAddress {
+            try write(workAddress, to: home.appendingPathComponent(".claude-work/.claude.json"))
+        }
+        return home
+    }
+
+    private func profile(slug: String, in home: URL) -> ClaudeProfile {
+        ClaudeProfile(slug: slug,
+                      configDirectory: home.appendingPathComponent(".claude-\(slug)"))
+    }
+
+    private func write(_ address: String, to url: URL) throws {
+        let json = #"{"oauthAccount":{"emailAddress":"\#(address)","organizationUuid":"org"}}"#
+        try Data(json.utf8).write(to: url)
     }
 }

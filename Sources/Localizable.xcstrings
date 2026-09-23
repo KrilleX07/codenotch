@@ -1,6 +1,256 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Free balance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费额度余额"
+          }
+        }
+      }
+    },
+    "Amp": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp"
+          }
+        }
+      }
+    },
+    "Amp CLI": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp CLI"
+          }
+        }
+      }
+    },
+    "Agent usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent 用量"
+          }
+        }
+      }
+    },
+    "Orb usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orb 用量"
+          }
+        }
+      }
+    },
+    "Renewal": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "续期"
+          }
+        }
+      }
+    },
+    "About 1 day": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约 1 天"
+          }
+        }
+      }
+    },
+    "About %lld days": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "约 %lld 天"
+          }
+        }
+      }
+    },
+    "Free": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费"
+          }
+        }
+      }
+    },
+    "Free allowance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费额度"
+          }
+        }
+      }
+    },
+    "%@ of %@ left": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剩余 %1$@，共 %2$@"
+          }
+        }
+      }
+    },
+    "Replenishment": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "补充速率"
+          }
+        }
+      }
+    },
+    "%@/hour": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@/小时"
+          }
+        }
+      }
+    },
+    "Couldn't read Amp's secrets.json. Check its file permissions or run amp login again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 Amp 的 secrets.json。请检查文件权限或重新运行 amp login。"
+          }
+        }
+      }
+    },
+    "Amp's secrets.json is invalid. Run amp login again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amp 的 secrets.json 无效。请重新运行 amp login。"
+          }
+        }
+      }
+    },
+    "Amp returned an unrecognized usage response. Try again later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法识别 Amp 返回的用量数据。请稍后重试。"
+          }
+        }
+      }
+    },
+    "Couldn't reach Amp. Check your connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接到 Amp。请检查网络连接。"
+          }
+        }
+      }
+    },
+    "Run amp login in Terminal — the notch reads ~/.local/share/amp/secrets.json.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 amp login，Codenotch 会读取 ~/.local/share/amp/secrets.json。"
+          }
+        }
+      }
+    },
+    "Run amp login in Terminal to read your usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 amp login 以读取用量"
+          }
+        }
+      }
+    },
+    "Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch は、この Mac ですでにサインイン済みのツールから使用量を読み取ります。パスワードを尋ねることはありません。Claude Code（Claude アプリではなくターミナルのツール）、Cursor（エディタまたは cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、Amp、または Gemini API キー（Gemini CLI、OpenCode、Hermes 経由）のいずれかをインストールしてサインインすると、そのリングがノッチに現れます。"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch читає використання з інструментів, у які вже виконано вхід на цьому Mac, і ніколи не питає ваш пароль. Установіть будь-який з них — Claude Code (термінальний інструмент, не застосунок Claude), Cursor (редактор або cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp чи ключ Gemini API (через Gemini CLI, OpenCode або Hermes) — і увійдіть: його кільце зʼявиться у вирізі."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 读取这台 Mac 上已经登录的工具的用量 — 从不问你的密码。安装并登录 Claude Code（终端工具，不是 Claude 应用）、Cursor（编辑器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、Amp 或 Gemini API 密钥（经由 Gemini CLI、OpenCode 或 Hermes）中的任意一个，刘海里就会出现对应的圆环。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 會從這部 Mac 上已登入的工具讀取用量 — 它不會向你要密碼。安裝並登入 Claude Code（終端機工具，不是 Claude App）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、Amp，或 Gemini API 金鑰（透過 Gemini CLI、OpenCode 或 Hermes），對應的圓環就會出現在瀏海上。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor(편집기 또는 cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp 또는 Gemini API 키(Gemini CLI, OpenCode, Hermes 경유)를 사용하는 도구를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
+        }
+      }
+    },
     "just now": {
       "extractionState": "manual",
       "localizations": {
@@ -39061,6 +39311,182 @@
           "stringUnit": {
             "state": "translated",
             "value": "업데이트 확인이 ‘확인 중…’에서 멈추지 않으며 컨텍스트 사용량이 적어도 호를 표시합니다. Claude 계정 파일은 변경될 때만 다시 읽고, 중국어 번체는 대만에서 쓰는 표현으로 다듬었습니다."
+          }
+        }
+      }
+    },
+    "Name this account": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dar nome a esta conta"
+          }
+        }
+      }
+    },
+    "What the notch, the menu bar and notifications call this account. Empty goes back to %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como o notch, a barra de menu e as notificações chamam esta conta. Vazio volta para %@."
+          }
+        }
+      }
+    },
+    "Your own endpoints, 한국어 and Oʻzbekcha, and a notch that knows whose account it is.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your own endpoints, 한국어 and Oʻzbekcha, and a notch that knows whose account it is."
+          }
+        }
+      }
+    },
+    "Your own endpoints": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your own endpoints"
+          }
+        }
+      }
+    },
+    "Add any OpenAI-compatible endpoint and give it a ring: a name, an icon, a colour, a monthly budget in dollars or tokens, and a live check that says whether it is actually answering. The key goes to the keychain. A scan finds the usual local ports, so a model running on this Mac does not have to be typed in.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add any OpenAI-compatible endpoint and give it a ring: a name, an icon, a colour, a monthly budget in dollars or tokens, and a live check that says whether it is actually answering. The key goes to the keychain. A scan finds the usual local ports, so a model running on this Mac does not have to be typed in."
+          }
+        }
+      }
+    },
+    "A ring for the Amp CLI, read from the sign-in it already has.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A ring for the Amp CLI, read from the sign-in it already has."
+          }
+        }
+      }
+    },
+    "한국어 and Oʻzbekcha": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한국어 and Oʻzbekcha"
+          }
+        }
+      }
+    },
+    "Korean is the most completely translated language in the app, on the Mac and on Windows. Uzbek joins in Latin script. The release notes you are reading were the last thing missing from several languages, and are now in the catalogue too.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Korean is the most completely translated language in the app, on the Mac and on Windows. Uzbek joins in Latin script. The release notes you are reading were the last thing missing from several languages, and are now in the catalogue too."
+          }
+        }
+      }
+    },
+    "Rings that know whose account they are": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rings that know whose account they are"
+          }
+        }
+      }
+    },
+    "A Claude ring is named after the account behind it rather than the folder it was found in, a session the desktop app hosts is drawn against the account that owns it, and every Codex conversation is named and counted separately. You can rename any account, and the new name is used everywhere at once.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Claude ring is named after the account behind it rather than the folder it was found in, a session the desktop app hosts is drawn against the account that owns it, and every Codex conversation is named and counted separately. You can rename any account, and the new name is used everywhere at once."
+          }
+        }
+      }
+    },
+    "Quieter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quieter"
+          }
+        }
+      }
+    },
+    "Opening Codenotch no longer announces a limit that was reached long before: a reading kept from last time is no longer mistaken for something that just happened. Clicking the notch to hold it open lasts the session rather than for good, so the full-screen fold is never disabled behind your back.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opening Codenotch no longer announces a limit that was reached long before: a reading kept from last time is no longer mistaken for something that just happened. Clicking the notch to hold it open lasts the session rather than for good, so the full-screen fold is never disabled behind your back."
+          }
+        }
+      }
+    },
+    "The menu bar shows more": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The menu bar shows more"
+          }
+        }
+      }
+    },
+    "Weekly usage beside the five-hour window, and its own switch reachable from the menu bar itself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly usage beside the five-hour window, and its own switch reachable from the menu bar itself."
+          }
+        }
+      }
+    },
+    "A lighter Windows notch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A lighter Windows notch"
+          }
+        }
+      }
+    },
+    "A Theme row — System, Light or Dark — that the notch, the settings window and the drag overlay all follow. Português (Brasil) joins the Windows port, and the move handle stays on screen while you drag it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A Theme row — System, Light or Dark — that the notch, the settings window and the drag overlay all follow. Português (Brasil) joins the Windows port, and the move handle stays on screen while you drag it."
           }
         }
       }

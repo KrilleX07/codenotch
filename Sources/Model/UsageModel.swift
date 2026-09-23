@@ -279,7 +279,9 @@ struct UsageBlock: Equatable {
 
 struct ProviderSnapshot: Identifiable, Equatable {
     let id: String
-    let displayName: String
+    /// The provider's own name, or the one chosen for the account in
+    /// Settings; the store swaps it in before anything reads the snapshot.
+    var displayName: String
     let glyph: ProviderGlyph
     let fidelity: Fidelity
     var status: ProviderStatus
@@ -485,6 +487,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
         case "opencode":   return L10n.t("Connect the Go plan in OpenCode to read your usage", locale: locale)
         case "commandcode": return L10n.t("Sign in with the Command Code app to read your usage", locale: locale)
         case "kiro":       return L10n.t("Sign in with kiro-cli to read your usage", locale: locale)
+        case "amp":        return L10n.t("Run amp login in Terminal to read your usage", locale: locale)
         // Two Ollamas, and they are stuck for different reasons: the hosted
         // one wants a key, the local one wants the daemon running.
         case "ollama":       return L10n.t("Enter an Ollama API key in Settings, or export OLLAMA_API_KEY", locale: locale)

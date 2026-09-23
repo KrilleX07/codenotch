@@ -72,6 +72,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(Array(mutedAlertProviders), forKey: Keys.mutedAlerts) }
     }
 
+    /// Names given to accounts in Settings, by provider id. Only the ones
+    /// set: an account with no entry keeps the name its provider gives.
+    @Published var accountNicknames: [String: String] {
+        didSet { defaults.set(accountNicknames, forKey: Keys.accountNicknames) }
+    }
+
     /// The order the user has dragged the rings into, as provider ids.
     ///
     /// Stored as the ids actually placed rather than as every id known at the
@@ -468,6 +474,7 @@ final class Preferences: ObservableObject {
         static let migratedOllamaID = "migratedOllamaLocalID"
         static let ollamaMetricsEnabled = "ollamaMetricsEnabled"
         static let mutedAlerts = "mutedAlertProviders"
+        static let accountNicknames = "accountNicknames"
         static let hasLaunched = "hasLaunchedBefore"
         static let visibility = "notchVisibility"
         static let foldsForFullScreen = "foldsForFullScreen"
@@ -737,6 +744,7 @@ final class Preferences: ObservableObject {
                 ?? LMStudioEndpoint.configuredAddress() ?? LMStudioEndpoint.defaultAddress
         ).absoluteString) ?? LMStudioEndpoint.defaultAddress
         self.mutedAlertProviders = Set(defaults.stringArray(forKey: Keys.mutedAlerts) ?? [])
+        self.accountNicknames = defaults.dictionary(forKey: Keys.accountNicknames) as? [String: String] ?? [:]
         // Absent means never chosen, which is the hover behaviour the app was
         // designed around — not hidden, which would make a fresh install look
         // like it failed to start.
@@ -886,6 +894,22 @@ final class Preferences: ObservableObject {
             }
         }
         customEndpoints.removeAll { $0.id == id }
+    }
+
+    // MARK: Account names
+
+    func nickname(for providerID: String) -> String? {
+        accountNicknames[providerID]
+    }
+
+    /// Blank, or only spaces, goes back to the provider's own name.
+    func setNickname(_ name: String, for providerID: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty {
+            accountNicknames.removeValue(forKey: providerID)
+        } else {
+            accountNicknames[providerID] = trimmed
+        }
     }
 
     // MARK: Threshold alerts

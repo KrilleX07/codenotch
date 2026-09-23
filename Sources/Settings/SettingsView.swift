@@ -1390,7 +1390,7 @@ struct SettingsView: View {
     /// this, sees four blank rings and concludes it is broken — and the
     /// distinction that catches them out is Claude *Code*, not the Claude app.
     static var setupCopy: String {
-        L10n.t("Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.")
+        L10n.t("Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.")
     }
 
     /// Said before it happens rather than after. A system dialogue asking to
@@ -1653,6 +1653,12 @@ private struct AccountRow: View {
     private var isConnected: Bool { preferences.isConnected(provider.id) }
     private var isMuted: Bool { preferences.isMutedAlerts(for: provider.id) }
 
+    /// The name the owner gave the account, where there is one; the row, the
+    /// notch and the notifications all use the same word.
+    private var displayName: String { preferences.nickname(for: provider.id) ?? provider.name }
+    @State private var isRenaming = false
+    @State private var draftName = ""
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Centred, not baseline-aligned. A glyph is a `Shape` and has no
@@ -1670,7 +1676,7 @@ private struct AccountRow: View {
                     ProviderGlyphView(glyph: provider.glyph, customIconFilename: provider.customIconFilename, size: 16)
                         .foregroundStyle(isConnected ? .primary : .tertiary)
 
-                    Text(provider.name)
+                    Text(displayName)
                         .foregroundStyle(isConnected ? .primary : .secondary)
                 }
                 // Without this only the drawn pixels are grabbable, and the
@@ -1694,7 +1700,7 @@ private struct AccountRow: View {
                     // up.
                     HStack(spacing: 6) {
                         ProviderGlyphView(glyph: provider.glyph, customIconFilename: provider.customIconFilename, size: 12)
-                        Text(provider.name)
+                        Text(displayName)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -1721,6 +1727,41 @@ private struct AccountRow: View {
 
                 Spacer(minLength: 8)
 
+                // A name of the owner's choosing. Two logins on one provider
+                // are told apart by their directory names ("Claude (work)"),
+                // which is the machine's word for them, not the person's; and
+                // the same name has to hold in the notch, the menu bar and
+                // every notification, so it is kept in Preferences and applied
+                // by the store rather than typed over here.
+                if isConnected, provider.kind == .usage {
+                    Button {
+                        draftName = preferences.nickname(for: provider.id) ?? ""
+                        isRenaming.toggle()
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(SettingsIconButtonStyle())
+                    .help(L10n.t("Name this account"))
+                    .popover(isPresented: $isRenaming, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField(L10n.t("Name"), text: $draftName, prompt: Text(provider.name))
+                                .textFieldStyle(.roundedBorder)
+                                .onSubmit { isRenaming = false }
+                                .onChange(of: draftName) { _, name in
+                                    preferences.setNickname(name, for: provider.id)
+                                }
+                            Text(L10n.t("What the notch, the menu bar and notifications call this account. Empty goes back to \(provider.name)."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(12)
+                        .frame(width: 280)
+                    }
+                }
+
                 // Per-provider threshold alerts, muted here rather than in a
                 // separate notifications pane — the thing being muted is this
                 // row's reading, so the control belongs on the row.
@@ -1734,8 +1775,8 @@ private struct AccountRow: View {
                     }
                     .buttonStyle(SettingsIconButtonStyle())
                     .help(isMuted
-                          ? L10n.t("Alerts for \(provider.name) are muted. Click to unmute.")
-                          : L10n.t("Alert when \(provider.name) crosses 80% and 100% of a limit."))
+                          ? L10n.t("Alerts for \(displayName) are muted. Click to unmute.")
+                          : L10n.t("Alert when \(displayName) crosses 80% and 100% of a limit."))
                 }
 
                 // Prefers the app that owns the account, and falls back to the
