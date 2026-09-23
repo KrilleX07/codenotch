@@ -18,6 +18,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     case traditionalChinese = "zh-Hant"
     case ukrainian = "uk"
     case uzbek = "uz"
+    case turkish = "tr"
 
     var id: String { rawValue }
 
@@ -41,12 +42,14 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .traditionalChinese:  return Locale(identifier: "zh-Hant")
         case .ukrainian:           return Locale(identifier: "uk")
         case .uzbek:               return Locale(identifier: "uz")
+        case .turkish:             return Locale(identifier: "tr")
         }
     }
 
     /// English, Français, Deutsch, 日本語, 한국어, Português (Brasil), Русский,
-    /// 简体中文, 繁體中文, Українська and Oʻzbekcha stay in their own language so
-    /// the row is recognizable when the rest of Settings is in another one.
+    /// 简体中文, 繁體中文, Українська, Oʻzbekcha and Türkçe stay in their own
+    /// language so the row is recognizable when the rest of Settings is in
+    /// another one.
     var title: String {
         switch self {
         case .system:              return L10n.t("Follow System")
@@ -61,6 +64,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .traditionalChinese:  return "繁體中文"
         case .ukrainian:           return "Українська"
         case .uzbek:               return "Oʻzbekcha"
+        case .turkish:             return "Türkçe"
         }
     }
 
@@ -69,7 +73,8 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .system:
             return L10n.t("Matches the Mac's preferred language.")
         case .english, .french, .german, .japanese, .korean, .brazilianPortuguese,
-             .russian, .simplifiedChinese, .traditionalChinese, .ukrainian, .uzbek:
+             .russian, .simplifiedChinese, .traditionalChinese, .ukrainian, .uzbek,
+             .turkish:
             return L10n.t("Codenotch uses this language even if the Mac does not.")
         }
     }
