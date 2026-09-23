@@ -784,3 +784,21 @@ final class ClaudeExpiredWindowTests: XCTestCase {
         ], at: now))
     }
 }
+
+/// `claude /usage` answers for the whole machine, whatever CLAUDE_CONFIG_DIR
+/// says, so it can only stand in for a ring while there is one login for it
+/// to describe. With two, each ring has to read its own token.
+final class ClaudeCLIEstimateScopeTests: XCTestCase {
+    func testTheOnlyLoginMayUseTheEstimate() {
+        XCTAssertTrue(ClaudeOAuthProvider.cliEstimateApplies(slug: nil, loginCount: 1))
+    }
+
+    func testANamedProfileNeverDoes() {
+        XCTAssertFalse(ClaudeOAuthProvider.cliEstimateApplies(slug: "work", loginCount: 1))
+        XCTAssertFalse(ClaudeOAuthProvider.cliEstimateApplies(slug: "work", loginCount: 2))
+    }
+
+    func testTheDefaultLoginStopsUsingItOnceThereIsASecondOne() {
+        XCTAssertFalse(ClaudeOAuthProvider.cliEstimateApplies(slug: nil, loginCount: 2))
+    }
+}

@@ -17,21 +17,21 @@
     --btn:rgba(255,255,255,.10); --btn-hover:rgba(255,255,255,.16);
     --danger-bg:rgba(255,99,99,.14); --danger:#ff8a8a;
   }
-  @media (prefers-color-scheme: light){
-    :root{
+  /* Rust says which appearance this is (get_theme_resolved), so a forced Light or Dark lands here
+     whatever Windows is set to — WebView2's own scheme does not follow a live theme change. */
+  :root[data-theme="light"]{
       --text:#1d1d1f; --text2:rgba(60,60,67,.70); --text3:rgba(60,60,67,.45);
       --pane:rgba(255,255,255,.50); --side:rgba(0,0,0,.06); --group:rgba(255,255,255,.72);
       --line:rgba(0,0,0,.07); --hi:rgba(255,255,255,.80); --sep:rgba(0,0,0,.07);
       --seg-bg:rgba(0,0,0,.06); --hover:rgba(0,0,0,.04); --sel-soft:rgba(0,0,0,.05);
       --btn:rgba(0,0,0,.05); --btn-hover:rgba(0,0,0,.09);
       --danger-bg:rgba(196,43,28,.10); --danger:#c42b1c;
-    }
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none}
   body{font:13.5px/1.35 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;color:var(--text)}
   body.solid{--pane:#3d3d40;--side:#1f2022;--group:#48484b;--hi:transparent;background:#2b2b2e}
-  @media (prefers-color-scheme: light){ body.solid{--pane:#f0f0f2;--side:#e2e2e6;--group:#ffffff;background:#f0f0f2} }
+  :root[data-theme="light"] body.solid{--pane:#f0f0f2;--side:#e2e2e6;--group:#ffffff;background:#f0f0f2}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   button{font:inherit;color:inherit}
   html[lang="ko"] body{word-break:keep-all}
@@ -150,6 +150,8 @@
           <div class="item cap" id="cap-show" data-dynamic></div>
           <div class="item"><span>Size</span><span class="seg" id="seg-size"><button data-v="0.8">Small</button><button data-v="1">Medium</button><button data-v="1.25">Large</button></span></div>
           <div class="item cap" id="cap-size" data-dynamic></div>
+          <div class="item"><span>Theme</span><span class="seg" id="seg-theme"><button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></span></div>
+          <div class="item cap" id="cap-theme" data-dynamic></div>
           <div class="item"><span>Weekly ring</span><span class="seg" id="seg-weekly"><button data-v="off">Off</button><button data-v="inside">Inside</button><button data-v="outside">Outside</button></span></div>
           <div class="item cap" id="cap-weekly" data-dynamic></div>
           <div class="item"><span>Edge</span><span class="seg" id="seg-edge"><button data-v="left">Left</button><button data-v="right">Right</button><button data-v="top">Top</button><button data-v="bottom">Bottom</button></span></div>
@@ -236,6 +238,13 @@ function esc(s){
    Windows page keep the Russian #141 gave them. `applyStaticUi()` matches a text node exactly, so
    rewording any string here means changing its key in every table. */
 const PT_BR_STATIC = {
+  'Theme':'Tema',
+  'System':'Do sistema',
+  'Light':'Clara',
+  'Dark':'Escura',
+  'The notch and this window follow the Windows app colour.':'A cápsula e esta janela seguem a cor dos aplicativos do Windows.',
+  'A light notch and card, whatever Windows is set to.':'Cápsula e cartão claros, independentemente da configuração do Windows.',
+  'The dark notch, whatever Windows is set to.':'A cápsula escura, independentemente da configuração do Windows.',
   'Updates':'Atualizações',
   'Check for updates':'Verificar atualizações',
   'Update':'Atualizar',
@@ -253,7 +262,7 @@ const PT_BR_STATIC = {
   'Connected':'Conectado',
   'Not connected':'Não conectado',
   'These have no ring to place. Switch one on and it joins the end of the list above.':'Estes não têm anel para posicionar. Ative um e ele entra no fim da lista acima.',
-  'One provider always stays ticked, so the pill is never empty.':'Pelo menos um provedor permanece selecionado para que a barra nunca fique vazia.',
+  'One provider always stays ticked, so the pill is never empty.':'Pelo menos um provedor permanece selecionado para que a cápsula nunca fique vazia.',
   'At least one provider stays on the notch':'Pelo menos um provedor deve permanecer no notch',
   'Notch reads':'Leitura do notch',
   'Model data':'Dados do modelo',
@@ -279,13 +288,13 @@ const PT_BR_STATIC = {
   'Off':'Desativado',
   'Inside':'Dentro',
   'Outside':'Fora',
-  'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'Um anel por provedor, mostrando o limite principal. A cota semanal permanece no cartão ao passar o mouse.',
+  'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'Um anel por provedor, mostrando o limite principal. A cota semanal permanece no cartão ao passar o cursor.',
   'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'Um anel mais fino para o limite semanal, desenhado dentro do principal. Ele compartilha o espaço com o indicador de atividade.',
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Um anel mais fino para o limite semanal, desenhado ao redor do principal, no espaço entre o anel e a borda do notch.',
   'Show on hover':'Exibir ao passar o cursor',
   'A small pill at the screen edge that opens when you reach it.':'Uma pequena cápsula na borda da tela que abre quando você chega nela.',
   'The notch stays open with every reading visible.':'O notch fica aberto com todas as leituras visíveis.',
-  'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'A barra preta na borda direita da tela, com um anel para cada ferramenta. Ao desativá-la, a barra desaparece; o Codenotch continua contabilizando seu uso de qualquer forma.',
+  'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'A cápsula preta na borda direita da tela, com um anel para cada ferramenta. Ao desativá-la, a cápsula desaparece; o Codenotch continua contabilizando seu uso de qualquer forma.',
   'Recentre':'Recentralizar',
   'Hold Alt and drag the notch to slide it along its edge. Each edge remembers where you left it. Recentre puts it back in the middle of the edge it is on, or on the main screen\'s right-hand edge if the screen it was on has been unplugged.':'Segure Alt e arraste o notch para movê-lo ao longo da borda. Cada borda lembra onde você o deixou. Recentralizar o coloca novamente no meio da borda atual ou na borda direita da tela principal se a tela anterior tiver sido desconectada.',
   'Edge':'Borda',
@@ -327,6 +336,13 @@ const PT_BR_STATIC = {
   'Saved':'Salvo'
 };
 const RU_STATIC = {
+  'Theme':'Тема',
+  'System':'Системная',
+  'Light':'Светлая',
+  'Dark':'Тёмная',
+  'The notch and this window follow the Windows app colour.':'Панель и это окно следуют цвету приложений Windows.',
+  'A light notch and card, whatever Windows is set to.':'Светлая панель и карточка, независимо от настроек Windows.',
+  'The dark notch, whatever Windows is set to.':'Тёмная панель, независимо от настроек Windows.',
   'Updates':'Обновления',
   'Check for updates':'Проверить обновления',
   'Update':'Обновить',
@@ -385,6 +401,13 @@ const RU_STATIC = {
   'App designed and developed by':'Приложение разработал', 'Saved':'Сохранено'
 };
 const ZH_STATIC = {
+  'Theme':'主题',
+  'System':'跟随系统',
+  'Light':'浅色',
+  'Dark':'深色',
+  'The notch and this window follow the Windows app colour.':'刘海和此窗口跟随 Windows 的应用颜色。',
+  'A light notch and card, whatever Windows is set to.':'浅色的刘海和卡片，无论 Windows 如何设置。',
+  'The dark notch, whatever Windows is set to.':'深色的刘海，无论 Windows 如何设置。',
   'Updates':'更新',
   'Check for updates':'检查更新',
   'Update':'更新',
@@ -474,6 +497,13 @@ const ZH_STATIC = {
   'this screen cannot be remembered by name':'这块屏幕无法按名称记住'
 };
 const ZH_HANT_STATIC = {
+  'Theme':'主題',
+  'System':'跟隨系統',
+  'Light':'淺色',
+  'Dark':'深色',
+  'The notch and this window follow the Windows app colour.':'瀏海和此視窗跟隨 Windows 的應用程式色彩。',
+  'A light notch and card, whatever Windows is set to.':'淺色的瀏海和卡片，無論 Windows 如何設定。',
+  'The dark notch, whatever Windows is set to.':'深色的瀏海，無論 Windows 如何設定。',
   'Updates':'更新',
   'Check for updates':'檢查更新',
   'Update':'更新',
@@ -563,6 +593,13 @@ const ZH_HANT_STATIC = {
   'this screen cannot be remembered by name':'這塊螢幕無法按名稱記住'
 };
 const JA_STATIC = {
+  'Theme':'テーマ',
+  'System':'システムに合わせる',
+  'Light':'ライト',
+  'Dark':'ダーク',
+  'The notch and this window follow the Windows app colour.':'ノッチとこのウィンドウは Windows のアプリの色に従います。',
+  'A light notch and card, whatever Windows is set to.':'Windows の設定にかかわらず、ライトのノッチとカードになります。',
+  'The dark notch, whatever Windows is set to.':'Windows の設定にかかわらず、ダークのノッチになります。',
   'Updates':'アップデート',
   'Check for updates':'アップデートを確認',
   'Update':'アップデート',
@@ -639,6 +676,13 @@ const JA_STATIC = {
   'Model data':'モデルのデータ'
 };
 const KO_STATIC = {
+  'Theme':'테마',
+  'System':'시스템 따르기',
+  'Light':'라이트',
+  'Dark':'다크',
+  'The notch and this window follow the Windows app colour.':'노치와 이 창이 Windows 앱 색상을 따릅니다.',
+  'A light notch and card, whatever Windows is set to.':'Windows 설정과 관계없이 라이트 노치와 카드를 사용합니다.',
+  'The dark notch, whatever Windows is set to.':'Windows 설정과 관계없이 다크 노치를 사용합니다.',
   'Updates':'업데이트',
   'Check for updates':'업데이트 확인',
   'Update':'업데이트',
@@ -727,10 +771,16 @@ const KO_STATIC = {
   'English':'English',
   'Show move handle':'이동 핸들 표시',
   'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'노치 위의 호입니다. 길게 누르면 노치를 다른 가장자리로 옮길 수 있습니다. 위의 ‘가장자리’ 설정으로도 같은 작업을 할 수 있습니다.',
-  'The pill can be dragged up and down the right-hand edge. If it has ended up somewhere you cannot see it — off the bottom of a screen you have unplugged, say — this drops it back into the middle of the edge.':'필을 오른쪽 가장자리를 따라 위아래로 드래그할 수 있습니다. 연결을 해제한 화면 아래쪽처럼 보이지 않는 곳에 있다면 가장자리 중앙으로 되돌립니다.',
   'Русский':'Русский'
 };
 const UK_STATIC = {
+  'Theme':'Тема',
+  'System':'Системна',
+  'Light':'Світла',
+  'Dark':'Темна',
+  'The notch and this window follow the Windows app colour.':'Виріз і це вікно слідують кольору застосунків Windows.',
+  'A light notch and card, whatever Windows is set to.':'Світлий виріз і картка, незалежно від налаштувань Windows.',
+  'The dark notch, whatever Windows is set to.':'Темний виріз, незалежно від налаштувань Windows.',
   'Updates':'Оновлення',
   'Check for updates':'Перевірити оновлення',
   'Update':'Оновити',
@@ -791,10 +841,11 @@ const UK_STATIC = {
   'Lies flat along the bottom edge, with the card opening above it.':'Лежить уздовж нижнього краю, картка відкривається над ним.',
   'Which screen the notch lives on.':'На якому екрані живе виріз.',
   'this screen cannot be remembered by name':'цей екран неможливо запамʼятати за назвою',
+  'Show move handle':'Показувати маркер переміщення',
+  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'Дуга над вирізом. Утримуйте її, щоб перенести виріз на інший край — те саме робить «Край» вище.',
   'Hold Alt and drag the notch to slide it along its edge. Each edge remembers where you left it. Recentre puts it back in the middle of the edge it is on, or on the main screen\'s right-hand edge if the screen it was on has been unplugged.':'Утримуйте Alt і перетягніть виріз, щоб посунути його вздовж краю. Кожен край памʼятає останнє положення. Кнопка «Центрувати» повертає його на середину поточного краю або на правий край основного екрана, якщо екран, на якому він був, відʼєднано.',
   'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'Чорна панель біля правого краю екрана, по кільцю на кожен інструмент. Якщо вимкнути, панель зникне — але використання Codenotch рахує в будь-якому разі.',
   'Recentre':'Центрувати',
-  'The pill can be dragged up and down the right-hand edge. If it has ended up somewhere you cannot see it — off the bottom of a screen you have unplugged, say — this drops it back into the middle of the edge.':'Панель можна перетягувати вгору й вниз уздовж правого краю. Якщо вона опинилась там, де ви її не бачите (скажімо, нижче за край екрана, який ви відʼєднали), ця кнопка повертає її на середину краю.',
   'The notch is back in the middle':'Виріз повернувся в центр',
   'App':'Застосунок',
   'App icon':'Значок застосунку',
@@ -900,13 +951,19 @@ function toast(msg){
    used the way Windows 11's own controls use it: Accent Light 2 with black text in dark mode, Accent
    Dark 1 with white text in light mode. Both are asked for again whenever the window comes forward,
    so an accent changed in Settings shows up without reopening this one. */
-const dark = matchMedia('(prefers-color-scheme: dark)');
+/* Which appearance is on: the attribute Rust's answer sets, not the system scheme, so a forced
+   Light on a dark Windows picks the accent that belongs with the page it is drawn on. */
+const isDark = () => document.documentElement.dataset.theme !== 'light';
+function applyTheme(name){
+  document.documentElement.dataset.theme = name === 'light' ? 'light' : 'dark';
+  applyAccent();
+}
 let palette = null;
 function applyAccent(){
   const root = document.documentElement.style;
   if(!palette){ root.removeProperty('--accent'); root.removeProperty('--on-accent'); return; }
-  root.setProperty('--accent', dark.matches ? palette[1] : palette[4]);
-  root.setProperty('--on-accent', dark.matches ? '#000000' : '#ffffff');
+  root.setProperty('--accent', isDark() ? palette[1] : palette[4]);
+  root.setProperty('--on-accent', isDark() ? '#000000' : '#ffffff');
 }
 function loadLook(){
   call('get_system_look', undefined, null).then(look => {
@@ -916,7 +973,7 @@ function loadLook(){
     applyAccent();
   });
 }
-dark.addEventListener('change', applyAccent);
+try { window.__TAURI__.event.listen('theme_resolved', e => { if(e.payload) applyTheme(e.payload); }); } catch(e) { /* asked for again below */ }
 
 /* ---- the sidebar -------------------------------------------------------- */
 const TABS = ['accounts', 'appearance', 'general'];
@@ -1296,6 +1353,39 @@ function refreshScreens(){
   });
 }
 
+/* ---- Appearance: theme ----------------------------------------------------- */
+const THEME_WHY = {
+  system: 'The notch and this window follow the Windows app colour.',
+  light: 'A light notch and card, whatever Windows is set to.',
+  dark: 'The dark notch, whatever Windows is set to.'
+};
+let theme = 'system', themeBusy = false;
+function renderTheme(){
+  for(const b of document.querySelectorAll('#seg-theme button')){
+    const on = b.dataset.v === theme;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.disabled = themeBusy;
+  }
+  const why = THEME_WHY[theme] || '';
+  document.getElementById('cap-theme').textContent = ui(why, why);
+}
+document.getElementById('seg-theme').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(!b || b.disabled || b.dataset.v === theme) return;
+  const want = b.dataset.v;
+  themeBusy = true;
+  theme = want;
+  renderTheme();
+  invoke('set_theme', { theme: want })
+    .then(v => { theme = typeof v === 'string' ? v : want; toast(); })
+    .catch(err => {
+      strip('set_theme failed: ' + errText(err));
+      return call('get_theme', undefined, null).then(v => { if(typeof v === 'string') theme = v; });
+    })
+    .then(() => { themeBusy = false; renderTheme(); });
+});
+
 /* ---- Appearance: the weekly ring ------------------------------------------- */
 const WEEKLY_WHY = {
   off: 'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.',
@@ -1429,6 +1519,8 @@ function boot(){
   call('get_notch_edge', undefined, null).then(v => { if(typeof v === 'string') notchEdge = v; renderEdge(); });
   refreshScreens();
   call('get_weekly_ring', undefined, null).then(v => { if(typeof v === 'string') weeklyRing = v; renderWeekly(); });
+  call('get_theme', undefined, null).then(v => { if(typeof v === 'string') theme = v; renderTheme(); });
+  call('get_theme_resolved', undefined, null).then(v => { if(typeof v === 'string') applyTheme(v); });
   call('get_ui_flags', undefined, null).then(v => { if(v && typeof v === 'object') flags = readFlags(v); renderFlags(); });
   Promise.all([call('get_lang', undefined, 'auto'), call('get_lang_resolved', undefined, 'en')]).then(([raw, resolved]) => {
     const l = (typeof raw === 'string' && LANGS.indexOf(raw) >= 0) ? raw : 'auto';

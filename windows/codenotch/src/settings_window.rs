@@ -38,9 +38,15 @@ fn open_now(app: &AppHandle) {
         .decorations(false)
         .shadow(true)
         .center();
+    // Both before the build: a window that opens on the system appearance and is corrected after
+    // shows the wrong one for a frame, which on a dark Windows under a light choice is a black flash
+    let theme = crate::theme_choice(app);
+    builder = builder
+        .theme(theme)
+        .initialization_script(crate::theme_script(crate::resolved_theme(app)));
     // Without Mica the window stays opaque and the page draws solid surfaces instead
     if has_mica() {
-        builder = builder.transparent(true).effects(EffectsBuilder::new().effect(Effect::Mica).build());
+        builder = builder.transparent(true).effects(EffectsBuilder::new().effect(mica_for(theme)).build());
     }
     match builder.build() {
         // Raised again once it exists: a window created while the app is not in front can come up behind
@@ -84,6 +90,29 @@ pub fn open_author_page() {
         cmd.creation_flags(0x0800_0000);
     }
     let _ = cmd.spawn();
+}
+
+/// Keeps Mica on the same side as the page above it.
+///
+/// Plain `Effect::Mica` follows the Windows setting, which is right for "System" and wrong for the
+/// other two: a light page over dark Mica reads as a bug. Nothing to do without Mica, where the page
+/// draws its own opaque surfaces.
+pub fn follow_theme(app: &AppHandle, theme: Option<tauri::Theme>) {
+    let Some(w) = app.get_webview_window(LABEL) else { return };
+    if !has_mica() {
+        return;
+    }
+    let _ = w.set_effects(EffectsBuilder::new().effect(mica_for(theme)).build());
+}
+
+/// Plain `Mica` follows the Windows setting, which is right for "System" and wrong for the other
+/// two: a light page over dark Mica reads as a bug.
+fn mica_for(theme: Option<tauri::Theme>) -> Effect {
+    match theme {
+        Some(tauri::Theme::Light) => Effect::MicaLight,
+        Some(tauri::Theme::Dark) => Effect::MicaDark,
+        _ => Effect::Mica,
+    }
 }
 
 fn has_mica() -> bool {

@@ -101,7 +101,13 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// is installed but signed out costs a process on every tick, forever.
     private var lastCLIAttempt: Date?
 
+    /// `displayName` is injected only so a set of profiles can be named
+    /// together: two accounts on one provider derive the same name from their
+    /// addresses, and only the caller holding all of them can see the clash.
+    /// Nil is the profile's own answer, which is what every other caller wants.
+    /// See `ClaudeProfile.displayNames(for:)`.
     init(profile: ClaudeProfile = .default(),
+         displayName: String? = nil,
          session: URLSession = .shared,
          archive: UsageArchive = UsageArchive(),
          loadCredentials: (@Sendable () throws -> ClaudeCredentials)? = nil,
@@ -117,7 +123,7 @@ actor ClaudeOAuthProvider: UsageProvider {
         self.desktopRescanInterval = desktopRescanInterval
         self.profile = profile
         self.id = profile.id
-        self.displayName = profile.displayName
+        self.displayName = displayName ?? profile.displayName
         let keychain = ClaudeKeychain(profile: profile)
         self.keychain = keychain
         self.loadCredentials = loadCredentials ?? { try keychain.load() }
@@ -172,11 +178,28 @@ actor ClaudeOAuthProvider: UsageProvider {
         // endpoint's, and the CLI does not share the endpoint's rate limit —
         // there is no reason for a 429 on one to darken a ring the other can
         // still fill.
-        if let windows = await cliWindows() {
+        // Only for the default login, and only while it is the sole one.
+        // `claude /usage` in print mode gives one answer for the whole
+        // machine whatever CLAUDE_CONFIG_DIR says (verified: identical
+        // output, requests and sessions included, for ~/.claude and a second
+        // config directory), so with two logins it would paint both rings
+        // with the same figure. Named profiles read their own token instead.
+        if Self.cliEstimateApplies(slug: profile.slug, loginCount: Self.loginCount),
+           let windows = await cliWindows() {
             return snapshot(windows: windows, plan: lastCLIPlan)
         }
         return try await fetchFromKeychain()
     }
+
+    /// The CLI's estimate is "based on local sessions on this machine", all
+    /// of them, so it is only the truth about one login when there is one.
+    nonisolated static func cliEstimateApplies(slug: String?, loginCount: Int) -> Bool {
+        slug == nil && loginCount <= 1
+    }
+
+    /// Not under test: the suite runs on whatever Mac hosts it, and its CLI
+    /// stubs must be reached whatever that Mac's logins are.
+    private static let loginCount: Int = Runtime.isUnderTest ? 1 : ClaudeProfile.discover().count
 
     private func fetchFromKeychain() async throws -> ProviderSnapshot {
         if Self.shouldHoldOff(until: retryNoEarlierThan, slack: backoffSlack),

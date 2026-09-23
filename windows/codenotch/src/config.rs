@@ -64,6 +64,9 @@ pub struct Config {
     /// Where the weekly limit gets a ring of its own: "off", "inside" or "outside".
     #[serde(default = "default_weekly_ring")]
     pub weekly_ring: String,
+    /// Which appearance the pages draw in: "system", "light" or "dark".
+    #[serde(default = "default_theme")]
+    pub theme: String,
     /// Which providers the notch itself shows, in order. Empty means every provider that has
     /// something to report — the original behaviour, and the default. Superseded by `notch_slots`,
     /// kept so an existing config migrates cleanly.
@@ -164,6 +167,17 @@ fn default_scale() -> f64 {
 fn default_weekly_ring() -> String {
     "off".into()
 }
+fn default_theme() -> String {
+    "system".into()
+}
+
+/// An unreadable value follows Windows, which is what someone who never opened this row gets.
+pub fn theme_or_system(value: &str) -> String {
+    match value {
+        "light" | "dark" => value.to_string(),
+        _ => default_theme(),
+    }
+}
 
 /// A second arc changes how every reading looks, so an unreadable value means off rather than a
 /// guess at what was meant.
@@ -205,6 +219,7 @@ impl Default for Config {
             notch_monitor: None,
             scale: default_scale(),
             weekly_ring: default_weekly_ring(),
+            theme: default_theme(),
             notch_providers: Vec::new(), // empty = show them all
             notch_slots: Vec::new(),     // filled in by load(), from notch_providers
             antigravity_limit: default_antigravity_limit(),
@@ -256,6 +271,7 @@ pub fn load() -> Config {
     // The old slider's 40–100 %, or a hand-edited file, lands on one of the three sizes
     cfg.scale = snap_scale(cfg.scale);
     cfg.weekly_ring = weekly_ring_or_off(&cfg.weekly_ring);
+    cfg.theme = theme_or_system(&cfg.theme);
     cfg
 }
 
@@ -286,7 +302,9 @@ pub fn save(cfg: &Config) {
 
 #[cfg(test)]
 mod tests {
-    use super::{carry_shared_position, keep_open_on_upgrade, snap_scale, weekly_ring_or_off, Config};
+    use super::{
+        carry_shared_position, keep_open_on_upgrade, snap_scale, theme_or_system, weekly_ring_or_off, Config,
+    };
 
     /// Show on hover is the Mac's default, so a fresh install gets it — but an update must not start
     /// folding a notch whose owner has only ever known it open.
@@ -360,5 +378,9 @@ mod tests {
         assert_eq!(weekly_ring_or_off("outside"), "outside");
         assert_eq!(weekly_ring_or_off("Inside"), "off");
         assert_eq!(weekly_ring_or_off(""), "off");
+        assert_eq!(theme_or_system("light"), "light");
+        assert_eq!(theme_or_system("dark"), "dark");
+        assert_eq!(theme_or_system("Dark"), "system");
+        assert_eq!(theme_or_system(""), "system");
     }
 }

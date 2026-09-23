@@ -140,7 +140,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.usage.info("claude profiles: \(self.claudeProfiles.map(\.displayPath).joined(separator: ", "), privacy: .public)")
             Log.usage.info("codex profiles: \(self.codexProfiles.map(\.displayPath).joined(separator: ", "), privacy: .public)")
             Log.usage.info("antigravity profiles: \(self.antigravityProfiles.map(\.displayPath).joined(separator: ", "), privacy: .public)")
-            let claudeProviders = claudeProfiles.map { ClaudeOAuthProvider(profile: $0) }
+            // Named together rather than one by one: a name derived from the
+            // signed-in address can collide with another profile's, and only a
+            // caller holding every profile can see that.
+            let claudeNames = ClaudeProfile.displayNames(for: claudeProfiles)
+            let claudeProviders = claudeProfiles.map {
+                ClaudeOAuthProvider(profile: $0, displayName: claudeNames[$0.id])
+            }
             self.claudeProviders = claudeProviders
             let customProviders: [UsageProvider] = preferences.customEndpoints.filter(\.isEnabled).map { endpoint in
                 CustomEndpointProvider(endpoint: endpoint)
@@ -150,7 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 + codexProfiles.map { CodexLocalProvider(profile: $0) }
                 + antigravityProfiles.map { AntigravityProvider(profile: $0) }
                 + [GLMProvider(), MiniMaxProvider(web: miniMaxWeb), GrokLocalProvider(), DevinLocalProvider(), OpenCodeProvider(),
-                   CommandCodeProvider(), GitHubCopilotProvider(), KimiProvider(), KiroProvider(),
+                   CommandCodeProvider(), GitHubCopilotProvider(), KimiProvider(), KiroProvider(), AmpProvider(),
                    OllamaLocalProvider(endpoint: URL(string: preferences.ollamaEndpoint)!),
                    LMStudioLocalProvider(endpoint: URL(string: preferences.lmstudioEndpoint)!),
                    OllamaProvider(),
@@ -614,6 +620,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
 
+            preferences.$accountNicknames
+                .receive(on: RunLoop.main)
+                .sink { [weak store] in store?.nicknames = $0 }
+                .store(in: &cancellables)
+
             preferences.$ollamaEndpoint
                 .receive(on: RunLoop.main)
                 .sink { [weak store] address in
@@ -739,16 +750,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             monitors[profile.id] = AntigravityActivityMonitor(profile: profile)
         }
         var claudeMonitors: [ClaudeSessionMonitor] = []
+        var claudeMonitorsByProfile: [(ClaudeProfile, ClaudeSessionMonitor)] = []
         for profile in claudeProfiles {
             let monitor = ClaudeSessionMonitor(
                 directory: profile.sessionsDirectory,
                 projects: profile.projectsDirectory
             )
             claudeMonitors.append(monitor)
+            claudeMonitorsByProfile.append((profile, monitor))
             monitors[profile.id] = monitor
+        }
+
+        // With one profile there is nothing to attribute: every session in the
+        // directory is that account's, by definition. With two or more there
+        // is, because the Claude desktop app files the sessions it hosts under
+        // the *default* profile's directory whichever account it is signed in
+        // to — so the second account's work spun the first account's ring, and
+        // switching account in the app did not move it. See
+        // `ClaudeSessionOwnership`.
+        if claudeProfiles.count > 1 {
+            let index = ClaudeDesktopSessionIndex()
+            let directories = claudeProfiles.map(\.sessionsDirectory)
+            var accounts: [String: String] = [:]
+            var transcripts: [String: ClaudeTranscriptReader] = [:]
+            for profile in claudeProfiles {
+                let path = profile.sessionsDirectory.path
+                if let account = profile.accountID() { accounts[path] = account }
+                transcripts[path] = ClaudeTranscriptReader(projects: profile.projectsDirectory)
+            }
+            for (profile, monitor) in claudeMonitorsByProfile {
+                monitor.ownership = ClaudeSessionOwnership(
+                    own: profile.sessionsDirectory,
+                    directories: directories,
+                    accounts: accounts,
+                    transcripts: transcripts,
+                    index: index
+                )
+            }
+            let named = accounts.count, total = claudeProfiles.count
+            Log.sessions.info("claude session ownership: \(named, privacy: .public) of \(total, privacy: .public) profiles name an account")
         }
         for profile in codexProfiles {
             monitors[profile.id] = CodexActivityMonitor(profile: profile)
+        }
+
+        // The `/usage` probe is a Claude Code process too, and files a session
+        // for the seconds it runs. Every Claude monitor steps over it by pid
+        // and by its scratch directory, whether or not a token refresher runs
+        // below. Without this the probe showed as a `busy` session, vanished,
+        // and was announced as a turn that finished.
+        for monitor in claudeMonitors {
+            monitor.ignoredPIDs = { ClaudeUsageCLI.runningPIDs }
+            monitor.ignoredWorkingDirectories = [ClaudeUsageCLI.scratchLocation().path]
         }
 
         // Renewing the token runs the Claude command, which registers a session
@@ -768,8 +821,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             for monitor in claudeMonitors {
                 monitor.ignoredPIDs = { [weak refresher] in
-                    guard let pid = refresher?.launchedPID else { return [] }
-                    return [pid]
+                    var pids = ClaudeUsageCLI.runningPIDs
+                    if let pid = refresher?.launchedPID { pids.insert(pid) }
+                    return pids
                 }
             }
             // The one place the failure becomes visible. The store carries the
