@@ -31,6 +31,9 @@ jobs:
       - name: Check the UI pages parse
         run: node scripts/check-ui-scripts.mjs
 
+      - name: Test light surface theme
+        run: node --test test-light-surface.cjs
+
       - name: Test Claude sign-in controls
         run: node scripts/test-claude-auth-ui.cjs
 

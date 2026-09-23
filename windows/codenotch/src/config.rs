@@ -65,7 +65,10 @@ pub struct Config {
     #[serde(default = "default_weekly_ring")]
     pub weekly_ring: String,
     /// Which appearance the pages draw in: "system", "light" or "dark".
-    #[serde(default = "default_theme")]
+    #[serde(
+        default = "default_theme",
+        deserialize_with = "deserialize_theme_or_system"
+    )]
     pub theme: String,
     /// Which providers the notch itself shows, in order. Empty means every provider that has
     /// something to report — the original behaviour, and the default. Superseded by `notch_slots`,
@@ -177,6 +180,18 @@ pub fn theme_or_system(value: &str) -> String {
         "light" | "dark" => value.to_string(),
         _ => default_theme(),
     }
+}
+
+/// A malformed theme must not leave the JSON parser mid-value and discard the user's other choices.
+fn deserialize_theme_or_system<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Option::<serde_json::Value>::deserialize(deserializer)
+        .ok()
+        .flatten()
+        .and_then(|value| value.as_str().map(theme_or_system))
+        .unwrap_or_else(default_theme))
 }
 
 /// A second arc changes how every reading looks, so an unreadable value means off rather than a
@@ -382,5 +397,41 @@ mod tests {
         assert_eq!(theme_or_system("dark"), "dark");
         assert_eq!(theme_or_system("Dark"), "system");
         assert_eq!(theme_or_system(""), "system");
+    }
+
+    #[test]
+    fn theme_preserves_the_rest_of_a_config_when_it_is_missing_or_malformed() {
+        let old: Config = serde_json::from_str(r#"{"notch_visible":false}"#).unwrap();
+        assert_eq!(old.theme, "system", "an existing config follows Windows");
+        assert!(!old.notch_visible, "the existing choice survives");
+
+        for (raw, expected) in [
+            (r#""light""#, "light"),
+            (r#""dark""#, "dark"),
+            (r#""Light""#, "system"),
+            ("true", "system"),
+            ("[]", "system"),
+            ("{}", "system"),
+            ("null", "system"),
+        ] {
+            let cfg: Config =
+                serde_json::from_str(&format!(r#"{{"theme":{raw},"notch_visible":false}}"#))
+                    .unwrap();
+            assert_eq!(cfg.theme, expected, "{raw} resolves safely");
+            assert!(
+                !cfg.notch_visible,
+                "{raw} did not discard the rest of the config"
+            );
+        }
+
+        let saved = serde_json::to_value(Config {
+            theme: "light".into(),
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(
+            saved.get("theme").and_then(|value| value.as_str()),
+            Some("light")
+        );
     }
 }
