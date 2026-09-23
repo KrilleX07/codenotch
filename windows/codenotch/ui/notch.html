@@ -305,7 +305,23 @@ function applyTheme(name){
 }
 invoke('get_theme_resolved').then(applyTheme).catch(()=>{});
 listen('theme_resolved',e=>applyTheme(e.payload)).catch(()=>{});
-const tone=f=> f>=0.8?CRIT : f>=0.5?WATCH : AMPLE;
+let colorTransition='hard_step';
+const stepTone=f=> f>=0.8?CRIT : f>=0.5?WATCH : AMPLE;
+// A continuous sRGB ramp across the whole range: the Windows watch cut has always been 50%, so
+// this is a named equivalence rather than a magic number. Windows has no watch-limit slider.
+const WATCH_AT=0.5;
+function hex3(c){ const n=parseInt(c.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+function lerpHex(a,b,t){
+  const A=hex3(a), B=hex3(b);
+  const ch=i=>Math.round(A[i]+(B[i]-A[i])*t);
+  return `rgb(${ch(0)},${ch(1)},${ch(2)})`;
+}
+const rampTone=f=>{
+  f=Math.max(0,Math.min(1,f));
+  if(f<WATCH_AT) return lerpHex(AMPLE,WATCH,f/WATCH_AT);
+  return lerpHex(WATCH,CRIT,(f-WATCH_AT)/(1-WATCH_AT));
+};
+const tone=f=> colorTransition==='ramp'?rampTone(f):stepTone(f);
 // Whole percents, except where rounding would read as nothing used or nothing left, as the Mac's Percent does
 function smallPct(v){
   if(v<=0) return '0';
@@ -1557,6 +1573,8 @@ listen('notch_slots',e=>{
 invoke('get_antigravity_prefs').then(p=>{if(p){agPrefs=p;renderRing();}}).catch(()=>{});
 invoke('get_weekly_ring').then(v=>{if(typeof v==='string'){weeklyRing=v;renderRing();}}).catch(()=>{});
 listen('weekly_ring',e=>{if(typeof e.payload==='string'){weeklyRing=e.payload;renderRing();}}).catch(()=>{});
+invoke('get_color_transition').then(v=>{if(typeof v==='string'){colorTransition=v;renderRing();}}).catch(()=>{});
+listen('color_transition',e=>{if(typeof e.payload==='string'){colorTransition=e.payload;renderRing();}}).catch(()=>{});
 listen('antigravity_prefs',e=>{if(e.payload){agPrefs=e.payload;renderRing();}}).catch(()=>{});
 listen('glyphs',e=>{glyphs=e.payload||glyphs;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 listen('activity',e=>{activity=e.payload||activity;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
