@@ -172,8 +172,10 @@ actor ClaudeOAuthProvider: UsageProvider {
         // source and the only one that can never interrupt anyone: it reads a
         // file Claude Desktop has already written.
         let desktop = await desktopReading()
-        let resets = desktop?.resets?.credits(at: Date(), within: desktopFreshness)
-        if let desktop, !Self.hasExpiredWindow(desktop.windows, at: Date()) {
+        let now = Date()
+        let resets = desktop?.resets?.credits(at: now)
+        if let desktop, desktop.isFresh(at: now, within: desktopFreshness),
+           !Self.hasExpiredWindow(desktop.windows, at: now) {
             return snapshot(windows: desktop.windows, resetCredits: resets)
         }
         // Ahead of the back-off check on purpose. That deadline is the
@@ -271,11 +273,9 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// on — is a reason to ask the next source, not a reason to fail the refresh
     /// and put an invented status on the ring.
     ///
-    /// A snapshot past `desktopFreshness` is *not* returned. That is what keeps
-    /// the ring honest without any new state: dropping through leaves the last
-    /// good reading to `UsageStore`, which already re-shows it with the age it
-    /// actually has and dims it — where returning it here would present numbers
-    /// from an hour ago as a live `.ok`.
+    /// The caller checks usage freshness separately. An older entry can still
+    /// contain a valid last-known reset grant, shown explicitly as cached with
+    /// its observation time rather than presented as a live reading.
     private func desktopReading() async -> ClaudeDesktopUsageCache.Reading? {
         guard let desktopCache else { return nil }
         let now = Date()
@@ -305,11 +305,6 @@ actor ClaudeOAuthProvider: UsageProvider {
             return nil
         }
 
-        guard reading.isFresh(at: now, within: desktopFreshness) else {
-            lastDesktopMiss = now
-            Log.usage.debug("\(self.id, privacy: .public): claude desktop snapshot is too old to show as live")
-            return nil
-        }
         // The caller rejects expired usage windows separately: the unused
         // reset grant can still be current when a five-hour window has ended.
         lastDesktopMiss = nil

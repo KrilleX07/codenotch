@@ -64,9 +64,14 @@ struct ClaudeDesktopUsageCache: Sendable {
         let value: ClaudeResetCredits?
         let capturedAt: Date
 
-        func credits(at now: Date, within freshness: TimeInterval) -> UsageResetCredits? {
-            guard abs(now.timeIntervalSince(capturedAt)) < freshness else { return nil }
-            return value?.credits(at: now)
+        func credits(at now: Date) -> UsageResetCredits? {
+            // Desktop only refreshes grants while its Usage settings are open.
+            // Preserve the last observation, dated in the card, until a newer
+            // response supersedes it or the grant itself expires.
+            guard capturedAt.timeIntervalSince(now) < 30 * 60,
+                  var credits = value?.credits(at: now) else { return nil }
+            credits.checkedAt = capturedAt
+            return credits
         }
     }
 

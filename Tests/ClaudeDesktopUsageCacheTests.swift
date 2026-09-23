@@ -537,9 +537,13 @@ final class ClaudeDesktopUsageCacheTests: XCTestCase {
         let reading = try XCTUnwrap(ClaudeDesktopUsageCache(directory: directory).read(organization: Self.organization))
         XCTAssertEqual(reading.entry.lastPathComponent, "plain_0")
         XCTAssertEqual(reading.windows.first?.usedFraction, 0.30)
-        XCTAssertEqual(reading.resets?.credits(at: now, within: 1800)?.availableCount, 1)
-        XCTAssertNil(reading.resets?.credits(at: now.addingTimeInterval(1800), within: 1800),
-                     "newer usage must not extend the reset metadata's freshness")
+        XCTAssertEqual(reading.resets?.credits(at: now)?.availableCount, 1)
+        let later = try XCTUnwrap(reading.resets?.credits(at: now.addingTimeInterval(3 * 3600)))
+        XCTAssertEqual(later.availableCount, 1)
+        XCTAssertEqual(try XCTUnwrap(later.checkedAt).timeIntervalSince1970,
+                       now.addingTimeInterval(-60).timeIntervalSince1970, accuracy: 1,
+                       "newer usage must not re-date the cached reset observation")
+        XCTAssertEqual(later.unexpired(at: now).checkedAt, later.checkedAt)
         XCTAssertNil(ClaudeDesktopUsageCache(directory: directory).read(organization: "other-account"))
     }
 
@@ -558,7 +562,7 @@ final class ClaudeDesktopUsageCacheTests: XCTestCase {
             setModificationDate(Date(), of: directory.appendingPathComponent("newer_0"))
             let reading = try XCTUnwrap(ClaudeDesktopUsageCache(directory: directory).read(organization: Self.organization))
             XCTAssertNotNil(reading.resets)
-            XCTAssertEqual(reading.resets?.credits(at: Date(), within: 1800)?.availableCount ?? 0, 0)
+            XCTAssertEqual(reading.resets?.credits(at: Date())?.availableCount ?? 0, 0)
         }
     }
 

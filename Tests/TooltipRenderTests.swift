@@ -89,6 +89,10 @@ final class TooltipRenderTests: XCTestCase {
             resetCredits: response.cedarEmber?.credits(at: now)
         )
         let withResets = try renderClaudeResets(snapshot, now: now)
+        var cached = snapshot
+        cached.resetCredits?.checkedAt = now.addingTimeInterval(-184 * 60)
+        let withCachedResets = try renderClaudeResets(cached, now: now)
+        XCTAssertEqual(withResets.size.height, withCachedResets.size.height)
         let expiry = try XCTUnwrap(snapshot.resetCredits?.nextExpiry)
         let expired = try renderClaudeResets(snapshot, now: expiry)
         XCTAssertGreaterThan(withResets.size.height, expired.size.height)

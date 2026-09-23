@@ -151,9 +151,9 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(source.reads, 0)
     }
 
-    func testUnsupportedOAuthSurfaceKeepsFreshDesktopResetsButNotStaleOnes() async throws {
+    func testUnsupportedOAuthSurfaceKeepsDatedDesktopResetsWhenUsageIsStale() async throws {
         let payload = Data(#"{"limits":[{"kind":"session","percent":42,"resets_at":"2099-01-01T00:00:00Z"}],"cedar_ember":{"eligible":false,"ineligible_reason":"surface","grants":[]}}"#.utf8)
-        for age: TimeInterval in [0, 3600] {
+        for age: TimeInterval in [0, 3 * 3600] {
             StubEndpoint.reset([.init(status: 200, body: payload)])
             let directory = makeCacheDirectory()
             writeResetEntry(into: directory, body: ClaudeResetFixture.expiredWindowsCacheBody, age: age)
@@ -161,7 +161,9 @@ final class ClaudeOAuthProviderTests: XCTestCase {
                                         desktopCache: ClaudeDesktopUsageCache(directory: directory))
             let snapshot = try await provider.fetchSnapshot()
             XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.42)
-            XCTAssertEqual(snapshot.resetCredits?.availableCount, age == 0 ? 1 : nil)
+            XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+            XCTAssertEqual(Date().timeIntervalSince(try XCTUnwrap(snapshot.resetCredits?.checkedAt)),
+                           age, accuracy: 3)
         }
     }
 

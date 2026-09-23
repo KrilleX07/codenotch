@@ -18,10 +18,13 @@ struct UsageResetCredits: Equatable, Sendable {
 
     let availableCount: Int
     let credits: [Credit]
+    /// A cached observation must stay dated even when usage itself refreshes.
+    var checkedAt: Date? = nil
 
-    init(availableCount: Int, credits: [Credit] = []) {
+    init(availableCount: Int, credits: [Credit] = [], checkedAt: Date? = nil) {
         self.availableCount = availableCount
         self.credits = credits
+        self.checkedAt = checkedAt
     }
 
     /// Credits still available, soonest expiry first.
@@ -36,7 +39,8 @@ struct UsageResetCredits: Equatable, Sendable {
         let expired = available.filter { ($0.expiresAt ?? .distantFuture) <= now }
         return UsageResetCredits(
             availableCount: max(0, availableCount - expired.reduce(0) { $0 + $1.count }),
-            credits: credits.filter { ($0.expiresAt ?? .distantFuture) > now }
+            credits: credits.filter { ($0.expiresAt ?? .distantFuture) > now },
+            checkedAt: checkedAt
         )
     }
 

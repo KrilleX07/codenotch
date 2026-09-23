@@ -813,6 +813,11 @@ private struct UsageResetCreditsSection: View {
         }
     }
 
+    private var observedCountText: String {
+        guard let checkedAt = credits.checkedAt else { return countText }
+        return L10n.t("\(countText) · \(ElapsedCopy.ago(since: checkedAt, now: now))")
+    }
+
     private var expiryText: String? {
         guard credits.availableCount > 0, let date = credits.nextExpiry, date > now else {
             return nil
@@ -831,16 +836,18 @@ private struct UsageResetCreditsSection: View {
                 .padding(.top, NotchLayout.codexUsageTop)
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.t("Unused resets"))
+                Text(credits.checkedAt == nil
+                     ? L10n.t("Unused resets") : L10n.t("Unused resets (cached)"))
                     .font(Typography.cardBody)
                     .fontWeight(.semibold)
                     .foregroundStyle(Palette.textPrimary)
                     .padding(.top, NotchLayout.blockSpacing)
 
-                Text(countText)
+                Text(observedCountText)
                     .font(Typography.cardBody)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .padding(.top, NotchLayout.codexUsageRowGap)
 
                 if let expiryText {

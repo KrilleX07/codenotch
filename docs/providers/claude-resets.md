@@ -29,12 +29,15 @@ is not necessarily the one containing reset data. The reader retains the
 newest windows and the newest reset response, each with its own age.
 A spent or malformed block, or an explicit reset query returning no block,
 supersedes older available grants. Organization
-matching and the existing 30-minute freshness limit apply to reset data too.
+matching applies to reset data too. Desktop only refreshes reset grants while
+Settings → Usage is open, so cached grants remain visible with their original
+observation age until they expire or a newer response supersedes them. The
+30-minute freshness limit still applies to usage windows.
 
 The OAuth request uses `GET /api/oauth/usage?cedar_ember=1`. In the live check
 it returned `eligible: false`, `ineligible_reason: "surface"`, and no grants,
 even though the same account's Desktop page reported one. Treat that result
-as unavailable data, not zero remaining resets. Fresh Desktop reset data can
+as unavailable data, not zero remaining resets. Dated Desktop reset data can
 therefore accompany usage windows from either the CLI or OAuth fallback.
 If OAuth starts returning grants, the same decoder already handles them.
 
