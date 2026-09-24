@@ -131,7 +131,7 @@ actor CodexLocalProvider: UsageProvider {
     private static func fetchResetCredits(
         session: URLSession,
         credential: CodexCredentials.Credential
-    ) async -> CodexResetCredits? {
+    ) async -> UsageResetCredits? {
         var request = URLRequest(
             url: URL(string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits")!,
             cachePolicy: .reloadIgnoringLocalCacheData,

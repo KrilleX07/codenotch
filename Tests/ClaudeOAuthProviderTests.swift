@@ -106,6 +106,78 @@ final class ClaudeOAuthProviderTests: XCTestCase {
 
     // MARK: - Helpers
 
+    func testOAuthResetCreditsReachTheSnapshotAndDisappearAfterUse() async throws {
+        let spent = String(decoding: ClaudeResetFixture.futureUsage, as: UTF8.self)
+            .replacingOccurrences(of: "\"resets_left\":1", with: "\"resets_left\":0")
+        StubEndpoint.reset([
+            .init(status: 200, body: ClaudeResetFixture.futureUsage),
+            .init(status: 200, body: Data(spent.utf8))
+        ])
+        let provider = makeProvider(source: CredentialSource(readable: true))
+        let available = try await provider.fetchSnapshot()
+        XCTAssertEqual(available.resetCredits?.availableCount, 1)
+        XCTAssertTrue(available.hasAvailableResetCredits)
+        let used = try await provider.fetchSnapshot()
+        XCTAssertFalse(used.hasAvailableResetCredits)
+    }
+
+    func testDesktopResetCreditsReachTheSnapshotWithoutReadingCredentials() async throws {
+        let directory = makeCacheDirectory()
+        writeResetEntry(into: directory, body: ClaudeResetFixture.availableCacheBody)
+        let source = CredentialSource(readable: false)
+        let provider = makeProvider(source: source, profile: desktopProfile(),
+                                    desktopCache: ClaudeDesktopUsageCache(directory: directory))
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+        XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.08)
+        XCTAssertEqual(source.reads, 0)
+        XCTAssertEqual(StubEndpoint.requestCount, 0)
+
+        writeResetEntry(into: directory, body: ClaudeResetFixture.spentCacheBody)
+        let spent = try await provider.fetchSnapshot()
+        XCTAssertFalse(spent.hasAvailableResetCredits)
+    }
+
+    func testExpiredDesktopWindowsStillEnrichTheCLIFallbackWithFreshResets() async throws {
+        let directory = makeCacheDirectory()
+        writeResetEntry(into: directory, body: ClaudeResetFixture.expiredWindowsCacheBody)
+        let source = CredentialSource(readable: false)
+        let provider = makeProvider(source: source, cli: Self.cli { Self.cliUsage },
+                                    profile: desktopProfile(),
+                                    desktopCache: ClaudeDesktopUsageCache(directory: directory))
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.38)
+        XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+        XCTAssertEqual(source.reads, 0)
+    }
+
+    func testUnsupportedOAuthSurfaceKeepsDatedDesktopResetsWhenUsageIsStale() async throws {
+        let payload = Data(#"{"limits":[{"kind":"session","percent":42,"resets_at":"2099-01-01T00:00:00Z"}],"cedar_ember":{"eligible":false,"ineligible_reason":"surface","grants":[]}}"#.utf8)
+        for age: TimeInterval in [0, 3 * 3600] {
+            StubEndpoint.reset([.init(status: 200, body: payload)])
+            let directory = makeCacheDirectory()
+            writeResetEntry(into: directory, body: ClaudeResetFixture.expiredWindowsCacheBody, age: age)
+            let provider = makeProvider(source: CredentialSource(readable: true), profile: desktopProfile(),
+                                        desktopCache: ClaudeDesktopUsageCache(directory: directory))
+            let snapshot = try await provider.fetchSnapshot()
+            XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.42)
+            XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+            XCTAssertEqual(Date().timeIntervalSince(try XCTUnwrap(snapshot.resetCredits?.checkedAt)),
+                           age, accuracy: 3)
+        }
+    }
+
+    private func writeResetEntry(into directory: URL, body: Data, age: TimeInterval = 0) {
+        var entry = ClaudeDesktopUsageCacheTests.Entry()
+        entry.body = body
+        entry.responseDate = nil
+        entry.key += "&cedar_ember=1"
+        let file = directory.appendingPathComponent("resets_0")
+        try? entry.data().write(to: file)
+        try? FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-age)],
+                                             ofItemAtPath: file.path)
+    }
+
     private static let usagePayload = Data("""
     {"limits":[{"kind":"session","percent":42,"resets_at":"2099-01-01T00:00:00Z"}]}
     """.utf8)

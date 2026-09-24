@@ -817,9 +817,9 @@ private struct CodexDailyUsageChart: View {
     }
 }
 
-/// Unused rate-limit resets on the Codex account.
-private struct CodexResetCreditsSection: View {
-    let credits: CodexResetCredits
+/// Unused rate-limit resets on this account.
+private struct UsageResetCreditsSection: View {
+    let credits: UsageResetCredits
     let now: Date
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
@@ -829,6 +829,11 @@ private struct CodexResetCreditsSection: View {
         case 1: return L10n.t("1 unused reset")
         case let n: return L10n.t("\(n) unused resets")
         }
+    }
+
+    private var observedCountText: String {
+        guard let checkedAt = credits.checkedAt else { return countText }
+        return L10n.t("\(countText) · \(ElapsedCopy.ago(since: checkedAt, now: now))")
     }
 
     private var expiryText: String? {
@@ -849,16 +854,18 @@ private struct CodexResetCreditsSection: View {
                 .padding(.top, NotchLayout.codexUsageTop)
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.t("Unused resets"))
+                Text(credits.checkedAt == nil
+                     ? L10n.t("Unused resets") : L10n.t("Unused resets (cached)"))
                     .font(Typography.cardBody)
                     .fontWeight(.semibold)
                     .foregroundStyle(Palette.textPrimary)
                     .padding(.top, NotchLayout.blockSpacing)
 
-                Text(countText)
+                Text(observedCountText)
                     .font(Typography.cardBody)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .padding(.top, NotchLayout.codexUsageRowGap)
 
                 if let expiryText {
@@ -1116,7 +1123,7 @@ struct TooltipCard: View {
             blockMessage: snapshot.block?.summary(now: now),
             hasTokenUsage: snapshot.tokenUsage != nil,
             hasPlan: snapshot.plan != nil,
-            hasResetCredits: snapshot.hasAvailableResetCredits,
+            hasResetCredits: snapshot.availableResetCredits(at: now) != nil,
             localModelName: snapshot.localModel?.name,
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
@@ -1135,9 +1142,8 @@ struct TooltipCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ProviderTooltip(activityNote: localActivityNote, snapshot: snapshot, now: now, resetTimeFormat: resetTimeFormat,
                                     showUsagePace: showUsagePace)
-                    if let resetCredits = snapshot.resetCredits,
-                       snapshot.hasAvailableResetCredits {
-                        CodexResetCreditsSection(credits: resetCredits, now: now)
+                    if let resetCredits = snapshot.availableResetCredits(at: now) {
+                        UsageResetCreditsSection(credits: resetCredits, now: now)
                     }
                     if let tokenUsage = snapshot.tokenUsage {
                         CodexUsageSection(usage: tokenUsage, now: now)
