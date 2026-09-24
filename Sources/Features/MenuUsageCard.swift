@@ -149,19 +149,32 @@ struct DetailSwitchStyle: ToggleStyle {
         .accessibilityAddTraits(configuration.isOn ? [.isButton, .isSelected] : .isButton)
     }
 
+    /// Only the colour and the knob move. The animation is scoped to those two
+    /// rather than hung on the whole track with `.animation(_:value:)`, which
+    /// animates the track's *position* too: the card re-lays out in the same
+    /// update that flips the switch — it has just grown or shrunk — and the
+    /// track slid in from wherever that layout passed through while the words
+    /// beside it stood still.
     private func track(isOn: Bool) -> some View {
+        let motion = reduceMotion ? nil : NotchMotion.glide
         // Off is deliberately heavier than `Palette.barTrack`: the knob is
         // white in both appearances, and a track as faint as a usage bar's
         // would leave it floating on a light card with nothing under it.
-        Capsule()
-            .fill(isOn ? accentColor : secondaryInk.opacity(0.35))
-            .frame(width: Self.width, height: Self.height)
-            .overlay(alignment: isOn ? .trailing : .leading) {
+        return Capsule()
+            .fill(secondaryInk.opacity(0.35))
+            .overlay {
+                Capsule()
+                    .fill(accentColor)
+                    .animation(motion) { $0.opacity(isOn ? 1 : 0) }
+            }
+            .overlay(alignment: .leading) {
                 Circle()
                     .fill(.white)
                     .padding(Self.inset)
+                    .frame(width: Self.height, height: Self.height)
+                    .animation(motion) { $0.offset(x: isOn ? Self.width - Self.height : 0) }
             }
-            .animation(reduceMotion ? nil : NotchMotion.glide, value: isOn)
+            .frame(width: Self.width, height: Self.height)
     }
 }
 
@@ -208,13 +221,23 @@ enum MenuUsageCardItem {
                 .environment(\.usageWatchLimit, watchLimit)
                 .environment(\.usageCriticalLimit, criticalLimit)
                 .tint(accentColor)
-                // Pinned to the top of the item. A hosting view's frame is
-                // its fitting size rounded up to whole points, and SwiftUI
-                // centres content in whatever is left over — a different
-                // fraction for a closed card than for an open one, so the
-                // header, and the switch in it, moved when it was flipped.
-                // Anchored here, a card grows and shrinks from its bottom edge.
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                // Pinned to the top of the item, and never taller than it.
+                //
+                // A hosting view's frame is its fitting size rounded up to
+                // whole points, and SwiftUI centres content in whatever is
+                // left over — a different fraction for a closed card than for
+                // an open one, so the header, and the switch in it, moved when
+                // it was flipped.
+                //
+                // The minimums matter as much as the alignment. A new card is
+                // laid out once in the item's old frame before the item is
+                // re-measured; with only a maximum, a card taller than that
+                // frame keeps its own height and is centred on it, which puts
+                // the header half the difference above where it belongs. With
+                // both bounds the frame is always the item's, and whatever
+                // does not fit yet hangs off the bottom until the item grows.
+                .frame(minWidth: 0, maxWidth: .infinity,
+                       minHeight: 0, maxHeight: .infinity, alignment: .top)
         )
     }
 

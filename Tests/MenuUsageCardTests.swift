@@ -467,4 +467,67 @@ final class MenuUsageCardTests: XCTestCase {
         XCTAssertEqual(plain.midY, withTier.midY, accuracy: 1,
                        "the switch followed the tier line instead of the title")
     }
+
+    /// The top of an item's view, drawn as the menu would draw it.
+    private func header(of hosting: NSView, height: CGFloat) throws -> NSBitmapImageRep {
+        hosting.layoutSubtreeIfNeeded()
+        let top = hosting.isFlipped ? 0 : hosting.bounds.height - height
+        let rect = NSRect(x: 0, y: top, width: hosting.bounds.width, height: height)
+        let rep = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: rect))
+        hosting.cacheDisplay(in: rect, to: rep)
+        return rep
+    }
+
+    /// Flipping the switch hands the item a new card before the item has been
+    /// re-measured, so for a moment an open card is laid out in a closed
+    /// card's frame. Its header has to be where it will end up even then.
+    ///
+    /// It was not: a card taller than its frame kept its own height and was
+    /// centred on the frame, which put the header half the growth too high —
+    /// and the switch, animated, slid down into place from there.
+    func testAnOpenedCardInTheClosedFrameKeepsItsHeaderInPlace() throws {
+        let now = Date()
+        var snapshot = claude(session: 0, weekly: 0.59)
+        snapshot.plan = "plus"
+        // Idle rows only: a busy ring turns with the clock, and two renders a
+        // moment apart would differ for that alone.
+        let activity = ActivitySummary(sessions: [session("codenotch", .idle),
+                                                  session("hivinz", .idle)])
+        func root(expanded: Bool) -> AnyView {
+            MenuUsageCardItem.root(snapshot: snapshot, activity: activity, now: now,
+                                   resetTimeFormat: .automatic, deepSeekPricingEnabled: true,
+                                   deepSeekPricingSchedule: .current, sessionCap: 5,
+                                   accentColor: .blue, watchLimit: 0.7, criticalLimit: 0.9,
+                                   isExpanded: expanded, onToggle: {})
+        }
+        func host(_ root: AnyView) -> MenuCardHostingView<AnyView> {
+            let hosting = MenuCardHostingView(rootView: root)
+            hosting.appearance = NSAppearance(named: .aqua)
+            MenuUsageCardItem.resize(hosting)
+            return hosting
+        }
+
+        let settled = host(root(expanded: true))
+        let midway = host(root(expanded: false))
+        midway.rootView = root(expanded: true)
+        XCTAssertLessThan(midway.frame.height, settled.frame.height,
+                          "the item was re-measured before the check could see the old frame")
+
+        let expected = try header(of: settled, height: 60)
+        let actual = try header(of: midway, height: 60)
+        XCTAssertEqual(actual.pixelsWide, expected.pixelsWide)
+        XCTAssertEqual(actual.pixelsHigh, expected.pixelsHigh)
+        var differing = 0
+        for y in 0..<expected.pixelsHigh {
+            for x in 0..<expected.pixelsWide {
+                guard let a = actual.colorAt(x: x, y: y)?.usingColorSpace(.sRGB),
+                      let b = expected.colorAt(x: x, y: y)?.usingColorSpace(.sRGB) else { continue }
+                let delta = max(abs(a.redComponent - b.redComponent),
+                                abs(a.greenComponent - b.greenComponent),
+                                abs(a.blueComponent - b.blueComponent))
+                if delta > 0.1 { differing += 1 }
+            }
+        }
+        XCTAssertEqual(differing, 0, "the header is drawn somewhere else until the item is re-measured")
+    }
 }
