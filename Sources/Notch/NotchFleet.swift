@@ -60,6 +60,7 @@ final class NotchFleet {
     private var weeklyRing: WeeklyRing = .off
     private var weeklyRingDashed: Bool = false
     private var showsNotchReadings: Bool = true
+    private var weeklyReading: Bool = false
     private var showsMoveHandle = true
     private var foldsForFullScreen = true
     private var surfaceStyle: NotchSurfaceStyle = .glass
@@ -187,6 +188,13 @@ final class NotchFleet {
         // changes the ring's size and so the notch's own length.
         for controller in controllers.values {
             controller.apply(showsNotchReadings: showsNotchReadings)
+        }
+    }
+
+    func apply(weeklyReading: Bool) {
+        self.weeklyReading = weeklyReading
+        for controller in controllers.values {
+            controller.model.weeklyReading = weeklyReading
         }
     }
 
@@ -443,6 +451,7 @@ final class NotchFleet {
         controller.model.weeklyRing = weeklyRing
         controller.model.weeklyRingDashed = weeklyRingDashed
         controller.model.showsNotchReadings = showsNotchReadings
+        controller.model.weeklyReading = weeklyReading
         controller.model.showsMoveHandle = showsMoveHandle
         controller.model.surfaceStyle = surfaceStyle
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled

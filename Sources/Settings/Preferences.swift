@@ -260,6 +260,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(weeklyRingDashed, forKey: Keys.weeklyRingDashed) }
     }
 
+    /// Whether the reading under each ring adds the weekly percentage, as
+    /// "30%/70%". Only while the weekly ring is on.
+    @Published var weeklyReading: Bool {
+        didSet { defaults.set(weeklyReading, forKey: Keys.weeklyReading) }
+    }
+
     @Published var weeklyRing: WeeklyRing {
         didSet { defaults.set(weeklyRing.rawValue, forKey: Keys.weeklyRing) }
     }
@@ -510,6 +516,7 @@ final class Preferences: ObservableObject {
         static let weeklyRing = "weeklyRing"
         static let weeklyRingDashed = "weeklyRingDashed"
         static let showsNotchReadings = "showsNotchReadings"
+        static let weeklyReading = "weeklyReading"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
         static let weeklyHeadline = "weeklyHeadline"
         static let showsMoveHandle = "showsMoveHandle"
@@ -830,6 +837,7 @@ final class Preferences: ObservableObject {
         // every reading looks, and nobody asked for it on their behalf.
         self.weeklyRingDashed = defaults.object(forKey: Keys.weeklyRingDashed) as? Bool ?? false
         self.showsNotchReadings = defaults.object(forKey: Keys.showsNotchReadings) as? Bool ?? true
+        self.weeklyReading = defaults.object(forKey: Keys.weeklyReading) as? Bool ?? false
 
         self.weeklyRing = defaults.string(forKey: Keys.weeklyRing)
             .flatMap(WeeklyRing.init(rawValue:)) ?? .off

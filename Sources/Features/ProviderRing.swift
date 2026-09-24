@@ -282,6 +282,8 @@ struct ProviderCell: View {
     var activity: ActivitySummary?
     var isRefreshing: Bool = false
     var weeklyRing: WeeklyRing = .off
+    /// Whether the reading adds the weekly percentage, as "30%/70%".
+    var showsWeeklyReading: Bool = false
     /// Whether the percentage is drawn under the ring.
     ///
     /// Off where the cell sits in a menu-bar strip beside the hardware notch:
@@ -292,7 +294,16 @@ struct ProviderCell: View {
 
     /// A dash, not "0%": nothing read is not the same as nothing used.
     private var readingText: String {
-        snapshot.hasReading ? snapshot.headlineText : "—"
+        guard snapshot.hasReading else { return "—" }
+        guard let weekly = weeklyReading else { return snapshot.headlineText }
+        return "\(snapshot.headlineText)/\(Percent.text(for: weekly))%"
+    }
+
+    /// The weekly fraction, when the weekly ring and its reading are on and
+    /// there is one to show beside the 5h reading.
+    private var weeklyReading: Double? {
+        guard showsWeeklyReading, weeklyRing != .off, snapshot.localModel == nil else { return nil }
+        return snapshot.weeklyFraction
     }
 
     var body: some View {
@@ -313,7 +324,7 @@ struct ProviderCell: View {
             )
             if showsReading {
             Text(readingText)
-                .font(Typography.percent)
+                .font(snapshot.hasReading && weeklyReading != nil ? Typography.percentPair : Typography.percent)
                 .foregroundStyle(snapshot.showsLocalPerformance && snapshot.localPerformance == nil
                                  ? Palette.textSecondary : Palette.textPrimary)
                 // Keep local speeds inside the ring's column so longer units

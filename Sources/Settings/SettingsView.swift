@@ -830,6 +830,7 @@ struct SettingsView: View {
 
                 if preferences.weeklyRing != .off {
                     Toggle(L10n.t("Dashed weekly ring"), isOn: $preferences.weeklyRingDashed)
+                    Toggle(L10n.t("Weekly % in the reading"), isOn: $preferences.weeklyReading)
                 }
 
                 Toggle(L10n.t("Weekly limit as the main ring"), isOn: $preferences.weeklyHeadline)
