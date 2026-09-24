@@ -392,7 +392,7 @@ final class CustomEndpointTests: XCTestCase {
             } catch UsageProviderError.needsAuth {
                 XCTAssertTrue(status == 401 || status == 403)
             } catch UsageProviderError.badResponse(let code) {
-                XCTAssertEqual(code, status == 200 ? 503 : status)
+                XCTAssertEqual(code, status == 200 || status == 302 ? 503 : status)
             } catch {
                 XCTFail("Unexpected error \(error)")
             }
@@ -629,6 +629,7 @@ final class CustomEndpointTests: XCTestCase {
         XCTAssertNil(parsedMissing)
     }
 
+    @MainActor
     func testPreferencesReconciliationPreservesSampledReadingsWhenMappingUnchanged() {
         let defaults = UserDefaults(suiteName: "testPreferencesReconciliation")!
         defaults.removePersistentDomain(forName: "testPreferencesReconciliation")
@@ -641,9 +642,9 @@ final class CustomEndpointTests: XCTestCase {
             usageRecordsPath: "records",
             usageModelField: "model",
             usageTokenField: "tokens",
+            usageHistory: [],
             trackingUnit: .tokens,
-            currentTokensUsedM: 0.0,
-            usageHistory: []
+            currentTokensUsedM: 0.0
         )
         let prefs = Preferences(defaults: defaults)
         prefs.addCustomEndpoint(endpoint)
@@ -665,6 +666,7 @@ final class CustomEndpointTests: XCTestCase {
         XCTAssertEqual(updated?.usageHistory.count, 1)
     }
 
+    @MainActor
     func testPreferencesReconciliationDoesNotMergeWhenMappingChanged() {
         let defaults = UserDefaults(suiteName: "testPreferencesReconciliationChanged")!
         defaults.removePersistentDomain(forName: "testPreferencesReconciliationChanged")
@@ -677,9 +679,9 @@ final class CustomEndpointTests: XCTestCase {
             usageRecordsPath: "records",
             usageModelField: "model",
             usageTokenField: "tokens",
+            usageHistory: [],
             trackingUnit: .tokens,
-            currentTokensUsedM: 0.0,
-            usageHistory: []
+            currentTokensUsedM: 0.0
         )
         let prefs = Preferences(defaults: defaults)
         prefs.addCustomEndpoint(endpoint)
