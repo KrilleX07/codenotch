@@ -44732,6 +44732,28 @@
           }
         }
       }
+    },
+    "Weekly limit as the main ring": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite semanal no anel principal"
+          }
+        }
+      }
+    },
+    "For every provider with a weekly limit beside a shorter one, the main ring shows the week. The shorter window moves to the thin ring and the card. Alerts, the menu bar and providers with no weekly limit are unchanged, and Claude's daily pace ring still leads when it is on.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em todo provedor que tem um limite semanal ao lado de um mais curto, o anel principal mostra a semana. A janela mais curta vai para o anel fino e para o cartão. Alertas, barra de menus e provedores sem limite semanal não mudam, e o anel de ritmo diário do Claude continua na frente quando estiver ligado."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
