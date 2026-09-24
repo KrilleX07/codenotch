@@ -221,6 +221,76 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(spawns.value, 2)
     }
 
+    /// A CLI that is signed out fails with `needsAuth`. It should fall back to the token
+    /// and throttle subsequent spawns for `cliRefreshInterval`, rather than spawning a
+    /// subprocess on every tick.
+    func testASignedOutCLIDoesNotSpawnOnEveryTick() async throws {
+        StubEndpoint.reset(Array(repeating: .init(status: 200, body: Self.usagePayload), count: 3))
+        let source = CredentialSource(readable: true)
+        let spawns = Counter()
+        let provider = makeProvider(source: source,
+                                    cli: Self.cli {
+                                        spawns.increment()
+                                        throw UsageProviderError.needsAuth
+                                    })
+
+        _ = try await provider.fetchSnapshot()
+        _ = try await provider.fetchSnapshot()
+        _ = try await provider.fetchSnapshot()
+
+        XCTAssertEqual(spawns.value, 1, "a signed-out CLI was spawned repeatedly")
+        XCTAssertEqual(StubEndpoint.requestCount, 3, "fallback to endpoint did not occur on each tick")
+    }
+
+    /// A transient CLI failure (e.g. unparseable output or unexpected error) falls back
+    /// to the token on that tick, but must not lock out the CLI for 5 minutes.
+    func testATransientCLIFailureAllowsImmediateRetryOnNextTick() async throws {
+        StubEndpoint.reset(Array(repeating: .init(status: 200, body: Self.usagePayload), count: 2))
+        let source = CredentialSource(readable: true)
+        let shouldFail = Counter()
+        let spawns = Counter()
+        let provider = makeProvider(source: source,
+                                    cli: Self.cli {
+                                        spawns.increment()
+                                        if shouldFail.value == 0 {
+                                            shouldFail.increment()
+                                            return "Temporary blip: retry later"
+                                        }
+                                        return Self.cliUsage
+                                    })
+
+        // First tick: transient CLI failure, falls back to token path.
+        let first = try await provider.fetchSnapshot()
+        XCTAssertEqual(first.windows.first?.id, "session")
+        XCTAssertEqual(source.reads, 1)
+        XCTAssertEqual(spawns.value, 1)
+
+        // Second tick: CLI is asked again immediately and succeeds without keychain read.
+        let second = try await provider.fetchSnapshot()
+        XCTAssertEqual(second.usedFraction, 0.38)
+        XCTAssertEqual(source.reads, 1, "the second tick should have used CLI instead of reading keychain")
+        XCTAssertEqual(spawns.value, 2)
+    }
+
+    /// When Desktop cache is stale and CLI is available, usage must be read via
+    /// CLI without touching the keychain or endpoint.
+    func testAStaleDesktopSnapshotUsesCLIWhenAvailableWithoutKeychainRead() async throws {
+        StubEndpoint.reset([.init(status: 200, body: Self.usagePayload)])
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source,
+                                    cli: Self.cli(answering: Self.cliUsage),
+                                    profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 4 * 3600))
+
+        let snapshot = try await provider.fetchSnapshot()
+
+        // 38% is CLI's session window; 42% would be the endpoint fixture.
+        XCTAssertEqual(snapshot.usedFraction, 0.38)
+        XCTAssertEqual(source.reads, 0, "the keychain was read even though CLI was available")
+        XCTAssertEqual(StubEndpoint.requestCount, 0, "the endpoint was called even though CLI was available")
+    }
+
+
     // MARK: - The Claude Desktop cache path
 
     /// Why the whole source exists. On this machine `claude "/usage"` prints a
@@ -442,9 +512,9 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         cli { text }
     }
 
-    private static func cli(_ answer: @escaping @Sendable () -> String) -> ClaudeUsageCLI {
+    private static func cli(_ answer: @escaping @Sendable () throws -> String) -> ClaudeUsageCLI {
         // The path is never run — `output` is what the provider reaches.
-        ClaudeUsageCLI(binary: URL(fileURLWithPath: "/nonexistent/claude")) { _ in answer() }
+        ClaudeUsageCLI(binary: URL(fileURLWithPath: "/nonexistent/claude")) { _ in try answer() }
     }
 
     private func assertNeedsAuth(from provider: ClaudeOAuthProvider,
