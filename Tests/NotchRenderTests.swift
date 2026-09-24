@@ -817,6 +817,37 @@ final class StrayClickPinTests: XCTestCase {
         XCTAssertFalse(controller.model.isPinned)
         XCTAssertTrue(controller.model.isExpanded)
     }
+
+    /// Reported as "the notch appears locked": the rings are small targets on a
+    /// screen edge, a click aimed at one lands beside it easily, and a click
+    /// that missed used to pin the notch. `isPinned` is drawn nowhere, so the
+    /// notch stopped folding with nothing on screen to say why or how to undo
+    /// it. Keep open lives on the right-click menu, which names it.
+    func testAClickThatMissesTheRingsOnAnOpenNotchDoesNotPin() {
+        let controller = NotchWindowController()
+        controller.show()
+        defer { controller.stop() }
+        controller.apply(.alwaysShow)   // open, with no rings to hit
+        XCTAssertTrue(controller.model.isExpanded)
+        XCTAssertFalse(controller.model.isPinned)
+
+        for _ in 0..<3 { controller.handleClick(at: .zero) }
+
+        XCTAssertFalse(controller.model.isPinned, "a click that missed the rings locked the notch open")
+    }
+
+    /// The menu still pins, so the gesture's removal took nothing away.
+    func testTheMenuStillPins() {
+        let controller = NotchWindowController()
+        controller.show()
+        defer { controller.stop() }
+        controller.apply(.onHover)
+
+        controller.togglePinned()
+        XCTAssertTrue(controller.model.isPinned)
+        controller.togglePinned()
+        XCTAssertFalse(controller.model.isPinned)
+    }
 }
 
 /// A ring dimmed the instant the very first idle refresh attempt failed,

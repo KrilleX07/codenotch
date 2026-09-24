@@ -810,9 +810,13 @@ final class NotchWindowController {
                 let snapshot = model.snapshots[index]
                 Task { await model.refresh(snapshot, using: onRefreshProvider) }
             }
-            return
         }
-        togglePinned()
+        // Anything else on an open notch does nothing. A click here used to
+        // pin it, which read as the notch locking itself: the rings are small
+        // targets, a click aimed at one lands beside it easily, and `isPinned`
+        // has no drawn state — so the notch simply stopped folding and nothing
+        // on screen said why or how to undo it. Keep open is on the
+        // right-click menu, where it is named and carries a checkmark.
     }
 
     /// Move the notch to another screen edge.
