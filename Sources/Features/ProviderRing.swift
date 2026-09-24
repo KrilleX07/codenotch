@@ -282,7 +282,7 @@ struct ProviderCell: View {
     var activity: ActivitySummary?
     var isRefreshing: Bool = false
     var weeklyRing: WeeklyRing = .off
-    /// Whether the reading adds the weekly percentage, as "30%/70%".
+    /// Whether the reading adds the weekly ring's percentage, as "30%/70%".
     var showsWeeklyReading: Bool = false
     /// Whether the percentage is drawn under the ring.
     ///
@@ -299,10 +299,16 @@ struct ProviderCell: View {
         return "\(snapshot.headlineText)/\(Percent.text(for: weekly))%"
     }
 
-    /// The weekly fraction, when the weekly ring and its reading are on and
-    /// there is one to show beside the 5h reading.
+    /// What the weekly ring draws, when it and its reading are on. The pair
+    /// mirrors the two rings, so with the weekly limit as the main ring or the
+    /// daily pace ring the second number is the session, as the thin ring is.
+    ///
+    /// Only after a percentage: a count or a cost with a percentage after it
+    /// would read as one quantity, and it is not.
     private var weeklyReading: Double? {
-        guard showsWeeklyReading, weeklyRing != .off, snapshot.localModel == nil else { return nil }
+        guard showsWeeklyReading, weeklyRing != .off, snapshot.localModel == nil,
+              snapshot.usedFraction != nil, snapshot.headline?.prefersUsedText != true
+        else { return nil }
         return snapshot.weeklyFraction
     }
 

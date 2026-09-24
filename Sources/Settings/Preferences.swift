@@ -260,8 +260,8 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(weeklyRingDashed, forKey: Keys.weeklyRingDashed) }
     }
 
-    /// Whether the reading under each ring adds the weekly percentage, as
-    /// "30%/70%". Only while the weekly ring is on.
+    /// Whether the reading under each ring adds the weekly ring's percentage,
+    /// as "30%/70%". Only while the weekly ring is on.
     @Published var weeklyReading: Bool {
         didSet { defaults.set(weeklyReading, forKey: Keys.weeklyReading) }
     }
