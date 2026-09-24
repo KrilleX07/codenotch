@@ -434,7 +434,7 @@ final class NotchWindowController {
     /// at all. Whether a point is actually *on* the handle is a finer question
     /// than a box can answer — see `isOverHandle`.
     private var handleRect: CGRect {
-        let side = NotchLayout.orbHotZone
+        let side = model.orbHotZone
         let boxes = (model.orbHandlePoints + model.moveHandlePoints).map { point -> CGRect in
             let centre = placement.point(along: model.slack + point.x * model.sizeScale,
                                          across: point.y * model.sizeScale)
@@ -810,9 +810,13 @@ final class NotchWindowController {
                 let snapshot = model.snapshots[index]
                 Task { await model.refresh(snapshot, using: onRefreshProvider) }
             }
-            return
         }
-        togglePinned()
+        // Anything else on an open notch does nothing. A click here used to
+        // pin it, which read as the notch locking itself: the rings are small
+        // targets, a click aimed at one lands beside it easily, and `isPinned`
+        // has no drawn state — so the notch simply stopped folding and nothing
+        // on screen said why or how to undo it. Keep open is on the
+        // right-click menu, where it is named and carries a checkmark.
     }
 
     /// Move the notch to another screen edge.
@@ -847,6 +851,29 @@ final class NotchWindowController {
         guard model.alongOffset != alongOffset else { return }
         model.alongOffset = alongOffset
         relocate()
+    }
+
+    /// The size to start at, before there is a panel to relayout.
+    ///
+    /// A display plugged in later builds its panel at the current size rather
+    /// than at medium and resizing a beat afterwards.
+    func prime(scale: CGFloat) {
+        model.sizeScale = scale
+    }
+
+    /// Whether each ring carries its percentage.
+    ///
+    /// Relaid out, not merely set: beside the hardware the reading is paid for
+    /// out of ring size, so turning it on changes the ring, the strip's length
+    /// and the width of the window around it. Set without relocating, the
+    /// window keeps its old size and the shape — which centres itself in it —
+    /// slides away from the settings arc and the tooltip, both placed from
+    /// `slack`. Every setting that moves `panelSize` has to come through here.
+    func apply(showsNotchReadings: Bool) {
+        guard model.showsNotchReadings != showsNotchReadings else { return }
+        model.showsNotchReadings = showsNotchReadings
+        relocate()
+        updateInteractiveRects()
     }
 
     func apply(scale: CGFloat) {
@@ -1000,6 +1027,15 @@ final class NotchWindowController {
                     MainActor.assumeIsolated {
                         guard change == self.edgeChange else { return }
                         withAnimation(NotchMotion.unfold) { self.model.isExpanded = true }
+                        // The panel too. The relocate above ran while the notch
+                        // was folded, and opening it here without another one
+                        // left the window at the folded size: the shape centres
+                        // on the panel it is in, so it sat some 19pt left of
+                        // where the settings orb and the tooltip — both placed
+                        // from `slack` — expected it. That is the arc drifting
+                        // off the corner and the card pointing wide of its ring
+                        // after an edge change, and only after one.
+                        self.relocate()
                         self.updateInteractiveRects()
                     }
                 }

@@ -7,6 +7,21 @@ import AppKit
 struct HardwareNotch: Equatable {
     let width: CGFloat
     let height: CGFloat
+
+    /// **How deep the cutout is**, from every signal AppKit offers rather than
+    /// the one that seemed obvious.
+    ///
+    /// `safeAreaInsets.top` was it, and it is not dependable: it describes the
+    /// area the system is asking apps to keep clear, so it collapses when the
+    /// menu bar is hidden or set to auto-hide. The hole in the display does not
+    /// move when that happens, so the bar came out shallower than the cutout it
+    /// is supposed to be — a step along the bottom of the notch.
+    ///
+    /// The strips either side of the notch are the notch's own height and keep
+    /// reporting it either way, so the deepest of the three is the cutout.
+    static func height(safeAreaTop: CGFloat, beside strips: [CGFloat]) -> CGFloat {
+        max(safeAreaTop, strips.max() ?? 0)
+    }
 }
 
 /// Everything the geometry maths needs from a screen, so it can be faked in tests.
@@ -39,14 +54,15 @@ extension NSScreen: ScreenDescribing {
     }
 
     /// Measured from the two menu-bar strips *either side* of the notch, which
-    /// is the only thing AppKit describes directly. `safeAreaInsets.top` gives
-    /// the height; a display without a notch reports no auxiliary areas.
+    /// is the only thing AppKit describes directly. A display without a notch
+    /// reports no auxiliary areas.
     var hardwareNotch: HardwareNotch? {
         guard let left = auxiliaryTopLeftArea, let right = auxiliaryTopRightArea else {
             return nil
         }
         let width = frame.width - left.width - right.width
-        let height = safeAreaInsets.top
+        let height = HardwareNotch.height(safeAreaTop: safeAreaInsets.top,
+                                          beside: [left.height, right.height])
         guard width > 0, height > 0 else { return nil }
         return HardwareNotch(width: width, height: height)
     }

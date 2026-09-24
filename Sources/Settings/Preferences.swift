@@ -206,6 +206,12 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(claudeDailyPaceRing, forKey: Keys.claudeDailyPaceRing) }
     }
 
+    /// Whether the big ring shows the weekly limit instead of the shorter
+    /// window, for every provider that has both. See `WeeklyHeadline`.
+    @Published var weeklyHeadline: Bool {
+        didSet { defaults.set(weeklyHeadline, forKey: Keys.weeklyHeadline) }
+    }
+
     /// Whether Spark and code-review Codex windows appear in the hover card.
     /// On by default so a first launch shows them; the ring still follows
     /// the main Codex window either way.
@@ -240,6 +246,16 @@ final class Preferences: ObservableObject {
     }
 
     /// Whether the weekly limit gets a ring of its own, and where it sits.
+    /// Whether each ring carries its percentage under it, on every edge.
+    ///
+    /// On by default, which is what the notch has always drawn everywhere but
+    /// the strip beside a Mac's own cutout. There it costs ring size, because
+    /// the bar is the cutout's depth and one ring already fills it — see
+    /// `NotchViewModel.showsCellReading`.
+    @Published var showsNotchReadings: Bool {
+        didSet { defaults.set(showsNotchReadings, forKey: Keys.showsNotchReadings) }
+    }
+
     @Published var weeklyRingDashed: Bool {
         didSet { defaults.set(weeklyRingDashed, forKey: Keys.weeklyRingDashed) }
     }
@@ -277,6 +293,11 @@ final class Preferences: ObservableObject {
             if clamped != criticalLimit { criticalLimit = clamped; return }
             defaults.set(criticalLimit, forKey: Keys.criticalLimit)
         }
+    }
+
+    /// Hard step or continuous ramp — see `ColorTransitionStyle`.
+    @Published var colorTransitionStyle: ColorTransitionStyle {
+        didSet { defaults.set(colorTransitionStyle.rawValue, forKey: Keys.colorTransitionStyle) }
     }
 
     /// The language the app itself speaks.
@@ -519,11 +540,14 @@ final class Preferences: ObservableObject {
         // A new key, so there is nothing under the old app name to migrate.
         static let weeklyRing = "weeklyRing"
         static let weeklyRingDashed = "weeklyRingDashed"
+        static let showsNotchReadings = "showsNotchReadings"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
+        static let weeklyHeadline = "weeklyHeadline"
         static let showsMoveHandle = "showsMoveHandle"
         static let notchSurfaceStyle = "notchSurfaceStyle"
         static let watchLimit = "watchLimit"
         static let criticalLimit = "criticalLimit"
+        static let colorTransitionStyle = "colorTransitionStyle"
         static let customEndpoints = "customEndpoints"
         static let lastSeenVersion = "lastSeenVersion"
         static let order = "providerOrder"
@@ -816,6 +840,8 @@ final class Preferences: ObservableObject {
         // Off by default: it swaps what Claude's ring means, and that is a
         // choice for whoever budgets their week that way.
         self.claudeDailyPaceRing = defaults.bool(forKey: Keys.claudeDailyPaceRing)
+        // Off by default for the same reason: it changes what every ring means.
+        self.weeklyHeadline = defaults.bool(forKey: Keys.weeklyHeadline)
         self.showCodexExtraLimits = Self.storedShowCodexExtraLimits(defaults: defaults)
         self.deepSeekPricingEnabled = defaults.object(forKey: Keys.deepSeekPricingEnabled) as? Bool ?? true
         if let data = defaults.data(forKey: Keys.deepSeekPricingSchedule),
@@ -837,6 +863,7 @@ final class Preferences: ObservableObject {
         // Off by default: an extra arc in a 44pt circle is a change to how
         // every reading looks, and nobody asked for it on their behalf.
         self.weeklyRingDashed = defaults.object(forKey: Keys.weeklyRingDashed) as? Bool ?? false
+        self.showsNotchReadings = defaults.object(forKey: Keys.showsNotchReadings) as? Bool ?? true
 
         self.weeklyRing = defaults.string(forKey: Keys.weeklyRing)
             .flatMap(WeeklyRing.init(rawValue:)) ?? .off
@@ -854,6 +881,8 @@ final class Preferences: ObservableObject {
         let critical = min(max(storedCriticalLimit, 0.02), 1.0)
         self.criticalLimit = critical
         self.watchLimit = min(max(storedWatchLimit, 0.01), critical - 0.01)
+        self.colorTransitionStyle = defaults.string(forKey: Keys.colorTransitionStyle)
+            .flatMap(ColorTransitionStyle.init(rawValue:)) ?? .hardStep
         // Absent means never chosen, which is follow-the-Mac.
         self.language = defaults.string(forKey: L10n.languageDefaultsKey)
             .flatMap(AppLanguage.init(rawValue:)) ?? .system

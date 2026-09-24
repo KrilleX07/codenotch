@@ -32,6 +32,48 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.18.0",
+                headline: L10n.t("On a MacBook the notch is now your Mac's own — the readings sit either side of the camera housing rather than under it."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("The readings moved beside the notch"),
+                        detail: L10n.t("On a Mac with a camera housing the rings used to hang below it, so the app read as a second notch under the real one. They now sit either side of the cutout, in a bar drawn to the hardware's own measurements: its depth, and a corner fitted to the real thing rather than guessed at. Folded away it is the cutout exactly, and reaching for it widens the notch the Mac already has.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A fold that flows"),
+                        detail: L10n.t("Opening and closing morphs the shape itself rather than swapping one for another, on a spring with enough weight to settle instead of snapping. The curve into the screen's border grows with the ears as they extend.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The percentage under each ring is now yours to choose"),
+                        detail: L10n.t("Appearance has a switch for it. Beside the Mac's own notch the bar is exactly as deep as the cutout and a ring fills it, so showing the figure there makes room by drawing the rings smaller — worth offering rather than deciding for you.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A click that misses the rings no longer locks the notch open"),
+                        detail: L10n.t("It used to pin it, with nothing on screen to say so or to undo it. Keep open is on the right-click menu, where it is named and carries a checkmark.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The weekly limit can be the main ring"),
+                        detail: L10n.t("For anyone who budgets by the week rather than by the session. The session moves to the thin ring and the card.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Claude's unused resets, and a steadier Desktop reading"),
+                        detail: L10n.t("Resets you did not spend are shown rather than dropped, dated grants survive a refresh, and the search through Desktop's cache is bounded so an unusable reading backs off instead of retrying.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Türkçe and Bahasa Indonesia"),
+                        detail: L10n.t("Two more languages, both complete.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A colour ramp across the whole range"),
+                        detail: L10n.t("Opt in to a ring that shifts colour continuously from empty to full, instead of stepping at the thresholds.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Qianwen's monthly Token Plan, and two numbers that are not numbers"),
+                        detail: L10n.t("The monthly plan the weekly fields miss is read properly, and a MiniMax count that overflows or comes back non-finite is treated as no reading rather than as a zero.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.17.0",
                 headline: L10n.t("Your own endpoints, 한국어 and Oʻzbekcha, and a notch that knows whose account it is."),
                 changes: [

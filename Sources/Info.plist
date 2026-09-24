@@ -17,6 +17,7 @@
 		<string>en</string>
 		<string>fr</string>
 		<string>de</string>
+		<string>id</string>
 		<string>ja</string>
 		<string>ko</string>
 		<string>pt-BR</string>
@@ -25,6 +26,7 @@
 		<string>zh-Hant</string>
 		<string>uk</string>
 		<string>uz</string>
+		<string>tr</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>Codenotch</string>

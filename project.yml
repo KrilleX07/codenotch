@@ -14,7 +14,7 @@ settings:
     # Sources/Info.plist reads both from here — hardcoding them there instead
     # silently pins every build to one version, so no customer ever sees an
     # update. Bump CURRENT_PROJECT_VERSION on every release.
-    MARKETING_VERSION: "1.17.0"
+    MARKETING_VERSION: "1.18.0"
     CURRENT_PROJECT_VERSION: "20"
     # Signed with a stable identity on purpose. The app reads Claude Code's
     # OAuth token out of the login keychain, and the keychain's ACL remembers
@@ -75,6 +75,7 @@ targets:
           - en
           - fr
           - de
+          - id
           - ja
           - ko
           - pt-BR
@@ -83,6 +84,7 @@ targets:
           - zh-Hant
           - uk
           - uz
+          - tr
         LSMinimumSystemVersion: "15.0"
         # Sources/Info.plist is *generated* from this block, so editing that
         # file directly is undone by the next `make gen`. Pointing both at the

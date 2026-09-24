@@ -445,12 +445,21 @@ private struct LimitWindowRow: View {
     @Environment(\.codenotchAccentColor) private var accentColor
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
+    @Environment(\.colorTransitionStyle) private var colorTransitionStyle
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
     @Environment(\.providerDetailWidth) private var detailWidth
 
     private var band: UsageBand {
         if let override = window.bandOverride { return override }
         return UsageBand.band(for: window.usedFraction ?? 0, watchLimit: watchLimit, criticalLimit: criticalLimit)
+    }
+    /// Continuous when that style is chosen; a `bandOverride` is a deliberate discrete choice
+    /// from the caller regardless of style, so it stays exactly as `band.color(accent:)` renders it.
+    private var barColor: Color {
+        guard window.bandOverride == nil, colorTransitionStyle == .ramp else {
+            return band.color(accent: accentColor)
+        }
+        return UsageBand.rampColor(for: window.usedFraction ?? 0, watchLimit: watchLimit, accent: accentColor)
     }
     private var trackWidth: CGFloat { detailWidth - inset }
     private var fillWidth: CGFloat {
@@ -494,7 +503,7 @@ private struct LimitWindowRow: View {
                 if window.usedFraction != nil {
                     ZStack(alignment: .leading) {
                         Capsule().fill(Palette.barTrack)
-                        Capsule().fill(band.color(accent: accentColor)).frame(width: fillWidth)
+                        Capsule().fill(barColor).frame(width: fillWidth)
                     }
                     .frame(width: trackWidth, height: NotchLayout.barHeight)
                     .padding(.top, NotchLayout.labelToBar)
@@ -519,6 +528,15 @@ private struct MoneyBreakdownView: View {
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
     @Environment(\.providerDetailWidth) private var detailWidth
+    @Environment(\.colorTransitionStyle) private var colorTransitionStyle
+
+    private var barColor: Color {
+        guard colorTransitionStyle == .ramp else {
+            return UsageBand.band(for: money.spentFraction, watchLimit: watchLimit, criticalLimit: criticalLimit)
+                .color(accent: accentColor)
+        }
+        return UsageBand.rampColor(for: money.spentFraction, watchLimit: watchLimit, accent: accentColor)
+    }
 
     private var symbol: String {
         switch money.currency.uppercased() {
@@ -540,7 +558,7 @@ private struct MoneyBreakdownView: View {
             GeometryReader { proxy in
                 HStack(spacing: 0) {
                     Rectangle()
-                        .fill(UsageBand.band(for: money.spentFraction, watchLimit: watchLimit, criticalLimit: criticalLimit).color(accent: accentColor))
+                        .fill(barColor)
                         .frame(width: proxy.size.width * CGFloat(money.spentFraction))
                     Rectangle().fill(Palette.barTrack)
                 }
@@ -865,9 +883,9 @@ private struct CodexDailyUsageChart: View {
     }
 }
 
-/// Unused rate-limit resets on the Codex account.
-private struct CodexResetCreditsSection: View {
-    let credits: CodexResetCredits
+/// Unused rate-limit resets on this account.
+private struct UsageResetCreditsSection: View {
+    let credits: UsageResetCredits
     let now: Date
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
@@ -877,6 +895,11 @@ private struct CodexResetCreditsSection: View {
         case 1: return L10n.t("1 unused reset")
         case let n: return L10n.t("\(n) unused resets")
         }
+    }
+
+    private var observedCountText: String {
+        guard let checkedAt = credits.checkedAt else { return countText }
+        return L10n.t("\(countText) · \(ElapsedCopy.ago(since: checkedAt, now: now))")
     }
 
     private var expiryText: String? {
@@ -897,16 +920,18 @@ private struct CodexResetCreditsSection: View {
                 .padding(.top, NotchLayout.codexUsageTop)
 
             VStack(alignment: .leading, spacing: 0) {
-                Text(L10n.t("Unused resets"))
+                Text(credits.checkedAt == nil
+                     ? L10n.t("Unused resets") : L10n.t("Unused resets (cached)"))
                     .font(Typography.cardBody)
                     .fontWeight(.semibold)
                     .foregroundStyle(Palette.textPrimary)
                     .padding(.top, NotchLayout.blockSpacing)
 
-                Text(countText)
+                Text(observedCountText)
                     .font(Typography.cardBody)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .padding(.top, NotchLayout.codexUsageRowGap)
 
                 if let expiryText {
@@ -1193,9 +1218,8 @@ struct ProviderDetailContent: View {
                                   resetTimeFormat: resetTimeFormat, showUsagePace: showUsagePace,
                                   headerAccessory: headerAccessory)
             if showsExtendedDetail {
-                if let resetCredits = snapshot.resetCredits,
-                   snapshot.hasAvailableResetCredits {
-                    CodexResetCreditsSection(credits: resetCredits, now: now)
+                if let resetCredits = snapshot.availableResetCredits(at: now) {
+                    UsageResetCreditsSection(credits: resetCredits, now: now)
                 }
                 if let tokenUsage = snapshot.tokenUsage {
                     CodexUsageSection(usage: tokenUsage, now: now)
@@ -1266,7 +1290,7 @@ struct TooltipCard: View {
             blockMessage: snapshot.block?.summary(now: now),
             hasTokenUsage: snapshot.tokenUsage != nil,
             hasPlan: snapshot.plan != nil,
-            hasResetCredits: snapshot.hasAvailableResetCredits,
+            hasResetCredits: snapshot.availableResetCredits(at: now) != nil,
             localModelName: snapshot.localModel?.name,
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,

@@ -367,7 +367,7 @@ struct ClaudeProfile: Equatable, Hashable {
 /// Worth a type of its own because that file is not a small one. Claude Code
 /// keeps per-project prompt history in it, so on a machine with a long history
 /// it runs to tens or hundreds of megabytes — and `ClaudeProfile.account()` is
-/// on the polling path: `ClaudeOAuthProvider.desktopWindows()` asks for the
+/// on the polling path: `ClaudeOAuthProvider.desktopReading()` asks for the
 /// organization on every refresh, which is every sixty seconds for as long as
 /// any session is busy, once per profile. Reading and decoding the whole
 /// document each time to pull two strings out of it is the kind of cost that

@@ -112,7 +112,12 @@ struct StatusItemSummary: Equatable {
         var detail = detail(for: snapshot, window: window, isOver: isOver,
                             countdown: countdown, now: now, format: format)
         if weeklyFraction != nil, let weeklyWindow {
-            detail += " · \(L10n.t("Weekly Limit")): \(weeklyWindow.summary)"
+            // The window's own label, the way the line above already names the
+            // headline window. "Weekly" was baked in here when every provider
+            // that had a second window called it that; QianwenAI's is a monthly
+            // allowance, Claude's is "All models", and a bar that relabels
+            // either one is reporting a window the provider never declared.
+            detail += " · \(weeklyWindow.label): \(weeklyWindow.summary)"
         }
         return Entry(
             id: snapshot.id,

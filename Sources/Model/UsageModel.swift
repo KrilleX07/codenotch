@@ -340,17 +340,21 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// the tooltip title. Nil when there is nothing to name.
     var plan: String? = nil
 
-    /// Unused rate-limit resets on this Codex account, listed by the same
-    /// backend as usage.
-    var resetCredits: CodexResetCredits? = nil
+    /// Unused rate-limit resets reported for this account.
+    var resetCredits: UsageResetCredits? = nil
 
-    /// Whether the Codex tooltip has a reset-credit section to draw.
+    /// Whether the tooltip has a reset-credit section to draw.
     ///
     /// The endpoint can successfully return an empty result. That is data,
     /// but it is not useful card content and must not reserve layout space.
     var hasAvailableResetCredits: Bool {
-        (resetCredits?.availableCount ?? 0) > 0
+        availableResetCredits(at: Date()) != nil
     }
+    func availableResetCredits(at now: Date) -> UsageResetCredits? {
+        guard let credits = resetCredits?.unexpired(at: now), credits.availableCount > 0 else { return nil }
+        return credits
+    }
+
     /// Provider-owned online usage detail, such as DeepSeek's API key/model
     /// breakdown and daily token/cost series.
     var usageDetail: ProviderUsageDetail? = nil

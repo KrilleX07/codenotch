@@ -93,7 +93,7 @@ wire-level details.
 | **Antigravity** | official where licensed, otherwise a request count | Antigravity's local language server first, then Google's quota endpoint; a plain count when neither will answer for the account. |
 | **GLM** | official | Z.ai's Coding Plan monitor endpoint, with a key borrowed from whichever coding tool already holds one — Claude Code's `settings.json`, ZCode, or OpenCode. |
 | **MiniMax** | official where a Coding Plan key is used, derived from official Platform responses for the in-app sign-in | A Coding Plan key pasted in Settings, or explicit sign-in in Codenotch's own WKWebView. |
-| **QianwenAI** | derived from official console responses | Explicit sign-in in Codenotch's own WKWebView, then the console's own Token Plan gateway. Shows the personal plan's 7-day credits window. |
+| **QianwenAI** | derived from official console responses | Explicit sign-in in Codenotch's own WKWebView, then the console's own Token Plan gateway. Shows the plan's credits window for whichever period the console reports — weekly or monthly. |
 | **Ollama (Local)** | local runtime | Automatically detected local models, RAM/VRAM, unload time and context. Optional response capture adds thinking and generation speed. |
 | **LM Studio** | local runtime | Loaded models from LM Studio's own listing, what each one is doing (prompt, generating, queue) from its SDK socket, and speed, context use and tokens per day from its server log. No relay needed. |
 | **Grok** | official | The Grok CLI session in `~/.grok/auth.json`, against the same credits billing endpoint `/usage` uses. |
@@ -360,6 +360,18 @@ is private and may change; if it does, the source goes quiet and the existing
 ones take over. Bodies are `content-encoding: zstd` and macOS ships no decoder,
 so a decode-only build of Zstandard is vendored under
 [`Sources/Vendor/zstd`](Sources/Vendor/zstd) (BSD-3-Clause).
+
+**Claude's unused resets (macOS):** the hover card shows the remaining resets
+and their expiry, using the same section as Codex. Open **Settings → Usage**
+in Claude Desktop for the same account to populate its reset data. That data
+is read from Desktop's usage cache and is labeled as cached with the time it
+was last observed. Ordinary usage refreshes do not re-date it; old usage
+windows still fall back to the CLI/OAuth sources after 30 minutes. Used, paused, future,
+and expired grants are hidden. There is no built-in promotion date or assumed
+entitlement. As checked on September 23, 2026, the OAuth usage endpoint does
+not expose the grants (`ineligible_reason: surface`), so a CLI/OAuth-only
+setup cannot show them yet. Codenotch displays availability only; redeem a
+reset in Claude. See [the provider notes](docs/providers/claude-resets.md).
 
 **Keychain:** Claude's readings do not use it where Claude Code is installed.
 Claude Code files a *new* keychain item on every token rotation, and the new

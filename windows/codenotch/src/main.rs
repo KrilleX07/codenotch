@@ -26,6 +26,7 @@ mod diag;
 mod dropzones;
 mod watcher;
 mod settings_window;
+mod topmost;
 mod updater;
 
 use std::sync::Mutex;
@@ -428,7 +429,7 @@ pub fn reset_bar(app: &AppHandle) {
 /// starts moving). Only the axis along the notch's edge follows it: this slides the notch along the
 /// edge it is on and never takes it to another, which is the move handle's job — the Mac's ⌥-drag
 /// (`NotchWindowController.dragged`). Releasing it saves that place for that edge alone.
-static DRAGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+pub(crate) static DRAGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[cfg(windows)]
 fn left_button_down() -> bool {
@@ -1177,6 +1178,28 @@ fn set_weekly_ring(app: AppHandle, placement: String) -> String {
     value
 }
 
+/// How the usage rings change colour as the allowance is used.
+#[tauri::command]
+fn get_color_transition(app: AppHandle) -> String {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.color_transition.clone()
+}
+
+/// Unknown values keep the existing hard steps. The notch redraws when it receives this event.
+#[tauri::command]
+fn set_color_transition(app: AppHandle, style: String) -> String {
+    let value = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.color_transition = config::color_transition_or_step(&style);
+        config::save(&c);
+        c.color_transition.clone()
+    };
+    let _ = app.emit("color_transition", &value);
+    value
+}
+
 // ---------------- tray icon readings ----------------
 
 /// The tightest metered window, ties going to the lower id so the choice never flickers. A `count`
@@ -1814,6 +1837,8 @@ fn main() {
             set_scale,
             get_weekly_ring,
             set_weekly_ring,
+            get_color_transition,
+            set_color_transition,
             get_theme,
             set_theme,
             get_theme_resolved,
@@ -1875,6 +1900,7 @@ fn main() {
             std::thread::spawn(move || reload_glyphs(&gh));
             start_pointer_watchdog(handle.clone());
             start_work_area_watch(handle.clone());
+            topmost::start_watchdog(handle.clone());
             // Seen-clears-it scan
             let acker = handle.clone();
             std::thread::spawn(move || {

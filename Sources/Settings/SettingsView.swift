@@ -407,6 +407,14 @@ struct SettingsView: View {
     /// already be centred, in which case the action has no visible movement;
     /// the acknowledgement keeps the button from feeling inert.
     @State private var didRecentre = false
+
+    /// Whether this Mac draws the notch as its own cutout, which is the only
+    /// placement where the reading under a ring costs anything.
+    private var sizeIsDecidedByTheHardware: Bool {
+        preferences.notchEdge == .top
+            && NSScreen.screens.contains { $0.hardwareNotch != nil }
+    }
+
     /// Switching off has to reach the store's archive, not just the preference
     /// — see `UsageStore.signOut(providerID:)`.
     let signOut: (String) -> Void
@@ -811,9 +819,24 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Toggle(L10n.t("Percentage under each ring"),
+                       isOn: $preferences.showsNotchReadings)
+                Text(sizeIsDecidedByTheHardware
+                     ? L10n.t("Beside your Mac's own notch the bar is exactly as deep as the cutout, and a ring fills it — so showing the percentage makes room by drawing the rings smaller. Raising the size gives it more room.")
+                     : L10n.t("The figure under each ring. Turn it off for rings alone; the number is still a hover away in the card."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 if preferences.weeklyRing != .off {
                     Toggle(L10n.t("Dashed weekly ring"), isOn: $preferences.weeklyRingDashed)
                 }
+
+                Toggle(L10n.t("Weekly limit as the main ring"), isOn: $preferences.weeklyHeadline)
+                Text(L10n.t("For every provider with a weekly limit beside a shorter one, the main ring shows the week. The shorter window moves to the thin ring and the card. Alerts, the menu bar and providers with no weekly limit are unchanged, and Claude's daily pace ring still leads when it is on."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Toggle(L10n.t("Claude daily pace ring"), isOn: $preferences.claudeDailyPaceRing)
                 Text(L10n.t("Claude's main ring shows today's share of the weekly limit — a seventh a day, counted from the weekly reset — instead of the session. The session moves to the thin ring and the card; alerts follow the daily ring."))
@@ -866,6 +889,18 @@ struct SettingsView: View {
                 // different people: three named sizes for anyone who wants a
                 // decision made for them, and a slider for anyone who has a
                 // particular size in mind and will not be talked out of it.
+                //
+                // Both are still shown on the hardware edge, where only the
+                // lower half of the range has anywhere to go: hiding them
+                // there put the value that governs every *other* edge out of
+                // reach from the one place it is configured.
+                if sizeIsDecidedByTheHardware {
+                    Text(L10n.t("Your notch is drawn as your Mac's own cutout, so it never grows past it. Sizes below 100% make it smaller; above has nowhere to go."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Picker(L10n.t("Size"), selection: Binding(
                     get: { preferences.usesCustomNotchScale },
                     set: { preferences.usesCustomNotchScale = $0 }
@@ -981,6 +1016,19 @@ struct SettingsView: View {
 
             Section(L10n.t("Usage Limits")) {
                 VStack(alignment: .leading, spacing: 4) {
+                    Picker(L10n.t("Colour transition"), selection: $preferences.colorTransitionStyle) {
+                        ForEach(ColorTransitionStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text(preferences.colorTransitionStyle.explanation)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, 4)
+
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(L10n.t("Watch limit"))
                         Spacer()
@@ -995,6 +1043,15 @@ struct SettingsView: View {
                         Text("\(Int(preferences.criticalLimit * 100))%")
                     }
                     Slider(value: $preferences.criticalLimit, in: 0.01...1.00)
+
+                    // The ramp's own red anchor is 100%, not this slider — said here rather
+                    // than left for the user to notice by moving it and seeing nothing change.
+                    if preferences.colorTransitionStyle == .ramp {
+                        Text(L10n.t("With the colour ramp on, this still marks critical elsewhere in the app, but the ring's own red only arrives at 100%."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Button(L10n.t("Reset to defaults")) {
                     // Critical first: `watchLimit` clamps itself below critical,

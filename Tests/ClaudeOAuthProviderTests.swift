@@ -106,6 +106,78 @@ final class ClaudeOAuthProviderTests: XCTestCase {
 
     // MARK: - Helpers
 
+    func testOAuthResetCreditsReachTheSnapshotAndDisappearAfterUse() async throws {
+        let spent = String(decoding: ClaudeResetFixture.futureUsage, as: UTF8.self)
+            .replacingOccurrences(of: "\"resets_left\":1", with: "\"resets_left\":0")
+        StubEndpoint.reset([
+            .init(status: 200, body: ClaudeResetFixture.futureUsage),
+            .init(status: 200, body: Data(spent.utf8))
+        ])
+        let provider = makeProvider(source: CredentialSource(readable: true))
+        let available = try await provider.fetchSnapshot()
+        XCTAssertEqual(available.resetCredits?.availableCount, 1)
+        XCTAssertTrue(available.hasAvailableResetCredits)
+        let used = try await provider.fetchSnapshot()
+        XCTAssertFalse(used.hasAvailableResetCredits)
+    }
+
+    func testDesktopResetCreditsReachTheSnapshotWithoutReadingCredentials() async throws {
+        let directory = makeCacheDirectory()
+        writeResetEntry(into: directory, body: ClaudeResetFixture.availableCacheBody)
+        let source = CredentialSource(readable: false)
+        let provider = makeProvider(source: source, profile: desktopProfile(),
+                                    desktopCache: ClaudeDesktopUsageCache(directory: directory))
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+        XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.08)
+        XCTAssertEqual(source.reads, 0)
+        XCTAssertEqual(StubEndpoint.requestCount, 0)
+
+        writeResetEntry(into: directory, body: ClaudeResetFixture.spentCacheBody)
+        let spent = try await provider.fetchSnapshot()
+        XCTAssertFalse(spent.hasAvailableResetCredits)
+    }
+
+    func testExpiredDesktopWindowsStillEnrichTheCLIFallbackWithFreshResets() async throws {
+        let directory = makeCacheDirectory()
+        writeResetEntry(into: directory, body: ClaudeResetFixture.expiredWindowsCacheBody)
+        let source = CredentialSource(readable: false)
+        let provider = makeProvider(source: source, cli: Self.cli { Self.cliUsage },
+                                    profile: desktopProfile(),
+                                    desktopCache: ClaudeDesktopUsageCache(directory: directory))
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.38)
+        XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+        XCTAssertEqual(source.reads, 0)
+    }
+
+    func testUnsupportedOAuthSurfaceKeepsDatedDesktopResetsWhenUsageIsStale() async throws {
+        let payload = Data(#"{"limits":[{"kind":"session","percent":42,"resets_at":"2099-01-01T00:00:00Z"}],"cedar_ember":{"eligible":false,"ineligible_reason":"surface","grants":[]}}"#.utf8)
+        for age: TimeInterval in [0, 3 * 3600] {
+            StubEndpoint.reset([.init(status: 200, body: payload)])
+            let directory = makeCacheDirectory()
+            writeResetEntry(into: directory, body: ClaudeResetFixture.expiredWindowsCacheBody, age: age)
+            let provider = makeProvider(source: CredentialSource(readable: true), profile: desktopProfile(),
+                                        desktopCache: ClaudeDesktopUsageCache(directory: directory))
+            let snapshot = try await provider.fetchSnapshot()
+            XCTAssertEqual(snapshot.windows.first?.usedFraction, 0.42)
+            XCTAssertEqual(snapshot.resetCredits?.availableCount, 1)
+            XCTAssertEqual(Date().timeIntervalSince(try XCTUnwrap(snapshot.resetCredits?.checkedAt)),
+                           age, accuracy: 3)
+        }
+    }
+
+    private func writeResetEntry(into directory: URL, body: Data, age: TimeInterval = 0) {
+        var entry = ClaudeDesktopUsageCacheTests.Entry()
+        entry.body = body
+        entry.responseDate = nil
+        entry.key += "&cedar_ember=1"
+        let file = directory.appendingPathComponent("resets_0")
+        try? entry.data().write(to: file)
+        try? FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-age)],
+                                             ofItemAtPath: file.path)
+    }
+
     private static let usagePayload = Data("""
     {"limits":[{"kind":"session","percent":42,"resets_at":"2099-01-01T00:00:00Z"}]}
     """.utf8)
@@ -220,6 +292,76 @@ final class ClaudeOAuthProviderTests: XCTestCase {
 
         XCTAssertEqual(spawns.value, 2)
     }
+
+    /// A CLI that is signed out fails with `needsAuth`. It should fall back to the token
+    /// and throttle subsequent spawns for `cliRefreshInterval`, rather than spawning a
+    /// subprocess on every tick.
+    func testASignedOutCLIDoesNotSpawnOnEveryTick() async throws {
+        StubEndpoint.reset(Array(repeating: .init(status: 200, body: Self.usagePayload), count: 3))
+        let source = CredentialSource(readable: true)
+        let spawns = Counter()
+        let provider = makeProvider(source: source,
+                                    cli: Self.cli {
+                                        spawns.increment()
+                                        throw UsageProviderError.needsAuth
+                                    })
+
+        _ = try await provider.fetchSnapshot()
+        _ = try await provider.fetchSnapshot()
+        _ = try await provider.fetchSnapshot()
+
+        XCTAssertEqual(spawns.value, 1, "a signed-out CLI was spawned repeatedly")
+        XCTAssertEqual(StubEndpoint.requestCount, 3, "fallback to endpoint did not occur on each tick")
+    }
+
+    /// A transient CLI failure (e.g. unparseable output or unexpected error) falls back
+    /// to the token on that tick, but must not lock out the CLI for 5 minutes.
+    func testATransientCLIFailureAllowsImmediateRetryOnNextTick() async throws {
+        StubEndpoint.reset(Array(repeating: .init(status: 200, body: Self.usagePayload), count: 2))
+        let source = CredentialSource(readable: true)
+        let shouldFail = Counter()
+        let spawns = Counter()
+        let provider = makeProvider(source: source,
+                                    cli: Self.cli {
+                                        spawns.increment()
+                                        if shouldFail.value == 0 {
+                                            shouldFail.increment()
+                                            return "Temporary blip: retry later"
+                                        }
+                                        return Self.cliUsage
+                                    })
+
+        // First tick: transient CLI failure, falls back to token path.
+        let first = try await provider.fetchSnapshot()
+        XCTAssertEqual(first.windows.first?.id, "session")
+        XCTAssertEqual(source.reads, 1)
+        XCTAssertEqual(spawns.value, 1)
+
+        // Second tick: CLI is asked again immediately and succeeds without keychain read.
+        let second = try await provider.fetchSnapshot()
+        XCTAssertEqual(second.usedFraction, 0.38)
+        XCTAssertEqual(source.reads, 1, "the second tick should have used CLI instead of reading keychain")
+        XCTAssertEqual(spawns.value, 2)
+    }
+
+    /// When Desktop cache is stale and CLI is available, usage must be read via
+    /// CLI without touching the keychain or endpoint.
+    func testAStaleDesktopSnapshotUsesCLIWhenAvailableWithoutKeychainRead() async throws {
+        StubEndpoint.reset([.init(status: 200, body: Self.usagePayload)])
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source,
+                                    cli: Self.cli(answering: Self.cliUsage),
+                                    profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 4 * 3600))
+
+        let snapshot = try await provider.fetchSnapshot()
+
+        // 38% is CLI's session window; 42% would be the endpoint fixture.
+        XCTAssertEqual(snapshot.usedFraction, 0.38)
+        XCTAssertEqual(source.reads, 0, "the keychain was read even though CLI was available")
+        XCTAssertEqual(StubEndpoint.requestCount, 0, "the endpoint was called even though CLI was available")
+    }
+
 
     // MARK: - The Claude Desktop cache path
 
@@ -442,9 +584,9 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         cli { text }
     }
 
-    private static func cli(_ answer: @escaping @Sendable () -> String) -> ClaudeUsageCLI {
+    private static func cli(_ answer: @escaping @Sendable () throws -> String) -> ClaudeUsageCLI {
         // The path is never run — `output` is what the provider reaches.
-        ClaudeUsageCLI(binary: URL(fileURLWithPath: "/nonexistent/claude")) { _ in answer() }
+        ClaudeUsageCLI(binary: URL(fileURLWithPath: "/nonexistent/claude")) { _ in try answer() }
     }
 
     private func assertNeedsAuth(from provider: ClaudeOAuthProvider,
