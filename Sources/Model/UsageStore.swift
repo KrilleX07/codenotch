@@ -369,18 +369,27 @@ final class UsageStore: ObservableObject {
         isBusy || resetDue || sinceLastAttempt >= idleInterval
     }
 
-    func refreshNow() {
+    /// Starts a pass over every provider, or joins the one already running.
+    ///
+    /// Returns that pass for a caller that has to say when it is over — the
+    /// menu's "Refresh all" reads "Refreshing…" until then. A pass wedged
+    /// behind a keychain prompt can outlive `refreshDeadline`, so a caller
+    /// waiting on it needs a way to stop waiting of its own.
+    @discardableResult
+    func refreshNow() -> Task<Void, Never>? {
         guard !isRefreshing else {
             Log.usage.notice("refresh skipped: one already in flight")
-            return
+            return refreshTask
         }
         isRefreshing = true
         lastAttempt = pollingNow()
-        refreshTask = Task { [weak self] in
+        let pass = Task { [weak self] in
             await self?.refresh()
             self?.finish()
         }
+        refreshTask = pass
         armDeadline()
+        return pass
     }
 
     /// Stops waiting for a pass that has not come back, so the next tick can

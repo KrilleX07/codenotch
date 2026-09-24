@@ -98,10 +98,159 @@ final class MenuUsageCardTests: XCTestCase {
         XCTAssertTrue(menu.items[toggle - 1].isSeparatorItem, joined)
 
         var refreshed = 0
-        controller.onRefreshAll = { refreshed += 1 }
+        controller.onRefreshAll = { refreshed += 1; return nil }
         let item = menu.items[refresh]
         _ = controller.perform(try XCTUnwrap(item.action), with: item)
         XCTAssertEqual(refreshed, 1)
+    }
+
+    // MARK: - Refresh all, with the menu still open
+
+    private func refreshRow(in menu: NSMenu) throws -> MenuCommandRowView {
+        let item = try XCTUnwrap(menu.items.first { $0.title == L10n.t("Refresh all") })
+        return try XCTUnwrap(item.view as? MenuCommandRowView,
+                             "Refresh all is AppKit's own row again, and AppKit closes the menu on it")
+    }
+
+    private func click(_ view: NSView) throws -> NSEvent {
+        try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseUp,
+                                         location: NSPoint(x: view.bounds.midX, y: view.bounds.midY),
+                                         modifierFlags: [], timestamp: 0, windowNumber: 0,
+                                         context: nil, eventNumber: 0, clickCount: 1, pressure: 0))
+    }
+
+    /// A pass that runs until it is let go.
+    private func heldPass() -> (pass: Task<Void, Never>, release: () -> Void) {
+        let (gate, opener) = AsyncStream<Void>.makeStream()
+        return (Task { for await _ in gate {} }, { opener.finish() })
+    }
+
+    /// The row takes the click itself, so the menu — and the cards the refresh
+    /// is for — stay on screen while the readings come in. It says it is
+    /// working until the pass it started is over, and a second click in the
+    /// meantime asks for nothing.
+    func testRefreshAllRunsWithTheMenuStillOpenAndSaysSoUntilItIsDone() async throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+        let row = try refreshRow(in: menu)
+
+        let (pass, release) = heldPass()
+        var asked = 0
+        controller.onRefreshAll = { asked += 1; return pass }
+
+        row.mouseUp(with: try click(row))
+        XCTAssertEqual(asked, 1)
+        XCTAssertTrue(row.isBusy)
+
+        row.mouseUp(with: try click(row))
+        XCTAssertEqual(asked, 1, "a click while it was running asked for another pass")
+
+        release()
+        await pass.value
+        for _ in 0..<50 where row.isBusy { await Task.yield() }
+        XCTAssertFalse(row.isBusy, "the row still says it is refreshing after the pass ended")
+
+        row.mouseUp(with: try click(row))
+        XCTAssertEqual(asked, 2)
+    }
+
+    /// Reaching the row with the arrow keys and pressing Return refreshes too.
+    /// AppKit hands that key to a row with a view instead of acting on it, and
+    /// hands it over only while the row is the one highlighted — anything else
+    /// is passed on, so Return on Settings… still opens Settings.
+    func testReturnOnTheHighlightedRowRefreshesAndIsPassedOnOtherwise() throws {
+        final class NextResponder: NSResponder {
+            var keys = 0
+            override func keyDown(with event: NSEvent) { keys += 1 }
+        }
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+        let row = try refreshRow(in: menu)
+        let next = NextResponder()
+        row.nextResponder = next
+
+        var asked = 0
+        controller.onRefreshAll = { asked += 1; return nil }
+        let returnKey = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                                                       timestamp: 0, windowNumber: 0, context: nil,
+                                                       characters: "\r", charactersIgnoringModifiers: "\r",
+                                                       isARepeat: false, keyCode: 36))
+
+        // Not highlighted, it does not take the keyboard at all — a menu that
+        // has just opened must not draw it highlighted.
+        XCTAssertFalse(row.acceptsFirstResponder)
+        row.keyDown(with: returnKey)
+        XCTAssertEqual(asked, 0, "Return refreshed from a row that was not highlighted")
+        XCTAssertEqual(next.keys, 1)
+
+        controller.menu(menu, willHighlight: menu.items.first { $0.view === row })
+        XCTAssertTrue(row.acceptsFirstResponder)
+        row.keyDown(with: returnKey)
+        XCTAssertEqual(asked, 1)
+    }
+
+    /// Taking the keyboard to answer Return must not cost the menu its Escape.
+    func testEscapeOnTheRowStillClosesTheMenu() throws {
+        final class RecordingMenu: NSMenu {
+            var cancelled = 0
+            override func cancelTracking() { cancelled += 1 }
+        }
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = RecordingMenu(title: "")
+        controller.rebuild(menu: menu, now: Date())
+        let row = try refreshRow(in: menu)
+        controller.menu(menu, willHighlight: menu.items.first { $0.view === row })
+
+        let escape = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                                                    timestamp: 0, windowNumber: 0, context: nil,
+                                                    characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}",
+                                                    isARepeat: false, keyCode: 53))
+        row.keyDown(with: escape)
+        XCTAssertEqual(menu.cancelled, 1)
+    }
+
+    /// ⌘R still finds the item: a row with a view keeps its key equivalent.
+    func testCommandRStillRefreshes() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        var asked = 0
+        controller.onRefreshAll = { asked += 1; return nil }
+        let commandR = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .command,
+                                                      timestamp: 0, windowNumber: 0, context: nil,
+                                                      characters: "r", charactersIgnoringModifiers: "r",
+                                                      isARepeat: false, keyCode: 15))
+        XCTAssertTrue(menu.performKeyEquivalent(with: commandR))
+        XCTAssertEqual(asked, 1)
+    }
+
+    /// A pass can hang — a keychain prompt nobody has answered — and outlast
+    /// the store's own deadline. The row stops waiting with the menu, so the
+    /// next menu offers the command again instead of saying "Refreshing…" for
+    /// as long as that prompt sits there.
+    func testANextMenuDoesNotInheritAPassThatNeverEnded() async throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.snapshots = Fixtures.snapshots()
+        let menu = NSMenu()
+        controller.rebuild(menu: menu, now: Date())
+
+        let (pass, release) = heldPass()
+        defer { release() }
+        controller.onRefreshAll = { pass }
+        let row = try refreshRow(in: menu)
+        row.mouseUp(with: try click(row))
+        XCTAssertTrue(row.isBusy)
+
+        controller.menuDidClose(menu)
+        controller.rebuild(menu: menu, now: Date())
+        XCTAssertFalse(try refreshRow(in: menu).isBusy)
     }
 
     /// Nothing read yet is still a sentence rather than an empty menu.
@@ -200,7 +349,7 @@ final class MenuUsageCardTests: XCTestCase {
     /// arrived, and asks no provider for anything.
     func testOpeningTheMenuFetchesNothing() {
         let controller = StatusItemController(onOpenSettings: { XCTFail("no settings") })
-        controller.onRefreshAll = { XCTFail("the menu refreshed on open") }
+        controller.onRefreshAll = { XCTFail("the menu refreshed on open"); return nil }
         controller.snapshots = Fixtures.snapshots()
         let before = controller.snapshots
 

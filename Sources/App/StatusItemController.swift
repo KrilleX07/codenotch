@@ -20,8 +20,9 @@ import SwiftUI
 final class StatusItemController: NSObject, NSMenuDelegate {
     private var item: NSStatusItem?
     private let onOpenSettings: () -> Void
-    /// Refetch every provider.
-    var onRefreshAll: (() -> Void)?
+    /// Refetch every provider. Hands back the pass, so the menu can say it is
+    /// running and when it is done.
+    var onRefreshAll: (() -> Task<Void, Never>?)?
     /// Switch limits in the bar on or off — the same Settings preference,
     /// written back through the same place, never a second one kept here. The
     /// controller stores no answer of its own: it asks `limits.isOn`, which is
@@ -127,6 +128,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// including one handed straight to `rebuild`, which is how the menu is
     /// read in a test. Weak: the menu belongs to the item, or to the caller.
     private weak var builtMenu: NSMenu?
+    /// The Refresh all row of that menu, told when a pass it asked for is
+    /// running. Weak for the same reason.
+    private weak var refreshRow: MenuCommandRowView?
+    /// Whether a pass asked for from the menu is still running.
+    private var isRefreshing = false {
+        didSet { refreshRow?.isBusy = isRefreshing }
+    }
+    /// Which wait is the current one. A pass can end after the menu has been
+    /// closed and another pass asked for, and it must not say the newer one
+    /// is done.
+    private var refreshWait = 0
 
     init(onOpenSettings: @escaping () -> Void) {
         self.onOpenSettings = onOpenSettings
@@ -320,6 +332,18 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         menuClock?.invalidate()
         menuClock = nil
+        // Stop waiting with the menu. A pass stuck behind a keychain prompt
+        // nobody has answered can outlast the store's own deadline, and it
+        // would leave every menu after this one saying "Refreshing…".
+        refreshWait += 1
+        isRefreshing = false
+    }
+
+    /// The Refresh all row draws its own highlight — AppKit draws none for a
+    /// row with a view — and this is how it learns it is under the pointer or
+    /// the arrow keys.
+    func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
+        refreshRow?.isHighlighted = item?.view === refreshRow
     }
 
     /// A menu held open would otherwise show the countdowns it was built with.
@@ -374,9 +398,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         showLimits.state = limits.isOn ? .on : .off
         menu.addItem(showLimits)
         menu.addItem(.separator())
-        menu.addItem(
-            withTitle: L10n.t("Refresh all"), action: #selector(refreshAll), keyEquivalent: "r"
-        ).target = self
+        menu.addItem(refreshItem())
         if PhoneLink.isAvailable {
             menu.addItem(
                 withTitle: L10n.t("Connect Phone…"), action: #selector(connectPhone), keyEquivalent: ""
@@ -419,7 +441,41 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func openSettings() { onOpenSettings() }
     @objc private func quit() { NSApp.terminate(nil) }
 
-    @objc private func refreshAll() { onRefreshAll?() }
+    /// "Refresh all", as a row the menu stays open for.
+    ///
+    /// AppKit's own rows cannot stay: a click ends the menu's tracking, the
+    /// menu goes, and only then is the action sent — so a refresh took away
+    /// the very cards it was for. A row with a view of its own gets the click
+    /// instead, the way the cards' Detail switch does, and each card redraws
+    /// as its reading lands (see `snapshots`). Return on the row is the row's
+    /// own too, and leaves the menu open the way a click does. The title, the
+    /// shortcut and the action stay on the item: they are what ⌘R and
+    /// VoiceOver use, and those close the menu as any menu command does.
+    private func refreshItem() -> NSMenuItem {
+        let item = NSMenuItem(title: L10n.t("Refresh all"), action: #selector(refreshAll),
+                              keyEquivalent: "r")
+        item.target = self
+        let row = MenuCommandRowView(title: item.title, busyTitle: L10n.t("Refreshing…"),
+                                     keyEquivalent: item.keyEquivalent,
+                                     modifiers: item.keyEquivalentModifierMask)
+        row.isBusy = isRefreshing
+        row.onClick = { [weak self] in self?.refreshAll() }
+        item.view = row
+        refreshRow = row
+        return item
+    }
+
+    @objc private func refreshAll() {
+        guard let pass = onRefreshAll?() else { return }
+        refreshWait += 1
+        let wait = refreshWait
+        isRefreshing = true
+        Task { [weak self] in
+            await pass.value
+            guard let self, self.refreshWait == wait else { return }
+            self.isRefreshing = false
+        }
+    }
 
     /// Asks for the opposite of what is on now. The answer comes back the way
     /// Settings' own does — through the preference and into `limits` — so the
