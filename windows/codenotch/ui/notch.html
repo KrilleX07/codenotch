@@ -7,7 +7,7 @@
      inks Settings already uses, plus the Mac's own light secondary (#6b6b6b, Palette.textSecondary).
      Which of the two is drawn is Rust's answer to get_theme_resolved, never a guess made here. */
   :root{
-    --pill:#000; --edge:#2e2e2e; --card:#0a0a0a; --card-line:#242424; --card-rule:#1e1e1e;
+    --pill:#000; --edge:#2e2e2e; --rest-edge:#5c5c5c; --card:#0a0a0a; --card-line:#242424; --card-rule:#1e1e1e;
     --bar:#2d2d2d; --track:#303030; --hole:#2a2a2a;
     --ample:#00FF88; --watch:#F2FF00; --crit:#FF3F00;
     --ink:#ffffff; --ink-2:#e8e8ea; --ink-3:#c8c8c8; --ink-4:#b0b0b3; --ink-dim:#808080;
@@ -18,7 +18,7 @@
      than reading prefers-color-scheme: correcting a live window's theme does not reliably reach
      WebView2's own scheme, which left a dark page under a light Mica. */
   :root[data-theme="light"]{
-    --pill:#f5f5f7; --edge:#d2d2d7; --card:#ffffff; --card-line:#e4e4e8; --card-rule:#e8e8ec;
+    --pill:#f5f5f7; --edge:#d2d2d7; --rest-edge:#86868b; --card:#ffffff; --card-line:#e4e4e8; --card-rule:#e8e8ec;
     --bar:rgba(0,0,0,.15); --track:rgba(0,0,0,.16); --hole:#ffffff;
     /* Palette.ample and .watch carry a light value of their own; .critical is "already 3.5:1 on
        white", in its words, so it is the one band that does not change. */
@@ -200,12 +200,15 @@
   body[data-edge="top"] #pill,body[data-edge="bottom"] #pill{--clip-open:inset(-1px -40px -1px -40px round 0)}
   body[data-edge="top"] #pill{--clip-rest:inset(0 calc(50% - 39.5px) calc(100% - 10px) calc(50% - 39.5px) round 0 0 6px 6px)}
   body[data-edge="bottom"] #pill{--clip-rest:inset(calc(100% - 10px) calc(50% - 39.5px) 0 calc(50% - 39.5px) round 6px 6px 0 0)}
-  #rest{position:absolute;box-sizing:border-box;background:var(--pill);border:1px solid var(--edge);pointer-events:none;
+  /* That outline is all there is of a pill on a backdrop of its own colour, a black pill on a black
+     wallpaper or a light one on a white page, so it has an edge of its own: at least 3:1 against the
+     pill's fill in either palette, where --edge is 1.5:1. */
+  #rest{position:absolute;box-sizing:border-box;background:var(--pill);border:1px solid var(--rest-edge);pointer-events:none;
     right:0;top:50%;translate:0 -50%;width:10px;height:79px;border-right:none;border-radius:6px 0 0 6px;
     opacity:0;transition:opacity .16s ease}
   body.folded #rest{opacity:1;transition:opacity .2s ease .18s} /* arrives as the clip does */
-  body[data-edge="left"] #rest{right:auto;left:0;border-right:1px solid var(--edge);border-left:none;border-radius:0 6px 6px 0}
-  body[data-edge="top"] #rest,body[data-edge="bottom"] #rest{right:auto;left:50%;top:auto;translate:-50% 0;width:79px;height:10px;border:1px solid var(--edge)}
+  body[data-edge="left"] #rest{right:auto;left:0;border-right:1px solid var(--rest-edge);border-left:none;border-radius:0 6px 6px 0}
+  body[data-edge="top"] #rest,body[data-edge="bottom"] #rest{right:auto;left:50%;top:auto;translate:-50% 0;width:79px;height:10px;border:1px solid var(--rest-edge)}
   body[data-edge="top"] #rest{top:0;border-top:none;border-radius:0 0 6px 6px}
   body[data-edge="bottom"] #rest{bottom:0;border-bottom:none;border-radius:6px 6px 0 0}
   /* The rings leave by fading and sliding a little toward the edge, one after another — the Mac's
