@@ -177,4 +177,23 @@ final class AppLanguageTests: XCTestCase {
         XCTAssertEqual(L10n.locale.identifier, "id")
     }
     }
+
+    func testTurkishIsOfferedAndMapsToTr() {
+        XCTAssertTrue(AppLanguage.allCases.contains(.turkish))
+        XCTAssertEqual(AppLanguage.turkish.title, "Türkçe")
+        XCTAssertEqual(AppLanguage.turkish.locale?.identifier, "tr")
+    }
+
+    func testApplyTurkishStoresTheOverride() {
+        L10n.apply(.turkish)
+        L10n.testLocale = nil
+        XCTAssertEqual(L10n.locale.identifier, "tr")
+    }
+
+    func testApplyTurkishServesTurkishCopy() {
+        L10n.apply(.turkish)
+        L10n.testLocale = nil
+        XCTAssertEqual(L10n.t("Always show"), "Her zaman")
+        XCTAssertEqual(L10n.t("Settings…"), "Ayarlar…")
+    }
 }

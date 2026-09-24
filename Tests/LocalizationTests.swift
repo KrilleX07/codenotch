@@ -13,6 +13,7 @@ final class LocalizationTests: XCTestCase {
     private let russian = Locale(identifier: "ru")
     private let ukrainian = Locale(identifier: "uk")
     private let uzbek = Locale(identifier: "uz")
+    private let turkish = Locale(identifier: "tr")
     private let brazilianPortuguese = Locale(identifier: "pt-BR")
     private let english = Locale(identifier: "en")
     private let indonesian = Locale(identifier: "id")
@@ -633,14 +634,50 @@ final class LocalizationTests: XCTestCase {
         )
     }
 
+    // MARK: - Turkish
+
+    func testCoreCopyInTurkish() {
+        XCTAssertEqual(
+            ElapsedCopy.text(since: now.addingTimeInterval(-5), now: now, locale: turkish),
+            "az önce"
+        )
+        XCTAssertEqual(
+            ElapsedCopy.text(since: now.addingTimeInterval(-6 * 60), now: now, locale: turkish),
+            "6 dk"
+        )
+        XCTAssertEqual(
+            ResetCopy.text(for: resetNow.addingTimeInterval(51 * 60), now: resetNow, locale: turkish),
+            "51 dk içinde sıfırlanır"
+        )
+        XCTAssertEqual(
+            percentWindow(0.12).summary(locale: turkish),
+            "%12 kullanıldı · %88 kaldı"
+        )
+        XCTAssertEqual(L10n.t("Always show", locale: turkish), "Her zaman")
+        XCTAssertEqual(L10n.t("Settings…", locale: turkish), "Ayarlar…")
+        XCTAssertEqual(
+            L10n.t("Sign in to \("Perplexity")", locale: turkish),
+            "Giriş yap: Perplexity"
+        )
+    }
+
+    /// Turkish names the limit before the percentage, so this string takes
+    /// its values numbered — `%2$@` then `%1$lld`.
+    func testTurkishThresholdAlertKeepsArgumentOrder() {
+        XCTAssertEqual(
+            L10n.t("\(80)% of its \("weekly") limit used.", locale: turkish),
+            "weekly limitinin %80 kadarı kullanıldı."
+        )
+    }
+
     /// Every language the picker offers must resolve to a locale the catalog
     /// is filed under — a region-qualified or unshipped identifier silently
     /// serves another language instead.
     func testEveryOfferedLanguageResolves() {
         XCTAssertEqual(
             AppLanguage.allCases.map(\.rawValue),
-            ["system", "en", "fr", "de", "id", "ja", "ko", "pt-BR", "ru", "zh-Hans", "zh-Hant",
-             "uk", "uz"]
+            ["system", "en", "fr", "de", "id", "ja", "ko", "pt-BR", "ru", "zh-Hans",
+             "zh-Hant", "uk", "uz", "tr"]
         )
         XCTAssertNil(AppLanguage.system.locale)
         for language in AppLanguage.allCases where language != .system {
