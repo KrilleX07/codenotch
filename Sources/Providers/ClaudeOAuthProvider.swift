@@ -87,6 +87,11 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// successful read scans (the scan is cheap and always accurate; see
     /// `ClaudeDesktopUsageCache.read`), and only a miss ever sets it.
     private var lastDesktopMiss: Date?
+
+    /// Suppresses the next few cache walks. Separate from the read itself
+    /// because the caller, not the reader, decides whether a reading it got
+    /// back is usable.
+    private func noteDesktopMiss(at now: Date) { lastDesktopMiss = now }
     /// How long a miss suppresses the next scan.
     private let desktopRescanInterval: TimeInterval
 
@@ -179,6 +184,13 @@ actor ClaudeOAuthProvider: UsageProvider {
         if let desktop, desktop.isFresh(at: now, within: desktopFreshness),
            !Self.hasExpiredWindow(desktop.windows, at: now) {
             return snapshot(windows: desktop.windows, resetCredits: resets)
+        }
+        // A reading that arrived but is too old, or describes a window that has
+        // already reset, is still a miss for the purpose of rescanning: without
+        // this an installed-but-closed Desktop re-walks the cache every poll.
+        // The reset block above is kept either way — it outlives the windows.
+        if desktop != nil {
+            noteDesktopMiss(at: now)
         }
         // Ahead of the back-off check on purpose. That deadline is the
         // endpoint's, and the CLI does not share the endpoint's rate limit —
@@ -306,6 +318,7 @@ actor ClaudeOAuthProvider: UsageProvider {
             lastDesktopMiss = now
             return nil
         }
+
 
         // The caller rejects expired usage windows separately: the unused
         // reset grant can still be current when a five-hour window has ended.

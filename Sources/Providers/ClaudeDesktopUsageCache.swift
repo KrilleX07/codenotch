@@ -68,6 +68,12 @@ struct ClaudeDesktopUsageCache: Sendable {
             // Desktop only refreshes grants while its Usage settings are open.
             // Preserve the last observation, dated in the card, until a newer
             // response supersedes it or the grant itself expires.
+            // Deliberately not a staleness bound, despite the shape: the
+            // comparison is `capturedAt - now`, so it rejects only a capture
+            // dated in the future — a clock that has jumped — and lets an old
+            // one through to be shown with its date. Keeping it is the point;
+            // `testUnsupportedOAuthSurfaceKeepsDatedDesktopResetsWhenUsageIsStale`
+            // pins a three-hour-old grant still being drawn.
             guard capturedAt.timeIntervalSince(now) < 30 * 60,
                   var credits = value?.credits(at: now) else { return nil }
             credits.checkedAt = capturedAt
@@ -103,6 +109,13 @@ struct ClaudeDesktopUsageCache: Sendable {
     /// among the most recently modified; needing to go past this means the
     /// directory is nothing like what is expected, and giving up beats walking it.
     static let maxEntriesExamined = 400
+
+    /// How far past the newest usable entry to keep looking for a reset block.
+    ///
+    /// The block lives under its own key and is refreshed separately, so it can
+    /// lag the newest usage entry by a few writes. It is not worth the whole cap:
+    /// an account that has none would otherwise pay the full scan every poll.
+    static let resetSearchDepth = 20
     /// Cap on the decompressed body. Enforced by the decoder itself — a frame
     /// that would exceed it is an error, never an overrun — so a corrupt or
     /// hostile entry cannot be turned into a large allocation.
@@ -143,15 +156,21 @@ struct ClaudeDesktopUsageCache: Sendable {
     /// recent enough to show as live is the caller's call, and only the caller
     /// knows what it would fall through to.
     func read(organization: String, now: Date = Date()) -> Reading? {
-        // Newest first, so in practice this finds the live entry within a
-        // handful of files and the cap is never reached.
+        // Newest first, so the live entry turns up within a handful of files.
+        //
+        // The reset block is written under its own key and refreshed separately,
+        // so it can be older than the newest usage entry and is worth looking
+        // past the first hit for. But only for a while: an account with no
+        // cedar_ember block at all — most of them — would otherwise walk every
+        // candidate on every poll looking for something that is not there.
         var newest: Reading?
         var resets: ResetReading?
-        for entry in recentEntries() {
+        for (index, entry) in recentEntries().enumerated() {
             guard let reading = reading(from: entry, organization: organization, now: now) else { continue }
             if newest == nil { newest = reading }
             if resets == nil { resets = reading.resets }
             if resets != nil { break }
+            if newest != nil, index >= Self.resetSearchDepth { break }
         }
         // Desktop refreshes the plain and cedar_ember usage keys separately.
         // Keep the newest windows while dating the reset block by its own entry.
