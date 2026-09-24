@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var phoneLinkPairing: PhoneLinkPairing?
     var phoneLinkRegistry: PhoneLinkRegistry?
     private var activityCoordinator: ActivityCoordinator?
+    private var piResponseMonitor: PiResponseMonitor?
     private var ollamaRelay: OllamaActivityRelay?
     private var lmstudioMetrics: LMStudioMetrics?
     private var preferences: Preferences?
@@ -850,16 +851,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.announceCompletions(sessions: fleet.sessions)
         }
         self.activityCoordinator = activity
-        let monitorIDs = Set(monitors.keys)
-        activity.setEnabled(Set(monitorIDs.filter { preferences.isConnected($0) }))
+        activity.setEnabled(preferences.connectedProviders)
         preferences.$connectedProviders
             .removeDuplicates()
             .receive(on: RunLoop.main)
-            .sink { [weak activity, weak preferences] _ in
-                guard let preferences else { return }
-                activity?.setEnabled(Set(monitorIDs.filter { preferences.isConnected($0) }))
+            .sink { [weak activity] connected in
+                activity?.setEnabled(connected)
             }
             .store(in: &cancellables)
+
+        let piResponseMonitor = PiResponseMonitor(
+            onResponse: { [weak self] providerID in
+                _ = self?.store?.refresh(providerID: providerID)
+            },
+            onActivity: { [weak activity] providerID, snapshots in
+                let sessions = snapshots.map {
+                    AgentSession(
+                        id: $0.id,
+                        name: $0.model,
+                        detail: L10n.t("Working"),
+                        state: .busy,
+                        waitingFor: nil,
+                        since: $0.since
+                    )
+                }
+                activity?.setSupplementalSessions(
+                    providerID: providerID,
+                    source: "pi",
+                    sessions: sessions
+                )
+            }
+        )
+        piResponseMonitor.start()
+        self.piResponseMonitor = piResponseMonitor
+
         store?.isBusy = { [weak self, weak activity] in
             (activity?.isBusy ?? false) || (self?.lmstudioMetrics?.isBusy ?? false)
         }
@@ -1074,6 +1099,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ollamaRelay?.configure(enabled: false, endpoint: OllamaEndpoint.defaultAddress)
         lmstudioMetrics?.stop()
         tokenRefresher?.stop()
+        piResponseMonitor?.stop()
         store?.stop()
         activityCoordinator?.stop()
         notchFleet?.stop()
