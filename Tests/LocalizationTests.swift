@@ -15,6 +15,7 @@ final class LocalizationTests: XCTestCase {
     private let uzbek = Locale(identifier: "uz")
     private let brazilianPortuguese = Locale(identifier: "pt-BR")
     private let english = Locale(identifier: "en")
+    private let indonesian = Locale(identifier: "id")
     private let now = Date(timeIntervalSince1970: 1_787_900_000)
     private let resetNow = Date(timeIntervalSince1970: 1_700_000_000)
 
@@ -638,13 +639,28 @@ final class LocalizationTests: XCTestCase {
     func testEveryOfferedLanguageResolves() {
         XCTAssertEqual(
             AppLanguage.allCases.map(\.rawValue),
-            ["system", "en", "fr", "de", "ja", "ko", "pt-BR", "ru", "zh-Hans", "zh-Hant",
+            ["system", "en", "fr", "de", "id", "ja", "ko", "pt-BR", "ru", "zh-Hans", "zh-Hant",
              "uk", "uz"]
         )
         XCTAssertNil(AppLanguage.system.locale)
         for language in AppLanguage.allCases where language != .system {
             XCTAssertEqual(language.locale?.identifier, language.rawValue)
         }
+    }
+
+    func testIndonesianTranslations() {
+        XCTAssertEqual(
+            L10n.t("Always show", locale: indonesian),
+            "Selalu tampilkan"
+        )
+        XCTAssertEqual(
+            L10n.t("Settings…", locale: indonesian),
+            "Pengaturan…"
+        )
+        XCTAssertEqual(
+            L10n.t("Quit Codenotch", locale: indonesian),
+            "Keluar dari Codenotch"
+        )
     }
 
     private func percentWindow(_ fraction: Double) -> LimitWindow {

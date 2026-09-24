@@ -164,5 +164,17 @@ final class AppLanguageTests: XCTestCase {
         L10n.testLocale = nil
         XCTAssertEqual(L10n.t("Always show"), "Doimo")
         XCTAssertEqual(L10n.t("Settings…"), "Sozlamalar…")
+
+    func testIndonesianIsOfferedAndMapsToId() {
+        XCTAssertTrue(AppLanguage.allCases.contains(.indonesian))
+        XCTAssertEqual(AppLanguage.indonesian.title, "Bahasa Indonesia")
+        XCTAssertEqual(AppLanguage.indonesian.locale?.identifier, "id")
+    }
+
+    func testApplyIndonesianStoresTheOverride() {
+        L10n.apply(.indonesian)
+        L10n.testLocale = nil
+        XCTAssertEqual(L10n.locale.identifier, "id")
+    }
     }
 }
