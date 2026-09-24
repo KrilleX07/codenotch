@@ -163,9 +163,10 @@ archive: gen
 		-exportOptionsPlist $(RELEASE_DIR)/ExportOptions.plist \
 		-exportPath $(RELEASE_DIR)
 
-# A plain drag-to-Applications disk image. `hdiutil` writes it read-only and
+# A plain drag-to-Applications disk image. `create-dmg` writes it read-only and
 # compressed, which is what notarization expects.
 dmg: archive
+	@command -v create-dmg >/dev/null || (echo "brew install create-dmg" && exit 1)
 	rm -f $(DMG)
 	rm -rf $(RELEASE_DIR)/stage
 	mkdir -p $(RELEASE_DIR)/stage
@@ -173,12 +174,12 @@ dmg: archive
 	create-dmg \
 		--volname "$(APP_NAME)" \
 		--window-pos 400 300 \
-		--window-size 600 460 \
+		--window-size 604 404 \
 		--icon-size 128 \
-		--icon "$(APP_NAME).app" 120 99 \
-		--app-drop-link 490 258 \
+		--icon "$(APP_NAME).app" 150 200 \
+		--app-drop-link 450 200 \
 		--hide-extension "$(APP_NAME).app" \
-		--background "assets/dmg-background.png" \
+		--background "docs/design/dmg-background.png" \
 		$(DMG) $(RELEASE_DIR)/stage
 	codesign --force --sign "Developer ID Application" --timestamp $(DMG)
 	@# The app is inside the dmg now. Leaving the loose copies around is how
@@ -343,20 +344,24 @@ build-ci: gen
 # executable bit on the way, which takes an .app bundle apart — the framework
 # inside it is symlinks. A dmg arrives as a single opaque file instead.
 dmg-ci: build-ci
-	rm -f $(CI_DMG)
+	@command -v create-dmg >/dev/null || (echo "brew install create-dmg" && exit 1)
 	rm -rf $(CI_DIR)/stage
 	mkdir -p $(CI_DIR)/stage
 	cp -R $(CI_APP) $(CI_DIR)/stage/
 	for i in 1 2 3; do \
+		rm -f $(CI_DMG); \
+		rm -f $(CI_DIR)/rw.*.dmg; \
+		hdiutil detach "/Volumes/$(APP_NAME)" -force 2>/dev/null || true; \
 		create-dmg \
 			--volname "$(APP_NAME)" \
 			--window-pos 400 300 \
-			--window-size 600 460 \
+			--window-size 604 404 \
 			--icon-size 128 \
-			--icon "$(APP_NAME).app" 120 99 \
-			--app-drop-link 490 258 \
+			--icon "$(APP_NAME).app" 150 200 \
+			--app-drop-link 450 200 \
 			--hide-extension "$(APP_NAME).app" \
-			--background "assets/dmg-background.png" \
+			--background "docs/design/dmg-background.png" \
+			--skip-jenkins \
 			$(CI_DMG) $(CI_DIR)/stage && break || sleep 2; \
 	done
 	rm -rf $(CI_DIR)/stage
