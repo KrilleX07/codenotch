@@ -260,6 +260,26 @@ final class MiniMaxUsageTests: XCTestCase {
         }
     }
 
+    /// The same trap by the other spelling, which the string bound does not
+    /// cover. `JSONSerialization` hands `-1e400` back as an `NSNumber` carrying
+    /// -infinity, and `NSNumber.intValue` saturates it to `Int.min` rather than
+    /// aborting — so the read *succeeds* with a count nobody can represent, and
+    /// `max(0, total - remaining)` then traps on the overflow instead. Verified
+    /// against Foundation: `intValue` really is `Int.min` here.
+    func testACountThatSaturatesAnIntIsNotAReading() {
+        let json = """
+        { "model_remains": [
+            { "model_name": "general",
+              "current_interval_total_count": 1000,
+              "current_interval_usage_count": -1e400 } ] }
+        """
+        XCTAssertThrowsError(try parse(json)) { error in
+            guard case UsageProviderError.nothingMetered = error else {
+                return XCTFail("expected nothingMetered, got \(error)")
+            }
+        }
+    }
+
     /// The other side of the guard, which no earlier test pins: every percent
     /// fixture above spells its number as a JSON number, so the *string* path
     /// is the one just narrowed and nothing else here would notice if it started

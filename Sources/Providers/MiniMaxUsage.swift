@@ -288,15 +288,23 @@ enum MiniMaxUsage {
         return parsed
     }
 
-    /// Only the string path needs a bound: `Int("1e30")` fails where
-    /// `Double("1e30")` succeeds, and `Int(_: Double)` aborts the process on
-    /// that value rather than answering — the same trap `"1e400"` and `"nan"`
-    /// reach. `NSNumber.intValue` saturates instead of aborting, so there is
-    /// nothing to guard on that path. The bound is also what rejects a
-    /// non-finite double: the infinities fall outside it, and every comparison
-    /// against `NaN` is false.
+    /// Both paths need a bound. `Int("1e30")` fails where `Double("1e30")`
+    /// succeeds, and `Int(_: Double)` aborts the process on that value rather
+    /// than answering — the same trap `"1e400"` and `"nan"` reach. And while
+    /// `NSNumber.intValue` saturates instead of aborting, a saturated count is
+    /// both invented and dangerous: `Int.min` reaches `total - remaining` and
+    /// traps there instead.
     private static func int(_ any: Any?) -> Int? {
-        if let number = any as? NSNumber { return number.intValue }
+        if let number = any as? NSNumber {
+            // `intValue` saturates rather than aborting, which is worse here than
+            // aborting would be: `-1e400` arrives from JSONSerialization as a
+            // non-finite NSNumber, saturates to `Int.min`, and the caller's
+            // `total - remaining` then traps on overflow. A count nobody can
+            // represent is not a count.
+            let value = number.doubleValue
+            guard value.isFinite, value >= Double(Int.min), value < Double(Int.max) else { return nil }
+            return number.intValue
+        }
         guard let text = any as? String else { return nil }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if let value = Int(trimmed) { return value }
