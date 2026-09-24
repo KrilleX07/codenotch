@@ -106,8 +106,7 @@ actor KiloProvider: UsageProvider {
                         windows = planWindows
                     }
                 }
-            } catch UsageProviderError.needsAuth, UsageProviderError.badResponse,
-                    UsageProviderError.apiError {
+            } catch UsageProviderError.needsAuth {
                 // An API key: the coding-plan procedure refuses it the same
                 // way it refuses a plan-less account, and neither is a
                 // sign-out — the balance below is what such an account reads.
@@ -150,8 +149,10 @@ actor KiloProvider: UsageProvider {
         } catch UsageProviderError.rateLimited(let retryAfter) {
             // Bookkeeping where the answer was, not down in `fetch`: the wait
             // has to outlive the request that earned it.
+            let attempt = consecutiveRateLimits
             consecutiveRateLimits += 1
-            retryNoEarlierThan = Date().addingTimeInterval(retryAfter)
+            let wait = Self.backoff(forAttempt: attempt, retryAfter: retryAfter)
+            retryNoEarlierThan = Date().addingTimeInterval(wait)
             archive.saveBackoffUntil(retryNoEarlierThan, providerID: id)
             Log.usage.notice("kilo: rate limited (\(self.consecutiveRateLimits)x), next attempt in \(retryAfter, format: .fixed(precision: 0))s")
             throw UsageProviderError.rateLimited(retryAfter: retryAfter)

@@ -16,7 +16,7 @@ enum KiloUsage {
         guard let data = json.data(using: .utf8),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { throw UsageProviderError.badResponse(status: 0) }
-        if root["error"] != nil { throw UsageProviderError.apiError("Kilo Cloud rejected the request") }
+        if root["error"] != nil { throw UsageProviderError.apiError(L10n.t("Kilo Cloud rejected the request")) }
         guard let result = root["result"] as? [String: Any] else {
             throw UsageProviderError.badResponse(status: 0)
         }
@@ -142,12 +142,12 @@ enum KiloUsage {
     /// unspent credit in dollars. A pay-as-you-go account has no plan windows,
     /// so this count-up row is its whole reading. A zero balance is no
     /// reading either: an account with no plan and no credit has nothing to
-    /// show, and the provider says so rather than pinning "$0.00".
+    /// show only when the endpoint omits a balance; a measured zero remains a
+    /// real reading and is rendered as "$0.00".
     static func balanceWindow(fromJSON json: String) -> LimitWindow? {
         guard let data = json.data(using: .utf8),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let balance = (root["balance"] as? NSNumber)?.doubleValue,
-              balance != 0
+              let balance = (root["balance"] as? NSNumber)?.doubleValue
         else { return nil }
         let formatted = String(format: "$%.2f", balance)
         return LimitWindow(

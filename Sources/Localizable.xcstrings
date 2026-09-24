@@ -48514,6 +48514,71 @@
           }
         }
       }
+    },
+    "Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, the Kilo CLI or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch は、この Mac ですでにサインイン済みのツールから使用量を読み取ります。パスワードを尋ねることはありません。Claude Code（Claude アプリではなくターミナルのツール）、Cursor（エディタまたは cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、または Gemini API キー（Gemini CLI、OpenCode、Hermes 経由）のいずれかをインストールしてサインインすると、そのリングがノッチに現れます。"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch читає використання з інструментів, у які вже виконано вхід на цьому Mac, і ніколи не питає ваш пароль. Установіть будь-який з них — Claude Code (термінальний інструмент, не застосунок Claude), Cursor (редактор або cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro чи ключ Gemini API (через Gemini CLI, OpenCode або Hermes) — і увійдіть: його кільце зʼявиться у вирізі."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 读取这台 Mac 上已经登录的工具的用量 — 从不问你的密码。安装并登录 Claude Code（终端工具，不是 Claude 应用）、Cursor（编辑器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro 或 Gemini API 密钥（经由 Gemini CLI、OpenCode 或 Hermes）中的任意一个，刘海里就会出现对应的圆环。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 會從這部 Mac 上已登入的工具讀取用量 — 它不會向你要密碼。安裝並登入 Claude Code（終端機工具，不是 Claude App）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro，或 Gemini API 金鑰（透過 Gemini CLI、OpenCode 或 Hermes），對應的圓環就會出現在瀏海上。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor(편집기 또는 cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro 또는 Gemini API 키(Gemini CLI, OpenCode, Hermes 경유)를 사용하는 도구를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
+        }
+      }
+    },
+    "Usage rides on the account Kilo CLI signs into — run `kilo` once and sign in, and the notch reads it.": {
+      "extractionState": "manual"
+    },
+    "This Kilo account has no usage to read yet — top up credits or subscribe to a coding plan.": {
+      "extractionState": "manual"
+    },
+    "Hourly limit": {
+      "extractionState": "manual"
+    },
+    "Daily limit": {
+      "extractionState": "manual"
+    },
+    "Plan limit": {
+      "extractionState": "manual"
+    },
+    "Credit balance": {
+      "extractionState": "manual"
+    },
+    "Kilo Cloud rejected the request": {
+      "extractionState": "manual"
+    },
+    "%@h limit": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

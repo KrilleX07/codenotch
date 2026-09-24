@@ -114,9 +114,8 @@ final class KiloProviderTests: XCTestCase {
         XCTAssertEqual(snapshot.windows[0].usedText, "$42.50")
     }
 
-    /// A signed-in account with neither plan nor balance is an honest empty,
-    /// not an error and not zeros.
-    func testNothingMeteredIsSaidRatherThanShown() async throws {
+    /// A measured zero is still a real balance and must remain visible.
+    func testZeroBalanceIsShown() async throws {
         let provider = try makeProvider(
             authJSON: #"{"kilo":{"type":"oauth","access":"acc","refresh":"r","expires":1}}"#
         )
@@ -125,14 +124,9 @@ final class KiloProviderTests: XCTestCase {
             (200, #"{"balance":0}"#),
         ])
 
-        do {
-            _ = try await provider.fetchSnapshot()
-            XCTFail("expected nothingMetered")
-        } catch let error as UsageProviderError {
-            guard case .nothingMetered = error else {
-                return XCTFail("expected nothingMetered, got \(error)")
-            }
-        }
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.windows.map(\.id), ["balance"])
+        XCTAssertEqual(snapshot.windows[0].usedText, "$0.00")
     }
 
     func testNoCredentialFileMeansNeedsAuth() async throws {
@@ -200,8 +194,14 @@ final class KiloProviderTests: XCTestCase {
             (200, #"{"balance":9}"#),
         ])
 
-        let snapshot = try await provider.fetchSnapshot()
-        XCTAssertEqual(snapshot.windows.map(\.id), ["balance"])
+        do {
+            _ = try await provider.fetchSnapshot()
+            XCTFail("expected apiError")
+        } catch let error as UsageProviderError {
+            guard case .apiError = error else {
+                return XCTFail("expected apiError, got \(error)")
+            }
+        }
     }
 
     func testARateLimitBooksBackoffThatOutlivesTheFetch() async throws {
