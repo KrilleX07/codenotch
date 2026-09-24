@@ -583,6 +583,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
 
+            preferences.$showsNotchReadings
+                .dropFirst()
+                .sink { [weak fleet] in fleet?.apply(showsNotchReadings: $0) }
+                .store(in: &cancellables)
+
             preferences.$weeklyRingDashed
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(weeklyRingDashed: $0) }
@@ -909,6 +914,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(colorTransitionStyle: preferences.colorTransitionStyle)
         fleet.apply(weeklyRing: preferences.weeklyRing)
         fleet.apply(weeklyRingDashed: preferences.weeklyRingDashed)
+        fleet.apply(showsNotchReadings: preferences.showsNotchReadings)
         fleet.apply(showsMoveHandle: preferences.showsMoveHandle)
         fleet.apply(foldsForFullScreen: preferences.foldsForFullScreen)
         fleet.apply(surfaceStyle: preferences.notchSurfaceStyle)

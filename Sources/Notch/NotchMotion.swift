@@ -8,12 +8,24 @@ import SwiftUI
 /// bouncy — `dampingFraction` in the high 0.7s gives a single soft settle rather
 /// than a wobble.
 enum NotchMotion {
-    /// Folding open and shut. Long enough to read as a movement, short enough
-    /// that it never delays you.
-    static let unfold = Animation.spring(response: 0.42, dampingFraction: 0.78)
+    /// Folding open and shut.
+    ///
+    /// Heavier and looser than it was at 0.42/0.78, which read as a switch
+    /// being thrown. What the notch is meant to look like is a body of liquid
+    /// changing shape: slow enough to have mass, and damped just under the
+    /// point where it would stop dead, so it settles rather than arrives. The
+    /// small overshoot is the whole effect — take it out and no amount of
+    /// duration makes it fluid.
+    ///
+    /// It only reads that way because `SideNotchShape` is `Animatable`: the
+    /// spring carries the shape's own numbers, not just the rect it is drawn
+    /// into. See its `animatableData`.
+    static let unfold = Animation.spring(response: 0.62, dampingFraction: 0.72)
 
-    /// Contents arriving after the shape has started opening.
-    static let contents = Animation.spring(response: 0.36, dampingFraction: 0.82)
+    /// Contents arriving after the shape has started opening. Kept a little
+    /// quicker than `unfold` so the readings catch up with the black rather
+    /// than dragging behind it.
+    static let contents = Animation.spring(response: 0.48, dampingFraction: 0.8)
 
     /// The tooltip travelling between cells. Slower and more damped than the
     /// fold: it is a bigger object moving a longer way, and the same spring that

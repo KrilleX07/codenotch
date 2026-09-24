@@ -74,57 +74,71 @@ final class MergedTopNotchTests: XCTestCase {
         return model
     }
 
-    // MARK: - The band behind the hardware
+    // MARK: - Beside the hardware, not below it
 
-    /// The first cost: the top of the shape is behind a *hole in the screen*.
-    /// Anything drawn there is not dim or clipped, it is simply not there.
-    func testNothingIsDrawnInsideTheHardwareNotchesOwnBand() {
+    /// The rings used to be stacked *under* the hole, which cost the app the
+    /// hardware's own depth before it drew anything. They are beside it now, so
+    /// nothing is inset and the hole is left as a gap in the middle of the bar.
+    func testTheRingsAreBesideTheHoleRatherThanBelowIt() {
         let model = model(cells: 4)
+        XCTAssertEqual(model.contentInset, 0, accuracy: 0.001,
+                       "the rings are still being pushed below the hardware")
         XCTAssertGreaterThanOrEqual(
-            model.contentInset, realNotch.height,
-            "the rings would be drawn behind the hole in the display"
+            model.splitGap * model.sizeScale, realNotch.width,
+            "the gap left for the hole is narrower than the hole"
         )
     }
 
-    /// The shape gets deeper by that band plus the gap below it, so the
-    /// readings sit where they always did relative to the black around them.
-    func testTheShapeGrowsByTheBandItHasToClear() {
+    /// And the shape is the hardware's own depth rather than that depth plus a
+    /// stack — the whole point of the placement is that it reads as the notch.
+    func testTheShapeIsExactlyAsDeepAsTheHardware() {
         let merged = model(cells: 4).notchDepth
         let plainTop = model(cells: 4, screen: plain).notchDepth
-        XCTAssertEqual(merged - plainTop, realNotch.height, accuracy: 0.001)
+        XCTAssertEqual(merged - NotchRootView.bezelBleed, realNotch.height, accuracy: 0.001,
+                       "the bar is not the hardware's depth")
+        XCTAssertLessThan(merged, plainTop,
+                          "it is no shallower than the stack it replaced")
     }
 
-    /// Folded away, it *is* the hardware notch — same width, same height.
+    /// **Folded away it is the hardware notch exactly**: same width, same depth.
     ///
-    /// The resting pill is the wrong object here. It hangs below the hardware
-    /// as a separate little tab, which is exactly the seam the whole placement
-    /// exists to remove. Matching the notch instead means the app shows nothing
-    /// at all at rest, and hovering makes the notch itself grow.
+    /// It folded to the small pill the other edges use for a while. That hides
+    /// inside the hole just as well, but the fold is an animation, and what
+    /// that one animated was a 68pt tab in the middle of a 220pt hole growing
+    /// outward — the ears appeared to come out of a point rather than out of
+    /// the notch. Starting as the cutout makes opening it widen the hardware:
+    /// the shape is the hole's width on the first frame, and every frame after
+    /// only adds ear.
     func testFoldedAwayItIsExactlyTheHardwareNotch() {
         let m = model(cells: 4)
         m.isExpanded = false
         XCTAssertEqual(m.notchLength, realNotch.width, accuracy: 0.001,
-                       "the resting shape is not the notch's width")
-        XCTAssertEqual(m.notchDepth, realNotch.height, accuracy: 0.001,
-                       "the resting shape is not the notch's height")
+                       "the resting shape is not the cutout's width")
+        XCTAssertEqual(m.notchDepth - NotchRootView.bezelBleed, realNotch.height,
+                       accuracy: 0.001, "the resting shape is not the cutout's depth")
     }
 
-    /// Which means nothing of it hangs below the hardware to be seen.
-    func testNothingOfItShowsBelowTheHardwareAtRest() {
+    /// **Nothing of it hangs below the hardware.** Anything drawn under the
+    /// cutout's lip makes the notch read as deeper than the one the display
+    /// has, which is the whole of what is wrong with doing it.
+    func testNothingOfItHangsBelowTheHardware() {
         let m = model(cells: 4)
         m.isExpanded = false
-        XCTAssertLessThanOrEqual(m.notchDepth, realNotch.height,
-                                 "part of the resting shape hangs below the hardware")
+        let below = m.notchDepth - NotchRootView.bezelBleed - realNotch.height
+        XCTAssertLessThanOrEqual(below, 0.001,
+                                 "\(below)pt of the folded notch hangs below the cutout")
     }
 
-    /// Opening it grows the notch rather than replacing it.
-    func testOpeningGrowsItOnBothAxes() {
+    /// Opening it grows the ears sideways and leaves the depth alone: the
+    /// cutout's, folded or open.
+    func testOpeningGrowsTheEarsWithoutDeepeningTheNotch() {
         let m = model(cells: 4)
         m.isExpanded = false
         let (restLength, restDepth) = (m.notchLength, m.notchDepth)
         m.isExpanded = true
         XCTAssertGreaterThan(m.notchLength, restLength)
-        XCTAssertGreaterThan(m.notchDepth, restDepth)
+        XCTAssertEqual(m.notchDepth, restDepth, accuracy: 0.001,
+                       "opening it made the notch deeper than the hardware")
     }
 
     /// A screen without one keeps the pill it always had.
@@ -147,8 +161,9 @@ final class MergedTopNotchTests: XCTestCase {
         m.isExpanded = false
         XCTAssertEqual(m.wakeLength, realNotch.width, accuracy: 0.001,
                        "the wake region is wider than the hardware")
+        // The hole and nothing more: no band below it.
         XCTAssertEqual(m.wakeDepth, realNotch.height, accuracy: 0.001,
-                       "the wake region reaches below the hardware, into the window under it")
+                       "the wake region reaches below the hole, into the window under it")
     }
 
     /// The pill keeps its band: it is the small target the band was made for.
@@ -186,15 +201,38 @@ final class MergedTopNotchTests: XCTestCase {
         }
     }
 
-    /// Widening is done evenly, so the readings stay in the middle of the bar.
-    func testTheStackStaysCentredWhileTheBodyIsWidened() {
-        for count in 1...5 {
+    /// The stack is two groups now, one either side of the hole, so "centred"
+    /// is the wrong test — with an odd count the left group carries the extra
+    /// ring and the two are deliberately different lengths. What must match is
+    /// the *margin*: the bar ends the same distance past its outermost ring at
+    /// each end, which is the padding being equal left and right.
+    ///
+    /// From two rings up: one ring is an ear on one side and nothing on the
+    /// other, so its "margin" at the empty end is the hole itself.
+    func testEachEndOfTheBarKeepsTheSameMargin() {
+        for count in 2...5 {
             let model = model(cells: count)
-            let first = model.ringCenter(index: 0)
-            let last = model.ringCenter(index: count - 1)
-            XCTAssertEqual(first, model.shapeLength - last, accuracy: 0.5,
-                           "\(count) cells: widening pushed the stack off centre")
+            let radius = NotchLayout.ringDiameter * model.splitCellScale / 2
+            let leadingMargin = model.ringCenter(index: 0) - radius
+            let trailingMargin =
+                model.shapeLength - (model.ringCenter(index: count - 1) + radius)
+            XCTAssertEqual(leadingMargin, trailingMargin, accuracy: 0.5,
+                           "\(count) cells: \(leadingMargin)pt of bar at one end and "
+                           + "\(trailingMargin)pt at the other")
         }
+    }
+
+    /// The odd case: a single ring makes one ear, and the bar stops at the far
+    /// side of the hole rather than growing an empty ear to balance it.
+    func testOneRingMakesOneEar() {
+        let m = model(cells: 1)
+        XCTAssertEqual(m.splitWidths(cellCount: 1).right, 0, accuracy: 0.001)
+        XCTAssertGreaterThan(m.splitWidths(cellCount: 1).left, 0)
+        XCTAssertEqual(m.shapeLength,
+                       m.splitEndPads(cellCount: 1).left
+                           + m.splitWidths(cellCount: 1).left + m.splitGap + 2 * m.flare,
+                       accuracy: 0.001,
+                       "the bar reaches past the hole with nothing to show there")
     }
 
     /// Once the stack is wide enough on its own, nothing is added to it.
@@ -242,20 +280,22 @@ final class MergedShapeTests: XCTestCase {
     /// concentric with the flare, would be invisible with it.
     /// **The bar is shaped like the Mac's own notch, only bigger.**
     ///
-    /// Straight sides meeting the bezel square, two rounded corners at the
-    /// bottom, nothing else. The flares are what make this shape read as
-    /// growing out of an edge, and that is exactly wrong here: the hardware
-    /// notch does not taper. Match it and the display's own notch stops being a
-    /// separate object — it simply looks wider and deeper.
-    func testItMeetsTheBezelSquareAcrossItsWholeWidth() {
+    /// **The bar is at its widest where it meets the screen's border**, and
+    /// narrows from there: the ears sweep out into the border rather than
+    /// ending against it.
+    func testItIsAtItsWidestWhereItMeetsTheScreensBorder() {
         let m = model()
         let size = m.notchSize
-        guard let atBezel = span(of: m, at: 0.3) else { return XCTFail("nothing at the bezel") }
+        guard let atBezel = span(of: m, at: 0.3),
+              let lower = span(of: m, at: 6) else { return XCTFail("nothing at the bezel") }
 
-        XCTAssertEqual(atBezel.lowerBound, 0, accuracy: 3,
+        XCTAssertEqual(atBezel.lowerBound, 0, accuracy: 6,
                        "the bar does not reach the top of the screen")
-        XCTAssertEqual(atBezel.upperBound, size.width - 1, accuracy: 3,
+        XCTAssertEqual(atBezel.upperBound, size.width - 1, accuracy: 6,
                        "the bar does not reach the top of the screen")
+        XCTAssertGreaterThan(atBezel.upperBound - atBezel.lowerBound,
+                             lower.upperBound - lower.lowerBound,
+                             "the bar is no wider at the border than below it")
     }
 
     /// Straight-sided between its two corner details: the small one into the
@@ -278,8 +318,8 @@ final class MergedShapeTests: XCTestCase {
         }
     }
 
-    /// The corner into the frame is a detail, not a taper: what it takes off
-    /// the bar's width is a small fraction of it.
+    /// The sweep into the frame takes a real bite out of the bar's width —
+    /// that is what it is for — but the bar is still mostly bar.
     func testTheFrameCornerBarelyNarrowsTheBar() {
         let m = model()
         guard let atFrame = span(of: m, at: 0.5),
@@ -288,20 +328,29 @@ final class MergedShapeTests: XCTestCase {
         }
         let lost = (below.lowerBound - atFrame.lowerBound)
             + (atFrame.upperBound - below.upperBound)
-        XCTAssertLessThan(lost / (atFrame.upperBound - atFrame.lowerBound), 0.12,
-                          "the corner into the frame is tapering the bar")
+        XCTAssertLessThan(lost / (atFrame.upperBound - atFrame.lowerBound), 0.25,
+                          "the sweep into the frame has taken over the bar")
     }
 
     /// And it is rounded off at the bottom, the way the hardware notch is.
-    func testItsBottomCornersAreRounded() {
+    func testItsBottomCornersAreRounded() throws {
         let m = model()
+        // Sampled at the foot itself. The corner is continuous, so it is
+        // nearly flat where it meets the straight side and does most of its
+        // turning in the last point or two — sample above that and it reads as
+        // square when it is not.
         guard let atBezel = span(of: m, at: 1),
-              let atFoot = span(of: m, at: m.notchDepth - 2) else {
+              let atFoot = span(of: m, at: m.notchDepth - 0.4) else {
             return XCTFail("no shape to measure")
         }
+        // Measured against the model's own number: the frame-wide
+        // `cornerRadius` is not the one drawn here.
         let pulledIn = (atFoot.lowerBound - atBezel.lowerBound)
-        XCTAssertGreaterThan(pulledIn, NotchLayout.cornerRadius / 2,
+        XCTAssertGreaterThan(pulledIn, m.drawnCornerRadius / 2,
                              "the bar has square corners at the bottom")
+        XCTAssertLessThanOrEqual(pulledIn,
+                                 try XCTUnwrap(m.splitFillet) + m.drawnCornerRadius + 1,
+                                 "the end is losing more than the join and the corner")
         XCTAssertEqual(atFoot.lowerBound - atBezel.lowerBound,
                        atBezel.upperBound - atFoot.upperBound, accuracy: 2,
                        "the bottom corners do not match each other")
@@ -312,8 +361,11 @@ final class MergedShapeTests: XCTestCase {
     private func span(of m: NotchViewModel, at across: CGFloat) -> ClosedRange<CGFloat>? {
         let size = m.notchSize
         let place = NotchPlacement(edge: .top, panelSize: size)
-        let path = SideNotchShape(edge: .top, joining: m.joinedNotch)
-            .path(in: CGRect(origin: .zero, size: size))
+        // Built the way the view builds it. A shape left on its defaults is a
+        // different shape from the one on screen, and measuring that one is how
+        // four of this redesign's bugs got past a green suite.
+        let shape = m.notchShape
+        let path = shape.path(in: CGRect(origin: .zero, size: size))
         let hits = stride(from: CGFloat(0), to: size.width, by: 1)
             .filter { path.contains(place.point(along: $0, across: across)) }
         guard let first = hits.first, let last = hits.last else { return nil }
@@ -331,22 +383,48 @@ final class MergedShapeTests: XCTestCase {
         )
     }
 
-    /// Wherever the orb ends up, all of it has to be below the hardware — the
-    /// part of it inside that band is not dimmed, it is off the display.
-    func testTheWholeOrbSitsBelowTheHardwareNotch() {
+    /// No part of the orb may be inside the hole, where it is not dimmed but
+    /// simply off the display.
+    ///
+    /// It used to have to clear the hardware's *depth*, because the bar sat
+    /// behind the hole and the orb hung off its end directly below. Beside the
+    /// hole it clears it the other way — the orb is out at the ear's tip, a
+    /// long way along the bezel from the cutout — so the clearance to measure
+    /// is horizontal.
+    func testTheWholeOrbSitsClearOfTheHole() {
         let m = model()
-        let radius = NotchLayout.orbArcRadius
-        XCTAssertGreaterThan(m.orbInset - radius - NotchLayout.orbStroke / 2, realNotch.height,
-                             "part of the resting arc is inside the hole")
+        let arcCentre = m.orbAlong + m.orbArcOffset.width
+        let nearest = min(arcCentre - m.orbArcRadius - NotchLayout.orbStroke * m.orbScale / 2,
+                          m.orbAlong - NotchLayout.orbDiameter * m.orbScale / 2)
+        let holeEnd = m.shapeLength / 2 + realNotch.width / 2 - m.splitShift
+        XCTAssertGreaterThan(nearest, holeEnd,
+                             "part of the orb is drawn over the hole in the display")
     }
 
-    /// And the card hangs off the inner face of a shape that is now deeper.
-    func testTheTooltipClearsTheDeeperShape() {
+    /// And it is small enough to belong to the bar it hangs from.
+    ///
+    /// Every number the orb is drawn from was chosen against a stack some 30pt
+    /// deeper than this one. At full size the disc is very nearly as wide as
+    /// the bar, which is what made it read as an arc floating in the wallpaper.
+    func testTheOrbIsScaledToTheBarItHangsFrom() {
         let m = model()
-        XCTAssertEqual(
-            m.tooltipInset, m.contentInset + NotchLayout.bodyDepth(for: .top) + NotchLayout.tailGap,
-            accuracy: 0.001
-        )
+        XCTAssertLessThan(m.orbScale, 1, "the orb is still drawn at stack size")
+        XCTAssertLessThan(NotchLayout.orbDiameter * m.orbScale, m.splitDrawnDepth,
+                          "the disc is wider than the bar is deep")
+        XCTAssertGreaterThan(m.orbScale, 0.4,
+                             "shrunk past the point of being a target")
+    }
+
+    /// And the card hangs off the *bar's* foot — the cutout's depth, not the
+    /// stacked layout's, which is some 60pt lower and left a stretch of
+    /// wallpaper between the card's tail and the notch it points at.
+    func testTheTooltipHangsOffTheBarsFoot() {
+        let m = model()
+        XCTAssertEqual(m.tooltipInset, m.splitDrawnDepth + NotchLayout.tailGap,
+                       accuracy: 0.001)
+        XCTAssertLessThan(m.tooltipInset,
+                          m.contentInset + NotchLayout.bodyDepth(for: .top),
+                          "the card is still being measured from the stacked depth")
     }
 }
 
@@ -379,22 +457,36 @@ final class OrbOnAFlushBarTests: XCTestCase {
     /// corner sits *within* the black, which is where the gear was appearing.
     func testTheWholeOrbIsOutsideTheBar() {
         let m = model(flush: true)
-        XCTAssertGreaterThan(m.orbAlong, m.shapeLength,
-                             "the orb is not past the end of the bar")
-        XCTAssertGreaterThan(m.orbInset, m.notchDepth,
-                             "the orb is not below the foot of the bar")
+        // Measured against the drawn path, not against the bar's end: the orb
+        // hangs off the *corner*, and how far in from the end that corner sits
+        // depends on the curve into the screen's edge. A big one pulls it well
+        // inside, and the orb follows it there quite correctly.
+        let size = m.notchSize
+        let place = NotchPlacement(edge: .top, panelSize: size)
+        let path = m.notchShape.path(in: CGRect(origin: .zero, size: size))
+        let radius = NotchLayout.orbDiameter * m.orbScale / 2
+        for step in 0..<72 {
+            let angle = Double(step) / 72 * 2 * .pi
+            let point = place.point(along: m.orbAlong + radius * CGFloat(cos(angle)),
+                                    across: m.orbInset + radius * CGFloat(sin(angle)))
+            XCTAssertFalse(path.contains(point),
+                           "the settings disc overlaps the bar at \(Int(angle * 180 / .pi))°")
+        }
     }
 
-    /// Clear of the corner it hangs from by the same gap the flare version uses,
-    /// so the disc never overlaps the bar it belongs to.
+    /// Clear of the corner it hangs from by the same gap the flare version
+    /// uses, so the disc never overlaps the bar it belongs to.
+    ///
+    /// Gap and disc are the orb's own and shrink with it; the corner is the
+    /// hardware's and does not. That distinction is the whole of `orbScale`.
     func testTheDiscClearsTheCornerByTheUsualGap() {
         let m = model(flush: true)
         let corner = CGPoint(x: m.cornerCentreAlong,
-                             y: m.notchDepth - m.drawnCornerRadius)
+                             y: m.drawnFoot - m.drawnCornerRadius)
         let reach = hypot(m.orbAlong - corner.x, m.orbInset - corner.y)
         XCTAssertEqual(
-            reach - m.drawnCornerRadius - NotchLayout.orbDiameter / 2,
-            NotchLayout.orbGap, accuracy: 0.5,
+            reach - m.drawnCornerRadius - NotchLayout.orbDiameter * m.orbScale / 2,
+            NotchLayout.orbGap * m.orbScale, accuracy: 0.5,
             "the settings disc is not sitting clear of the bar's corner"
         )
     }
@@ -404,7 +496,7 @@ final class OrbOnAFlushBarTests: XCTestCase {
     func testItHangsOffTheCornerDiagonally() {
         let m = model(flush: true)
         let past = m.orbAlong - m.cornerCentreAlong
-        let below = m.orbInset - (m.notchDepth - m.drawnCornerRadius)
+        let below = m.orbInset - (m.drawnFoot - m.drawnCornerRadius)
         XCTAssertEqual(past, below, accuracy: 0.001, "the orb is off to one side")
     }
 
@@ -413,7 +505,7 @@ final class OrbOnAFlushBarTests: XCTestCase {
     func testTheArcTracesTheCornerByTheUsualGap() {
         let m = model(flush: true)
         XCTAssertEqual(m.orbArcRadius - m.drawnCornerRadius,
-                       NotchLayout.orbGap, accuracy: 0.001)
+                       NotchLayout.orbGap * m.orbScale, accuracy: 0.001)
     }
 
     /// Which puts them far enough apart that one hot zone cannot cover both —
@@ -526,10 +618,16 @@ final class HardwareClearanceTests: XCTestCase {
         else { return XCTFail("nothing rendered", file: file, line: line) }
         let bitmap = NSBitmapImageRep(cgImage: rep)
 
+        // Only the hole is out of bounds. The band either side of it is where
+        // the readings live now, so scanning the full width would fail on the
+        // rings themselves. The panel is centred on the screen and so is the
+        // hole, which is what puts the hole in the middle of the panel.
         let place = NotchPlacement(edge: .top, panelSize: m.panelSize)
+        let holeCentre = m.panelSize.width / 2
+        let hole = (holeCentre - realNotch.width / 2)...(holeCentre + realNotch.width / 2)
         for across in stride(from: CGFloat(1), to: realNotch.height, by: 2) {
-            for along in stride(from: CGFloat(0), to: size.width, by: 3) {
-                let point = place.point(along: m.slack + along, across: across)
+            for along in stride(from: hole.lowerBound, to: hole.upperBound, by: 3) {
+                let point = place.point(along: along, across: across)
                 guard let colour = bitmap.colorAt(x: Int(point.x), y: Int(point.y)),
                       colour.alphaComponent > 0.5 else { continue }
                 // Black is the notch itself. Anything else is a ring, a track
@@ -552,10 +650,16 @@ final class HardwareClearanceTests: XCTestCase {
     /// they are supposed to belong to.
     func testTheRingsSitTheFramesOwnMarginFromTheHardware() {
         let m = model()
-        let ringTop = m.contentInset + NotchLayout.ringMargin(for: .top)
-        XCTAssertEqual(ringTop - realNotch.height, NotchLayout.ringMargin(for: .top),
+        // Beside the hole rather than below it, so the margin that matters runs
+        // across the bar — and it has to be the same above and below the ring,
+        // or the strip reads as cramped on one face.
+        XCTAssertEqual(m.contentInset, 0, accuracy: 0.001,
+                       "the readings are still being pushed below the hardware")
+        XCTAssertEqual(m.splitDrawnMargin * 2 + m.splitDrawnRing, m.splitDrawnDepth,
                        accuracy: 0.001,
-                       "the readings are padded away from the hardware twice over")
+                       "the ring is not centred in the depth of the bar")
+        XCTAssertGreaterThanOrEqual(m.splitDrawnMargin, NotchLayout.splitRingMargin - 0.001,
+                                    "the ring is closer to the bar's edge than the frame allows")
     }
 
     /// Which is the same margin the ring has from the bezel anywhere else.
@@ -567,11 +671,12 @@ final class HardwareClearanceTests: XCTestCase {
     /// The shape meets the screen's frame with a small inverse corner, the way
     /// the hardware notch is moulded into the bezel rather than cut out of it.
     /// Small: enough to round the join, not enough to taper the bar.
-    func testItMeetsTheScreensFrameWithACorner() {
+    func testItMeetsTheScreensFrameWithACorner() throws {
         let m = model()
         let size = m.notchSize
         let place = NotchPlacement(edge: .top, panelSize: size)
-        let path = SideNotchShape(edge: .top, joining: realNotch).path(in: CGRect(origin: .zero, size: size))
+        let shape = m.notchShape
+        let path = shape.path(in: CGRect(origin: .zero, size: size))
 
         func span(at across: CGFloat) -> ClosedRange<CGFloat>? {
             let hits = stride(from: CGFloat(0), to: size.width, by: 1)
@@ -579,17 +684,39 @@ final class HardwareClearanceTests: XCTestCase {
             guard let first = hits.first, let last = hits.last else { return nil }
             return first...last
         }
-        guard let atFrame = span(at: 0.5),
-              let belowIt = span(at: NotchLayout.bezelFillet + 2) else {
+        // What the ear loses between the border and the row just below the
+        // sweep is the sweep itself.
+        let fillet = try XCTUnwrap(m.splitFilletDepth)
+        XCTAssertGreaterThan(fillet, 0, "the ear meets the border square")
+        guard let atFrame = span(at: 0.2), let below = span(at: fillet + 1) else {
             return XCTFail("no shape to measure")
         }
-        XCTAssertEqual(atFrame.lowerBound, 0, accuracy: 3,
-                       "the shape does not reach the screen's frame")
-        let pulledIn = belowIt.lowerBound - atFrame.lowerBound
-        XCTAssertEqual(pulledIn, NotchLayout.bezelFillet, accuracy: 2,
-                       "the corner into the frame is missing")
-        XCTAssertLessThan(NotchLayout.bezelFillet, NotchLayout.cornerRadius,
-                          "the corner is big enough to taper the bar")
+        XCTAssertLessThanOrEqual(atFrame.lowerBound, NotchRootView.bezelBleed,
+                                 "the shape does not reach the screen's frame")
+        XCTAssertEqual(below.lowerBound, try XCTUnwrap(m.splitFillet), accuracy: 2,
+                       "the sweep into the screen's border is missing")
+
+        // **And none of it is spent behind the bezel.** The shape is pushed
+        // `bezelBleed` past the top of the screen so no wallpaper hairline
+        // shows; a sweep started up there arrives on screen already part way
+        // through its turn and reads as a tip cut off by the border rather
+        // than one sitting on it. So that band is straight, and the sweep
+        // begins at the first row anyone can see.
+        guard let hiddenTop = span(at: 0.2),
+              let hiddenFoot = span(at: NotchRootView.bezelBleed - 0.2) else {
+            return XCTFail("nothing drawn behind the bezel")
+        }
+        XCTAssertEqual(hiddenTop.lowerBound, hiddenFoot.lowerBound, accuracy: 0.5,
+                       "the sweep starts behind the bezel, so its tip is over the border")
+        XCTAssertEqual(hiddenTop.upperBound, hiddenFoot.upperBound, accuracy: 0.5,
+                       "the sweep starts behind the bezel, so its tip is over the border")
+
+        // And it does start there, rather than lower down.
+        guard let justBelow = span(at: NotchRootView.bezelBleed + 1) else {
+            return XCTFail("nothing visible at the screen's edge")
+        }
+        XCTAssertGreaterThan(justBelow.lowerBound, hiddenFoot.lowerBound,
+                             "the sweep has not begun by the first visible row")
     }
 }
 
@@ -618,9 +745,13 @@ final class BarEndMarginTests: XCTestCase {
 
         let size = m.notchSize
         let place = NotchPlacement(edge: .top, panelSize: size)
-        let path = SideNotchShape(edge: .top, joining: m.joinedNotch)
-            .path(in: CGRect(origin: .zero, size: size))
-        let probe = NotchLayout.bezelFillet + 4
+        // From the model, not the shape's defaults — measuring a shape the
+        // view does not build is how several of these bugs stayed hidden.
+        let shape = m.notchShape
+        let path = shape.path(in: CGRect(origin: .zero, size: size))
+        // Sampled down the straight part of the side, clear of the foot's
+        // corner: what the ends reserve has to be what they draw there.
+        let probe = m.notchDepth / 2
         let drawn = stride(from: CGFloat(0), to: size.width, by: 1)
             .first { path.contains(place.point(along: $0, across: probe)) } ?? -1
 
@@ -637,13 +768,19 @@ final class BarEndMarginTests: XCTestCase {
                           "there is more black beside the first ring than there is ring")
     }
 
-    /// Still symmetric, and still centred.
+    /// Still symmetric — but about the hole, not about the bar's middle. With
+    /// an odd count the left group carries the extra ring on purpose, so the
+    /// ring *centres* no longer mirror each other. The margins do.
+    ///
+    /// One ring is left out: it makes a single ear, and the far end of the bar
+    /// is the hole rather than a margin.
     func testTheEndsMatchEachOther() {
-        for count in 1...5 {
+        for count in 2...5 {
             let m = model(cells: count)
-            XCTAssertEqual(m.ringCenter(index: 0),
-                           m.shapeLength - m.ringCenter(index: count - 1),
-                           accuracy: 0.5, "\\(count) cells")
+            let radius = NotchLayout.ringDiameter * m.splitCellScale / 2
+            XCTAssertEqual(m.ringCenter(index: 0) - radius,
+                           m.shapeLength - (m.ringCenter(index: count - 1) + radius),
+                           accuracy: 0.5, "\(count) cells")
         }
     }
 
@@ -674,6 +811,8 @@ final class OrbHitAccuracyTests: XCTestCase {
         CGPoint(x: m.orbAlong + m.orbArcOffset.width, y: m.orbInset + m.orbArcOffset.height)
     }
 
+    /// **Nothing answers beside the hardware, because nothing is drawn there.**
+    ///
     /// You can reach the button itself.
     func testTheButtonAnswers() {
         let m = model()
@@ -694,7 +833,7 @@ final class OrbHitAccuracyTests: XCTestCase {
 
     /// **But not the empty ground beside them.**
     ///
-    /// The arc stayed back on the bar's corner while the button hangs off it,
+    /// The arc stays back on the bar's corner while the button hangs off it,
     /// and a *bounding box* around the pair takes in a good deal that is near
     /// neither — which is why the button used to appear well before the pointer
     /// got anywhere close to the arc. The box's own corners are the proof: a
@@ -703,7 +842,7 @@ final class OrbHitAccuracyTests: XCTestCase {
         let m = model()
         let points = m.orbHandlePoints
         guard points.count == 2 else { return XCTFail("expected an arc and a button") }
-        let reach = NotchLayout.orbHotZone / 2
+        let reach = m.orbHotZone / 2
         let box = CGRect(
             x: min(points[0].x, points[1].x) - reach,
             y: min(points[0].y, points[1].y) - reach,
@@ -714,6 +853,18 @@ final class OrbHitAccuracyTests: XCTestCase {
             XCTAssertFalse(
                 m.isOnOrbHandle(along: corner.x, across: corner.y),
                 "the handle answers at a corner of its own bounding box, where nothing is drawn"
+            )
+        }
+    }
+
+    /// And a ring keeps the clicks aimed at it. The hot zone used to be wider
+    /// than the bar is deep, so it reached back over the readings.
+    func testAClickOnARingIsNotSwallowedByTheHandle() {
+        let m = model()
+        for index in m.snapshots.indices {
+            XCTAssertFalse(
+                m.isOnOrbHandle(along: m.ringCenter(index: index), across: m.ringAcross),
+                "ring \(index) is inside the settings handle's reach"
             )
         }
     }
@@ -749,22 +900,30 @@ final class ArcConcentricityTests: XCTestCase {
         return model
     }
 
-    /// Measured off the path rather than restated from the formula, because the
-    /// formula was the thing that was wrong: the corner's centre is inset from
-    /// the bar's end by the *frame fillet* as well as by its own radius, and
-    /// leaving the fillet out slid the arc a whole 10pt down the bar. The gap
-    /// then opened from 9pt at one end of the arc to 19pt at the other, which
-    /// is what stopped it looking like a curve drawn around the corner.
-    func testTheArcTurnsAboutTheCornerTheBarActuallyDraws() {
+    /// The arc this suite was written for is not drawn beside the hardware —
+    /// see `OrbOnAFlushBarTests`. What is worth keeping is the *method*: the
+    /// bug it caught was a curve placed by a formula that disagreed with the
+    /// path, so the corner is measured off the path the app actually builds,
+    /// with every input taken from the model rather than restated here.
+    ///
+    /// That is the whole failure mode of this redesign in one line. Four
+    /// separate times the shape was wrong because the view worked out its own
+    /// version of something the model already knew, and the tests passed
+    /// because they asked the model.
+    func testTheBarTurnsAtTheCornerTheModelChose() throws {
         let m = model()
         let size = m.notchSize
         let place = NotchPlacement(edge: .top, panelSize: size)
-        let path = SideNotchShape(edge: .top, joining: realNotch)
-            .path(in: CGRect(origin: .zero, size: size))
-        let centre = CGPoint(x: m.orbAlong + m.orbArcOffset.width,
-                             y: m.orbInset + m.orbArcOffset.height)
+        let shape = m.notchShape
+        let path = shape.path(in: CGRect(origin: .zero, size: size))
 
-        for degrees in stride(from: 5.0, through: 85.0, by: 10.0) {
+        // The leading bottom corner's centre, in the shape's own terms: past
+        // the flare and its own radius along, and its radius up from the foot.
+        let centre = CGPoint(x: try XCTUnwrap(m.splitFillet) + m.drawnCornerRadius,
+                             y: m.notchDepth - m.drawnCornerRadius)
+
+        // Down and to the left, which is the quadrant the corner turns through.
+        for degrees in stride(from: 95.0, through: 175.0, by: 10.0) {
             let angle = degrees * .pi / 180
             var edge: CGFloat = -1
             var radius: CGFloat = 0
@@ -776,8 +935,8 @@ final class ArcConcentricityTests: XCTestCase {
             }
             XCTAssertEqual(
                 edge, m.drawnCornerRadius, accuracy: 1.5,
-                "at \(Int(degrees))° the bar's edge is \(edge)pt from the arc's centre, "
-                    + "not the corner's own \(m.drawnCornerRadius)pt"
+                "at \(Int(degrees))° the bar's edge is \(edge)pt from the corner's centre, "
+                    + "not the \(m.drawnCornerRadius)pt the model asked for"
             )
         }
     }
@@ -787,12 +946,20 @@ final class ArcConcentricityTests: XCTestCase {
 /// into another.
 @MainActor
 final class ExpansionShapeTests: XCTestCase {
+    /// Configured once, drawn into rects of every size: the shape does not
+    /// depend on the rect, which is the property these tests are about.
+    private func shape() -> SideNotchShape {
+        let model = NotchViewModel()
+        model.edge = .top
+        model.adopt(screen: notched)
+        return model.notchShape
+    }
+
     /// How far the shape pulls in at its foot — which is its corner radius.
     private func cornerPullIn(width: CGFloat, depth: CGFloat) -> CGFloat {
         let size = CGSize(width: width, height: depth)
         let place = NotchPlacement(edge: .top, panelSize: size)
-        let path = SideNotchShape(edge: .top, joining: realNotch)
-            .path(in: CGRect(origin: .zero, size: size))
+        let path = shape().path(in: CGRect(origin: .zero, size: size))
 
         func span(at across: CGFloat) -> ClosedRange<CGFloat>? {
             let hits = stride(from: CGFloat(0), to: width, by: 0.5)
@@ -835,14 +1002,22 @@ final class ExpansionShapeTests: XCTestCase {
         }
     }
 
-    /// It can never be *squarer* than the hardware's own rounding, or the
-    /// resting shape's corners poke out past the hole and show as two nubs.
+    /// The resting shape used to hide *inside* the hole, so its corners had to
+    /// be at least as round as the hardware's or they showed as two nubs past
+    /// the edge — which meant a pill, half the depth.
+    ///
+    /// It sits beside the hole now, in plain view, so the opposite constraint
+    /// applies: a pill end is not what a Mac notch looks like. Apple's corner
+    /// is a little under a third of the height, and the ears follow it.
     @MainActor
-    func testTheRestingShapeCannotPokeOutOfTheHole() {
+    func testTheRestingCornerFollowsApplesRatherThanRoundingToAPill() {
         let model = NotchViewModel()
         model.edge = .top
         model.adopt(screen: notched)
-        XCTAssertGreaterThanOrEqual(model.drawnCornerRadius, realNotch.height / 2,
-                                    "the resting corners are squarer than the hardware's")
+        XCTAssertEqual(model.drawnCornerRadius,
+                       realNotch.height * NotchLayout.splitCornerFraction, accuracy: 0.001,
+                       "the ears do not turn at the rate the cutout does")
+        XCTAssertLessThan(model.drawnCornerRadius, realNotch.height / 2,
+                          "the ends have rounded off into pills")
     }
 }

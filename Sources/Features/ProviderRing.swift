@@ -282,6 +282,13 @@ struct ProviderCell: View {
     var activity: ActivitySummary?
     var isRefreshing: Bool = false
     var weeklyRing: WeeklyRing = .off
+    /// Whether the percentage is drawn under the ring.
+    ///
+    /// Off where the cell sits in a menu-bar strip beside the hardware notch:
+    /// the strip is the menu bar's height, which one ring already fills, and a
+    /// second line would be drawn in the bezel. The reading is still a hover
+    /// away in the card.
+    var showsReading: Bool = true
 
     /// A dash, not "0%": nothing read is not the same as nothing used.
     private var readingText: String {
@@ -304,6 +311,7 @@ struct ProviderCell: View {
                 weeklyRing: weeklyRing,
                 bandOverride: snapshot.bandOverride
             )
+            if showsReading {
             Text(readingText)
                 .font(Typography.percent)
                 .foregroundStyle(snapshot.showsLocalPerformance && snapshot.localPerformance == nil
@@ -317,6 +325,7 @@ struct ProviderCell: View {
                        height: NotchLayout.percentLineHeight)
                 .contentTransition(.numericText())
                 .animation(NotchMotion.reading, value: readingText)
+            }
         }
         .frame(height: NotchLayout.cellExtent)
         .accessibilityElement(children: .ignore)

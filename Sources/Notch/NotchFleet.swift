@@ -59,6 +59,7 @@ final class NotchFleet {
     /// ring on one display and not another would read as a bug.
     private var weeklyRing: WeeklyRing = .off
     private var weeklyRingDashed: Bool = false
+    private var showsNotchReadings: Bool = true
     private var showsMoveHandle = true
     private var foldsForFullScreen = true
     private var surfaceStyle: NotchSurfaceStyle = .glass
@@ -177,6 +178,15 @@ final class NotchFleet {
         self.foldsForFullScreen = foldsForFullScreen
         for controller in controllers.values {
             controller.apply(foldsForFullScreen: foldsForFullScreen)
+        }
+    }
+
+    func apply(showsNotchReadings: Bool) {
+        self.showsNotchReadings = showsNotchReadings
+        // Through the controller, which relays the window out: this one
+        // changes the ring's size and so the notch's own length.
+        for controller in controllers.values {
+            controller.apply(showsNotchReadings: showsNotchReadings)
         }
     }
 
@@ -424,7 +434,7 @@ final class NotchFleet {
         controller.model.alongOffset = alongOffset
         // Set before `show()`, so a display plugged in later builds its panel
         // at the current size rather than at medium and resizing a beat later.
-        controller.model.sizeScale = scale
+        controller.prime(scale: scale)
         controller.model.resetTimeFormat = resetTimeFormat
         controller.model.accentColor = accentColor
         controller.model.watchLimit = watchLimit
@@ -432,6 +442,7 @@ final class NotchFleet {
         controller.model.colorTransitionStyle = colorTransitionStyle
         controller.model.weeklyRing = weeklyRing
         controller.model.weeklyRingDashed = weeklyRingDashed
+        controller.model.showsNotchReadings = showsNotchReadings
         controller.model.showsMoveHandle = showsMoveHandle
         controller.model.surfaceStyle = surfaceStyle
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled
