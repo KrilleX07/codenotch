@@ -141,8 +141,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Log.usage.info("codex profiles: \(self.codexProfiles.map(\.displayPath).joined(separator: ", "), privacy: .public)")
             Log.usage.info("antigravity profiles: \(self.antigravityProfiles.map(\.displayPath).joined(separator: ", "), privacy: .public)")
             // Named together rather than one by one: a name derived from the
-            // signed-in address can collide with another profile's, and only a
-            // caller holding every profile can see that.
+            // signed-in address can collide with another profile's, and a lone
+            // profile needs no name beyond "Claude" — only a caller holding
+            // every profile can see either.
             let claudeNames = ClaudeProfile.displayNames(for: claudeProfiles)
             let claudeProviders = claudeProfiles.map {
                 ClaudeOAuthProvider(profile: $0, displayName: claudeNames[$0.id])
