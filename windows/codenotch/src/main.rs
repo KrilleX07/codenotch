@@ -26,6 +26,7 @@ mod diag;
 mod dropzones;
 mod watcher;
 mod settings_window;
+mod topmost;
 mod updater;
 
 use std::sync::Mutex;
@@ -428,7 +429,7 @@ pub fn reset_bar(app: &AppHandle) {
 /// starts moving). Only the axis along the notch's edge follows it: this slides the notch along the
 /// edge it is on and never takes it to another, which is the move handle's job — the Mac's ⌥-drag
 /// (`NotchWindowController.dragged`). Releasing it saves that place for that edge alone.
-static DRAGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+pub(crate) static DRAGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[cfg(windows)]
 fn left_button_down() -> bool {
@@ -1875,6 +1876,7 @@ fn main() {
             std::thread::spawn(move || reload_glyphs(&gh));
             start_pointer_watchdog(handle.clone());
             start_work_area_watch(handle.clone());
+            topmost::start_watchdog(handle.clone());
             // Seen-clears-it scan
             let acker = handle.clone();
             std::thread::spawn(move || {
