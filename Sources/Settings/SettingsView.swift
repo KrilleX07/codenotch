@@ -981,6 +981,19 @@ struct SettingsView: View {
 
             Section(L10n.t("Usage Limits")) {
                 VStack(alignment: .leading, spacing: 4) {
+                    Picker(L10n.t("Colour transition"), selection: $preferences.colorTransitionStyle) {
+                        ForEach(ColorTransitionStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    Text(preferences.colorTransitionStyle.explanation)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, 4)
+
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(L10n.t("Watch limit"))
                         Spacer()
@@ -995,6 +1008,15 @@ struct SettingsView: View {
                         Text("\(Int(preferences.criticalLimit * 100))%")
                     }
                     Slider(value: $preferences.criticalLimit, in: 0.01...1.00)
+
+                    // The ramp's own red anchor is 100%, not this slider — said here rather
+                    // than left for the user to notice by moving it and seeing nothing change.
+                    if preferences.colorTransitionStyle == .ramp {
+                        Text(L10n.t("With the colour ramp on, this still marks critical elsewhere in the app, but the ring's own red only arrives at 100%."))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Button(L10n.t("Reset to defaults")) {
                     // Critical first: `watchLimit` clamps itself below critical,

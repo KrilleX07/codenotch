@@ -33829,6 +33829,72 @@
         }
       }
     },
+    "Colour transition": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transição de cor"
+          }
+        }
+      }
+    },
+    "Hard step": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Degrau seco"
+          }
+        }
+      }
+    },
+    "Colour ramp": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rampa de cor"
+          }
+        }
+      }
+    },
+    "Ample, watch and critical each stay one flat colour, jumping between them at the limits below.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O anel fica numa cor fixa em cada faixa de uso e salta para a próxima nos limites abaixo."
+          }
+        }
+      }
+    },
+    "The colour blends continuously from ample to critical across the full range, turning yellow at the watch limit below.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A cor do anel muda de forma contínua ao longo de todo o uso, passando pelo amarelo no limite de atenção abaixo."
+          }
+        }
+      }
+    },
+    "With the colour ramp on, this still marks critical elsewhere in the app, but the ring's own red only arrives at 100%.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Com a rampa de cor ativada, este limite continua valendo para o resto do app, mas o vermelho do anel só aparece em 100%."
+          }
+        }
+      }
+    },
     "Reset to defaults": {
       "extractionState": "manual",
       "localizations": {

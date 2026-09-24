@@ -33,6 +33,88 @@ final class UsageBandTests: XCTestCase {
         XCTAssertEqual(UsageBand.critical.color(accent: accent), Palette.critical)
         XCTAssertEqual(UsageBand.exhausted.color(accent: accent), Palette.critical)
     }
+
+    // MARK: - rampColor
+
+    /// Same appearance-resolution trick `PaletteAppearanceTests.resolve` uses below: a
+    /// dynamic `Color` only picks its real value once something asks for it inside a
+    /// specific `NSAppearance`.
+    private func resolveRamp(
+        _ fraction: Double,
+        watchLimit: Double = 0.50,
+        appearance: NSAppearance.Name = .darkAqua
+    ) -> NSColor? {
+        var resolved: NSColor?
+        NSAppearance(named: appearance)?.performAsCurrentDrawingAppearance {
+            let color = UsageBand.rampColor(for: fraction, watchLimit: watchLimit)
+            resolved = NSColor(color).usingColorSpace(.sRGB)
+        }
+        return resolved
+    }
+
+    private func assertRampHex(
+        _ fraction: Double,
+        is hex: UInt32,
+        watchLimit: Double = 0.50,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard let resolved = resolveRamp(fraction, watchLimit: watchLimit) else {
+            XCTFail("ramp did not resolve", file: file, line: line)
+            return
+        }
+        let tolerance = 1.0 / 255
+        XCTAssertEqual(resolved.redComponent, Double((hex >> 16) & 0xFF) / 255, accuracy: tolerance, file: file, line: line)
+        XCTAssertEqual(resolved.greenComponent, Double((hex >> 8) & 0xFF) / 255, accuracy: tolerance, file: file, line: line)
+        XCTAssertEqual(resolved.blueComponent, Double(hex & 0xFF) / 255, accuracy: tolerance, file: file, line: line)
+    }
+
+    /// Unlike `band(for:)`, the ramp is not trying to reproduce the mockup's three points —
+    /// it is a deliberately different, continuous mode a user opts into, so its own correctness
+    /// is defined by its own anchors: exact green at 0%, exact yellow at the watch limit, exact
+    /// red only at 100%.
+    func testRampAnchorsExactlyAtItsThreePoints() {
+        assertRampHex(0.0, is: 0x00FF88)
+        assertRampHex(0.50, is: 0xF2FF00) // exactly watch's colour, at the watch limit
+        assertRampHex(1.0, is: 0xFF3F00)
+    }
+
+    /// The default critical limit (70%) is deliberately *not* where the ramp turns pure red any
+    /// more — that would put the whole second half back in the narrow band this change was
+    /// meant to widen. At 70% it is most of the way there, not there yet.
+    func testRampIsNotPinnedToTheCriticalLimit() {
+        assertRampHex(0.70, is: 0xF7B200)
+    }
+
+    /// The ramp has to move with a customised watch limit, not just the default — the Mac
+    /// already lets the user drag it (`SettingsView`'s "Usage Limits" slider).
+    func testRampFollowsACustomWatchLimit() {
+        assertRampHex(0.0, is: 0x00FF88, watchLimit: 0.30)
+        assertRampHex(0.30, is: 0xF2FF00, watchLimit: 0.30) // exact yellow, at the custom limit
+        assertRampHex(0.65, is: 0xF99F00, watchLimit: 0.30) // ramp's own midpoint past the limit
+        assertRampHex(1.0, is: 0xFF3F00, watchLimit: 0.30)
+    }
+
+    /// No bounce across the whole range: red only rises, green and blue only fall, so the ramp
+    /// reads as one steady climb from ample to critical rather than a wobble.
+    func testRampIsMonotonicAcrossTheWholeRange() {
+        var previousGreen = 255.0
+        var previousBlue = 136.0
+        var previousRed = 0.0
+        for step in 0...40 {
+            let f = Double(step) / 40
+            guard let c = resolveRamp(f) else { XCTFail("ramp did not resolve"); return }
+            let red = c.redComponent * 255
+            let green = c.greenComponent * 255
+            let blue = c.blueComponent * 255
+            XCTAssertGreaterThanOrEqual(red, previousRed - 0.01)
+            XCTAssertLessThanOrEqual(green, previousGreen + 0.01)
+            XCTAssertLessThanOrEqual(blue, previousBlue + 0.01)
+            previousRed = red
+            previousGreen = green
+            previousBlue = blue
+        }
+    }
 }
 
 /// The palette went dynamic when the notch gained a glass surface, so the

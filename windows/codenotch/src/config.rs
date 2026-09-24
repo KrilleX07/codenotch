@@ -64,6 +64,9 @@ pub struct Config {
     /// Where the weekly limit gets a ring of its own: "off", "inside" or "outside".
     #[serde(default = "default_weekly_ring")]
     pub weekly_ring: String,
+    /// How a usage ring changes colour: "hard_step" or "ramp".
+    #[serde(default = "default_color_transition")]
+    pub color_transition: String,
     /// Which appearance the pages draw in: "system", "light" or "dark".
     #[serde(default = "default_theme")]
     pub theme: String,
@@ -167,6 +170,9 @@ fn default_scale() -> f64 {
 fn default_weekly_ring() -> String {
     "off".into()
 }
+fn default_color_transition() -> String {
+    "hard_step".into()
+}
 fn default_theme() -> String {
     "system".into()
 }
@@ -185,6 +191,14 @@ pub fn weekly_ring_or_off(value: &str) -> String {
     match value {
         "inside" | "outside" => value.to_string(),
         _ => default_weekly_ring(),
+    }
+}
+
+/// A new colour blend is opt-in, so an unknown value keeps the existing hard steps.
+pub fn color_transition_or_step(value: &str) -> String {
+    match value {
+        "ramp" => value.to_string(),
+        _ => default_color_transition(),
     }
 }
 fn yes() -> bool {
@@ -219,6 +233,7 @@ impl Default for Config {
             notch_monitor: None,
             scale: default_scale(),
             weekly_ring: default_weekly_ring(),
+            color_transition: default_color_transition(),
             theme: default_theme(),
             notch_providers: Vec::new(), // empty = show them all
             notch_slots: Vec::new(),     // filled in by load(), from notch_providers
@@ -271,6 +286,7 @@ pub fn load() -> Config {
     // The old slider's 40–100 %, or a hand-edited file, lands on one of the three sizes
     cfg.scale = snap_scale(cfg.scale);
     cfg.weekly_ring = weekly_ring_or_off(&cfg.weekly_ring);
+    cfg.color_transition = color_transition_or_step(&cfg.color_transition);
     cfg.theme = theme_or_system(&cfg.theme);
     cfg
 }
@@ -303,7 +319,8 @@ pub fn save(cfg: &Config) {
 #[cfg(test)]
 mod tests {
     use super::{
-        carry_shared_position, keep_open_on_upgrade, snap_scale, theme_or_system, weekly_ring_or_off, Config,
+        carry_shared_position, color_transition_or_step, keep_open_on_upgrade, snap_scale, theme_or_system,
+        weekly_ring_or_off, Config,
     };
 
     /// Show on hover is the Mac's default, so a fresh install gets it — but an update must not start
@@ -378,6 +395,9 @@ mod tests {
         assert_eq!(weekly_ring_or_off("outside"), "outside");
         assert_eq!(weekly_ring_or_off("Inside"), "off");
         assert_eq!(weekly_ring_or_off(""), "off");
+        assert_eq!(color_transition_or_step("ramp"), "ramp");
+        assert_eq!(color_transition_or_step("Ramp"), "hard_step");
+        assert_eq!(color_transition_or_step(""), "hard_step");
         assert_eq!(theme_or_system("light"), "light");
         assert_eq!(theme_or_system("dark"), "dark");
         assert_eq!(theme_or_system("Dark"), "system");
