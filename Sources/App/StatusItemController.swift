@@ -1,5 +1,4 @@
 import AppKit
-import QuartzCore
 
 /// The menu bar icon, present only while `AppPresence.menuBar` is chosen.
 ///
@@ -70,12 +69,21 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// notch. Kept separate from usage snapshots: a usage refresh is not work,
     /// and activity never asks a provider to refresh its limits.
     private(set) var activeProviderIDs: Set<String> = []
-    private var pulseViews: [NSImageView] = []
-    /// Core Animation media time, retained across countdown/artwork rebuilds so
-    /// a still-active provider does not visibly restart its cycle every minute.
-    private var pulseBeganAt: CFTimeInterval?
-    private static let pulseDuration: TimeInterval = 1.2
-    private static let pulseMinimumOpacity: CGFloat = 0.62
+    /// Pulses the marks of the entries that are working without drawing a
+    /// second, independently tinted copy of each mark over AppKit's image.
+    private let pulse = StatusItemPulse()
+    private var observers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
+    private weak var observedStatusWindow: NSWindow?
+    private var statusWindowObserver: NSObjectProtocol?
+    /// Read again when AppKit reports a display-accessibility change. Internal
+    /// so the no-animation treatment can be verified without changing the
+    /// development Mac's setting.
+    var reducesMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        didSet {
+            guard reducesMotion != oldValue else { return }
+            redrawArtwork()
+        }
+    }
     /// Wakes the item when its first countdown next changes, since the minutes
     /// run down between readings. One-shot and re-armed on every update: a
     /// minute's precision is all the bar shows.
@@ -90,16 +98,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     init(onOpenSettings: @escaping () -> Void) {
         self.onOpenSettings = onOpenSettings
         super.init()
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(accessibilityDisplayOptionsDidChange),
-            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
-            object: nil
-        )
-    }
-
-    deinit {
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     var isShowing: Bool { item != nil }
@@ -110,12 +108,37 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = Self.icon()
         item.button?.toolTip = L10n.t("Codenotch")
+        // The pulse is a mask on the button's layer, and has to follow the
+        // button's width as the item is laid out around a new image.
+        item.button?.wantsLayer = true
+        item.button?.postsFrameChangedNotifications = true
 
         let menu = NSMenu()
         menu.delegate = self
         item.menu = menu
 
         self.item = item
+        guard let button = item.button else { return }
+        observe(NSView.frameDidChangeNotification, on: .default, object: button) { controller in
+            controller.pulse.relayout()
+            controller.observeStatusWindow(of: button)
+        }
+        // AppKit drops layer animations while a window is off screen; the
+        // item's comes back when the bar does, and so should its pulse. The
+        // button can be made before AppKit attaches its private window, so do
+        // not register a nil-object observer (which would watch every window).
+        observeStatusWindow(of: button)
+        DispatchQueue.main.async { [weak self, weak button] in
+            guard let self, let button else { return }
+            self.observeStatusWindow(of: button)
+        }
+        observe(NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+                on: NSWorkspace.shared.notificationCenter, object: nil) { controller in
+            controller.reducesMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
+        // The controller can stay alive while its status item is hidden and
+        // therefore not observing workspace notifications. Re-read on show.
+        reducesMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         updateButton()
     }
 
@@ -123,10 +146,52 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         guard let item else { return }
         countdownTimer?.invalidate()
         countdownTimer = nil
-        clearPulseViews(resetPhase: true)
+        pulse.clear()
+        stopObservingStatusWindow()
+        for (center, token) in observers { center.removeObserver(token) }
+        observers = []
         summary = nil
         NSStatusBar.system.removeStatusItem(item)
         self.item = nil
+    }
+
+    private func observe(_ name: Notification.Name, on center: NotificationCenter, object: AnyObject?,
+                         _ handle: @escaping (StatusItemController) -> Void) {
+        let token = center.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                handle(self)
+            }
+        }
+        observers.append((center, token))
+    }
+
+    /// A status bar button lives in an AppKit-owned window which may not exist
+    /// until the next layout pass. Observe precisely that window once it does,
+    /// replacing the token if AppKit moves the item to another screen/window.
+    private func observeStatusWindow(of button: NSStatusBarButton) {
+        guard item?.button === button, let window = button.window else { return }
+        guard observedStatusWindow !== window else { return }
+        stopObservingStatusWindow()
+        observedStatusWindow = window
+        statusWindowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification,
+            object: window,
+            queue: .main
+        ) { [weak self, weak window] _ in
+            MainActor.assumeIsolated {
+                guard let self, let window, self.observedStatusWindow === window else { return }
+                self.pulse.ensureRunning()
+            }
+        }
+    }
+
+    private func stopObservingStatusWindow() {
+        if let statusWindowObserver {
+            NotificationCenter.default.removeObserver(statusWindowObserver)
+        }
+        statusWindowObserver = nil
+        observedStatusWindow = nil
     }
 
     // MARK: - Summary
@@ -148,7 +213,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         summary = next
 
         if next.entries.isEmpty {
-            clearPulseViews(resetPhase: true)
+            pulse.clear()
             item.length = NSStatusItem.squareLength
             button.image = Self.icon()
             button.toolTip = L10n.t("Codenotch")
@@ -179,21 +244,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         redrawArtwork()
     }
 
-    /// Smooth 100% → 62% → 100% pulse. Core Animation runs it in the render
-    /// server, so Codenotch does no work between activity state changes.
-    static func pulseAnimation(beginTime: CFTimeInterval) -> CABasicAnimation {
-        let animation = CABasicAnimation(keyPath: "opacity")
-        animation.fromValue = CGFloat(1)
-        animation.toValue = pulseMinimumOpacity
-        animation.duration = pulseDuration / 2
-        animation.autoreverses = true
-        animation.repeatCount = .infinity
-        animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        animation.beginTime = beginTime
-        animation.isRemovedOnCompletion = false
-        return animation
-    }
-
     private var visibleActiveProviderIDs: Set<String> {
         guard let summary else { return [] }
         return activeProviderIDs.intersection(summary.entries.map(\.id))
@@ -201,52 +251,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func redrawArtwork() {
         guard let item, let button = item.button, let summary, !summary.entries.isEmpty else { return }
-        let animated = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-            ? Set<String>() : visibleActiveProviderIDs
-        if animated.isEmpty { pulseBeganAt = nil }
-        else if pulseBeganAt == nil { pulseBeganAt = CACurrentMediaTime() }
-
-        clearPulseViews(resetPhase: false)
-        let base = StatusItemArtwork(summary: summary,
-                                     activeProviderIDs: animated,
-                                     activeGlyphOpacity: 0)
-        button.image = base.image()
-        button.layoutSubtreeIfNeeded()
-        guard !animated.isEmpty, let pulseBeganAt else { return }
-
-        let imageRect = (button.cell as? NSButtonCell)?.imageRect(forBounds: button.bounds)
-            ?? button.bounds
-        let glyphArtwork = StatusItemArtwork(summary: summary)
-        for providerID in animated.sorted() {
-            guard let frame = base.glyphFrame(for: providerID),
-                  let image = glyphArtwork.glyphImage(for: providerID) else { continue }
-            let view = PassThroughStatusImageView(frame: NSRect(
-                x: imageRect.minX + frame.minX,
-                y: imageRect.minY + frame.minY,
-                width: frame.width,
-                height: frame.height
-            ))
-            view.image = image
-            view.imageScaling = .scaleNone
-            view.contentTintColor = button.contentTintColor ?? .labelColor
-            view.wantsLayer = true
-            button.addSubview(view)
-            if let layer = view.layer {
-                let begin = layer.convertTime(pulseBeganAt, from: nil)
-                layer.add(Self.pulseAnimation(beginTime: begin), forKey: "providerActivityPulse")
-            }
-            pulseViews.append(view)
+        let working = visibleActiveProviderIDs
+        let artwork = StatusItemArtwork(
+            summary: summary,
+            activityBadgeProviderIDs: reducesMotion ? working : []
+        )
+        button.image = artwork.image()
+        let glyphs = Dictionary(uniqueKeysWithValues: summary.entries.compactMap { entry in
+            artwork.glyphFrame(for: entry.id).map { (entry.id, $0) }
+        })
+        if reducesMotion {
+            // Accessibility changes are synchronous: no fading settle after
+            // Reduce Motion is enabled. The artwork above keeps activity
+            // visible as a still badge instead.
+            pulse.clear()
+        } else {
+            pulse.update(view: button, imageSize: artwork.size, glyphs: glyphs, working: working)
         }
-    }
-
-    private func clearPulseViews(resetPhase: Bool) {
-        for view in pulseViews { view.removeFromSuperview() }
-        pulseViews = []
-        if resetPhase { pulseBeganAt = nil }
-    }
-
-    @objc private func accessibilityDisplayOptionsDidChange() {
-        redrawArtwork()
     }
 
     private func scheduleCountdown(at change: Date?) {
@@ -442,10 +463,4 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
         return line
     }
-}
-
-/// The animated glyph sits over the status bar button's static text. It is
-/// presentation only and must never steal the click that opens the menu.
-private final class PassThroughStatusImageView: NSImageView {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
