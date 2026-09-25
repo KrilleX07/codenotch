@@ -325,24 +325,48 @@ final class MenuUsageCardTests: XCTestCase {
     /// The cards are drawn from the fleet's own model, so Watch and Critical,
     /// the accent and the reset wording are one setting each — not a second
     /// set the menu keeps.
-    func testTheCardsFollowTheNotchsSettings() {
+    func testTheCardsFollowTheNotchsSettings() throws {
+        let now = Date()
         let fleet = NotchFleet(scope: .mainDisplay, edge: .right)
-        fleet.apply(watchLimit: 0.3, criticalLimit: 0.6)
+        fleet.apply(watchLimit: 0.30, criticalLimit: 0.60)
         fleet.apply(resetTimeFormat: .remaining)
         fleet.apply(accentColor: .blue)
 
         let controller = StatusItemController(onOpenSettings: {})
         controller.model = fleet.menuModel
-        controller.snapshots = Fixtures.snapshots()
+        controller.snapshots = Fixtures.snapshots(now: now)
         let menu = NSMenu()
-        controller.rebuild(menu: menu, now: Date())
+        controller.rebuild(menu: menu, now: now)
 
-        XCTAssertEqual(fleet.menuModel.watchLimit, 0.3)
-        XCTAssertEqual(fleet.menuModel.criticalLimit, 0.6)
-        XCTAssertEqual(fleet.menuModel.resetTimeFormat, .remaining)
-        XCTAssertEqual(UsageBand.band(for: 0.47, watchLimit: fleet.menuModel.watchLimit,
-                                      criticalLimit: fleet.menuModel.criticalLimit), .watch)
-        XCTAssertFalse(menu.items.filter { $0.representedObject is String }.isEmpty)
+        // What the card draws, not what the model holds. Claude's session is
+        // 73% in the fixtures: ample under the shipped thresholds, critical
+        // under these, and the bar is the only thing that says so.
+        let underTheseThresholds = try pixels(of: card(from: controller, for: "claude"))
+        fleet.apply(watchLimit: 0.80, criticalLimit: 0.95)
+        controller.rebuild(menu: menu, now: now)
+        let underComfortableOnes = try pixels(of: card(from: controller, for: "claude"))
+        XCTAssertNotEqual(underTheseThresholds, underComfortableOnes,
+                          "the card ignored the Watch and Critical limits")
+
+        // And the reset wording follows the same model: "Resets in 51 min"
+        // rather than a date, because the fleet was told `.remaining`.
+        XCTAssertTrue(try XCTUnwrap(menu.items.first { $0.representedObject as? String == "claude" }?
+            .accessibilityLabel()).contains("Resets in"))
+    }
+
+    /// One card's hosting view, as the menu holds it.
+    private func card(from controller: StatusItemController, for providerID: String) throws -> NSView {
+        let menu = try XCTUnwrap(controller.builtMenuForTesting)
+        return try XCTUnwrap(menu.items.first { $0.representedObject as? String == providerID }?.view)
+    }
+
+    /// What that view actually draws — the only thing that can tell whether a
+    /// setting reached the bar rather than merely the model behind it.
+    private func pixels(of view: NSView) throws -> Data {
+        view.layoutSubtreeIfNeeded()
+        let rep = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: rep)
+        return try XCTUnwrap(rep.representation(using: .png, properties: [:]))
     }
 
     /// Building the menu reads nothing: it draws the snapshots that already

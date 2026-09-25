@@ -250,10 +250,15 @@ enum MenuUsageCardItem {
                                size: NSSize(width: width, height: hosting.fittingSize.height))
     }
 
-    static func make(root: AnyView, title: String, appearance: NSAppearance?,
-                     onToggle: (() -> Void)?) -> NSMenuItem {
-        let hosting = MenuCardHostingView(rootView: root)
+    /// `root` is handed the setter for this item's own hosting view, so the
+    /// card can report where its switch landed to the very view that will
+    /// hit-test the click.
+    static func make(title: String, appearance: NSAppearance?,
+                     onToggle: (() -> Void)?,
+                     root: (_ onSwitchFrame: @escaping (CGRect) -> Void) -> AnyView) -> NSMenuItem {
+        let hosting = MenuCardHostingView(rootView: AnyView(EmptyView()))
         hosting.onInteract = onToggle
+        hosting.rootView = root { [weak hosting] frame in hosting?.interactiveRect = frame }
         // Set before the card is measured: the appearance decides the ink and
         // the surface, and a card measured in one and drawn in the other can
         // come out the wrong height.

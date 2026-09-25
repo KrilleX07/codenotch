@@ -128,6 +128,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// including one handed straight to `rebuild`, which is how the menu is
     /// read in a test. Weak: the menu belongs to the item, or to the caller.
     private weak var builtMenu: NSMenu?
+
+    /// The menu the cards were last drawn into, so a test can read one card's
+    /// view without a status item to hang a menu off.
+    var builtMenuForTesting: NSMenu? { builtMenu }
     /// The Refresh all row of that menu, told when a pass it asked for is
     /// running. Weak for the same reason.
     private weak var refreshRow: MenuCommandRowView?
@@ -332,6 +336,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         menuClock?.invalidate()
         menuClock = nil
+        // Let go of the menu, or every reading that lands from here on lays
+        // out a card per provider for a menu nobody is looking at — and a
+        // local runtime republishes every second, so that is N forced layouts
+        // a second for the rest of the session. There is nothing on screen to
+        // keep current, and the next open rebuilds from scratch anyway.
+        builtMenu = nil
         // Stop waiting with the menu. A pass stuck behind a keychain prompt
         // nobody has answered can outlast the store's own deadline, and it
         // would leave every menu after this one saying "Refreshing…".
@@ -356,9 +366,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                let now = Date()
-                self.model?.now = now
-                self.redrawOpenCards(now: now)
+                // The cards only, not `model.now`: writing that republishes
+                // the model to every notch, and the notches keep their own
+                // clocks for exactly this.
+                self.redrawOpenCards(now: Date())
             }
         }
         timer.tolerance = 1
@@ -490,10 +501,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// the menu and the notch cannot disagree about a percentage, a band or
     /// the wording of a reset. Nothing is fetched to build it.
     private func cardItem(for snapshot: ProviderSnapshot, now: Date) -> NSMenuItem {
-        let item = MenuUsageCardItem.make(root: card(for: snapshot, now: now),
-                                          title: Self.headerTitle(for: snapshot, now: now),
-                                          appearance: menuAppearance,
-                                          onToggle: { [weak self] in self?.toggleDetail(for: snapshot.id) })
+        let item = MenuUsageCardItem.make(
+            title: Self.headerTitle(for: snapshot, now: now),
+            appearance: menuAppearance,
+            onToggle: { [weak self] in self?.toggleDetail(for: snapshot.id) },
+            root: { [weak self] onSwitchFrame in
+                self?.card(for: snapshot, now: now, onSwitchFrame: onSwitchFrame) ?? AnyView(EmptyView())
+            })
         // The card is a picture to VoiceOver. These are the same facts in
         // words — the header, then one line per limit — so the menu is as
         // readable aloud as it is on screen.
@@ -534,7 +548,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// Read off `model` — the fleet's own — with the shipped defaults as the
     /// fallback for a controller standing on its own. Nothing here is a second
     /// copy of a setting: it is the same object Settings writes through.
-    private func card(for snapshot: ProviderSnapshot, now: Date) -> AnyView {
+    private func card(for snapshot: ProviderSnapshot, now: Date,
+                      onSwitchFrame: @escaping (CGRect) -> Void) -> AnyView {
         MenuUsageCardItem.root(
             snapshot: snapshot,
             activity: activity(snapshot),
@@ -550,20 +565,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             criticalLimit: model?.criticalLimit ?? 0.70,
             isExpanded: expandedDetail.contains(snapshot.id),
             onToggle: { [weak self] in self?.toggleDetail(for: snapshot.id) },
-            // The card reports where its switch landed; the item hit-tests
-            // against it, because a menu runs its own event-tracking loop and
-            // a hosted control cannot be relied on to see the click itself.
-            onSwitchFrame: { [weak self] frame in
-                self?.setSwitchFrame(frame, forCardWith: snapshot.id)
-            }
+            // The card reports where its switch landed; the view hosting it
+            // hit-tests against that, because a menu runs its own
+            // event-tracking loop and a hosted control cannot be relied on to
+            // see the click itself.
+            //
+            // Handed straight to that view. Looking it up in the menu instead
+            // could not work on a first open: the card is measured inside
+            // `make`, which is where the frame is first reported, and the item
+            // it will live on has no `representedObject` — indeed is not in
+            // any menu — until `cardItem` returns. The switch stayed dead
+            // until something else made the card lay out again.
+            onSwitchFrame: onSwitchFrame
         )
-    }
-
-    private func setSwitchFrame(_ frame: CGRect, forCardWith providerID: String) {
-        guard let hosting = builtMenu?.items
-            .first(where: { $0.representedObject as? String == providerID })?
-            .view as? MenuCardHostingView<AnyView> else { return }
-        hosting.interactiveRect = frame
     }
 
     /// Redraw the cards of a menu that is already open.
@@ -582,7 +596,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                   let snapshot = drawn.first(where: { $0.id == id })
             else { continue }
             hosting.appearance = menuAppearance
-            hosting.rootView = card(for: snapshot, now: now)
+            hosting.rootView = card(for: snapshot, now: now) { [weak hosting] frame in
+                hosting?.interactiveRect = frame
+            }
             // A card that has just opened or closed is a different height, and
             // the menu laid itself out around the old one. Re-measuring and
             // then telling the menu the item changed is what makes it take the
