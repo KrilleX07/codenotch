@@ -38,6 +38,10 @@ struct ClaudeSessionOwnership {
     let transcripts: [String: ClaudeTranscriptReader]
     /// The join between a desktop session and its account.
     let index: ClaudeDesktopSessionIndex
+    /// Whether the profile behind a `sessions` directory has its ring switched
+    /// on. Read on every claim, so switching a ring on or off moves its
+    /// sessions at once.
+    var isShown: (URL) -> Bool = { _ in true }
 
     init(own: URL,
          directories: [URL],
@@ -54,12 +58,29 @@ struct ClaudeSessionOwnership {
     /// Whether this profile is the one that should draw `record`, found in
     /// `directory`.
     func claims(_ record: ClaudeSessionRecord, foundIn directory: URL) -> Bool {
+        let owner = owner(of: record, foundIn: directory)
+        // Two profiles can be signed in to the *same* account — an old second
+        // login left behind after the default one was switched to it. The rule
+        // above then always picks the first, and if that ring is switched off
+        // every session is drawn on a ring nobody can see, while the ring that
+        // is on for the very same account shows none. A profile whose ring is
+        // on, signed in to the same account, draws them instead.
+        guard !isShown(owner), let account = accounts[owner.path],
+              let stand = directories.first(where: {
+                  $0.path != owner.path && accounts[$0.path] == account && isShown($0)
+              })
+        else { return owner.path == own.path }
+        return stand.path == own.path
+    }
+
+    /// The profile a session belongs to, before anything is switched off.
+    private func owner(of record: ClaudeSessionRecord, foundIn directory: URL) -> URL {
         guard record.isDesktopHosted,
               let host = record.hostSessionID,
               let account = index.account(forHostSession: host),
               let target = directories.first(where: { accounts[$0.path] == account })
-        else { return directory.path == own.path }
-        return target.path == own.path
+        else { return directory }
+        return target
     }
 
     func reader(for directory: URL) -> ClaudeTranscriptReader? {
