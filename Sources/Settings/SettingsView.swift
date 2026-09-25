@@ -1441,7 +1441,7 @@ struct SettingsView: View {
     /// this, sees four blank rings and concludes it is broken — and the
     /// distinction that catches them out is Claude *Code*, not the Claude app.
     static var setupCopy: String {
-        L10n.t("Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.")
+        L10n.t("Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.")
     }
 
     /// Said before it happens rather than after. A system dialogue asking to
@@ -2020,6 +2020,13 @@ private struct AccountRow: View {
             if provider.id == "minimax" {
                 minimaxEntry
             }
+
+            // Apify borrows the CLI's login when there is one; the token
+            // pasted here is for a Mac without it. Stored in the keychain on
+            // Save, the same way Ollama's is.
+            if provider.id == "apify" {
+                apifyTokenEntry
+            }
         }
     }
 
@@ -2057,6 +2064,43 @@ private struct AccountRow: View {
                         .foregroundStyle(.green)
                 }
             }
+        }
+        .padding(.top, 2)
+    }
+
+    /// The API token input for Apify. Stored in the keychain on Save, then a
+    /// refresh is triggered so the ring picks up the new credential without a
+    /// relaunch — the same shape as Ollama's key above, and for the same
+    /// reason the caption sits on its own line.
+    @State private var apifyToken = ""
+    @State private var apifyTokenSaved = false
+
+    private var apifyTokenEntry: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(L10n.t("Apify API token"))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                SecureField(L10n.t("Paste your key"), text: $apifyToken)
+                    .textContentType(.password)
+                    .textFieldStyle(.roundedBorder)
+                    .labelsHidden()
+                    .frame(maxWidth: 260)
+                Button(L10n.t("Save")) {
+                    guard !apifyToken.isEmpty else { return }
+                    ApifyCredentials.storeSettingsToken(apifyToken)
+                    apifyToken = ""
+                    apifyTokenSaved = true
+                    _ = signIn(provider.id)
+                }
+                .disabled(apifyToken.isEmpty)
+                if apifyTokenSaved {
+                    Text(L10n.t("Saved"))
+                        .foregroundStyle(.green)
+                }
+            }
+            Text(L10n.t("Paste a token from Apify Console › Settings › API & Integrations. Not needed after apify login, or with APIFY_TOKEN exported. Stored in your login keychain."))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 2)
     }
