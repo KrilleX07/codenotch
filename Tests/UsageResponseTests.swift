@@ -124,6 +124,122 @@ final class UsageResponseTests: XCTestCase {
         XCTAssertEqual(windows.first?.label, "Scoped")
     }
 
+    /// Trimmed from the real response of an Enterprise seat
+    /// (`enterprise_usage_based`, billed through a marketplace). Note what is
+    /// *not* there: `limits` is empty and both named windows are null, so
+    /// without the spend block such a seat has no reading at all.
+    private let enterprise = """
+    {
+      "limits": [],
+      "five_hour": null,
+      "seven_day": null,
+      "seven_day_opus": null,
+      "amber_ladder": { "limit_dollars": 25000, "used_dollars": 0,
+                        "remaining_dollars": 25000, "utilization": 0,
+                        "resets_at": "2026-10-02T06:59:59.000000+00:00", "locked_reason": null },
+      "nimbus_quill": { "limit_dollars": null, "used_dollars": null, "utilization": 0,
+                        "resets_at": null, "locked_reason": null },
+      "tangelo": null,
+      "extra_usage": { "is_enabled": true, "currency": "USD", "monthly_limit": 20000,
+                       "used_credits": 297, "utilization": 1.485, "decimal_places": 2 },
+      "spend": {
+        "enabled": true, "percent": 1, "severity": "normal",
+        "limit": { "amount_minor": 20000, "currency": "USD", "exponent": 2 },
+        "used":  { "amount_minor": 297, "currency": "USD", "exponent": 2 },
+        "cap": { "credits": { "amount_minor": 20000, "exponent": 2 }, "money": null },
+        "balance": null, "auto_reload": null, "can_purchase_credits": false
+      }
+    }
+    """
+
+    func testAnEnterpriseSeatReportsItsBalance() throws {
+        let windows = try decode(enterprise).limitWindows()
+        XCTAssertEqual(windows.map(\.id), ["spend"], "one ring, and only from `spend`")
+
+        let balance = try XCTUnwrap(windows.first)
+        let money = try XCTUnwrap(balance.money)
+        XCTAssertEqual(money.spent, 2.97, accuracy: 0.000001)
+        XCTAssertEqual(money.funded, 200, accuracy: 0.000001)
+        XCTAssertEqual(money.currency, "USD")
+        // 297/20000, not the `percent: 1` the response rounds it to.
+        XCTAssertEqual(balance.usedFraction ?? -1, 0.01485, accuracy: 0.00001)
+        XCTAssertNil(balance.resetsAt, "the block carries no reset time")
+    }
+
+    /// The ring has to *mean* the balance on a seat that reports only that.
+    /// Declaring "session" there left it showing a dash beside a tooltip full
+    /// of numbers — the window it named did not exist.
+    func testTheBalanceIsTheHeadlineWhenThereIsNoSession() throws {
+        let windows = try decode(enterprise).limitWindows()
+        XCTAssertEqual(UsageResponse.headlineID(for: windows), "spend")
+    }
+
+    /// And on a plan seat nothing moves: the session leads, and a session
+    /// merely missing from one response still shows a dash rather than
+    /// promoting the weekly into its place.
+    func testTheSessionStillLeadsWhereThereIsOne() throws {
+        XCTAssertEqual(UsageResponse.headlineID(for: try decode(live).limitWindows()), "session")
+
+        let weeklyOnly = [LimitWindow(id: "weekly_all", label: "All models", usedFraction: 0.3)]
+        XCTAssertEqual(UsageResponse.headlineID(for: weeklyOnly), "session",
+                       "a weekly percentage must not wear the session's place")
+    }
+
+    /// `amber_ladder`, `nimbus_quill` and friends carry `limit_dollars` and
+    /// `resets_at` and look exactly like windows. They are internal codenames
+    /// whose meaning is not published, and a ring drawn from one would be a
+    /// number presented as a limit without anybody knowing which limit.
+    func testCodenamedBlocksAreNotReadAsWindows() throws {
+        let windows = try decode(enterprise).limitWindows()
+        XCTAssertFalse(windows.contains { $0.id.contains("amber") || $0.id.contains("nimbus") })
+        XCTAssertFalse(windows.contains { $0.money?.funded == 25000 })
+    }
+
+    /// A seat with no credit spending gets no ring rather than one reading
+    /// "0 of 0", which would be an invention.
+    func testASeatWithoutCreditsHasNoBalanceWindow() throws {
+        let json = """
+        { "limits": [], "spend": { "enabled": false,
+            "limit": { "amount_minor": 0, "currency": "USD", "exponent": 2 },
+            "used": { "amount_minor": 0, "currency": "USD", "exponent": 2 } } }
+        """
+        XCTAssertTrue(try decode(json).limitWindows().isEmpty)
+    }
+
+    /// A malformed balance must not cost a plan seat its windows: the spend
+    /// block is an extra there, not the reading.
+    func testAMalformedSpendBlockDoesNotCostThePlanWindows() throws {
+        let json = """
+        { "limits": [ { "kind": "session", "percent": 52,
+                        "resets_at": "2026-08-28T09:50:00.316290+00:00" } ],
+          "spend": "unexpected" }
+        """
+        XCTAssertEqual(try decode(json).limitWindows().map(\.id), ["session"])
+    }
+
+    /// A subscription seat's response has no `spend` block at all, and must
+    /// keep reporting exactly what it did before.
+    func testASubscriptionSeatIsUnaffected() throws {
+        XCTAssertEqual(try decode(live).limitWindows().map(\.id), ["session", "weekly_all"])
+    }
+
+    /// On a seat that has both, the balance sorts last: it is not one of the
+    /// plan's periods.
+    func testTheBalanceSortsAfterThePlansWindows() throws {
+        let json = """
+        { "limits": [
+            { "kind": "weekly_all", "percent": 17,
+              "resets_at": "2026-09-02T17:00:00.316321+00:00" },
+            { "kind": "session", "percent": 52,
+              "resets_at": "2026-08-28T09:50:00.316290+00:00" } ],
+          "spend": { "enabled": true,
+            "limit": { "amount_minor": 20000, "currency": "USD", "exponent": 2 },
+            "used": { "amount_minor": 297, "currency": "USD", "exponent": 2 } } }
+        """
+        XCTAssertEqual(try decode(json).limitWindows().map(\.id),
+                       ["session", "weekly_all", "spend"])
+    }
+
     func testUnknownKindsGetAReadableLabel() {
         XCTAssertEqual(UsageResponse.label(forKind: "weekly_opus"), "Opus")
         XCTAssertEqual(UsageResponse.label(forKind: "weekly_cowork"), "Cowork")
