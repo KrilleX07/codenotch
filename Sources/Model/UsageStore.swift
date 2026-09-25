@@ -287,7 +287,7 @@ final class UsageStore: ObservableObject {
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshNow() }
+            MainActor.assumeIsolated { _ = self?.refreshNow() }
         }
 
         // A window's `label` is display text a provider resolved while it was
@@ -299,7 +299,7 @@ final class UsageStore: ObservableObject {
         languageObserver = NotificationCenter.default.addObserver(
             forName: L10n.didChange, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshNow() }
+            MainActor.assumeIsolated { _ = self?.refreshNow() }
         }
     }
 
