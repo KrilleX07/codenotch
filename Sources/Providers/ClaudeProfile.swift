@@ -251,6 +251,9 @@ struct ClaudeProfile: Equatable, Hashable {
             /// to. This is the uuid the Claude desktop app files its own
             /// sessions under — see `ClaudeDesktopSessionIndex`.
             let accountUuid: String?
+            /// `claude_enterprise`, `claude_team` and so on: the kind of
+            /// organization the account belongs to.
+            let organizationType: String?
         }
         let oauthAccount: Account?
     }
@@ -287,6 +290,18 @@ struct ClaudeProfile: Equatable, Hashable {
     func organizationID() -> String? {
         guard let uuid = account()?.organizationUuid, !uuid.isEmpty else { return nil }
         return uuid
+    }
+
+    /// The kind of organization this profile's account belongs to, as Claude
+    /// Code recorded it — `claude_enterprise` comes back as `enterprise`.
+    ///
+    /// For a reading taken from Claude Desktop's cache, which carries no plan
+    /// of its own. That reading is matched to this profile by `organizationID`
+    /// from the same record, so the two cannot describe different accounts.
+    func organizationPlan() -> String? {
+        guard let type = account()?.organizationType?.nonEmptyPlan else { return nil }
+        let prefix = "claude_"
+        return type.hasPrefix(prefix) ? String(type.dropFirst(prefix.count)).nonEmptyPlan : type
     }
 
     /// Which Anthropic *account* this profile is signed in to.

@@ -183,7 +183,11 @@ actor ClaudeOAuthProvider: UsageProvider {
         let resets = desktop?.resets?.credits(at: now)
         if let desktop, desktop.isFresh(at: now, within: desktopFreshness),
            !Self.hasExpiredWindow(desktop.windows, at: now) {
-            return snapshot(windows: desktop.windows, resetCredits: resets)
+            // The cache carries no plan, so the reading would say nothing about
+            // whose it is — the one thing worth knowing when two Claude rings
+            // sit side by side.
+            return snapshot(windows: desktop.windows, plan: profile.organizationPlan(),
+                            resetCredits: resets)
         }
         // A reading that arrived but is too old, or describes a window that has
         // already reset, is still a miss for the purpose of rescanning: without
@@ -274,9 +278,18 @@ actor ClaudeOAuthProvider: UsageProvider {
             // #102's second ring. The helper is the only place a Claude
             // snapshot is built now, so this is the only place it can go.
             weeklyID: "weekly_all",
-            plan: plan?.nonEmptyPlan,
+            plan: Self.planName(plan),
             resetCredits: resetCredits
         )
+    }
+
+    /// The plan the way Claude names it: the credential says `enterprise`, the
+    /// product says "Enterprise". Anything that is not one bare word — the
+    /// CLI's "extra usage", say — is shown exactly as it came.
+    nonisolated static func planName(_ raw: String?) -> String? {
+        guard let plan = raw?.nonEmptyPlan else { return nil }
+        guard plan.allSatisfy(\.isLowercase) else { return plan }
+        return plan.prefix(1).uppercased() + plan.dropFirst()
     }
 
     /// What Claude Desktop's cache holds for *this* profile's account, or nil.
