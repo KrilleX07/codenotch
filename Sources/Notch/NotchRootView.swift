@@ -246,8 +246,7 @@ struct NotchRootView: View {
             // Centred along the edge.
             .position(place.point(
                 along: (model.edge.isVertical ? place.panelSize.height
-                                              : place.panelSize.width) / 2
-                    - model.drawnSplitShift * model.sizeScale,
+                                              : place.panelSize.width) / 2,
                 across: model.notchDepth / 2
             ))
             // Pushed a shade past the bezel, and then clipped by the panel.

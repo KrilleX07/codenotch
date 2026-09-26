@@ -497,9 +497,9 @@ final class AboveTheCutoutTests: XCTestCase {
         let plain = NotchViewModel()
         plain.edge = .right
         plain.adopt(screen: Plain())
-        XCTAssertEqual(m.contentInset, plain.contentInset,
-                       "the top edge is insetting its contents for the hardware again")
         XCTAssertEqual(m.notchDepth, plain.notchDepth, accuracy: 0.001,
                        "the top edge is sizing itself from the hardware again")
+        XCTAssertEqual(m.shapeLength, plain.shapeLength, accuracy: 0.001,
+                       "the top edge is laying itself out around the hardware again")
     }
 }

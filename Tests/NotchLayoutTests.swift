@@ -405,7 +405,6 @@ final class SettingsOrbTests: XCTestCase {
     func testCameraNotchHandlesMirrorEachOther() {
         let model = NotchViewModel()
         model.edge = .top
-        model.hardwareNotch = HardwareNotch(width: 220, height: 37)
 
         XCTAssertEqual(model.moveAlong + model.orbAlong, model.shapeLength, accuracy: 0.001,
                        "The buttons must sit equally far from the two ends")
@@ -1464,7 +1463,7 @@ final class NotchSizeTests: XCTestCase {
     func testTheTooltipKeepsItsOwnSizeWhateverTheNotchIs() {
         let large = model(scale: 1.25)
         let medium = model(scale: 1)
-        let notchShare = medium.contentInset + NotchLayout.bodyDepth(for: .right)
+        let notchShare = NotchLayout.bodyDepth(for: .right)
 
         XCTAssertEqual(large.panelSize(cellCount: 3).width - medium.panelSize(cellCount: 3).width,
                        notchShare * 0.25, accuracy: 0.001)

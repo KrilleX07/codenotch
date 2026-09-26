@@ -52,110 +52,20 @@ enum NotchLayout {
     // A provider cell
     static let ringDiameter  = Design.px(117)   // 44pt, the design spec's anchor
 
-    /// Clearance between a ring and the hardware, when the rings sit in the
-    /// strips either side of the hole. Small on purpose: the strip is the menu
-    /// bar's height and every point of it is contested.
-    static let splitRingMargin: CGFloat = 4
 
-    /// The smallest the reading under a ring may be drawn before it stops
-    /// being worth drawing, in points.
-    ///
-    /// Beside the hardware the strip is the cutout's depth, which one ring
-    /// already fills — a percentage there would be a few points tall and set
-    /// into the bezel. It is carried only once the size setting has deepened
-    /// the bar enough for it to be read, and is a hover away in the card
-    /// otherwise.
-    static let splitReadingFloor: CGFloat = 10
 
     /// The corner the bar turns where it meets the bezel, beside the hardware.
     /// Derived from the hardware's own height rather than fixed — see
     /// `splitCornerFraction`.
     static let splitCornerRadius: CGFloat = 12
 
-    /// Clear space between the hardware notch and the nearest ring.
-    ///
-    /// The cutout's own corners are rounded, so a ring pressed flush against
-    /// its edge sits under the curve however exactly the gap matches the
-    /// reported width — the reported width is the widest part. This is the
-    /// margin either side that keeps a ring out from under it.
-    static let splitHoleClearance: CGFloat = 12
-
-    /// The bottom corner of an ear beside the hardware notch.
-    ///
-    /// The corner the ear turns at its foot, as a fraction of the notch's
-    /// height, so it turns at the cutout's rate at every size.
-    ///
-    /// The cutout's own corner measures 0.35 — a circular arc of radius
-    /// 31.2px on a 90px-deep notch, fitted over the whole sweep. (Read the
-    /// radius off the bottom row instead and you get 26.6, which is 15% out:
-    /// down there the boundary is horizontal, so a fraction of a row of error
-    /// throws the reading by several pixels. That is the mistake behind two of
-    /// the wrong numbers this constant has held.)
-    ///
-    /// Smaller than that here, because an ear is not the cutout. The cutout
-    /// turns once, at its foot, and that corner is all of its character. An
-    /// ear already turns through most of its depth sweeping out to the
-    /// screen's edge — see `splitFilletFraction` — so a corner sized to carry
-    /// a silhouette on its own makes the end read as blunt. This one only has
-    /// to finish the sweep.
-    static let splitCornerFraction: CGFloat = 0.35
-
-    /// The curve where each ear meets the side of the screen, as a fraction of
-    /// the notch's height.
-    ///
-    /// The join into the bezel. The ear carries on past the cutout, so unlike
-    /// the cutout it has to meet the screen's own edge somewhere, and it does
-    /// it with a curve rather than a step.
-    ///
-    /// A circular arc, like the corner at the foot — see
-    /// `SideNotchShape.circleReach` for why nothing cleverer belongs here.
-    ///
-    /// Nearly two thirds of the notch's depth, which is a lot for a join. It
-    /// has to be: this curve's sharpness is 1/radius, and at 0.28 it read as a
-    /// flick rather than a sweep — the bar barely left the straight before it
-    /// had met the bezel. It also loses its first couple of points behind the
-    /// bezel, where an arc moves fastest, so a small one arrives on screen
-    /// already half spent.
-    ///
-    /// Wider still now that the corner at the foot is smaller: between them
-    /// they take all but a couple of points of the depth either way, and the
-    /// depth freed by the smaller corner goes here.
-    ///
-    /// At this size it very nearly meets the corner at the foot: the two
-    /// curves take all but a couple of points of the depth between them, so
-    /// the ear's end reads as one continuous sweep from the screen's edge
-    /// round to its underside rather than as two corners with a side between.
-    /// The remaining sliver of straight is deliberate — `SideNotchShape`
-    /// claims the corner first and gives this whatever depth is left, so
-    /// letting them meet exactly would make the join, not the corner, the
-    /// thing that shrinks when the corner grows.
-    /// How deep the sweep into the screen's border reaches, as a fraction of
-    /// the notch's height.
-    static let splitFilletFraction: CGFloat = 0.42
-
-    /// How much further that sweep runs *along* the bar than it reaches down
-    /// into it — which is to say how flat it is.
-    ///
-    /// At 1 it is a quarter circle. The depth is all but spoken for at 0.78,
-    /// so there is no room left to gentle the curve by growing it; stretching
-    /// it lengthways instead is what is left, and length is the one thing an
-    /// ear has plenty of. At 1.6 the sweep leaves the bezel at a little over
-    /// 30 degrees from the horizontal where a circle leaves it at 45.
-    static let splitFilletWidth: CGFloat = 1.2
 
 
 
-    /// How much of the sweep is spent ramping its bend in and out — see
-    /// `SideNotchShape.fluidTurn`.
-    ///
-    /// The whole of it. The join into the border is where every "stiff" report
-    /// has landed, and every time the cause was the bend arriving all at once
-    /// rather than the outline being the wrong shape. At 0.5 the sweep leaves
-    /// the border with no bend at all and gathers it as it goes.
-    static let splitFilletRamp: CGFloat = 0.5
 
-    /// Gap between rings in a strip, as a fraction of the ring.
-    static let splitSpacingRatio: CGFloat = 0.4
+
+
+
     static let trackStroke   = Design.px(15.5)
     static let progressStroke = Design.px(8)
     /// A fraction of the circle, not a pixel length. Below it the arc's two
