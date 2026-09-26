@@ -17,27 +17,15 @@ struct NotchRootView: View {
             ZStack(alignment: .topLeading) {
                 Color.clear
 
-                ZStack {
-                    // Under the bar, so the bar's own outline is what shows where
-                    // the two overlap. No transition: it only ever appears and
-                    // goes with nothing of it to see — see `NotchViewModel.neck`.
-                    if let neck = model.neck {
-                        GooNeck(neck: neck)
-                            .fill(Palette.notch)
-                            .transition(.identity)
-                    }
-                    ForEach(model.wings) { wing in notch(place, wing: wing) }
+                // Under the bar, so the bar's own outline is what shows where the
+                // two overlap. No transition: it only ever appears and goes with
+                // nothing of it to see — see `NotchViewModel.neck`.
+                if let neck = model.neck {
+                    GooNeck(neck: neck)
+                        .fill(Palette.notch)
+                        .transition(.identity)
                 }
-                // Squeezed through the hole while it is in the hand — see
-                // `NotchViewModel.squeeze`. The notch and its strand only; the
-                // handles and the cards are not part of what goes through.
-                .mask {
-                    if let squeeze = model.squeeze {
-                        SqueezeMask(squeeze: squeeze)
-                    } else {
-                        Rectangle().padding(-NotchRootView.bezelBleed * 4)
-                    }
-                }
+                ForEach(model.wings) { wing in notch(place, wing: wing) }
 
                 // Outside the notch and outside its clip: the orb hangs past
                 // the end of the shape, tucked into the corner the far flare
@@ -139,6 +127,16 @@ struct NotchRootView: View {
                         // What must not interpolate is its contents — see
                         // `TooltipCard`.
                         .position(tooltipCentre(place, index: index, snapshot: snapshot))
+                        // Swapping cards is a movement like any other — and it
+                        // is the card's movement alone. This used to sit on the
+                        // whole panel, so every change that happened alongside a
+                        // change of hover rode it too: picking the notch up moves
+                        // the pointer off its ring, and the bar, its strand and
+                        // everything else about the notch went off on the card's
+                        // half-second glide while the drag stepped under them.
+                        // Layers moving on two clocks at once is how a smooth
+                        // shape shows a point for a frame or two.
+                        .animation(motion(NotchMotion.glide), value: model.hoveredIndex)
                         .transition(.opacity.combined(with: .offset(
                             x: model.edge.outward.x * Design.px(24),
                             y: model.edge.outward.y * Design.px(24)
@@ -146,8 +144,6 @@ struct NotchRootView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            // Swapping cards is a movement like any other here.
-            .animation(motion(NotchMotion.glide), value: model.hoveredIndex)
         }
         .animation(motion(NotchMotion.unfold), value: model.isExpanded)
         .tint(model.accentColor.color)
@@ -542,55 +538,6 @@ struct GooNeck: Shape {
         }
         // And flat along the hole's foot to its end inside the hole.
         path.addLine(to: CGPoint(x: n.inside, y: max(top, n.presence * n.holeDepth)))
-        path.closeSubpath()
-        return path
-    }
-}
-
-/// **What of a dragged notch is drawn**, near the display's hole: everything,
-/// except below the hole's depth within the hole's width — and at a wall the bar
-/// reaches across, below the goo curve out from that wall, so its foot eases
-/// into the hole rather than being cut off square. See `NotchViewModel.Squeeze`.
-struct SqueezeMask: Shape {
-    var squeeze: NotchViewModel.Squeeze
-
-    func path(in rect: CGRect) -> Path {
-        let s = squeeze
-        // Well past the panel on every side, so nothing but the cut is cut —
-        // including the band above the screen's edge the notch is pushed into.
-        let top = rect.minY - 100, bottom = rect.maxY + 100
-        let start = rect.minX - 100, end = rect.maxX + 100
-        let steps = 48
-
-        var path = Path()
-        path.move(to: CGPoint(x: start, y: top))
-        path.addLine(to: CGPoint(x: end, y: top))
-        path.addLine(to: CGPoint(x: end, y: bottom))
-        // Right wall: eased out along the goo curve if the bar crosses it,
-        // straight down if not.
-        if s.easesRight {
-            path.addLine(to: CGPoint(x: s.right + s.reach, y: bottom))
-            for i in 0...steps {
-                let u = 1 - CGFloat(i) / CGFloat(steps)
-                path.addLine(to: CGPoint(x: s.right + s.reach * u,
-                                         y: gooDepth(u, hole: s.holeDepth, bar: s.barDepth)))
-            }
-        } else {
-            path.addLine(to: CGPoint(x: s.right, y: bottom))
-            path.addLine(to: CGPoint(x: s.right, y: s.holeDepth))
-        }
-        path.addLine(to: CGPoint(x: s.left, y: s.holeDepth))
-        if s.easesLeft {
-            for i in 0...steps {
-                let u = CGFloat(i) / CGFloat(steps)
-                path.addLine(to: CGPoint(x: s.left - s.reach * u,
-                                         y: gooDepth(u, hole: s.holeDepth, bar: s.barDepth)))
-            }
-            path.addLine(to: CGPoint(x: s.left - s.reach, y: bottom))
-        } else {
-            path.addLine(to: CGPoint(x: s.left, y: bottom))
-        }
-        path.addLine(to: CGPoint(x: start, y: bottom))
         path.closeSubpath()
         return path
     }

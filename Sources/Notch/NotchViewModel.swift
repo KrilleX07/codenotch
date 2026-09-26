@@ -530,54 +530,41 @@ final class NotchViewModel: ObservableObject {
     /// own foot on the smoother step — flat at both ends, so there is no crease
     /// against the hole and none against the bar — over the distance from the
     /// wall to a flare-and-a-corner past the bar's near end. Everything that
-    /// shapes the notch near the hole while it is in the hand follows this, and
-    /// only this: the squeeze cuts to it and the strand fills to it. There used
-    /// to be three curves, each smooth, and wherever two of them crossed they
-    /// left a point — the squeeze's shoulder slicing through the bar's side,
-    /// the strand's square end standing out past the bar's rounded corner.
+    /// shapes the notch near the hole while it is in the hand follows this: the
+    /// bar's own dip where it reaches into the hole, and the strand across a
+    /// gap. There used to be a mask cutting the bar as well, and wherever its
+    /// cut crossed the bar's own curved end it left a point.
     var gooReach: CGFloat { (flare + drawnCornerRadius) * sizeScale }
 
-    /// **Where a dragged notch is squeezed to pass through the hole.**
-    ///
-    /// Goo through a gap narrower than itself does not slide *under* the gap,
-    /// it squeezes into it — and keeps its own size either side. While it is
-    /// in the hand, nothing of it is drawn below the hole's depth within the
-    /// hole's width; and at a wall the bar reaches across, its foot is eased
-    /// back down to its own depth on the goo curve rather than cut off square.
-    /// A wall it does not reach across is left alone: easing there would slice
-    /// through the bar's side and leave a point.
-    ///
-    /// A cut rather than a change of size, because the size is what the pointer
-    /// holds: shrinking the bar to fit moved whichever end was not under the
-    /// pointer.
-    struct Squeeze: Equatable {
-        /// Along the panel: the hole's two walls.
-        var left: CGFloat
-        var right: CGFloat
-        /// Down from the top of the screen: the hole's foot, and the bar's.
-        var holeDepth: CGFloat
-        var barDepth: CGFloat
-        /// How far out from a wall the curve takes to reach the bar's foot.
-        var reach: CGFloat
-        /// Whether the bar reaches across each wall, which is where it is eased.
-        var easesLeft: Bool
-        var easesRight: Bool
+    /// Whether each end of the bar in the hand is inside the hole's width.
+    private var carryingEndsInTheHole: (near: Bool, far: Bool)? {
+        guard let cutout else { return nil }
+        let bar = cellWing
+        let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
+        let left = middle - cutout.width / 2, right = middle + cutout.width / 2
+        let near = bar.lead, far = bar.lead + bar.length
+        return (near > left && near < right, far > left && far < right)
     }
 
-    var squeeze: Squeeze? {
+    /// **Where the bar in the hand dips to pass through the hole** — see
+    /// `SideNotchShape.Dip`. In the bar's own measure, from its leading tip, and
+    /// only while any of it is over the hole; eased out past a wall only where
+    /// the bar reaches across that wall.
+    var carryingDip: SideNotchShape.Dip? {
         guard holdsOffTheCutout, isExpanded, let cutout else { return nil }
+        let bar = cellWing
         let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
         let half = cutout.width / 2
         let left = middle - half, right = middle + half
-        let bar = cellWing
         let near = bar.lead, far = bar.lead + bar.length
-        return Squeeze(left: left, right: right,
-                       holeDepth: cutout.depth,
-                       barDepth: max(cutout.depth,
-                                     notchDepth * sizeScale - NotchRootView.bezelBleed),
-                       reach: gooReach,
-                       easesLeft: near < left && far > left,
-                       easesRight: near < right && far > right)
+        guard far > left, near < right else { return nil }
+        let scale = max(sizeScale, 0.0001)
+        return SideNotchShape.Dip(from: (left - near) / scale,
+                                  to: (right - near) / scale,
+                                  depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
+                                  reach: gooReach / scale,
+                                  easesBefore: near < left && far > left,
+                                  easesAfter: near < right && far > right)
     }
 
     /// **The strand of black between a dragged notch and the hole.**
@@ -621,17 +608,27 @@ final class NotchViewModel: ObservableObject {
         let gap = onTheRight ? tip - wall : wall - tip
         let stretch = NotchGeometry.cutoutStretch
         guard gap < stretch else { return nil }
-
-        // Across the gap and on over the bar's near end, or — with the bar
-        // reaching into the hole — the same curve the squeeze cuts to from the
-        // wall, so the two are one line and there is nothing to cross.
         let side: CGFloat = onTheRight ? 1 : -1
-        let from = gap > 0 ? tip : wall
-        var end = from + side * gooReach
+        // Far enough into the hole to cover its rounded corner — a circular arc
+        // of 31.2px on a 90px-deep cutout, measured — as well as the join.
+        let into = max(NotchGeometry.cutoutOverlap, cutout.depth * 31.2 / 90)
+        // Reaching into the hole, the bar's own dip is the curve out of it, and
+        // all that is wanted here is the hole's rounded corner on this side
+        // filled — or, with the bar's end only just inside the wall, a wedge of
+        // wallpaper shows in it.
+        if gap < 0 {
+            return Neck(inside: wall - side * into, wall: wall, end: wall,
+                        holeDepth: cutout.depth, barDepth: cutout.depth,
+                        presence: 1, thin: 0)
+        }
+
+        // Across the gap and on over the bar's near end, where it lands flat on
+        // the bar's foot.
+        var end = tip + side * gooReach
         end = onTheRight ? min(end, far) : max(end, far)
         let apart = max(0, gap) / stretch
         let x = 1 - apart
-        return Neck(inside: wall - side * NotchGeometry.cutoutOverlap,
+        return Neck(inside: wall - side * into,
                     wall: wall, end: end,
                     holeDepth: cutout.depth,
                     barDepth: max(cutout.depth,
@@ -752,6 +749,16 @@ final class NotchViewModel: ObservableObject {
         // exactly the same one, so the pair balances about the hole.
         if wing.carriesCells {
             shape.leadingJoin = cutout.joined ? 1 : 0
+            shape.dip = carryingDip
+            // In the hand, an end that has gone into the hole closes square at
+            // the hole's depth, like a joined end does. Left curved, it covered
+            // only the top of the hole's rounded corner and a wedge of wallpaper
+            // showed in the rest, sliding with the pointer. It changes over
+            // inside the hole, where neither shape of it can be seen.
+            if holdsOffTheCutout, let (nearIn, farIn) = carryingEndsInTheHole {
+                shape.leadingJoin = nearIn ? 1 : 0
+                shape.trailingJoin = farIn ? 1 : 0
+            }
             return shape
         }
 

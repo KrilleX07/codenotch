@@ -399,12 +399,12 @@ final class NotchWindowController {
     private func beginOptionDrag() {
         guard !isOptionDragging else { return }
         isOptionDragging = true
-        pickUp()
         clearHoverWork?.cancel()
         clearHoverWork = nil
         foldWork?.cancel()
         foldWork = nil
         model.hoveredIndex = nil
+        pickUp()
         model.isHoveringSettings = false
         model.isHoveringMove = false
         setPointing(false)
@@ -452,7 +452,7 @@ final class NotchWindowController {
             self.model.alongOffset = free
             self.relocate()
         }
-        if wasJoined { withAnimation(NotchMotion.unfold, lift) } else { lift() }
+        if wasJoined { withAnimation(NotchMotion.lift, lift) } else { lift() }
     }
 
     /// **Put down near the hole, it glides onto the nearer wall and joins it.**

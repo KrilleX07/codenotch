@@ -55,11 +55,44 @@ struct SideNotchShape: Shape {
     /// else, which is the fold's own kind of movement.
     var leadingJoin: CGFloat = 0
 
+    /// **How far the trailing end has closed up square**, 0 to 1 — the trailing
+    /// counterpart of `leadingJoin`, flare and corner both. Used for an end of
+    /// a dragged bar that has gone into the hole, which has to fill the hole's
+    /// rounded corner rather than leave a wedge of wallpaper in it.
+    var trailingJoin: CGFloat = 0
+
     /// **How much of the flare the far end keeps**, 0 to 1. At 0 the far end
     /// meets the bezel square, straight up from its corner, which is how the
     /// display's own notch ends — used for the hardware's notch widening, as
     /// opposed to the bar that grows out of it.
     var trailingFlare: CGFloat = 1
+
+    /// **Where the bar dips to pass through the display's hole**, while it is
+    /// in the hand. Nil everywhere else.
+    ///
+    /// Goo through a gap narrower than itself squeezes into it and keeps its own
+    /// size either side. So along the stretch of the bar that is under the
+    /// hole, the bar is no deeper than the hole; out past a wall the bar reaches
+    /// across, it eases back to its own depth on the smoother step; and its
+    /// corners and flares are drawn *on* that edge, wherever they fall. It is
+    /// the bar's own outline, not a cut through it: cutting the bar with a mask
+    /// left a point wherever the cut crossed the bar's own curved end, and the
+    /// points slid along with the pointer.
+    struct Dip: Equatable {
+        /// Along the bar, in its own measure from its leading tip: the hole's
+        /// near wall and its far one.
+        var from: CGFloat
+        var to: CGFloat
+        /// How deep the hole is, in the shape's own measure.
+        var depth: CGFloat
+        /// How far out past a wall the bar takes to ease back to its own depth.
+        var reach: CGFloat
+        /// Whether it eases out before the near wall and after the far one —
+        /// only where the bar reaches across that wall.
+        var easesBefore: Bool
+        var easesAfter: Bool
+    }
+    var dip: Dip?
 
     /// Whether this copy is drawn turned round along the bar — the copy on the
     /// left of the hole, whose joined end is its trailing one. A path has no
@@ -330,8 +363,9 @@ struct SideNotchShape: Shape {
             : max(0, min(flare, rect.height / 2))
         let open = 1 - max(0, min(leadingJoin, 1))
         let leadCurl = curl * open
-        let trailCurl = curl * max(0, min(trailingFlare, 1))
-        let trailDepth = curlDepth * max(0, min(trailingFlare, 1))
+        let trailOpen = 1 - max(0, min(trailingJoin, 1))
+        let trailCurl = curl * max(0, min(trailingFlare, 1)) * trailOpen
+        let trailDepth = curlDepth * max(0, min(trailingFlare, 1)) * trailOpen
         // Clamped by what the two ends take along the bar, which is what lets a
         // bar that has closed its flares be as short as nothing and still be a
         // clean shape rather than one turned inside out.
@@ -342,6 +376,46 @@ struct SideNotchShape: Shape {
         // Never more than the band itself, and never so much that it eats the
         // sweep it is making room for.
         let hidden = max(0, min(bezelHidden, rect.width - wanted - curlDepth))
+        // **How deep the bar is at `v` along it** — its own depth, or less where
+        // it dips through the hole.
+        //
+        // Past a wall it reaches across, it swells back out of the hole the way
+        // goo does: held at the hole's depth until enough of it is out to hold
+        // its own end — the flare and the corner there — and only then growing
+        // toward its full depth, the swell always finished before the end
+        // begins to curve up. Easing over a fixed distance instead ran the
+        // swell *into* the end whenever less of the bar was out than the two
+        // together needed, one curve going down as the other came up, and every
+        // one of those left a point.
+        let fullDepth = rect.width
+        let leadEnd = curl * open + corner * open
+        let trailEnd = curl * max(0, min(trailingFlare, 1)) * (1 - max(0, min(trailingJoin, 1)))
+            + corner * (1 - max(0, min(trailingJoin, 1)))
+        func eased(_ u: CGFloat) -> CGFloat {
+            let t = min(max(u, 0), 1)
+            return t * t * t * (t * (t * 6 - 15) + 10)
+        }
+        // How far it swells past a wall, and over what distance, for `out` of it
+        // beyond that wall with `end` of that taken by its own end.
+        func swell(out: CGFloat, end: CGFloat, reach: CGFloat,
+                   hole: CGFloat) -> (depth: CGFloat, over: CGFloat) {
+            let room = out - end
+            let share = reach > 0 ? min(max(room / reach, 0), 1) : 1
+            return (hole + (fullDepth - hole) * share, max(0.001, min(reach, room)))
+        }
+        func localDepth(_ v: CGFloat) -> CGFloat {
+            guard let d = dip else { return fullDepth }
+            let hole = min(fullDepth, d.depth)
+            if v >= d.from && v <= d.to { return hole }
+            if v < d.from {
+                guard d.easesBefore else { return fullDepth }
+                let s = swell(out: d.from - rect.minY, end: leadEnd, reach: d.reach, hole: hole)
+                return hole + (s.depth - hole) * eased((d.from - v) / s.over)
+            }
+            guard d.easesAfter else { return fullDepth }
+            let s = swell(out: rect.maxY - d.to, end: trailEnd, reach: d.reach, hole: hole)
+            return hole + (s.depth - hole) * eased((v - d.to) / s.over)
+        }
 
         var path = Path()
         if let cutout {
@@ -368,10 +442,17 @@ struct SideNotchShape: Shape {
             smoothStep(&path, to: CGPoint(x: rect.minX, y: wall + run))
         } else {
             // The flare and the corner at this end, closed up by however far
-            // it has joined the hole — see `leadingJoin`.
-            let leadDepth = curlDepth * open
-            let leadCorner = corner * open
+            // it has joined the hole — see `leadingJoin` — and fitted into the
+            // depth the bar has here, which is less where it dips.
+            var leadDepth = curlDepth * open
+            var leadCorner = corner * open
+            if dip != nil {
+                let room = max(0, localDepth(rect.minY) - hidden)
+                leadDepth = min(leadDepth, room * 0.6)
+                leadCorner = min(leadCorner, max(0, room - leadDepth))
+            }
             let leadTop = rect.minY + leadCurl
+            let leadFar = rect.maxX - localDepth(leadTop + leadCorner)
             // Screen edge, above the body.
             path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
             if hidden > 0 { path.addLine(to: CGPoint(x: rect.maxX - hidden, y: rect.minY)) }
@@ -381,8 +462,8 @@ struct SideNotchShape: Shape {
                           leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: -1, dy: 0),
                           ramp: filletRamp)
             }
-            path.addLine(to: CGPoint(x: rect.minX + leadCorner, y: leadTop))
-            turn(&path, to: CGPoint(x: rect.minX, y: leadTop + leadCorner),
+            path.addLine(to: CGPoint(x: leadFar + leadCorner, y: leadTop))
+            turn(&path, to: CGPoint(x: leadFar, y: leadTop + leadCorner),
                  leaving: CGVector(dx: -1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
                  radius: leadCorner)
         }
@@ -390,11 +471,30 @@ struct SideNotchShape: Shape {
         // on every other edge, and the flare that makes it read as moulded into
         // the bezel rather than stuck on it. This is the drawn shape and it is
         // not the join's to change.
-        path.addLine(to: CGPoint(x: rect.minX, y: bodyBottom - corner))
-        turn(&path, to: CGPoint(x: rect.minX + corner, y: bodyBottom),
+        // The same at the trailing end.
+        var trailFlareDepth = trailDepth
+        var trailCorner = corner * trailOpen
+        if dip != nil {
+            let room = max(0, localDepth(rect.maxY) - hidden)
+            trailFlareDepth = min(trailFlareDepth, room * 0.6)
+            trailCorner = min(trailCorner, max(0, room - trailFlareDepth))
+        }
+        let trailFar = rect.maxX - localDepth(bodyBottom - trailCorner)
+        // The far side: straight, or following the dip where there is one.
+        if dip != nil, let start = path.currentPoint {
+            let end = bodyBottom - trailCorner
+            let steps = 96
+            for i in 1...steps {
+                let v = start.y + (end - start.y) * CGFloat(i) / CGFloat(steps)
+                path.addLine(to: CGPoint(x: rect.maxX - localDepth(v), y: v))
+            }
+        } else {
+            path.addLine(to: CGPoint(x: trailFar, y: bodyBottom - trailCorner))
+        }
+        turn(&path, to: CGPoint(x: trailFar + trailCorner, y: bodyBottom),
              leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: 1, dy: 0),
-             radius: corner)
-        path.addLine(to: CGPoint(x: rect.maxX - hidden - trailDepth, y: bodyBottom))
+             radius: trailCorner)
+        path.addLine(to: CGPoint(x: rect.maxX - hidden - trailFlareDepth, y: bodyBottom))
         // Flare back out to the screen edge.
         if trailCurl > 0.001 {
             fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden, y: rect.maxY),

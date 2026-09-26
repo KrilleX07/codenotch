@@ -22,6 +22,16 @@ enum NotchMotion {
     /// into. See its `animatableData`.
     static let unfold = Animation.spring(response: 0.62, dampingFraction: 0.72)
 
+    /// **Letting go of the display's notch** when the notch is picked up.
+    ///
+    /// Short and firm, because it is the one movement that can still be running
+    /// when the drag starts arriving underneath it: the hand goes down and moves
+    /// at once. Anything eased while the drag steps is eased on a different
+    /// clock from the drag, and for however long that lasts the two can draw
+    /// out of step. Settled in about a quarter of a second, with no overshoot to
+    /// come back from.
+    static let lift = Animation.spring(response: 0.26, dampingFraction: 0.92)
+
     /// Contents arriving after the shape has started opening. Kept a little
     /// quicker than `unfold` so the readings catch up with the black rather
     /// than dragging behind it.
