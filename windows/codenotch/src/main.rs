@@ -37,7 +37,7 @@ use tauri::{AppHandle, Emitter, Manager};
 /// and its tail on the left. `fitZoom` in ui/notch.html divides by the same width.
 pub const NOTCH_W: f64 = 360.0;
 /// Hand-bumped build tag, written to run.log at startup so a log can always be matched to the exe that wrote it.
-pub const BUILD: &str = "r32-opencode-go";
+pub const BUILD: &str = "r31";
 /// The notch window's long side: the upright window's height, and both sides of the flat one.
 ///
 /// Five cells make a 447 px pill; its fillets add 38.7 px at each end and the settings orb reaches
@@ -58,6 +58,7 @@ pub struct AppState {
     pub antigravity: Mutex<usage::UsageSnapshot>,
     /// GLM Coding Plan snapshot, read from the existing Z.AI tool credentials.
     pub glm: Mutex<usage::UsageSnapshot>,
+    /// OpenCode Go plan snapshot, read with OpenCode's own sign-in (auth.json or opencode.db).
     pub opencode: Mutex<usage::UsageSnapshot>,
     /// Provider glyph cache, collected at launch and again on a tray refresh
     pub glyphs: Mutex<std::collections::HashMap<String, glyphs::Glyph>>,
@@ -686,12 +687,7 @@ pub(crate) fn refresh_provider(app: &AppHandle, provider: &str) -> bool {
         "grok" => grok::request_refresh(),
         "gemini" => antigravity::request_refresh(),
         "glm" => glm::request_refresh(),
-        "opencode" => {
-            if app.state::<AppState>().opencode.lock().unwrap().backoff_until > now_ms() {
-                return false;
-            }
-            opencode::request_refresh();
-        }
+        "opencode" => opencode::request_refresh(),
         _ => return false,
     }
     true
@@ -1245,6 +1241,7 @@ fn ring_window<'a>(
         // plan falls through to Antigravity's lane picker and the ring shows the
         // tightest window it can find instead of the session.
         "glm" => by_id("session"),
+        // The Mac sets headlineID "rolling", weeklyID "weekly".
         "opencode" => by_id("rolling"),
         _ => antigravity_lane(windows, antigravity_limit, antigravity_model),
     }
@@ -1670,7 +1667,7 @@ pub fn provider_label(id: &str) -> &'static str {
         "grok" => "Grok",
         "gemini" => "Antigravity",
         "glm" => "z.ai",
-        "opencode" => "OpenCode Go",
+        "opencode" => "OpenCode",
         _ => "Claude",
     }
 }
