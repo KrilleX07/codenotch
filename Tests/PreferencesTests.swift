@@ -530,3 +530,34 @@ final class NotificationChannelPreferenceTests: XCTestCase {
         }
     }
 }
+
+/// How small the notch may be made.
+final class NotchScaleRangeTests: XCTestCase {
+    /// The floor was 0.75, set there because the percentage under each ring
+    /// stopped being readable below it. That reading is its own setting now,
+    /// so the floor no longer has to protect type that can be switched off.
+    func testTheSliderReachesHalfSize() {
+        XCTAssertEqual(Preferences.customScaleRange.lowerBound, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(Preferences.customScaleRange.upperBound, 1.5, accuracy: 0.0001)
+    }
+
+    /// The presets stay inside it, or a preset would be unreachable by slider.
+    func testEveryPresetIsInsideTheSliderRange() {
+        for size in NotchSize.allCases {
+            XCTAssertTrue(Preferences.customScaleRange.contains(Double(size.scale)),
+                          "\(size.rawValue) at \(size.scale) is outside the slider's range")
+        }
+    }
+
+    /// And a half-size notch is still a target you can hit: the wake band has
+    /// a floor of its own, so the pill does not shrink out of reach with it.
+    @MainActor
+    func testAHalfSizeNotchIsStillReachable() {
+        let m = NotchViewModel()
+        m.edge = .right
+        m.sizeScale = 0.5
+        XCTAssertGreaterThanOrEqual(m.wakeDepth, NotchLayout.pillHotZone,
+                                    "the hot zone shrank with the notch")
+        XCTAssertGreaterThanOrEqual(m.wakeLength, NotchLayout.pillHotZone)
+    }
+}

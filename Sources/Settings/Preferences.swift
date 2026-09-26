@@ -136,9 +136,15 @@ final class Preferences: ObservableObject {
     }
 
     /// Where the slider may go. Wider than the presets at both ends, but not
-    /// unbounded: below about three quarters the percentage under each ring
-    /// stops being readable, which is the one thing the notch exists for.
-    static let customScaleRange: ClosedRange<Double> = 0.75...1.5
+    /// unbounded.
+    ///
+    /// The floor was three quarters, because below that the percentage under
+    /// each ring stopped being readable — and that is the one thing the notch
+    /// exists for. The reading is a setting of its own now (`showsNotchReadings`),
+    /// so anyone who wants the notch smaller than the type allows can turn the
+    /// type off and keep the rings, which read as colour and fill at any size.
+    /// Half is as small as a ring stays legible as a ring.
+    static let customScaleRange: ClosedRange<Double> = 0.5...1.5
 
     /// What the notch is actually drawn at, whichever control is in charge.
     var notchScale: CGFloat {
