@@ -48784,6 +48784,701 @@
           }
         }
       }
+    },
+    "%@ of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ de %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ sur %2$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ von %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ из %2$@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ із %2$@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ dari %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ this cycle": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ neste ciclo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ce cycle-ci"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ in diesem Zyklus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今サイクル %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周期 %@"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本週期 %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ за этот цикл"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ за цей цикл"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이번 주기 %@"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ siklus ini"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bu dönem %@"
+          }
+        }
+      }
+    },
+    "Run apify login in Terminal, or paste an Apify API token in Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Execute apify login no Terminal ou cole um token de API da Apify nos Ajustes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exécutez apify login dans le Terminal, ou collez un jeton d'API Apify dans les Réglages"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Führe apify login im Terminal aus oder füge in den Einstellungen ein Apify-API-Token ein"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで apify login を実行するか、設定で Apify の API トークンを貼り付けてください"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 apify login，或在设置里粘贴 Apify API 令牌"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在終端機執行 apify login，或在設定裡貼上 Apify API 權杖"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустите apify login в Терминале или вставьте API-токен Apify в настройках"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустіть apify login у Терміналі або вставте API-токен Apify в налаштуваннях"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널에서 apify login을 실행하거나 설정에서 Apify API 토큰을 붙여넣으십시오"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jalankan apify login di Terminal, atau tempel token API Apify di Pengaturan"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal'de apify login komutunu çalıştırın veya Ayarlar'a bir Apify API belirteci yapıştırın"
+          }
+        }
+      }
+    },
+    "Run apify login in Terminal — the notch reads that login — or paste an Apify API token below.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Execute apify login no Terminal — o notch lê esse login — ou cole um token de API da Apify abaixo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exécutez apify login dans le Terminal — le notch lit cette connexion — ou collez un jeton d'API Apify ci-dessous."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Führe apify login im Terminal aus — der Notch liest diese Anmeldung — oder füge unten ein Apify-API-Token ein."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで apify login を実行してください。ノッチはそのログインを読み取ります。または下に Apify の API トークンを貼り付けてください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端运行 apify login — 刘海会读取该登录 — 或在下方粘贴 Apify API 令牌。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在終端機執行 apify login — 瀏海會讀取該登入 — 或在下方貼上 Apify API 權杖。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустите apify login в Терминале — notch читает этот вход — или вставьте API-токен Apify ниже."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустіть apify login у Терміналі — notch читає цей вхід — або вставте API-токен Apify нижче."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "터미널에서 apify login을 실행하십시오. 노치가 그 로그인을 읽습니다. 또는 아래에 Apify API 토큰을 붙여넣으십시오."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jalankan apify login di Terminal — notch membaca login itu — atau tempel token API Apify di bawah."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminal'de apify login komutunu çalıştırın — çentik bu oturumu okur — ya da aşağıya bir Apify API belirteci yapıştırın."
+          }
+        }
+      }
+    },
+    "This Apify token cannot read account limits — use one with full account access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este token da Apify não consegue ler os limites da conta — use um com acesso completo à conta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce jeton Apify ne peut pas lire les limites du compte — utilisez-en un avec un accès complet au compte"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Apify-Token kann die Kontolimits nicht lesen — verwende eines mit vollem Kontozugriff"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この Apify トークンではアカウントの上限を読み取れません。アカウント全体にアクセスできるトークンを使ってください"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此 Apify 令牌无法读取账户限额 — 请使用具有完整账户访问权限的令牌"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此 Apify 權杖無法讀取帳戶限額 — 請使用具有完整帳戶存取權的權杖"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот токен Apify не может прочитать лимиты аккаунта — используйте токен с полным доступом к аккаунту"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей токен Apify не може прочитати ліміти облікового запису — використайте токен із повним доступом"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Apify 토큰은 계정 한도를 읽을 수 없습니다. 계정 전체 접근 권한이 있는 토큰을 사용하십시오"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token Apify ini tidak dapat membaca batas akun — gunakan token dengan akses akun penuh"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Apify belirteci hesap sınırlarını okuyamıyor — tam hesap erişimi olan bir belirteç kullanın"
+          }
+        }
+      }
+    },
+    "Apify API token": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token de API da Apify"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeton d'API Apify"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify-API-Token"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify API トークン"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify API 令牌"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify API 權杖"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-токен Apify"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-токен Apify"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify API 토큰"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token API Apify"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify API belirteci"
+          }
+        }
+      }
+    },
+    "Paste a token from Apify Console › Settings › API & Integrations. Not needed after apify login, or with APIFY_TOKEN exported. Stored in your login keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cole um token do Apify Console › Settings › API & Integrations. Dispensável depois de apify login, ou com APIFY_TOKEN exportado. Guardado no seu chaveiro de login."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collez un jeton depuis Apify Console › Settings › API & Integrations. Inutile après apify login, ou si APIFY_TOKEN est exporté. Conservé dans votre trousseau de session."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füge ein Token aus Apify Console › Settings › API & Integrations ein. Nach apify login oder mit exportiertem APIFY_TOKEN nicht nötig. Wird im Anmeldeschlüsselbund gespeichert."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify Console › Settings › API & Integrations のトークンを貼り付けてください。apify login 済み、または APIFY_TOKEN を export 済みなら不要です。ログインキーチェーンに保存されます。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴来自 Apify Console › Settings › API & Integrations 的令牌。已运行 apify login 或已导出 APIFY_TOKEN 时无需填写。保存在登录钥匙串中。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "貼上來自 Apify Console › Settings › API & Integrations 的權杖。已執行 apify login 或已匯出 APIFY_TOKEN 時不需填寫。儲存在登入鑰匙圈中。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставьте токен из Apify Console › Settings › API & Integrations. Не нужен после apify login или при экспортированном APIFY_TOKEN. Хранится в связке ключей входа."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставте токен з Apify Console › Settings › API & Integrations. Не потрібен після apify login або з експортованим APIFY_TOKEN. Зберігається у в’язці ключів входу."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify Console › Settings › API & Integrations의 토큰을 붙여넣으십시오. apify login 후나 APIFY_TOKEN을 내보낸 경우에는 필요 없습니다. 로그인 키체인에 저장됩니다."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempel token dari Apify Console › Settings › API & Integrations. Tidak perlu setelah apify login, atau bila APIFY_TOKEN diekspor. Disimpan di keychain login Anda."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify Console › Settings › API & Integrations'tan bir belirteç yapıştırın. apify login sonrasında veya APIFY_TOKEN dışa aktarılmışsa gerekmez. Giriş anahtar zincirinizde saklanır."
+          }
+        }
+      }
+    },
+    "~/.apify/auth.json is not readable — run apify login again": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler ~/.apify/auth.json — execute apify login de novo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire ~/.apify/auth.json — relancez apify login"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.apify/auth.json ist nicht lesbar — führe apify login erneut aus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.apify/auth.json を読み取れません。apify login をもう一度実行してください"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 ~/.apify/auth.json — 请重新运行 apify login"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法讀取 ~/.apify/auth.json — 請重新執行 apify login"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось прочитать ~/.apify/auth.json — запустите apify login ещё раз"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося прочитати ~/.apify/auth.json — запустіть apify login ще раз"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.apify/auth.json을 읽을 수 없습니다. apify login을 다시 실행하십시오"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.apify/auth.json tidak dapat dibaca — jalankan apify login lagi"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.apify/auth.json okunamıyor — apify login komutunu yeniden çalıştırın"
+          }
+        }
+      }
+    },
+    "Couldn't reach Apify. Check your connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível alcançar a Apify. Verifique sua conexão."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de joindre Apify. Vérifiez votre connexion."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify ist nicht erreichbar. Prüfe deine Verbindung."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify に接続できませんでした。接続を確認してください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接 Apify。请检查网络连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法連線 Apify。請檢查網路連線。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось связаться с Apify. Проверьте подключение."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося зв’язатися з Apify. Перевірте з’єднання."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify에 연결할 수 없습니다. 연결을 확인하십시오."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tidak dapat menghubungi Apify. Periksa koneksi Anda."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apify'a ulaşılamadı. Bağlantınızı kontrol edin."
+          }
+        }
+      }
+    },
+    "Apify CLI": {
+      "extractionState": "manual"
+    },
+    "Codenotch reads usage from tools already signed in on this Mac — it never asks for your password. Install and sign in to any of Claude Code (the terminal tool, not the Claude app), Cursor (the editor or cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify or a Gemini API key (via Gemini CLI, OpenCode or Hermes), and its ring appears in the notch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch は、この Mac ですでにサインイン済みのツールから使用量を読み取ります。パスワードを尋ねることはありません。Claude Code（Claude アプリではなくターミナルのツール）、Cursor（エディタまたは cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、Amp、Apify、または Gemini API キー（Gemini CLI、OpenCode、Hermes 経由）のいずれかをインストールしてサインインすると、そのリングがノッチに現れます。"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch читає використання з інструментів, у які вже виконано вхід на цьому Mac, і ніколи не питає ваш пароль. Установіть будь-який з них — Claude Code (термінальний інструмент, не застосунок Claude), Cursor (редактор або cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify чи ключ Gemini API (через Gemini CLI, OpenCode або Hermes) — і увійдіть: його кільце зʼявиться у вирізі."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 读取这台 Mac 上已经登录的工具的用量 — 从不问你的密码。安装并登录 Claude Code（终端工具，不是 Claude 应用）、Cursor（编辑器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、Amp、Apify 或 Gemini API 密钥（经由 Gemini CLI、OpenCode 或 Hermes）中的任意一个，刘海里就会出现对应的圆环。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch 會從這部 Mac 上已登入的工具讀取用量 — 它不會向你要密碼。安裝並登入 Claude Code（終端機工具，不是 Claude App）、Cursor（編輯器或 cursor-agent）、Codex、Antigravity、GLM、Grok、OpenCode、Command Code、GitHub Copilot、Kimi Code、Kiro、Amp、Apify，或 Gemini API 金鑰（透過 Gemini CLI、OpenCode 或 Hermes），對應的圓環就會出現在瀏海上。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch는 이 Mac에서 이미 로그인된 도구의 사용량을 읽으며 비밀번호를 요구하지 않습니다. Claude Code(Claude 앱이 아닌 터미널 도구), Cursor(편집기 또는 cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify 또는 Gemini API 키(Gemini CLI, OpenCode, Hermes 경유)를 사용하는 도구를 설치하고 로그인하면 노치에 해당 링이 나타납니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch foydalanishni shu Macʼda allaqachon tizimga kirgan vositalardan oʻqiydi — u hech qachon parolingizni soʻramaydi. Quyidagilardan birortasini oʻrnatib, unga kiring: Claude Code (terminal vositasi, Claude ilovasi emas), Cursor (muharrir yoki cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify yoki Gemini API kaliti (Gemini CLI, OpenCode yoki Hermes orqali) — va uning halqasi notchʼda paydo boʻladi."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch membaca penggunaan dari alat yang sudah login di Mac ini — Codenotch tidak pernah meminta kata sandi Anda. Instal dan login ke salah satu dari Claude Code (alat terminal, bukan aplikasi Claude), Cursor (editor atau cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify, atau kunci API Gemini (melalui Gemini CLI, OpenCode, atau Hermes), dan cincinnya akan muncul di notch."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codenotch kullanımı bu Mac'te zaten giriş yapılmış araçlardan okur — asla parolanızı istemez. Claude Code (Claude uygulaması değil, terminal aracı), Cursor (düzenleyici veya cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, Command Code, GitHub Copilot, Kimi Code, Kiro, Amp, Apify veya bir Gemini API anahtarından (Gemini CLI, OpenCode ya da Hermes üzerinden) herhangi birini kurup giriş yapın; halkası çentikte belirir."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -127,8 +127,12 @@ struct ProviderSummary: Identifiable, Equatable {
     /// are read from their own directory's `oauth_creds.json` or `agent.db`
     /// and never raise the dialogue, so offering to restore access there would
     /// point at a prompt that cannot appear.
+    ///
+    /// Apify's CLI files its token in the login keychain too, so a Deny is
+    /// possible there — and "Allow access…" is the only way back from one.
     var usesKeychain: Bool {
         ClaudeProfile.isClaude(providerID: id) || id == AntigravityProfile.defaultID || id == "cursor"
+            || id == "apify"
     }
 
     let id: String

@@ -103,6 +103,7 @@ wire-level details.
 | **Kimi** | official | The Kimi Code CLI session in `~/.kimi-code/credentials/kimi-code.json`, against the same `/usages` endpoint the CLI's `/usage` asks. Shows the 5-hour rate window and the weekly quota. |
 | **Kiro** | official | The kiro-cli session already on this Mac, against the same `/usage` that command prints. Shows monthly credits. |
 | **Amp** | official subscription percentages; derived free-allowance percentage | The Amp CLI login in `~/.local/share/amp/secrets.json`, against Amp's `userDisplayBalanceInfo` endpoint. Shows Agent and Orb usage, or the Free allowance and replenishment rate. See [Amp details](docs/providers/amp.md). |
+| **Apify** | official | The `apify login` session already on this Mac (`~/.apify/auth.json`, or the token the CLI keeps in the keychain), or a token pasted in Settings or exported as `APIFY_TOKEN`, against the `/v2/users/me/limits` endpoint the Console's Billing page draws from. Shows this cycle's platform spend against the account's monthly usage limit. See [Apify details](docs/providers/apify.md). |
 
 Most providers borrow a credential or session from a tool already on your Mac.
 DeepSeek is the explicit browser-login exception: it never reads a browser's
@@ -112,9 +113,11 @@ paste in Settings, or an explicit WKWebView sign-in. QianwenAI is a third: it
 publishes no usage API and has no key to paste, so that WKWebView session is the
 only way in. None of them opens a browser's cookie store.
 
-Ollama Cloud accepts an API key in Settings. Switching a provider off stops its
-usage polling and forgets its readings; borrowed accounts stay signed in to
-the tools that own them.
+Ollama Cloud accepts an API key in Settings. Apify borrows the `apify login`
+session when there is one and otherwise takes a token pasted in Settings or
+exported as `APIFY_TOKEN`. Switching a provider off stops its usage polling
+and forgets its readings; borrowed accounts stay signed in to the tools that
+own them.
 
 **Local Ollama is detected automatically.** Configure its address or stop monitoring in **Settings → Ollama**.
 Each loaded model gets a notch cell; reorder or hide it in **Settings → Accounts**.
