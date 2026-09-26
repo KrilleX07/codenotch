@@ -113,6 +113,13 @@ final class MergesWithTheCutoutTests: XCTestCase {
     }
 
     /// Where the hole's trailing wall stands, and how deep the hole is.
+    /// The nudge that puts the notch on the left of the hole, flush against its
+    /// left wall — the far end of the run the nudge travels.
+    private func flushOnTheLeft(_ screen: ScreenDescribing) throws -> CGFloat {
+        _ = try XCTUnwrap(screen.hardwareNotch)
+        return -2 * NotchGeometry.cutoutTravel
+    }
+
     private func hole(_ screen: ScreenDescribing) throws
     -> (wall: CGFloat, left: CGFloat, depth: CGFloat) {
         let cutout = try XCTUnwrap(screen.hardwareNotch)
@@ -382,8 +389,8 @@ final class MergesWithTheCutoutTests: XCTestCase {
         XCTAssertNotNil(model(screen, offset: 0).cutout)
         XCTAssertNil(model(screen, offset: 400).cutout,
                      "dragged half a screen away it is still claiming to be merged")
-        XCTAssertNotNil(model(screen, offset: -400).cutout,
-                        "dragged past the cutout it belongs on its other side, flush")
+        XCTAssertNil(model(screen, offset: -200).cutout,
+                     "dragged out the far side of the hole it is still claiming to be merged")
     }
 
     /// **A gap is not a join.**
@@ -416,16 +423,21 @@ final class MergesWithTheCutoutTests: XCTestCase {
     /// all, on the only display that has a hole to join.
     func testANudgeIntoTheHoleStaysJoined() throws {
         let screen = Notched()
-        for offset in [CGFloat(-42), -80, -100] {
+        for offset in [CGFloat(-6), -18, -42] {
             let m = model(screen, scale: 0.589, offset: offset)
             let near = try XCTUnwrap(m.cutout, "a nudge of \(offset)pt *into* the hole let go of it")
-            XCTAssertEqual(near.overlap, NotchGeometry.cutoutOverlap - offset, accuracy: 0.001)
+            XCTAssertGreaterThanOrEqual(near.overlap, NotchGeometry.cutoutOverlap,
+                                        "offset \(offset): joined, but not buried enough "
+                                        + "to hide the square end of the join")
 
             // And the bar still starts at the wall, as it does with no nudge:
             // everything buried in the hole is paid for in length.
             let hole = try hole(screen)
+            // Whichever wall it has ended up against.
+            let wall = near.atTrailingEnd ? hole.left : hole.wall
             let deepest = outline(of: m, on: screen)
-                .filter { $0.x < hole.wall - 0.5 }.map(\.depth).max() ?? 0
+                .filter { near.atTrailingEnd ? $0.x > wall + 0.5 : $0.x < wall - 0.5 }
+                .map(\.depth).max() ?? 0
             XCTAssertLessThanOrEqual(deepest, hole.depth + 0.6, "offset \(offset)")
         }
     }
@@ -442,11 +454,20 @@ final class MergesWithTheCutoutTests: XCTestCase {
     func testItMergesOnTheLeftOfTheCutoutToo() throws {
         let screen = Notched()
         let cutout = try XCTUnwrap(screen.hardwareNotch)
-        let m = model(screen, offset: -cutout.width / 2 - 1)
+        _ = cutout
+        let m = model(screen, offset: try flushOnTheLeft(screen))
         let near = try XCTUnwrap(m.cutout, "dragged to the left of the hole it let go")
         XCTAssertTrue(near.atTrailingEnd, "it is still joining at the wrong end")
         XCTAssertEqual(near.overlap, NotchGeometry.cutoutOverlap, accuracy: 1.5,
                        "it should land flush against the hole's left wall")
+
+        // And the whole run between the two sides is a join: every nudge from
+        // flush on the right through to flush on the left.
+        let flush = try flushOnTheLeft(screen)
+        for step in stride(from: CGFloat(0), through: flush, by: flush / 12) {
+            XCTAssertNotNil(model(screen, offset: step).cutout,
+                            "a nudge of \(step)pt fell off the hole part way along")
+        }
     }
 
     /// And the join is drawn at that end: nothing of the notch hangs out below
@@ -457,7 +478,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
         let cutout = try XCTUnwrap(screen.hardwareNotch)
         let hole = try hole(screen)
         for open in [true, false] {
-            let m = model(screen, open: open, offset: -cutout.width / 2 - 1)
+            let m = model(screen, open: open, offset: try flushOnTheLeft(screen))
             let drawn = outline(of: m, on: screen)
 
             let inside = drawn.filter { $0.x > hole.left + 0.5 }
@@ -483,7 +504,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
         // The same point of nudge either side of the flip, so the two have the
         // same overlap to spend and only the side differs.
         let right = model(screen, offset: 0)
-        let left = model(screen, offset: -cutout.width / 2 - 1)
+        let left = model(screen, offset: try flushOnTheLeft(screen))
 
         XCTAssertEqual(right.leadAllowance, left.endAllowance, accuracy: 0.001)
         XCTAssertEqual(right.endAllowance, left.leadAllowance, accuracy: 0.001)
