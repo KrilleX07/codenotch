@@ -270,7 +270,7 @@ actor ClaudeOAuthProvider: UsageProvider {
             fidelity: .official,
             status: .ok,
             windows: windows,
-            headlineID: "session",
+            headlineID: UsageResponse.headlineID(for: windows),
             // #102's second ring. The helper is the only place a Claude
             // snapshot is built now, so this is the only place it can go.
             weeklyID: "weekly_all",
@@ -598,14 +598,42 @@ struct UsageResponse: Decodable {
         let resetsAt: Date?
     }
 
+    /// A seat billed against credits rather than a plan: the balance and the
+    /// cap, each as an amount in minor units with its own currency.
+    ///
+    /// Deliberately read instead of the flat `extra_usage` block beside it,
+    /// which carries the same two figures without saying which currency they
+    /// are in — this one does, and an amount whose currency is assumed is a
+    /// number that reads right and means something else.
+    struct Spend: Decodable {
+        struct Amount: Decodable {
+            let amountMinor: Double?
+            let currency: String?
+            /// Decimal places, so 20000 with exponent 2 is 200.00.
+            let exponent: Int?
+
+            var value: Double? {
+                guard let amountMinor else { return nil }
+                return amountMinor / pow(10, Double(exponent ?? 2))
+            }
+        }
+
+        /// False on a seat that has no credit spending at all, where a ring
+        /// reading "0 of 0" would be an invention.
+        let enabled: Bool?
+        let used: Amount?
+        let limit: Amount?
+    }
+
     let limits: [Limit]?
     let fiveHour: Window?
     let sevenDay: Window?
     let cedarEmber: ClaudeResetCredits?
     let reportsResetCredits: Bool
+    let spend: Spend?
 
     private enum CodingKeys: String, CodingKey {
-        case limits, fiveHour, sevenDay, cedarEmber
+        case limits, fiveHour, sevenDay, cedarEmber, spend
     }
 
     init(from decoder: Decoder) throws {
@@ -618,6 +646,9 @@ struct UsageResponse: Decodable {
         reportsResetCredits = container.contains(.cedarEmber)
             && (try? container.decodeNil(forKey: .cedarEmber)) == false
         cedarEmber = try? container.decodeIfPresent(ClaudeResetCredits.self, forKey: .cedarEmber)
+        // Tolerated for the same reason: on a plan seat the balance is an
+        // extra, and a shape change in it must not cost the plan's windows.
+        spend = try? container.decodeIfPresent(Spend.self, forKey: .spend)
     }
 
     /// How this response is read, wherever it is read from.
@@ -676,7 +707,64 @@ struct UsageResponse: Decodable {
         merge(fiveHour, id: "session", label: L10n.t("Current session"))
         merge(sevenDay, id: "weekly_all", label: L10n.t("All models"))
 
+        // An Enterprise seat reports *only* this: `limits` comes back empty and
+        // both named windows are null, so without it such a seat has no
+        // reading at all and its ring says "Waiting for the first reading…"
+        // for ever.
+        //
+        // Nothing else in the response is read, on purpose. Several top-level
+        // objects — `amber_ladder`, `nimbus_quill`, `tangelo` — carry
+        // `limit_dollars` and `resets_at` and look exactly like windows, but
+        // they are internal codenames whose meaning is not published and can
+        // change without notice. A ring drawn from one would be a number
+        // presented as a limit without anybody knowing which limit.
+        if let balance = spendWindow() { windows.append(balance) }
+
         return windows.sorted(by: UsageResponse.displayOrder)
+    }
+
+    /// Which window the ring means.
+    ///
+    /// The session where there is one: that is what Claude Code's own `/usage`
+    /// leads with, and promoting another of the plan's windows into its place
+    /// would silently change what the ring is about — so where a session is
+    /// merely missing from a response, "session" stays declared and the cell
+    /// shows a dash rather than a weekly percentage wearing the session's
+    /// place.
+    ///
+    /// A credit seat is not that case. It reports no session window at all,
+    /// ever, so there is nothing to promote *over* — and declaring one anyway
+    /// left the ring showing a dash beside a card that was full of numbers.
+    static func headlineID(for windows: [LimitWindow]) -> String {
+        if windows.contains(where: { $0.id == "session" }) { return "session" }
+        if let balance = windows.first(where: { $0.money != nil }) { return balance.id }
+        return "session"
+    }
+
+    /// The credit balance as a window, or nil where the seat has none.
+    ///
+    /// The share is the two amounts divided rather than `spend.percent`, which
+    /// is rounded to whole percent: at $2.97 of $200 that field says `1` while
+    /// the true figure is 1.485%, and the bar under the tooltip would sit
+    /// visibly left of where the numbers beside it say it should.
+    func spendWindow() -> LimitWindow? {
+        guard let spend, spend.enabled != false,
+              let used = spend.used?.value,
+              let limit = spend.limit?.value, limit > 0
+        else { return nil }
+
+        return LimitWindow(
+            id: "spend",
+            label: L10n.t("Spend limit"),
+            usedFraction: used / limit,
+            money: UsageMoneyBreakdown(
+                currency: spend.limit?.currency ?? spend.used?.currency ?? "USD",
+                spent: used,
+                remaining: max(limit - used, 0)
+            )
+            // No reset time: the response does not carry one for this block,
+            // and a balance still says what it says without one.
+        )
     }
 
     static func duration(forKind kind: String) -> TimeInterval? {
@@ -710,6 +798,9 @@ struct UsageResponse: Decodable {
         func rank(_ id: String) -> Int {
             if id == "session" { return 0 }
             if id == "weekly_all" { return 1 }
+            // Last: a balance is not one of the plan's periods, and on a seat
+            // that has both it is the odd one out rather than another window.
+            if id == "spend" { return 3 }
             return 2
         }
         let (ra, rb) = (rank(a.id), rank(b.id))
