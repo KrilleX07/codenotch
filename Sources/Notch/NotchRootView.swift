@@ -247,6 +247,15 @@ struct NotchRootView: View {
             // that never moves, there is nothing left to disagree about: the
             // shape grows inward from a corner that cannot move, animated or
             // not.
+            // **Drawn out of the hole, and taken back into it the same way.**
+            //
+            // Not a fade. Nothing about a notch joining the one the Mac already
+            // has is an opacity: it is a body of black leaving another one, so
+            // it grows along the bezel from the wall it is joined to, and is
+            // drawn back in at that same wall. Which is the movement the fold
+            // is already made of — the joined end does not move, and the rest
+            // of the bar comes out of it.
+            .transition(Self.emerging(from: wing.mirrored ? .trailing : .leading))
             // **The mirror**, for the copy on the other side of the hole.
             //
             // The container and nothing in it: the other copy carries no
@@ -273,6 +282,36 @@ struct NotchRootView: View {
             // at the bezel and everything past it is simply not drawn.
             .offset(x: model.edge.outward.x * Self.bezelBleed,
                     y: model.edge.outward.y * Self.bezelBleed)
+    }
+
+    /// The transition a copy of the notch arrives and leaves on.
+    ///
+    /// Scaled along the bar only — never across it, which would have the black
+    /// growing *down* out of the bezel rather than along it — and anchored at
+    /// the end that is joined to the hole, so that end stays welded to the wall
+    /// for every frame of the movement.
+    private static func emerging(from anchor: UnitPoint) -> AnyTransition {
+        .modifier(active: Emerging(amount: 0, anchor: anchor),
+                  identity: Emerging(amount: 1, anchor: anchor))
+    }
+
+    private struct Emerging: ViewModifier, Animatable {
+        var amount: CGFloat
+        var anchor: UnitPoint
+
+        /// Explicit, so the spring carries the length itself. Left to the
+        /// modifier's own equality SwiftUI has two states and no way between
+        /// them, and falls back to swapping one for the other.
+        var animatableData: CGFloat {
+            get { amount }
+            set { amount = newValue }
+        }
+
+        func body(content: Content) -> some View {
+            // Never exactly zero: a scale of nothing is a degenerate transform
+            // and the layer it is on can drop out rather than close up.
+            content.scaleEffect(x: max(amount, 0.0001), y: 1, anchor: anchor)
+        }
     }
 
     /// The bezel side as a scaling anchor: the edge the notch is welded to
