@@ -6,6 +6,10 @@ enum Typography {
     /// The percent under each provider ring. Cap height 27px in the frame.
     static let percent = Font.system(size: Design.fontSize(capPixels: 27), weight: .semibold)
 
+    /// "30%/70%": the 5h and weekly readings together, a step smaller so the
+    /// pair fits roughly the width one reading used to.
+    static let percentPair = Font.system(size: Design.fontSize(capPixels: 22), weight: .semibold)
+
     /// "Claude Usage". Cap height 26px.
     static let cardTitle = Font.system(size: Design.fontSize(capPixels: 26), weight: .semibold)
 

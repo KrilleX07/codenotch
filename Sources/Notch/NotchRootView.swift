@@ -339,6 +339,7 @@ struct NotchRootView: View {
             activity: model.activity(for: pair.element),
             isRefreshing: model.isRefreshing(pair.element),
             weeklyRing: model.weeklyRing,
+            showsWeeklyReading: model.weeklyReading,
             showsReading: model.showsCellReading
         )
             .frame(width: NotchLayout.cellAlong(for: model.edge) * model.splitCellScale)
@@ -359,6 +360,7 @@ struct NotchRootView: View {
                 activity: model.activity(for: snapshot),
                 isRefreshing: model.isRefreshing(snapshot),
                 weeklyRing: model.weeklyRing,
+                showsWeeklyReading: model.weeklyReading,
                 showsReading: model.showsCellReading
             )
                 // Pinned to what the cell claims along the stack, or the drawn

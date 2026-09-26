@@ -40880,6 +40880,59 @@
         }
       }
     },
+    "Weekly ring % in the reading": {
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み値に週間のリングの % を表示"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "% тижневого кільця в показнику"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在读数中显示每周圆环的 %"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在讀數中顯示每週圓環的 %"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "수치에 주간 링 % 표시"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ko'rsatkichda haftalik halqa %"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "% ring mingguan pada angka"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değerde haftalık halka %"
+          }
+        }
+      }
+    },
     "Asks macOS for %@'s saved login again. Deny stops Codenotch reading it until you ask again.": {
       "extractionState": "manual",
       "localizations": {
