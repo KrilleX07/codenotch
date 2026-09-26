@@ -976,12 +976,19 @@ final class PhysicalPanelIntegrationTests: XCTestCase {
 /// Every edge obeys the one size setting, including the top.
 @MainActor
 final class EverySizeSettingAppliesEverywhereTests: XCTestCase {
-    /// There was an override here: the top edge drew at a fixed size while the
-    /// others used the setting, so moving between them changed the rings, the
-    /// arc and the tooltip all at once. Two sizes is what "not consistent"
-    /// was. The bar still cannot deepen past the cutout — `splitBarScale`
-    /// sees to that — so a setting only ever changes what is drawn inside it.
-    func testTheTopEdgeTakesTheSettingLikeTheOthers() throws {
+    /// **The setting survives the edge it cannot be seen on.**
+    ///
+    /// There was an override here that lost it: the top edge drew at a fixed
+    /// size *and overwrote the setting with it*, so moving back to a side edge
+    /// kept the size the hardware had imposed, and the rings, the arc and the
+    /// tooltip all changed at once. Two sizes is what "not consistent" was.
+    ///
+    /// Merged into the display's own cutout the top edge is the size of that
+    /// cutout — one shape cannot be two thicknesses — but that is now a scale it
+    /// is *drawn* at, not a value written back over the user's. Whatever is
+    /// chosen while the notch is on the hardware edge is exactly what it is when
+    /// it arrives on any other.
+    func testTheSizeSettingSurvivesTheHardwareEdge() throws {
         guard NSScreen.screens.contains(where: { $0.hardwareNotch != nil }) else {
             throw XCTSkip("Needs a display with a notch")
         }
@@ -992,13 +999,16 @@ final class EverySizeSettingAppliesEverywhereTests: XCTestCase {
         controller.apply(edge: .top)
         controller.relocate()
         controller.apply(scale: 0.75)
-        XCTAssertEqual(controller.model.sizeScale, 0.75, accuracy: 0.001,
-                       "the top edge overrode the setting again")
+        XCTAssertEqual(controller.model.requestedScale, 0.75, accuracy: 0.001,
+                       "the top edge overwrote the setting again")
+        XCTAssertNotNil(controller.model.mergedScale,
+                        "on the hardware edge the cutout is what sets the size")
 
         controller.model.edge = .right
         controller.relocate()
+        XCTAssertNil(controller.model.mergedScale, "a side edge has no cutout to follow")
         XCTAssertEqual(controller.model.sizeScale, 0.75, accuracy: 0.001,
-                       "the size changed just by moving edge")
+                       "the size the user chose did not survive the move")
     }
 }
 

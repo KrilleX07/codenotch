@@ -512,7 +512,8 @@ final class AboveTheCutoutTests: XCTestCase {
                        "the top edge grew its own flare again")
         XCTAssertEqual(m.cellsLeadIn - m.cutoutBleed, plain.cellsLeadIn, accuracy: 0.001,
                        "the top edge grew its own padding again")
-        XCTAssertEqual(plain.cellScale, 1, accuracy: 0.001,
-                       "nothing but a hardware-set depth may shrink a cell")
+        XCTAssertNil(plain.mergedScale,
+                     "a display with no hole must be drawn at the size that was asked for")
+        XCTAssertNotNil(m.mergedScale, "the hardware sets the size where there is a hole")
     }
 }

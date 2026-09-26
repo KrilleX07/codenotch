@@ -28,16 +28,6 @@ enum NotchLayout {
     /// the ring rather than beside it, but it is the same distance.
     static func ringMargin(for edge: NotchEdge) -> CGFloat { sideRingMargin }
 
-    /// That margin as a **share of the bar's depth**, which is what a bar whose
-    /// depth is set by something other than the design frame needs.
-    ///
-    /// Merged into the display's own notch the depth is the hardware's, 38pt,
-    /// and the frame's 13pt margin is a third of it. Kept as a share instead the
-    /// clear space around the ring stays in proportion to the bar it is in,
-    /// whatever set that bar's depth.
-    static func ringMarginShare(for edge: NotchEdge) -> CGFloat {
-        ringMargin(for: edge) / bodyDepth(for: edge)
-    }
 
     static let curlRadius   = Design.px(103)
     /// The small inverse corner where a flush bar meets the screen's frame.
@@ -352,10 +342,8 @@ enum NotchLayout {
     /// readings — which is exactly what made the top bar look too wide.
     static func shapeLength(cellCount: Int, edge: NotchEdge = .right,
                             flare: CGFloat = curlRadius,
-                            spacing: CGFloat = cellSpacing,
-                            cellScale: CGFloat = 1) -> CGFloat {
-        bodyLength(cellCount: cellCount, edge: edge,
-                   spacing: spacing, cellScale: cellScale) + 2 * flare
+                            spacing: CGFloat = cellSpacing) -> CGFloat {
+        bodyLength(cellCount: cellCount, edge: edge, spacing: spacing) + 2 * flare
     }
 
     /// The tooltip's height for a given number of limit windows and live

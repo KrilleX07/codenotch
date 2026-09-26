@@ -305,19 +305,12 @@ struct NotchRootView: View {
                 showsWeeklyReading: model.weeklyReading,
                 showsReading: model.showsCellReading
             )
-                // Fitted to the depth the bar actually has: merged into the
-                // display's own notch that is the hardware's 38pt, which is less
-                // than the design frame budgets for a ring — see
-                // `NotchViewModel.cellScale`. One everywhere else.
-                .scaleEffect(model.cellScale)
                 // Pinned to what the cell claims along the stack, or the drawn
                 // rings stop lining up with the centres `ringCenter` hands to
                 // the hover bands and the tooltip tails. Across a horizontal
                 // edge that is the ring alone — the label sits below it, in the
                 // notch's depth, and claims nothing here.
-                .frame(width: model.edge.isVertical
-                       ? nil
-                       : NotchLayout.cellAlong(for: model.edge) * model.cellScale)
+                .frame(width: model.edge.isVertical ? nil : NotchLayout.cellAlong(for: model.edge))
                 .opacity(model.isExpanded ? 1 : 0)
                 // A short slide toward the edge, no scaling: the clip is
                 // already doing the concealing, and scaling on top of it

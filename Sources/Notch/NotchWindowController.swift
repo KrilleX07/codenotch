@@ -859,7 +859,7 @@ final class NotchWindowController {
     /// A display plugged in later builds its panel at the current size rather
     /// than at medium and resizing a beat afterwards.
     func prime(scale: CGFloat) {
-        model.sizeScale = scale
+        model.requestedScale = scale
     }
 
     /// Whether each ring carries its percentage.
@@ -878,18 +878,22 @@ final class NotchWindowController {
     }
 
     func apply(scale: CGFloat) {
-        guard model.sizeScale != scale else { return }
+        // Against the setting, not against `sizeScale`: the hardware's own notch
+        // answers that one, so comparing with it would drop every change the
+        // user makes while the notch is merged — and the value still governs
+        // every other edge it might be moved to.
+        guard model.requestedScale != scale else { return }
 
         // A drag arrives as a stream of tiny deltas; a preset, or a switch
         // between the two controls, arrives as one large one.
-        let isDrag = abs(scale - model.sizeScale) < Self.steppedScaleDelta
+        let isDrag = abs(scale - model.requestedScale) < Self.steppedScaleDelta
 
         // The drawn shape follows every tick — that part is a redraw and it is
         // cheap. Re-laying the *window* out is not: `relocate` recomputes the
         // panel size through `maxCardHeight` and the `sessionCap` search, then
         // asks the compositor to resize a full-height window. Sixty of those a
         // second is what makes a drag feel like it is pulling something heavy.
-        model.sizeScale = scale
+        model.requestedScale = scale
         if isDrag {
             coalesceRelocate()
         } else {

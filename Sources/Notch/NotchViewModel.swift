@@ -175,7 +175,22 @@ final class NotchViewModel: ObservableObject {
     /// leaving each one no longer comparable to the frame it is quoted from.
     /// The multiplication happens once, at the two places that touch the
     /// screen: the panel's frame and the drawn content.
-    @Published var sizeScale: CGFloat = 1
+    /// The size the user asked for. Read `sizeScale` to draw with — merged into
+    /// the display's own notch, the hardware answers instead.
+    @Published var requestedScale: CGFloat = 1
+
+    /// **The scale the notch is drawn at**, which is the setting everywhere
+    /// except against the hardware's own notch — see `mergedScale`.
+    ///
+    /// Computed rather than assigned, and every measurement in this file goes
+    /// through it. Keeping the override in a second property and remembering to
+    /// use it at each of thirty call sites is the same mistake as `notchShape`
+    /// documents: one that is missed draws a shape at one scale with its
+    /// contents laid out at another.
+    var sizeScale: CGFloat {
+        get { mergedScale ?? requestedScale }
+        set { requestedScale = newValue }
+    }
     /// Mirrors the persisted Appearance choice so the separate notch window
     /// redraws immediately when Settings changes it.
     @Published var accentColor: AccentColorChoice = .system
@@ -262,51 +277,38 @@ final class NotchViewModel: ObservableObject {
     /// **Whether the notch is drawn as one shape with the display's own hole.**
     var mergesWithCutout: Bool { cutout != nil }
 
-    /// **The depth the hardware sets, when the notch is merged into it.**
+    /// **What the contents need across the bar**, in the design's measurements.
     ///
-    /// One shape cannot be two thicknesses. Drawn deeper than the hole the bar
-    /// bulged out from under it; drawn shallower — which is what the folded pill
-    /// was — it tapered up out of it like a spike, and the fold morphed between
-    /// the two through flat. All of that was the join doing its best with a
-    /// mismatch that should never have been there.
+    /// The open depth whether or not the notch is open: folding must not reflow
+    /// the stack on its way out, and the shape is what conceals it.
     ///
-    /// So merged, this *is* the depth, open and folded alike. The bezel bleed is
-    /// in it because the shape is pushed that far past the top of the screen:
-    /// the row that has to land on the hole's bottom edge is that much further
-    /// down the shape. Two things fall out of it, both of them wanted — the
-    /// bridge has no step left to make, so the two bottom edges are one straight
-    /// line; and folding no longer changes the depth at all, so what was a
-    /// shape-changing morph is now a bar drawing itself in along one axis.
-    var mergedDepth: CGFloat? {
-        guard let cutout else { return nil }
-        return (cutout.depth + NotchRootView.bezelBleed) / max(sizeScale, 0.0001)
-    }
-
-    /// The depth the contents are laid out in, which is the open depth whether
-    /// or not the notch is open — folding must not reflow the stack on its way
-    /// out, and the shape is what conceals it.
+    /// Merged into the display's own notch this is what the *cells* need rather
+    /// than what the frame budgets, because the frame's figure reserves room for
+    /// a reading whether or not one is drawn — and here every point of depth is
+    /// spent at a scale the hardware fixes, so reserving depth for something
+    /// that is switched off comes straight off the ring.
     var contentDepth: CGFloat {
-        mergedDepth ?? NotchLayout.bodyDepth(for: edge)
+        guard mergesWithCutout else { return NotchLayout.bodyDepth(for: edge) }
+        return 2 * NotchLayout.ringMargin(for: edge)
+            + (showsCellReading ? NotchLayout.cellExtent : NotchLayout.ringDiameter)
     }
 
-    /// **How much the cells shrink to fit a bar the hardware sized.**
+    /// **The scale at which the notch is exactly the Mac's own notch.**
     ///
-    /// 38pt of depth is not what the design frame budgets: a ring alone wants 44
-    /// with 13 clear either side, and a ring with its reading under it wants 79.
-    /// One of those has to give, and it is not the hardware. So the cell is
-    /// fitted to the depth it has, keeping the frame's clear space around it in
-    /// proportion — and never enlarged, because a bar with room to spare should
-    /// draw the ring the design asks for rather than a stretched one.
+    /// Merged, the hardware sets the size and the setting does not come into it.
+    /// The depth has to be the cutout's — one shape cannot be two thicknesses —
+    /// and a notch whose depth is fixed while everything else follows the slider
+    /// is not smaller or bigger, it is *distorted*: rings capped at the depth
+    /// but spaced by the setting, padding for a bar three times as deep. So the
+    /// whole shape is drawn at the one scale that lands its depth on the hole's,
+    /// and every proportion in it is the design's.
     ///
-    /// The reading is still the user's own setting. Asked for, it is drawn and
-    /// the ring pays for it; switched off, the ring has the whole depth. That is
-    /// a trade to offer rather than one to make on their behalf.
-    var cellScale: CGFloat {
-        guard let depth = mergedDepth else { return 1 }
-        let clear = depth * (1 - 2 * NotchLayout.ringMarginShare(for: edge))
-        let wanted = showsCellReading ? NotchLayout.cellExtent : NotchLayout.ringDiameter
-        guard wanted > 0 else { return 1 }
-        return min(1, max(0.2, clear / wanted))
+    /// The bezel bleed is in it because the shape is pushed that far past the top
+    /// of the screen: the row that has to land on the hole's bottom edge is that
+    /// much further down the shape.
+    var mergedScale: CGFloat? {
+        guard let cutout, contentDepth > 0 else { return nil }
+        return (cutout.depth + NotchRootView.bezelBleed) / contentDepth
     }
 
     /// How much of the shape's leading end is buried in the hole, in the
@@ -371,12 +373,6 @@ final class NotchViewModel: ObservableObject {
         cutoutBleed + flare + NotchLayout.padStart(for: edge)
     }
 
-    /// The gap the spacing has to be, for a cell drawn at `cellScale`.
-    ///
-    /// Scaled with the cells rather than left at the frame's figure: a bar
-    /// fitted to the hardware's depth draws a smaller ring, and full-size gaps
-    /// between shrunken rings read as a stretched bar rather than a smaller one.
-    private var fittedSpacing: CGFloat { NotchLayout.cellSpacing * cellScale }
 
     /// **The notch's shape, configured.** Build it here and nowhere else.
     ///
@@ -539,7 +535,7 @@ final class NotchViewModel: ObservableObject {
     }
 
     var orbInset: CGFloat {
-        min(NotchLayout.orbInsetFromEdge, contentDepth)
+        NotchLayout.orbInsetFromEdge
     }
 
     /// The arc's radius and offset **as the orb's own view needs them**.
@@ -669,8 +665,7 @@ final class NotchViewModel: ObservableObject {
     /// The straight part of the shape, flares excluded.
     var bodyLength: CGFloat {
         NotchLayout.bodyLength(
-            cellCount: snapshots.count, edge: edge,
-            spacing: cellSpacing, cellScale: cellScale
+            cellCount: snapshots.count, edge: edge, spacing: cellSpacing
         ) + cutoutBleed
     }
 
@@ -678,19 +673,19 @@ final class NotchViewModel: ObservableObject {
     /// included so the readings stay in the middle of the bar.
     func ringCenter(index: Int) -> CGFloat {
         NotchLayout.ringCenter(index: index, edge: edge, flare: flare,
-                               spacing: cellSpacing, cellScale: cellScale) + cutoutBleed
+                               spacing: cellSpacing) + cutoutBleed
     }
 
     var cellSpacing: CGFloat { cellSpacing(cellCount: snapshots.count) }
     /// Centre-to-centre distance between cells, which is also the width of the
     /// band `cellIndex(along:)` treats as belonging to one.
     var cellPitch: CGFloat {
-        NotchLayout.cellAlong(for: edge) * cellScale + cellSpacing
+        NotchLayout.cellAlong(for: edge) + cellSpacing
     }
 
     private func cellSpacing(cellCount: Int) -> CGFloat {
         guard edge.isVertical, screenSize.height > 0, cellCount > 1 else {
-            return fittedSpacing
+            return NotchLayout.cellSpacing
         }
         // Extra model cells spend the gaps first. Reserve the cards actually
         // present; assuming four quota windows for every local model overflows laptops.
@@ -828,9 +823,9 @@ final class NotchViewModel: ObservableObject {
     }
 
     /// And across it. Merged into the hole this is the hole's own depth in both
-    /// states — see `mergedDepth`.
+    /// states — see `mergedScale`.
     var notchDepth: CGFloat {
-        if let merged = mergedDepth { return merged }
+        if mergesWithCutout { return contentDepth }
         return isExpanded ? NotchLayout.bodyDepth(for: edge) : NotchLayout.pillWidth
     }
 
@@ -843,7 +838,7 @@ final class NotchViewModel: ObservableObject {
     /// bezel: the bridge holds, and what shows is the hardware's own notch
     /// carrying a shallow ledge out of one side.
     var restingLength: CGFloat { NotchLayout.pillHeight + cutoutBleed }
-    var restingDepth: CGFloat { mergedDepth ?? NotchLayout.pillWidth }
+    var restingDepth: CGFloat { mergesWithCutout ? contentDepth : NotchLayout.pillWidth }
 
     /// What wakes the folded notch, in panel points: the resting shape and a
     /// band around it, or the resting shape alone.
@@ -875,8 +870,7 @@ final class NotchViewModel: ObservableObject {
     func shapeLength(cellCount: Int) -> CGFloat {
         NotchLayout.shapeLength(cellCount: cellCount,
                                 edge: edge, flare: flare,
-                                spacing: cellSpacing(cellCount: cellCount),
-                                cellScale: cellScale)
+                                spacing: cellSpacing(cellCount: cellCount))
             + cutoutBleed
     }
 

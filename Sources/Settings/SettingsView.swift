@@ -421,8 +421,9 @@ struct SettingsView: View {
     /// the acknowledgement keeps the button from feeling inert.
     @State private var didRecentre = false
 
-    /// Whether this Mac draws the notch as its own cutout, which is the only
-    /// placement where the reading under a ring costs anything.
+    /// Whether this Mac draws the notch as its own cutout — the one placement
+    /// where the hardware sets the size outright, and so the only one where the
+    /// reading under a ring is paid for out of the ring.
     private var sizeIsDecidedByTheHardware: Bool {
         preferences.notchEdge == .top
             && NSScreen.screens.contains { $0.hardwareNotch != nil }
@@ -836,7 +837,7 @@ struct SettingsView: View {
                 Toggle(L10n.t("Percentage under each ring"),
                        isOn: $preferences.showsNotchReadings)
                 Text(sizeIsDecidedByTheHardware
-                     ? L10n.t("Beside your Mac's own notch the bar is exactly as deep as the cutout, and a ring fills it — so showing the percentage makes room by drawing the rings smaller. Raising the size gives it more room.")
+                     ? L10n.t("Merged into your Mac's own notch the bar is exactly as deep as the cutout, so a ring and a percentage under it have to share that depth — showing it draws the rings smaller. Turn it off for the largest rings the cutout has room for.")
                      : L10n.t("The figure under each ring. Turn it off for rings alone; the number is still a hover away in the card."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -905,12 +906,14 @@ struct SettingsView: View {
                 // decision made for them, and a slider for anyone who has a
                 // particular size in mind and will not be talked out of it.
                 //
-                // Both are still shown on the hardware edge, where only the
-                // lower half of the range has anywhere to go: hiding them
-                // there put the value that governs every *other* edge out of
-                // reach from the one place it is configured.
+                // Both are still shown on the hardware edge, where neither of
+                // them does anything: the cutout sets the size there, whatever
+                // is chosen here. Hiding them would put the value that governs
+                // every *other* edge out of reach from the one place it is
+                // configured — so they stay, and the note below says why the
+                // notch is not moving.
                 if sizeIsDecidedByTheHardware {
-                    Text(L10n.t("Your notch is drawn as your Mac's own cutout, so it never grows past it. Sizes below 100% make it smaller; above has nowhere to go."))
+                    Text(L10n.t("On this edge your notch is merged into your Mac's own cutout, and the cutout sets its size. This has no effect here — it is waiting for you to move the notch to another edge."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

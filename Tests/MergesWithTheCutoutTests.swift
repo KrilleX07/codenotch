@@ -305,27 +305,56 @@ final class MergesWithTheCutoutTests: XCTestCase {
                        + "leaves the hole — at one depth there is nothing to step")
     }
 
-    /// The cells are **fitted** into that depth rather than clipped by it, and
-    /// never enlarged past what the design frame asks for.
-    func testTheCellsAreFittedIntoTheHardwaresDepth() throws {
+    /// **The size setting does not come into it.**
+    ///
+    /// However big the notch is set to be, merged it is the size of the Mac's
+    /// own notch. Anything else is a distortion rather than a size: the depth
+    /// cannot follow the setting — one shape, one thickness — so a setting that
+    /// moved everything *except* the depth gave rings capped by the cutout but
+    /// spaced for a bar three times as deep.
+    func testTheSizeSettingDoesNotChangeIt() throws {
         let screen = Notched()
+        let reference = model(screen, scale: 1)
         for scale in [0.5, 0.589, 1.0, 1.5] as [CGFloat] {
-            for reading in [true, false] {
-                let m = model(screen, scale: scale)
-                m.showsNotchReadings = reading
-                let depth = try XCTUnwrap(m.mergedDepth) * m.sizeScale
-                let wanted = m.showsCellReading
-                    ? NotchLayout.cellExtent : NotchLayout.ringDiameter
-                let drawn = wanted * m.cellScale * m.sizeScale
-                let clear = depth * NotchLayout.ringMarginShare(for: .top) * 2
+            let m = model(screen, scale: scale)
+            XCTAssertEqual(m.requestedScale, scale, accuracy: 0.001,
+                           "the setting itself must survive — it governs every other edge")
+            XCTAssertEqual(m.sizeScale, reference.sizeScale, accuracy: 0.001,
+                           "scale \(scale): the notch is drawn at the setting, not at the "
+                           + "size of the Mac's notch")
+            XCTAssertEqual(m.shapeLength * m.sizeScale,
+                           reference.shapeLength * reference.sizeScale, accuracy: 0.001,
+                           "scale \(scale): it is a different length")
+            XCTAssertEqual(m.ringCenter(index: 0) * m.sizeScale,
+                           reference.ringCenter(index: 0) * reference.sizeScale, accuracy: 0.001,
+                           "scale \(scale): its rings are in a different place")
+        }
 
-                XCTAssertLessThanOrEqual(m.cellScale, 1.0001,
-                                         "scale \(scale): a cell was stretched to fill the bar")
-                XCTAssertLessThanOrEqual(drawn, depth - clear + 0.001,
-                                         "scale \(scale) reading \(reading): the cell is "
-                                         + "\(drawn)pt in \(depth)pt of bar — it is clipped")
-                XCTAssertGreaterThan(drawn, 0)
-            }
+        // And on a display with no hole the setting is all there is.
+        XCTAssertEqual(model(Plain(), scale: 1.5).sizeScale, 1.5, accuracy: 0.001)
+    }
+
+    /// **Every proportion in it is the design's**, which is what taking one
+    /// scale buys over pinning the depth and letting the rest follow a slider.
+    /// The contents fit the depth, and the clear space around the ring is the
+    /// frame's own share of it.
+    func testItKeepsTheDesignsProportionsAtTheHardwaresSize() throws {
+        let screen = Notched()
+        let hole = try hole(screen)
+        for reading in [true, false] {
+            let m = model(screen)
+            m.showsNotchReadings = reading
+            let scale = try XCTUnwrap(m.mergedScale)
+            let cell = (m.showsCellReading ? NotchLayout.cellExtent
+                                           : NotchLayout.ringDiameter) * scale
+            let clear = NotchLayout.ringMargin(for: .top) * scale
+
+            XCTAssertEqual(cell + 2 * clear, hole.depth + NotchRootView.bezelBleed,
+                           accuracy: 0.001,
+                           "reading \(reading): the contents and their margins do not add up "
+                           + "to the bar they are in")
+            XCTAssertGreaterThan(NotchLayout.ringDiameter * scale, 14,
+                                 "reading \(reading): the ring is too small to read as a ring")
         }
     }
 
