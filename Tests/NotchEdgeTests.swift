@@ -348,9 +348,9 @@ final class FoldingOnEveryEdgeTests: XCTestCase {
         for edge in NotchEdge.allCases {
             let m = model(cells: 3, edge: edge)
             m.isExpanded = true
-            let open = m.notchLeadingInset + m.notchLength / 2
+            let open = m.notchAlongLead + m.notchLength * m.sizeScale / 2
             m.isExpanded = false
-            let folded = m.notchLeadingInset + m.notchLength / 2
+            let folded = m.notchAlongLead + m.notchLength * m.sizeScale / 2
             XCTAssertEqual(open, folded, accuracy: 0.001, "\(edge)")
         }
     }

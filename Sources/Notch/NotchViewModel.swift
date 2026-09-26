@@ -214,6 +214,11 @@ final class NotchViewModel: ObservableObject {
     /// Visible slice of the panel along its edge, in local stack coordinates.
     @Published var visibleAlongRange: ClosedRange<CGFloat>?
 
+    /// How close the display's own hole is, or nil when there is none in reach.
+    /// Set by `adopt(screen:)` and read by everything that has to know the
+    /// notch is joined to something at its leading end.
+    @Published var cutout: CutoutProximity?
+
     func tooltipAlong(index: Int, length: CGFloat) -> CGFloat {
         let centre = slack + ringCenter(index: index) * sizeScale
         guard let range = visibleAlongRange else { return centre }
@@ -237,17 +242,67 @@ final class NotchViewModel: ObservableObject {
 
     /// Take the notch geometry of whichever screen the panel is on.
     ///
-    /// The display's own cutout is deliberately *not* taken. The notch is one
-    /// shape on all four edges and this type knows nothing about the hardware;
-    /// the only thing the cutout decides is where the top edge's panel starts,
-    /// which `NotchGeometry.panelFrame` handles. A top edge that laid itself
-    /// out around the hardware was a second design to keep working, and every
-    /// measurement in it had to be kept in step with a shape it did not share.
+    /// The display's own cutout arrives as two numbers and no more — see
+    /// `CutoutProximity`. There is no second layout here: the notch is one
+    /// shape on all four edges, and what the hole gets a say in is where the
+    /// top edge's panel starts (`NotchGeometry.panelFrame`) and how the leading
+    /// end of that one shape joins it. A top edge that laid itself out around
+    /// the hardware was a second design to keep working, and every measurement
+    /// in it had to be kept in step with a shape it did not share.
     func adopt(screen: ScreenDescribing) {
         // `frame`, not `visibleFrame`: the panel is centred on the full screen
         // and may sit under the menu bar, so the menu bar is not room lost.
         let size = screen.frameValue.size
         if screenSize != size { screenSize = size }
+        let near = NotchGeometry.cutoutProximity(for: screen, edge: edge,
+                                                 alongOffset: alongOffset)
+        if cutout != near { cutout = near }
+    }
+
+    /// **Whether the notch is drawn as one shape with the display's own hole.**
+    var mergesWithCutout: Bool { cutout != nil }
+
+    /// How much of the shape's leading end is buried in the hole, in the
+    /// shape's own space.
+    ///
+    /// Length spent in there is length nobody sees, so the bar is drawn that
+    /// much longer and everything measured along it starts that much further
+    /// in — which is why this is the one number `shapeLength`, `ringCenter` and
+    /// `cellsLeadIn` all add. Nothing when the two have been nudged apart: the
+    /// bridge reaches back for the hole then, and the tip it reaches from is
+    /// the visible start of the bar.
+    var cutoutBleed: CGFloat {
+        max(0, cutout?.overlap ?? 0) / max(sizeScale, 0.0001)
+    }
+
+    /// Where the drawn notch starts along the panel, in panel points.
+    ///
+    /// Folded, the notch normally shrinks toward its own centre line, so that
+    /// hiding does not also slide it along the edge. Merged into the hole it
+    /// shrinks toward its leading end instead: that end is *attached*, and a
+    /// notch that folded toward its middle would pull away from the thing it is
+    /// joined to and leave the bridge stretched across nothing.
+    var notchAlongLead: CGFloat {
+        alongLead(of: notchLength)
+    }
+
+    /// The same for the folded notch, whatever state it is in right now — the
+    /// hit region that wakes it has to know where it will be.
+    var restingAlongLead: CGFloat {
+        alongLead(of: restingLength)
+    }
+
+    private func alongLead(of length: CGFloat) -> CGFloat {
+        guard !mergesWithCutout else { return slack }
+        return slack + (shapeLength - length) * sizeScale / 2
+    }
+
+    /// Where the middle of the drawn notch falls along a panel of this length.
+    /// Taken from the panel itself when the notch is centred in it, so that the
+    /// rounding AppKit applied to the window is the rounding the shape gets.
+    func notchAlongCentre(panelLength: CGFloat) -> CGFloat {
+        guard mergesWithCutout else { return panelLength / 2 }
+        return notchAlongLead + notchLength * sizeScale / 2
     }
 
     /// How much of the hardware's own height a ring may use, as a fraction of
@@ -266,7 +321,7 @@ final class NotchViewModel: ObservableObject {
     /// drawn at another, which put them back under the cutout however carefully
     /// the shape was placed.
     var cellsLeadIn: CGFloat {
-        flare + endSpread + NotchLayout.padStart(for: edge)
+        cutoutBleed + flare + NotchLayout.padStart(for: edge)
     }
 
     /// **The notch's shape, configured.** Build it here and nowhere else.
@@ -287,6 +342,20 @@ final class NotchViewModel: ObservableObject {
         // showed up first beside the cutout because that sweep is shallow, but
         // a 33pt flare spends a third of its length in those two points.
         shape.bezelHidden = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
+        if let cutout {
+            // Into the shape's own space, which is design points: the hole is
+            // measured on the screen and the shape is drawn at design size and
+            // multiplied back up, so every one of these is divided by the size
+            // setting. The depth carries the bezel bleed as well — the shape is
+            // pushed that far past the top of the screen, so the row that lands
+            // on the hole's bottom edge is that much further down it.
+            let scale = max(sizeScale, 0.0001)
+            shape.cutout = SideNotchShape.Cutout(
+                depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
+                wall: cutout.overlap / scale,
+                run: flare
+            )
+        }
         return shape
     }
 
@@ -340,25 +409,6 @@ final class NotchViewModel: ObservableObject {
             : NotchLayout.orbArcRadius
     }
 
-    /// Extra length at each end of the body so the notch has something to open
-    /// out *into*.
-    ///
-    /// A single ring makes a body about 117pt across; this Mac's notch is 220.
-    /// Left alone the hardware would be wider than the bar it is supposed to
-    /// grow into, which reads as a mistake. Matching it exactly is not enough
-    /// either — a bar the same width as the notch is a straight column, and the
-    /// notch appears not to have opened at all. So the floor is the notch plus
-    /// a fillet's worth of opening at each side, and a corner's worth beyond
-    /// that for the bar's own rounding to live in.
-    var endSpread: CGFloat { endSpread(cellCount: snapshots.count) }
-
-    func endSpread(cellCount: Int) -> CGFloat {
-        // Nothing to spread: the notch no longer has to clear the display's
-        // cutout by growing, because it is placed beside it — see
-        // `NotchGeometry.panelFrame`.
-        return 0
-    }
-
     /// Where the settings orb sits.
     ///
     /// Ordinarily it is concentric with the far flare, one radius in from the
@@ -406,7 +456,7 @@ final class NotchViewModel: ObservableObject {
     /// orb sits past `shapeLength`, so the pair stay symmetric about the notch
     /// at every size and on every edge.
     var moveAlong: CGFloat {
-        shapeLength - orbAlong
+        cutoutBleed + shapeLength - orbAlong
     }
 
     /// The mirror of `trailingExtent` at the near end — the room the move
@@ -566,14 +616,14 @@ final class NotchViewModel: ObservableObject {
     var bodyLength: CGFloat {
         NotchLayout.bodyLength(
             cellCount: snapshots.count, edge: edge, spacing: cellSpacing
-        ) + 2 * endSpread
+        ) + cutoutBleed
     }
 
     /// Distance along the stack to cell `index`'s ring centre, widening
     /// included so the readings stay in the middle of the bar.
     func ringCenter(index: Int) -> CGFloat {
         NotchLayout.ringCenter(index: index, edge: edge, flare: flare,
-                               spacing: cellSpacing) + endSpread
+                               spacing: cellSpacing) + cutoutBleed
     }
 
     var cellSpacing: CGFloat { cellSpacing(cellCount: snapshots.count) }
@@ -717,13 +767,6 @@ final class NotchViewModel: ObservableObject {
     }
 
     /// The drawn extent of the notch body right now, along the stack.
-    ///
-    /// Where it is joining the display's own notch, folding away means becoming
-    /// exactly that notch — same width, same height. The resting pill is the
-    /// wrong object there: it hangs below the hardware as a separate little
-    /// tab, which is the very seam this placement exists to remove. Matching
-    /// the hardware instead means nothing shows at rest at all, and reaching
-    /// for it makes the notch itself grow.
     var notchLength: CGFloat {
         if isExpanded { return shapeLength }
         return restingLength
@@ -737,21 +780,12 @@ final class NotchViewModel: ObservableObject {
     /// What the notch folds away to, whether or not it is open right now —
     /// the hit region has to know that while the notch is still open.
     ///
-    /// **Beside the hardware it folds to the cutout itself** — the hole's own
-    /// width, and its depth. Nothing of it can be seen, which is the point:
-    /// at rest the app is the notch the Mac already has.
-    ///
-    /// Two other things have been tried here and are worse. A small pill in
-    /// the middle of the hole hides just as well, but the fold is an animation
-    /// and that one had the ears coming out of a point in the centre of the
-    /// notch rather than out of the notch. A pill's width of ear standing past
-    /// each end is visible, and reads as something stuck to the cutout rather
-    /// than the cutout itself.
-    ///
-    /// Divided by the size setting because the hardware is not scaled by it —
-    /// the shape is drawn in design points and multiplied back up, and the
-    /// hole stays exactly where it is throughout.
-    var restingLength: CGFloat { NotchLayout.pillHeight }
+    /// The same pill on every edge, plus whatever of it is buried in the
+    /// display's hole, so that the part of it anybody can see is the same pill
+    /// too. Folded against the hole it is not a separate tab stuck to the
+    /// bezel: the bridge holds, and what shows is the hardware's own notch
+    /// carrying a shallow ledge out of one side.
+    var restingLength: CGFloat { NotchLayout.pillHeight + cutoutBleed }
     var restingDepth: CGFloat { NotchLayout.pillWidth }
 
     /// What wakes the folded notch, in panel points: the resting shape and a
@@ -773,12 +807,6 @@ final class NotchViewModel: ObservableObject {
         NotchPlacement.panelSize(edge: edge, length: notchLength, depth: notchDepth)
     }
 
-    /// Where the notch starts along the stack. Both states share a centre line,
-    /// so folding away does not slide the notch along the edge as it shrinks.
-    var notchLeadingInset: CGFloat {
-        slack + (shapeLength - notchLength) / 2
-    }
-
     /// Sized from an explicit count rather than from `snapshots`.
     ///
     /// `@Published` notifies its subscribers in `willSet`, so a sink reacting to
@@ -789,7 +817,7 @@ final class NotchViewModel: ObservableObject {
         NotchLayout.shapeLength(cellCount: cellCount,
                                 edge: edge, flare: flare,
                                 spacing: cellSpacing(cellCount: cellCount))
-            + 2 * endSpread(cellCount: cellCount)
+            + cutoutBleed
     }
 
     /// The panel as it lands on screen, size choice included.

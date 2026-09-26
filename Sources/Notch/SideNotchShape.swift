@@ -15,18 +15,31 @@ import SwiftUI
 /// and `rect.maxX` is the screen edge.
 struct SideNotchShape: Shape {
     var edge: NotchEdge = .right
-    /// The display's own notch, when this one is drawn as it.
+    /// **The display's own hole, when this notch is close enough to flow into
+    /// it.** Nil on every other edge and every other display.
     ///
-    /// Set for a top edge on a Mac that has one, and it changes two things.
-    /// The flares go: they are what make this shape read as *growing out of* an
-    /// edge, and the hardware notch does not taper — it is a straight-sided
-    /// black rectangle hanging from the top with two rounded bottom corners.
-    /// And the corner is capped at half the hardware's own height, so it is the
-    /// same size at rest as it is open: left to the frame it is clamped to half
-    /// the *current* depth, which makes the resting shape very nearly a pill
-    /// and turns opening it into a rounded tab morphing into a bar rather than
-    /// the notch stretching.
-    var joining: HardwareNotch?
+    /// Set, the leading end stops being an end. Instead of tapering back to the
+    /// bezel with a flare, the shape starts at the hole's own depth, runs
+    /// straight to the hole's wall, and *steps* from there onto its own far
+    /// side — so what the eye is given is one black silhouette with a waist in
+    /// it rather than two shapes that happen to touch.
+    struct Cutout: Equatable {
+        /// How deep the hole is, in this shape's own space.
+        var depth: CGFloat
+
+        /// Where the hole's trailing wall stands, measured along from the
+        /// shape's leading tip. Negative when the notch has been nudged clear
+        /// and the bridge has to reach back along the bezel for it.
+        var wall: CGFloat
+
+        /// How far along the bridge takes to settle onto the body's far side.
+        ///
+        /// The whole depth difference is spent in this distance, so it sets how
+        /// steep the join is. A flare's worth keeps the first ring clear of it,
+        /// which is the same bargain the flare it replaces was struck for.
+        var run: CGFloat
+    }
+    var cutout: Cutout?
     var curlRadius: CGFloat = NotchLayout.curlRadius
     var cornerRadius: CGFloat = NotchLayout.cornerRadius
     /// The inverse curve where the shape meets the bezel, when the caller wants
@@ -58,11 +71,6 @@ struct SideNotchShape: Shape {
     /// up over the edge rather than on it. So the band is kept straight and
     /// the sweep starts at the first row that is actually on screen.
     var bezelHidden: CGFloat = 0
-    /// The most the corner may be, when the caller knows better than half the
-    /// hardware's height. Beside the hole the bar is the hardware's depth, and
-    /// half of that is a pill end rather than a notch corner.
-    var cornerCapOverride: CGFloat?
-
     /// **What morphs when the notch folds.**
     ///
     /// Without this the shape is rebuilt from scratch on the frame that the
@@ -79,6 +87,9 @@ struct SideNotchShape: Shape {
     /// Whether a fillet is `nil` never changes while a shape is on screen — it
     /// follows the placement, not the state — so the optionals are carried
     /// through untouched rather than given a sentinel to interpolate against.
+    /// The same goes for `cutout`, whose three numbers describe where the
+    /// display's hole is and not what the notch is doing: the morph across it
+    /// is the rect's, as the body deepens past the hole and shallows back.
     var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
                                        AnimatablePair<CGFloat, CGFloat>> {
         get {
@@ -101,12 +112,8 @@ struct SideNotchShape: Shape {
         let length = edge.isVertical ? rect.height : rect.width
         let canonical = canonicalPath(
             in: CGRect(x: 0, y: 0, width: depth, height: length),
-            flare: filletRadius ?? (joining == nil ? curlRadius : NotchLayout.bezelFillet),
-            flareDepth: filletDepth,
-            // Half the hardware's height is the most the resting shape can
-            // carry; holding it there keeps every frame of the expansion the
-            // same shape, only bigger.
-            cornerCap: cornerCapOverride ?? joining.map { $0.height / 2 } ?? .greatestFiniteMagnitude
+            flare: filletRadius ?? curlRadius,
+            flareDepth: filletDepth
         )
 
         return canonical
@@ -201,6 +208,31 @@ struct SideNotchShape: Shape {
         }
     }
 
+    /// **A step from one depth to the next with no bend at either end.**
+    ///
+    /// The bridge out of the display's hole has to leave the hole's own bottom
+    /// edge and arrive on the notch's far side without a crease at either join,
+    /// because the two are one piece of black and a crease is where the eye
+    /// finds the seam. Neither curve above will do it: both are quarter turns,
+    /// and they arrive across the other axis rather than back along this one.
+    ///
+    /// So this is the smoother step, `6t⁵ - 15t⁴ + 10t³`, walked along the
+    /// stack. Its first *and* second derivatives vanish at both ends, so the
+    /// bridge leaves and lands with no slope and no curvature — the strongest
+    /// join either straight can be given. Where the two depths are equal it
+    /// flattens to the straight line it should be, which is what the notch
+    /// passes through on its way from open to folded.
+    private func smoothStep(_ path: inout Path, to: CGPoint) {
+        guard let from = path.currentPoint else { return }
+        let steps = 64
+        for i in 1...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            let eased = t * t * t * (t * (t * 6 - 15) + 10)
+            path.addLine(to: CGPoint(x: from.x + (to.x - from.x) * eased,
+                                     y: from.y + (to.y - from.y) * t))
+        }
+    }
+
     /// A quarter turn from the current point to `to`, leaving along `leaving`
     /// and arriving along `arriving`.
     ///
@@ -235,14 +267,13 @@ struct SideNotchShape: Shape {
 
 
     private func canonicalPath(in rect: CGRect, flare: CGFloat,
-                               flareDepth: CGFloat? = nil,
-                               cornerCap: CGFloat = .greatestFiniteMagnitude) -> Path {
+                               flareDepth: CGFloat? = nil) -> Path {
         // Order matters. Clamping the corner by `width - curl` — the obvious
         // reading — collapses it to zero as soon as the flare is as wide as the
         // body, which is exactly what happens when the notch folds to its pill:
         // a 10pt-wide shape came out with square corners. The corner is claimed
         // first, out of half the width, and the flare takes what is left.
-        let wanted = max(0, min(cornerRadius, cornerCap, rect.width / 2))
+        let wanted = max(0, min(cornerRadius, rect.width / 2))
         // Along the bar, and across it.
         //
         // The two are independent only when the caller has asked for them to
@@ -264,20 +295,43 @@ struct SideNotchShape: Shape {
         let hidden = max(0, min(bezelHidden, rect.width - wanted - curlDepth))
 
         var path = Path()
-        // Screen edge, above the body.
-        path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
-        if hidden > 0 { path.addLine(to: CGPoint(x: rect.maxX - hidden, y: rect.minY)) }
-        // Flare inward and down onto the top edge. Absent when flush: the
-        // shape meets the bezel square, as the hardware notch does.
-        if curl > 0 {
-            fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden - curlDepth, y: bodyTop),
-                      leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: -1, dy: 0),
-                      ramp: filletRamp)
+        if let cutout {
+            // **Out of the hole.** No flare and no corner at this end: the
+            // shape does not begin here, it continues.
+            //
+            // The bridge starts wherever the hole's wall is — at the tip when
+            // the two overlap, back along the bezel when a nudge has parted
+            // them — and the run to the wall is held at the hole's own depth,
+            // flush with its bottom edge. Overlapping, that fill lands inside
+            // the hole, where nothing can be seen: what it is for is the lit
+            // sliver in the crook of the hole's rounded corner, which it covers
+            // over. Only then does the shape step down onto its own far side.
+            let brim = rect.maxX - cutout.depth
+            // Neither the wall nor the run may reach past the body into the far
+            // corner. A folded pill is a few tens of points long all told, and
+            // a path that turned back on itself there would fill inside out.
+            let wall = min(cutout.wall, bodyBottom - corner)
+            let run = max(0, min(cutout.run, bodyBottom - corner - wall))
+            let bridge = min(0, wall)
+            path.move(to: CGPoint(x: rect.maxX, y: bridge))
+            path.addLine(to: CGPoint(x: brim, y: bridge))
+            path.addLine(to: CGPoint(x: brim, y: wall))
+            smoothStep(&path, to: CGPoint(x: rect.minX, y: wall + run))
+        } else {
+            // Screen edge, above the body.
+            path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+            if hidden > 0 { path.addLine(to: CGPoint(x: rect.maxX - hidden, y: rect.minY)) }
+            // Flare inward and down onto the top edge.
+            if curl > 0 {
+                fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden - curlDepth, y: bodyTop),
+                          leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: -1, dy: 0),
+                          ramp: filletRamp)
+            }
+            path.addLine(to: CGPoint(x: rect.minX + corner, y: bodyTop))
+            turn(&path, to: CGPoint(x: rect.minX, y: bodyTop + corner),
+                 leaving: CGVector(dx: -1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
+                 radius: corner)
         }
-        path.addLine(to: CGPoint(x: rect.minX + corner, y: bodyTop))
-        turn(&path, to: CGPoint(x: rect.minX, y: bodyTop + corner),
-             leaving: CGVector(dx: -1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
-             radius: corner)
         path.addLine(to: CGPoint(x: rect.minX, y: bodyBottom - corner))
         turn(&path, to: CGPoint(x: rect.minX + corner, y: bodyBottom),
              leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: 1, dy: 0),

@@ -423,7 +423,8 @@ final class NotchWindowController {
     /// `NotchViewModel.wakeLength` for both halves of that.
     private var pillRect: CGRect {
         placement.rect(
-            along: model.slack + (model.shapeLength * model.sizeScale - model.wakeLength) / 2,
+            along: model.restingAlongLead
+                + (model.restingLength * model.sizeScale - model.wakeLength) / 2,
             across: 0,
             length: model.wakeLength,
             depth: model.wakeDepth

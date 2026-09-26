@@ -24,6 +24,27 @@ struct HardwareNotch: Equatable {
     }
 }
 
+/// **How close the display's own hole is to the notch, and how deep it is.**
+///
+/// The notch is one shape on all four edges and knows nothing about the
+/// hardware. This is the exception, and it is deliberately the smallest one
+/// that will do: two numbers, measured in screen points, that say the hole is
+/// within reach and where its trailing wall stands relative to the notch's
+/// leading tip. Everything the join needs is derived from them — see
+/// `SideNotchShape.Cutout`, which draws it.
+struct CutoutProximity: Equatable {
+    /// How deep the hole is.
+    var depth: CGFloat
+
+    /// How far the notch's leading tip lies *inside* the hole.
+    ///
+    /// Positive is the resting case: the two overlap, so there is no seam to
+    /// see between them. Negative means the notch has been nudged clear along
+    /// the edge and the join has to reach back for the hole — which it will do
+    /// while they are still close enough to read as one object.
+    var overlap: CGFloat
+}
+
 /// Everything the geometry maths needs from a screen, so it can be faked in tests.
 protocol ScreenDescribing {
     var frameValue: CGRect { get }
@@ -69,10 +90,41 @@ extension NSScreen: ScreenDescribing {
 }
 
 enum NotchGeometry {
-    /// Bezel left between the display's cutout and a notch placed beside it.
-    /// Enough to read as two objects rather than one smudge, little enough to
-    /// read as *beside* rather than merely elsewhere on the edge.
-    static let cutoutGap: CGFloat = 10
+    /// How far the notch tucks *into* the display's own cutout.
+    ///
+    /// The two are one piece of black, so they have to overlap rather than
+    /// abut: the hole's bottom corners are rounded, and a notch that stopped
+    /// dead on the wall would leave a lit sliver in the crook of each one.
+    /// Enough to swallow that rounding and no more — the overlap is length
+    /// nobody sees, and the bar is drawn longer to pay for it.
+    static let cutoutOverlap: CGFloat = 12
+
+    /// How far the notch may be nudged off the hole and still flow into it.
+    ///
+    /// ⌥-dragging along the edge pulls the two apart. Up to this much the join
+    /// simply reaches further and they still read as one object; past it the
+    /// notch is somewhere else on the bezel and is drawn as it is on every
+    /// other edge, flares and all.
+    static let cutoutReach: CGFloat = 24
+
+    /// **Whether the notch is near enough to the display's own hole to merge
+    /// with it**, and by how much.
+    ///
+    /// Answered from the offset alone rather than from the panel that is about
+    /// to be placed, and that is not an approximation: `panelFrame` puts the
+    /// notch's leading tip `cutoutOverlap` inside the hole and the nudge moves
+    /// it point for point, so the overlap *is* the placement. Asking the panel
+    /// instead would be circular — the panel is sized for a bar whose length
+    /// depends on this answer.
+    static func cutoutProximity(for screen: ScreenDescribing, edge: NotchEdge,
+                                alongOffset: CGFloat) -> CutoutProximity? {
+        guard edge == .top, let cutout = screen.hardwareNotch else { return nil }
+        // Either way off the placement it was given: dragged along the bezel the
+        // two come apart, and dragged the other way the notch climbs into the
+        // hole, where the join would be bridging out of its far side.
+        guard abs(alongOffset) <= cutoutReach else { return nil }
+        return CutoutProximity(depth: cutout.height, overlap: cutoutOverlap - alongOffset)
+    }
 
     /// Anchor to the physical display edge, even when the Dock or menu bar
     /// reserves part of the desktop. Showing or hiding either must not move
@@ -126,7 +178,7 @@ enum NotchGeometry {
                           max: full.maxY - height + slack - leadingExtent)
             origin = CGPoint(x: full.minX, y: y)
         case .top:
-            // **Beside the display's own cutout, where it has one.**
+            // **Merged into the display's own cutout, where it has one.**
             //
             // The notch is drawn the same way on all four edges — see
             // `NotchViewModel`, which knows nothing about the hardware. The
@@ -137,18 +189,22 @@ enum NotchGeometry {
             // part of the screen, it is absent, and anything drawn there is not
             // on screen at all. Not below it either — dropping the panel clear
             // of the hole leaves the notch hanging in the wallpaper under the
-            // cutout, attached to nothing. So it sits on the bezel immediately
-            // past the hole's edge, which is the only placement that reads as
-            // belonging to the machine.
+            // cutout, attached to nothing.
+            //
+            // And not beside it with a gap, which is what this was first. Two
+            // black shapes ten points apart on the same bezel do not read as
+            // two things, they read as one thing with a fault in it. So the
+            // notch starts `cutoutOverlap` *inside* the hole and flows out of
+            // it — one silhouette, joined by `SideNotchShape.Cutout`.
             //
             // Measured on the *visible* notch, not the panel: the panel
             // carries `slack` at each end for a hover card that is usually not
             // there, so the panel's centre has to land that much further right
-            // for the notch inside it to clear the hole.
+            // for the notch inside it to meet the hole.
             var besideCutout: CGFloat = 0
             if let cutout = screen.hardwareNotch {
                 let half: CGFloat = cutout.width / 2
-                besideCutout = half + cutoutGap + width / 2 - slack
+                besideCutout = half - cutoutOverlap + width / 2 - slack
             }
             let centred: CGFloat = full.midX - width / 2 + alongOffset
             let x = clamp(centred + besideCutout,

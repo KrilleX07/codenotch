@@ -424,12 +424,13 @@ final class FoldedPillKeepsItsShapeTests: XCTestCase {
 }
 
 
-/// The top edge starts below the display's own cutout.
+/// The top edge merges into the display's own cutout.
 ///
-/// This is all that is left of the hardware's influence. The notch is one shape
-/// on every edge — `NotchViewModel` does not read the cutout at all — and the
-/// only thing it decides is where the top panel begins, because the band the
-/// hole occupies is not a dim or clipped part of the screen. It is absent.
+/// This is all that is left of the hardware's influence, and it is a placement
+/// and a join rather than a layout: the notch is one shape on every edge, and
+/// what the hole decides is where the top panel begins — because the band the
+/// hole occupies is not a dim or clipped part of the screen, it is absent — and
+/// how the leading end of that one shape flows out of it.
 final class AboveTheCutoutTests: XCTestCase {
     private struct Notched: ScreenDescribing {
         var frameValue = CGRect(x: 0, y: 0, width: 1800, height: 1169)
@@ -445,28 +446,27 @@ final class AboveTheCutoutTests: XCTestCase {
 
     private let size = CGSize(width: 400, height: 120)
 
-    /// **It sits beside the cutout, on the bezel.**
+    /// **Its leading tip lands inside the cutout, not beside it.**
     ///
-    /// Centred would bury it in the hole, where nothing drawn is on screen at
-    /// all. Dropped below the hole it hangs in the wallpaper attached to
-    /// nothing — which is what it looked like, and why this moved sideways
-    /// instead.
-    func testItSitsBesideTheCutoutRatherThanInOrUnderIt() throws {
+    /// Centred would bury the whole notch in the hole, where nothing drawn is
+    /// on screen at all. Dropped below the hole it hangs in the wallpaper
+    /// attached to nothing. Beside it with a gap — which this was first — reads
+    /// as one shape with a fault in it. So it overlaps, by exactly enough for
+    /// the two blacks to share an edge.
+    func testItsLeadingTipLandsInsideTheCutout() throws {
         let screen = Notched()
         let frame = NotchGeometry.panelFrame(for: screen, panelSize: size, edge: .top)
-        let cutout = try? XCTUnwrap(screen.hardwareNotch)
+        let cutout = try XCTUnwrap(screen.hardwareNotch)
 
         XCTAssertEqual(frame.maxY, screen.frameValue.maxY, accuracy: 0.5,
                        "it left the bezel — the notch belongs on the screen's edge")
 
         // The visible notch, not the padded panel: `slack` at each end is room
-        // for a card that is not there.
-        let holeRight = screen.frameValue.midX + (cutout?.width ?? 0) / 2
-        XCTAssertGreaterThanOrEqual(frame.minX, holeRight,
-                                    "the notch overlaps the hole, where it cannot be seen")
-        XCTAssertLessThan(frame.minX - holeRight, 40,
-                          "it is \(frame.minX - holeRight)pt from the hole — beside it, "
-                          + "not merely somewhere else on the edge")
+        // for a card that is not there, and this call passes none.
+        let holeRight = screen.frameValue.midX + cutout.width / 2
+        XCTAssertEqual(holeRight - frame.minX, NotchGeometry.cutoutOverlap, accuracy: 0.5,
+                       "the tip is \(holeRight - frame.minX)pt inside the hole, and the "
+                       + "join is drawn for \(NotchGeometry.cutoutOverlap)")
     }
 
     /// A display without one loses nothing: centred, on the bezel, as before.
@@ -487,19 +487,31 @@ final class AboveTheCutoutTests: XCTestCase {
         }
     }
 
-    /// The model itself must stay blind to it — that is what stops the top
-    /// edge from growing a second layout again.
+    /// **The model takes two numbers from the hole and nothing else** — that is
+    /// what stops the top edge from growing a second layout again.
+    ///
+    /// The depth is the same notch it is on every edge, and the length differs
+    /// only by the part that is buried in the hole, which nobody can see. Every
+    /// earlier attempt at this failed here: the top edge sized its bar, its
+    /// rings and its corner from the hardware, and then had to be kept in step
+    /// with a shape it did not share.
     @MainActor
-    func testTheModelDoesNotReadTheCutout() {
+    func testTheModelTakesOnlyTheHolesDepthAndDistance() {
         let m = NotchViewModel()
         m.edge = .top
         m.adopt(screen: Notched())
         let plain = NotchViewModel()
-        plain.edge = .right
+        plain.edge = .top
         plain.adopt(screen: Plain())
+
+        XCTAssertNil(plain.cutout, "a display with no hole has nothing to merge with")
         XCTAssertEqual(m.notchDepth, plain.notchDepth, accuracy: 0.001,
                        "the top edge is sizing itself from the hardware again")
-        XCTAssertEqual(m.shapeLength, plain.shapeLength, accuracy: 0.001,
+        XCTAssertEqual(m.shapeLength - m.cutoutBleed, plain.shapeLength, accuracy: 0.001,
                        "the top edge is laying itself out around the hardware again")
+        XCTAssertEqual(m.ringCenter(index: 0) - m.cutoutBleed,
+                       plain.ringCenter(index: 0), accuracy: 0.001,
+                       "the rings moved for the hole — they should sit the same distance "
+                       + "into the *visible* bar as they do on any other edge")
     }
 }

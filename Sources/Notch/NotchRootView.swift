@@ -243,10 +243,11 @@ struct NotchRootView: View {
             // that never moves, there is nothing left to disagree about: the
             // shape grows inward from a corner that cannot move, animated or
             // not.
-            // Centred along the edge.
+            // Centred along the edge — or, merged into the display's own hole,
+            // held against it at the leading end instead. See
+            // `NotchViewModel.notchAlongCentre`.
             .position(place.point(
-                along: (model.edge.isVertical ? place.panelSize.height
-                                              : place.panelSize.width) / 2,
+                along: model.notchAlongCentre(panelLength: place.panelLength),
                 across: model.notchDepth / 2
             ))
             // Pushed a shade past the bezel, and then clipped by the panel.

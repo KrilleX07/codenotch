@@ -206,9 +206,9 @@ final class FoldedNotchTests: XCTestCase {
     func testFoldingKeepsTheCentreLine() {
         let m = model(cells: 3)
         m.isExpanded = true
-        let openCentre = m.notchLeadingInset + m.notchSize.height / 2
+        let openCentre = m.notchAlongLead + m.notchSize.height * m.sizeScale / 2
         m.isExpanded = false
-        let foldedCentre = m.notchLeadingInset + m.notchSize.height / 2
+        let foldedCentre = m.notchAlongLead + m.notchSize.height * m.sizeScale / 2
         XCTAssertEqual(openCentre, foldedCentre, accuracy: 0.001)
     }
 
