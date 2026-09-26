@@ -1,37 +1,5 @@
 import Combine
-import Darwin
 import Foundation
-
-struct AgentSession: Identifiable, Equatable {
-    enum State: Equatable { case busy, waiting, success, idle }
-
-    let id: String
-    let name: String
-    let detail: String
-    let state: State
-    let waitingFor: String?
-    let since: Date
-    let processID: pid_t?
-
-    init(id: String, name: String, detail: String, state: State,
-         waitingFor: String?, since: Date, processID: pid_t? = nil) {
-        self.id = id
-        self.name = name
-        self.detail = detail
-        self.state = state
-        self.waitingFor = waitingFor
-        self.since = since
-        self.processID = processID
-    }
-}
-
-@MainActor
-protocol AgentActivityMonitor: AnyObject {
-    var sessions: [AgentSession] { get }
-    var sessionsPublisher: AnyPublisher<[AgentSession], Never> { get }
-    func start()
-    func stop()
-}
 
 /// Owns session-monitor lifetimes and merges supplemental activity sources such
 /// as Pi without letting either source overwrite the other's sessions.
