@@ -124,7 +124,18 @@ enum NotchGeometry {
             let x = clamp(full.midX - width / 2 + alongOffset,
                           min: full.minX - slack + leadingExtent,
                           max: full.maxX - width + slack - trailingExtent)
-            origin = CGPoint(x: x, y: full.maxY - height)
+            // Below the display's own cutout, where it has one.
+            //
+            // The notch is drawn the same way on all four edges — see
+            // `NotchViewModel`, which knows nothing about the hardware. The one
+            // thing the hardware decides is *where* the top edge starts,
+            // because the band the cutout occupies is a hole in the display:
+            // pixels there are not dim or clipped, they are absent. Anything
+            // drawn in it is simply not on screen.
+            //
+            // A placement concern, not a layout one, which is the whole reason
+            // the top edge no longer needs a layout of its own.
+            origin = CGPoint(x: x, y: full.maxY - height - (screen.hardwareNotch?.height ?? 0))
         case .bottom:
             let x = clamp(full.midX - width / 2 + alongOffset,
                           min: full.minX - slack + leadingExtent,

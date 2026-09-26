@@ -955,7 +955,12 @@ final class PhysicalPanelIntegrationTests: XCTestCase {
                     switch edge {
                     case .left: XCTAssertEqual(frame.minX, screen.frame.minX, accuracy: 1)
                     case .right: XCTAssertEqual(frame.maxX, screen.frame.maxX, accuracy: 1)
-                    case .top: XCTAssertEqual(frame.maxY, screen.frame.maxY, accuracy: 1)
+                    // Below the cutout where there is one — that band is a
+                    // hole in the display, not a part of it.
+                    case .top:
+                        XCTAssertEqual(frame.maxY,
+                                       screen.frame.maxY - (screen.hardwareNotch?.height ?? 0),
+                                       accuracy: 1)
                     case .bottom: XCTAssertEqual(frame.minY, screen.frame.minY, accuracy: 1)
                     }
                     let range = try XCTUnwrap(controller.model.visibleAlongRange)

@@ -242,9 +242,14 @@ final class NotchViewModel: ObservableObject {
     }
 
     /// Take the notch geometry of whichever screen the panel is on.
+    ///
+    /// The display's own cutout is deliberately *not* taken. The notch is one
+    /// shape on all four edges and this type knows nothing about the hardware;
+    /// the only thing the cutout decides is where the top edge's panel starts,
+    /// which `NotchGeometry.panelFrame` handles. A top edge that laid itself
+    /// out around the hardware was a second design to keep working, and every
+    /// measurement in it had to be kept in step with a shape it did not share.
     func adopt(screen: ScreenDescribing) {
-        let merging = edge == .top ? screen.hardwareNotch : nil
-        if hardwareNotch != merging { hardwareNotch = merging }
         // `frame`, not `visibleFrame`: the panel is centred on the full screen
         // and may sit under the menu bar, so the menu bar is not room lost.
         let size = screen.frameValue.size
