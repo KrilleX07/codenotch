@@ -47908,6 +47908,13 @@
             "state": "translated",
             "value": "QianwenAI kembali dapat membaca, lebih sedikit peringatan palsu, dan notch Windows yang lebih stabil."
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAIの読み取りが復旧し、誤通知が減り、Windowsノッチがより安定しました。"
+          }
         }
       }
     },
@@ -47924,6 +47931,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "QianwenAI kembali dapat membaca"
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAIの読み取りが復旧"
           }
         }
       }
@@ -47942,6 +47956,13 @@
             "state": "translated",
             "value": "Hanya reset sungguhan"
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実際のリセットだけを通知"
+          }
         }
       }
     },
@@ -47958,6 +47979,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hitung mundur yang meleset beberapa detik tidak lagi mengumumkan reset, sementara reset yang sebenarnya tetap diumumkan."
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カウントダウンが数秒ずれただけではリセットを通知せず、実際のリセットはこれまでどおり通知します。"
           }
         }
       }
@@ -47976,6 +48004,13 @@
             "state": "translated",
             "value": "Grok, bahkan tanpa antarmuka"
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘッドレス実行中のGrokも検出"
+          }
         }
       }
     },
@@ -47992,6 +48027,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grok ditampilkan sebagai sedang bekerja saat grok -p dijalankan, bukan hanya di jendelanya sendiri."
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grokは専用ウインドウだけでなく、grok -pの実行中も作業中として表示されます。"
           }
         }
       }
@@ -48010,6 +48052,13 @@
             "state": "translated",
             "value": "Notch Windows tetap tidak bertumpang tindih dengan taskbar"
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windowsノッチがタスクバーと重ならないように"
+          }
         }
       }
     },
@@ -48026,6 +48075,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notch ini berada di dalam area kerja dan kembali menemukan tepinya saat taskbar berpindah, sementara cincin-cincinnya meredup saat hasil pembacaan sudah lama, dengan ujung-ujung membulat, seperti di Mac."
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ノッチは作業領域内に収まり、タスクバーが移動すると端を再び見つけます。読み取りが古くなるとリングが暗くなり、Macと同じように端が丸く表示されます。"
           }
         }
       }
@@ -48044,6 +48100,13 @@
             "state": "translated",
             "value": "Pengaturan baru, QianwenAI, bahasa Tionghoa Tradisional, dan notch Windows yang dapat dipindahkan ke tepi mana pun."
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい設定、QianwenAI、繁体字中国語、そしてどの端にも移動できるWindowsノッチ。"
+          }
         }
       }
     },
@@ -48060,6 +48123,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pengaturan baru"
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい設定"
           }
         }
       }
@@ -48078,6 +48148,13 @@
             "state": "translated",
             "value": "Gelap dan tenang, dengan judul di atas setiap panel, logo penyedia masing-masing, serta DeepSeek, Ollama, dan LM Studio yang dikelompokkan di bawah Akun. Semuanya merespons kursor, dan tombol Perbarui muncul di samping versi jika tersedia."
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "落ち着いた暗い画面に各ペインのタイトルとプロバイダー独自のロゴを表示し、DeepSeek、Ollama、LM Studioをアカウントの下にまとめました。すべての要素がポインターに反応し、更新がある場合はバージョンの横に更新ボタンが表示されます。"
+          }
         }
       }
     },
@@ -48091,6 +48168,13 @@
           }
         },
         "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QianwenAI"
+          }
+        },
+
+        "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "QianwenAI"
@@ -48112,6 +48196,13 @@
             "state": "translated",
             "value": "Indikator lingkaran untuk Token Plan QianwenAI, dengan login dari Codenotch."
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CodenotchからサインインできるQianwenAI Token Planのリング。"
+          }
         }
       }
     },
@@ -48128,6 +48219,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bahasa Tionghoa Tradisional, dan semua bahasa kini lengkap"
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "繁体字中国語、そしてすべての言語に対応"
           }
         }
       }
@@ -48146,6 +48244,13 @@
             "state": "translated",
             "value": "Bahasa Tionghoa Tradisional di Mac dan Windows, dipilih otomatis di Taiwan dan Hong Kong, serta bahasa Tionghoa Sederhana dan bahasa Ukraina kini mencakup semua teks."
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MacとWindowsで繁体字中国語に対応し、台湾と香港では自動的に選択されます。簡体字中国語とウクライナ語もすべての文字列をカバーしました。"
+          }
         }
       }
     },
@@ -48162,6 +48267,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notch Windows, dapat dipindahkan ke mana saja"
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どこにでも移動できるWindowsノッチ"
           }
         }
       }
@@ -48180,6 +48292,13 @@
             "state": "translated",
             "value": "Seret melalui pegangannya ke tepi mana pun, buka Pengaturan dari bulatannya, klik indikator untuk membacanya kembali atau klik kanan untuk opsi lainnya, dan kartu saat diarahkan tetap tidak menghalangi bilah tugas."
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ハンドルをドラッグしてどの端にも移動でき、オーブから設定を開けます。リングをクリックすると再読み込みし、右クリックでその他の操作を行えます。ホバーカードはタスクバーと重なりません。"
+          }
         }
       }
     },
@@ -48197,6 +48316,13 @@
             "state": "translated",
             "value": "Logo baru"
           }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいロゴ"
+          }
         }
       }
     },
@@ -48213,6 +48339,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "MiniMax, QianwenAI, Z.ai, Kimi, OpenCode, dan Command Code kini menampilkan logo mereka sendiri."
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MiniMax、QianwenAI、Z.ai、Kimi、OpenCode、Command Codeにそれぞれのロゴが表示されるようになりました。"
           }
         }
       }
@@ -48259,6 +48392,13 @@
           "stringUnit": {
             "state": "translated",
             "value": "Halka artık her yenilemede “HTTP 0” yanıtı vermiyor ve QianwenAI bir isteği reddettiğinde bunu açıkça söylüyor."
+          }
+        },
+
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新のたびにリングが「HTTP 0」と表示されることはなくなり、QianwenAIがリクエストを拒否した場合はそのことを明確に表示します。"
           }
         }
       }
