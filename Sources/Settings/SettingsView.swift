@@ -451,6 +451,7 @@ struct SettingsView: View {
     var previewResetAlert: (() -> Void)? = nil
     var previewSessionLimitAlert: (() -> Void)? = nil
     var previewWeeklyLimitAlert: (() -> Void)? = nil
+    var sendTestNotification: (() -> Void)? = nil
     @Environment(\.codenotchReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -1190,6 +1191,32 @@ struct SettingsView: View {
 
     private var notificationsPane: some View {
         Form {
+            // First, because it changes what every switch below does. One
+            // choice for all of them: the reasons for a banner (a second
+            // display, a hidden notch) or for the notch (nothing in
+            // Notification Center) hold for every event at once.
+            Section(L10n.t("Where to notify")) {
+                Picker(L10n.t("Channel"), selection: $preferences.notificationChannel) {
+                    ForEach(NotificationChannel.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Text(preferences.notificationChannel.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let sendTestNotification {
+                    Button(L10n.t("Send a test")) { sendTestNotification() }
+                    Text(preferences.notificationChannel == .mac
+                         ? L10n.t("Opens System Settings when banners are off for Codenotch.")
+                         : L10n.t("The notch opens for a moment, with the session sound."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             // Its own section rather than a line in General: this is the only
             // part of the app that speaks first, and a switch that stops the
             // Mac making a noise has to be findable by someone who is looking

@@ -49638,6 +49638,182 @@
     },
     "%@h limit": {
       "extractionState": "manual"
+    },
+    "In the notch": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No notch"
+          }
+        }
+      }
+    },
+    "Mac notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notificações do Mac"
+          }
+        }
+      }
+    },
+    "The notch opens for a moment or shows a card, with the sound you chose. Nothing reaches Notification Center.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O notch abre por um instante ou mostra um card, com o som escolhido. Nada vai para a Central de Notificações."
+          }
+        }
+      }
+    },
+    "A banner in Notification Center, which reaches you on another display or with the notch hidden. The notch stays quiet; sounds still play.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Um aviso na Central de Notificações, que chega em outra tela ou com o notch oculto. O notch fica quieto; os sons continuam."
+          }
+        }
+      }
+    },
+    "Where to notify": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onde avisar"
+          }
+        }
+      }
+    },
+    "Channel": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canal"
+          }
+        }
+      }
+    },
+    "Send a test": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviar teste"
+          }
+        }
+      }
+    },
+    "Opens System Settings when banners are off for Codenotch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre os Ajustes do Sistema se os avisos do Codenotch estiverem desligados."
+          }
+        }
+      }
+    },
+    "The notch opens for a moment, with the session sound.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O notch abre por um instante, com o som de sessão."
+          }
+        }
+      }
+    },
+    "Codenotch test": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teste do Codenotch"
+          }
+        }
+      }
+    },
+    "This is what one looks like.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "É assim que uma aparece."
+          }
+        }
+      }
+    },
+    "%@ is waiting on you": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ está esperando você"
+          }
+        }
+      }
+    },
+    "%@ finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ terminou"
+          }
+        }
+      }
+    },
+    "The agent stopped to ask you something.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O agente parou para perguntar algo."
+          }
+        }
+      }
+    },
+    "The agent's turn is done.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O turno do agente terminou."
+          }
+        }
+      }
+    },
+    "%lld%% used": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% usado"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

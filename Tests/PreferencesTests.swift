@@ -501,3 +501,32 @@ final class MenuBarLimitsPreferenceTests: XCTestCase {
         XCTAssertEqual(reopened.menuBarProviders, ["codex", "gemini"])
     }
 }
+
+/// One channel for every notification. The notch is the default because it
+/// is what every earlier version did; the choice has to survive a relaunch.
+@MainActor
+final class NotificationChannelPreferenceTests: XCTestCase {
+    private func makeDefaults() -> UserDefaults {
+        let name = "PreferencesTests.channel.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
+    func testTheNotchIsTheDefault() {
+        XCTAssertEqual(Preferences(defaults: makeDefaults()).notificationChannel, .notch)
+    }
+
+    func testTheChoiceIsKept() {
+        let defaults = makeDefaults()
+        Preferences(defaults: defaults).notificationChannel = .mac
+        XCTAssertEqual(Preferences(defaults: defaults).notificationChannel, .mac)
+    }
+
+    func testEveryChannelExplainsItself() {
+        for channel in NotificationChannel.allCases {
+            XCTAssertFalse(channel.title.isEmpty)
+            XCTAssertFalse(channel.explanation.isEmpty)
+        }
+    }
+}
