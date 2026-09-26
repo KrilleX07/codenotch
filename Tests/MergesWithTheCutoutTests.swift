@@ -853,7 +853,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
                 NotchGeometry.magnetised(target + d, width: W, bar: bar) - target
             }
             // At the spot it sits heavy: a point of pointer is a fraction of one.
-            XCTAssertEqual(pulled(1), g, accuracy: 0.01, "it does not hold on")
+            XCTAssertEqual(pulled(0.1) / 0.1, g, accuracy: 0.01, "it does not hold on")
             XCTAssertEqual(pulled(0), 0, accuracy: 0.0001)
             // Out past the pull it follows the pointer exactly.
             XCTAssertEqual(pulled(C + 5), C + 5, accuracy: 0.0001)
@@ -862,10 +862,18 @@ final class MergesWithTheCutoutTests: XCTestCase {
             // jump across, coming in or breaking free.
             XCTAssertEqual(pulled(C - 0.001), C, accuracy: 0.01)
             XCTAssertEqual(pulled(-C + 0.001), -C, accuracy: 0.01)
-            // Steeper than the pointer near that edge: drawn in ahead of it, and
-            // snapping to catch up as it breaks free.
-            XCTAssertGreaterThan(pulled(C - 1) - pulled(C - 2), 1.5,
-                                 "it does not snap — it drifts")
+            // Never much faster than the pointer: the pointer arrives in steps,
+            // and a curve that ran at 2.7 times it turned each step into one
+            // nearly three times the size — choppy right where it joins.
+            var steepest: CGFloat = 0
+            for d in stride(from: -C, to: C, by: 0.25) {
+                steepest = max(steepest, (pulled(d + 0.25) - pulled(d)) / 0.25)
+            }
+            XCTAssertLessThan(steepest, 1.3, "it outruns the pointer by \(steepest)×")
+            // And it meets the pointer at the edge of the pull at the pointer's
+            // own pace, so there is no kink going in or coming out.
+            XCTAssertEqual((pulled(C - 0.01) - pulled(C - 0.26)) / 0.25, 1, accuracy: 0.05,
+                           "it lurches where the pull begins")
             // It never runs backwards.
             var last = pulled(-C - 2)
             for d in stride(from: -C - 1.5, through: C + 2, by: 0.5) {

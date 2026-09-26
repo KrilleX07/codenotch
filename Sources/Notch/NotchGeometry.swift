@@ -176,7 +176,7 @@ enum NotchGeometry {
     }
 
     /// **How far out the hole's pull reaches**, while the notch is dragged.
-    static let cutoutCapture: CGFloat = 36
+    static let cutoutCapture: CGFloat = 48
 
     /// **How hard it holds on**: at the very spot, how much of the pointer's
     /// movement the notch still follows. A tenth-and-a-half — enough to show
@@ -190,23 +190,26 @@ enum NotchGeometry {
     /// **The magnet.** Where a dragged notch is drawn, for where the pointer has
     /// actually taken it.
     ///
-    /// Following the pointer exactly everywhere, the notch only took the hole
-    /// once it was let go, and until then there was no sense of the hole being
-    /// there at all. Near either of the two places it can join — flush against
-    /// the right wall, or the left — the pointer's distance from that place is
-    /// bent: `d · (g + (1 − g)·(d/C)²)`. At the place itself the notch follows
-    /// only `g` of the pointer, so it sits heavy and has to be tugged. Toward
-    /// the edge of the pull the curve steepens past one, so coming in, the
-    /// notch is drawn ahead of the pointer onto the wall, and pulling away it
-    /// catches up with a snap as it breaks free. At the edge of the pull it
-    /// meets the pointer again exactly, so there is nothing to jump across,
-    /// and it never runs backwards: the curve only ever rises.
-    static func magnetised(_ a: CGFloat, width: CGFloat, bar: CGFloat) -> CGFloat {
+    /// Near either of the two places it can join — flush against the right wall,
+    /// or the left — the pointer's distance `d` from that place is bent to
+    /// `d · (1 − (1 − g)(1 − |d|/C)²)`. At the place itself the notch follows
+    /// only `g` of the pointer, so it sits heavy and has to be tugged; further
+    /// out it follows more and more of it.
+    ///
+    /// **And never more than a little over all of it.** The first curve here
+    /// held just as hard, but to catch up with the pointer by the edge of the
+    /// pull it had to run at 2.7 times the pointer near that edge — and the
+    /// pointer arrives in steps, so every step became one nearly three times
+    /// the size: choppy exactly where the notch was about to join. This one
+    /// peaks at `1 + (1 − g)/3`, about 1.28, and meets the pointer at the edge
+    /// of the pull with the pointer's own *slope* as well as its position, so
+    /// there is no kink to feel going in or coming out. It only ever rises.
+        static func magnetised(_ a: CGFloat, width: CGFloat, bar: CGFloat) -> CGFloat {
         for target in [0, 2 * cutoutOverlap - width - bar] {
             let d = a - target
             guard abs(d) < cutoutCapture else { continue }
-            let x = d / cutoutCapture
-            return target + d * (cutoutGrip + (1 - cutoutGrip) * x * x)
+            let rest = 1 - abs(d) / cutoutCapture
+            return target + d * (1 - (1 - cutoutGrip) * rest * rest)
         }
         return a
     }
