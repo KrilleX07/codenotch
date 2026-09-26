@@ -580,6 +580,37 @@ final class MergesWithTheCutoutTests: XCTestCase {
         }
     }
 
+    /// **Let go near the hole and it settles onto the nearer wall.**
+    ///
+    /// There are two places worth being and they are the two walls; everywhere
+    /// between is the notch buried further into the cutout, which looks exactly
+    /// the same as flush because the buried part is inside the hole. So a drag
+    /// that ends anywhere in reach ends on a wall.
+    func testItSettlesOntoTheNearerWall() throws {
+        let screen = Notched()
+        let left = try flushOnTheLeft(screen)
+        for (nudge, expected) in [(CGFloat(0), CGFloat(0)), (6, 0), (-6, 0),
+                                  (-20, 0), (-30, left), (left, left),
+                                  (left - 6, left)] {
+            let settled = try XCTUnwrap(
+                NotchGeometry.cutoutMagnet(for: screen, edge: .top, alongOffset: nudge),
+                "a drag let go at \(nudge)pt was not near the hole at all")
+            XCTAssertEqual(settled, expected, accuracy: 0.001,
+                           "a drag let go at \(nudge)pt settled somewhere else")
+        }
+        // Both places it settles are flush, on their own side.
+        for magnet in [CGFloat(0), left] {
+            let m = model(screen, offset: magnet)
+            XCTAssertEqual(try XCTUnwrap(m.cutout).overlap,
+                           NotchGeometry.cutoutOverlap, accuracy: 0.001)
+            XCTAssertTrue(m.mergesWithCutout)
+        }
+        // Out of reach, the nudge means what it says and nothing pulls at it.
+        XCTAssertNil(NotchGeometry.cutoutMagnet(for: screen, edge: .top, alongOffset: 400))
+        XCTAssertNil(NotchGeometry.cutoutMagnet(for: Plain(), edge: .top, alongOffset: 0))
+        XCTAssertNil(NotchGeometry.cutoutMagnet(for: screen, edge: .right, alongOffset: 0))
+    }
+
     /// No hole, no join — on a plain display and on the other three edges.
     func testOnlyTheTopEdgeOfANotchedDisplayMerges() {
         XCTAssertNil(model(Plain()).cutout)

@@ -174,6 +174,24 @@ enum NotchGeometry {
     /// good place for it to be — the tip is inside the hole and the bar starts
     /// at the wall, exactly as it does with no nudge at all — and a rule written
     /// on the size of the nudge threw all of it away.
+    /// **Where the notch settles when it is let go near the hole.**
+    ///
+    /// There are two places worth being, and they are the two walls: flush
+    /// against the right one and flush against the left. Everywhere between is
+    /// the notch buried further into the cutout, which looks exactly the same
+    /// as flush — the buried part is inside the hole where nothing shows — so
+    /// it is a position with nothing to recommend it and nothing to hold on to.
+    ///
+    /// Nil once the notch is out of reach, where the nudge means what it says
+    /// and the notch stays where it was put.
+    static func cutoutMagnet(for screen: ScreenDescribing, edge: NotchEdge,
+                             alongOffset: CGFloat) -> CGFloat? {
+        guard cutoutProximity(for: screen, edge: edge, alongOffset: alongOffset) != nil
+        else { return nil }
+        let onTheLeft = 2 * (cutoutOverlap - cutoutDeepest)
+        return abs(alongOffset) <= abs(alongOffset - onTheLeft) ? 0 : onTheLeft
+    }
+
     static func cutoutProximity(for screen: ScreenDescribing, edge: NotchEdge,
                                 alongOffset: CGFloat) -> CutoutProximity? {
         guard edge == .top, let cutout = screen.hardwareNotch else { return nil }

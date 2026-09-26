@@ -397,7 +397,35 @@ final class NotchWindowController {
     private func endOptionDrag() {
         guard isOptionDragging else { return }
         isOptionDragging = false
+        settleOnCutout()
         cursorMoved()
+    }
+
+    /// **Let go near the display's own notch and it settles onto it.**
+    ///
+    /// The drag itself steps, because a bar that eases after the pointer is a
+    /// bar that is not under it. This is the one moment there is something to
+    /// ease *to*: the hand is off, the notch is near the hole, and the nearer
+    /// of its two walls is where it belongs.
+    ///
+    /// Animated around `relocate` rather than around the offset alone, because
+    /// what is drawn follows `NotchViewModel.cutout`, and that is worked out in
+    /// there. Safe to ease only because the window does not move for any of it
+    /// — it is the same size and in the same place anywhere near the hole, by
+    /// `NotchViewModel.cutoutSpan`, and easing anything inside a window that
+    /// moves eases it across the distance the window moved.
+    private func settleOnCutout() {
+        guard let screen = currentScreen(),
+              let magnet = NotchGeometry.cutoutMagnet(for: screen, edge: model.edge,
+                                                      alongOffset: model.alongOffset),
+              model.alongOffset != magnet
+        else { return }
+        withAnimation(NotchMotion.unfold) {
+            model.alongOffset = magnet
+            relocate()
+        }
+        onReposition?(model.alongOffset)
+        updateInteractiveRects()
     }
 
     // MARK: - Hit regions
