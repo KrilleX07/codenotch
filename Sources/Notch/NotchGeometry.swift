@@ -99,12 +99,12 @@ enum NotchGeometry {
     /// nobody sees, and the bar is drawn longer to pay for it.
     static let cutoutOverlap: CGFloat = 12
 
-    /// How far the notch may be nudged off the hole and still flow into it.
+    /// How wide a gap the join will still reach across.
     ///
-    /// ⌥-dragging along the edge pulls the two apart. Up to this much the join
-    /// simply reaches further and they still read as one object; past it the
-    /// notch is somewhere else on the bezel and is drawn as it is on every
-    /// other edge, flares and all.
+    /// ⌥-dragging along the edge pulls the two apart. Up to this much they still
+    /// read as one object and the bridge simply reaches further back for the
+    /// hole; past it the notch is somewhere else on the bezel and is drawn as it
+    /// is on every other edge, flares and all.
     static let cutoutReach: CGFloat = 24
 
     /// **Whether the notch is near enough to the display's own hole to merge
@@ -116,14 +116,25 @@ enum NotchGeometry {
     /// it point for point, so the overlap *is* the placement. Asking the panel
     /// instead would be circular — the panel is sized for a bar whose length
     /// depends on this answer.
+    ///
+    /// **The question is whether the two are touching, not whether the notch
+    /// has been dragged.** Asking the second cost the join on the one machine it
+    /// was written for: a nudge of -42pt was already saved for the top edge from
+    /// an afternoon of dragging the bar toward the hole, which is a perfectly
+    /// good place for it to be — the tip is inside the hole and the bar starts
+    /// at the wall, exactly as it does with no nudge at all — and a rule written
+    /// on the size of the nudge threw all of it away.
     static func cutoutProximity(for screen: ScreenDescribing, edge: NotchEdge,
                                 alongOffset: CGFloat) -> CutoutProximity? {
         guard edge == .top, let cutout = screen.hardwareNotch else { return nil }
-        // Either way off the placement it was given: dragged along the bezel the
-        // two come apart, and dragged the other way the notch climbs into the
-        // hole, where the join would be bridging out of its far side.
-        guard abs(alongOffset) <= cutoutReach else { return nil }
-        return CutoutProximity(depth: cutout.height, overlap: cutoutOverlap - alongOffset)
+        let overlap = cutoutOverlap - alongOffset
+        // Dragged along the bezel the two come apart, and there is only so far
+        // the bridge will reach. Dragged the other way the notch climbs through
+        // the hole, and once its tip is out the far side the fill that hides
+        // inside the hole would be hanging past the hole's other wall.
+        guard overlap >= -cutoutReach,
+              overlap <= cutout.width - cutoutOverlap else { return nil }
+        return CutoutProximity(depth: cutout.height, overlap: overlap)
     }
 
     /// Anchor to the physical display edge, even when the Dock or menu bar

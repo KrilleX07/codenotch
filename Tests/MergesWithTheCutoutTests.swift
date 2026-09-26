@@ -298,6 +298,30 @@ final class MergesWithTheCutoutTests: XCTestCase {
                        + "nothing to pay for in length")
     }
 
+    /// **A nudge toward the hole is not a reason to let go of it.**
+    ///
+    /// The bug: the join was gated on how far the notch had been ⌥-dragged from
+    /// the placement it was given, and a -42pt nudge was already saved for the
+    /// top edge on the machine this was written for. That is not a notch parked
+    /// somewhere else on the bezel — it is a notch *deeper inside the hole*,
+    /// which is the one direction that cannot part the two. It drew no join at
+    /// all, on the only display that has a hole to join.
+    func testANudgeIntoTheHoleStaysJoined() throws {
+        let screen = Notched()
+        for offset in [CGFloat(-42), -80, -120] {
+            let m = model(screen, scale: 0.589, offset: offset)
+            let near = try XCTUnwrap(m.cutout, "a nudge of \(offset)pt *into* the hole let go of it")
+            XCTAssertEqual(near.overlap, NotchGeometry.cutoutOverlap - offset, accuracy: 0.001)
+
+            // And the bar still starts at the wall, as it does with no nudge:
+            // everything buried in the hole is paid for in length.
+            let hole = try hole(screen)
+            let deepest = outline(of: m, on: screen)
+                .filter { $0.x < hole.wall - 0.5 }.map(\.depth).max() ?? 0
+            XCTAssertLessThanOrEqual(deepest, hole.depth + 0.6, "offset \(offset)")
+        }
+    }
+
     /// No hole, no join — on a plain display and on the other three edges.
     func testOnlyTheTopEdgeOfANotchedDisplayMerges() {
         XCTAssertNil(model(Plain()).cutout)
