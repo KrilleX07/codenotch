@@ -490,11 +490,12 @@ final class AboveTheCutoutTests: XCTestCase {
     /// **The model takes two numbers from the hole and nothing else** — that is
     /// what stops the top edge from growing a second layout again.
     ///
-    /// The depth is the same notch it is on every edge, and the length differs
-    /// only by the part that is buried in the hole, which nobody can see. Every
-    /// earlier attempt at this failed here: the top edge sized its bar, its
-    /// rings and its corner from the hardware, and then had to be kept in step
-    /// with a shape it did not share.
+    /// It is one shape drawn to a depth the hardware chose, not a second design.
+    /// Everything that describes the shape itself — the corner it turns, the
+    /// flare at its trailing end, the padding before its first cell — is the
+    /// figure every other edge uses. Every earlier attempt at this failed here:
+    /// the top edge grew its own corner, its own flare and its own ring maths,
+    /// and then had to be kept in step with a shape it did not share.
     @MainActor
     func testTheModelTakesOnlyTheHolesDepthAndDistance() {
         let m = NotchViewModel()
@@ -505,13 +506,13 @@ final class AboveTheCutoutTests: XCTestCase {
         plain.adopt(screen: Plain())
 
         XCTAssertNil(plain.cutout, "a display with no hole has nothing to merge with")
-        XCTAssertEqual(m.notchDepth, plain.notchDepth, accuracy: 0.001,
-                       "the top edge is sizing itself from the hardware again")
-        XCTAssertEqual(m.shapeLength - m.cutoutBleed, plain.shapeLength, accuracy: 0.001,
-                       "the top edge is laying itself out around the hardware again")
-        XCTAssertEqual(m.ringCenter(index: 0) - m.cutoutBleed,
-                       plain.ringCenter(index: 0), accuracy: 0.001,
-                       "the rings moved for the hole — they should sit the same distance "
-                       + "into the *visible* bar as they do on any other edge")
+        XCTAssertEqual(m.drawnCornerRadius, plain.drawnCornerRadius, accuracy: 0.001,
+                       "the top edge grew its own corner again")
+        XCTAssertEqual(m.flare, plain.flare, accuracy: 0.001,
+                       "the top edge grew its own flare again")
+        XCTAssertEqual(m.cellsLeadIn - m.cutoutBleed, plain.cellsLeadIn, accuracy: 0.001,
+                       "the top edge grew its own padding again")
+        XCTAssertEqual(plain.cellScale, 1, accuracy: 0.001,
+                       "nothing but a hardware-set depth may shrink a cell")
     }
 }

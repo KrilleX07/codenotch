@@ -247,20 +247,85 @@ final class MergesWithTheCutoutTests: XCTestCase {
     }
 
     /// The buried overlap is length nobody sees, so the bar is drawn longer by
-    /// exactly that much — otherwise the merged notch is a shorter notch, and
-    /// its rings sit closer to its visible start than they do on any other edge.
+    /// exactly that much — otherwise the merged notch starts short of the wall
+    /// and everything in it sits closer to its visible start than it should.
     func testTheBuriedOverlapIsPaidForInLength() {
         let merged = model(Notched())
-        let plain = model(Plain())
         XCTAssertEqual(merged.cutoutBleed * merged.sizeScale,
                        NotchGeometry.cutoutOverlap, accuracy: 0.001)
-        XCTAssertEqual(merged.shapeLength - merged.cutoutBleed, plain.shapeLength,
-                       accuracy: 0.001, "the visible bar is not the same bar")
-        XCTAssertEqual(merged.cellsLeadIn - merged.cutoutBleed, plain.cellsLeadIn,
+        XCTAssertEqual(merged.cellsLeadIn - merged.cutoutBleed, model(Plain()).cellsLeadIn,
                        accuracy: 0.001, "the first ring moved relative to the visible start")
-        for index in 0..<3 {
-            XCTAssertEqual(merged.ringCenter(index: index) - merged.cutoutBleed,
-                           plain.ringCenter(index: index), accuracy: 0.001, "ring \(index)")
+    }
+
+    // MARK: - One thickness
+
+    /// **It is exactly as deep as the hole**, at every size setting and in both
+    /// states. One shape cannot be two thicknesses: drawn deeper it bulged out
+    /// from under the hardware, drawn shallower it tapered up out of it, and the
+    /// fold morphed between the two — which is what "looks like a glitch" was.
+    func testItIsExactlyAsDeepAsTheHole() throws {
+        let screen = Notched()
+        let hole = try hole(screen)
+        for scale in [0.5, 0.589, 1.0, 1.5] as [CGFloat] {
+            for open in [true, false] {
+                let m = model(screen, scale: scale, open: open)
+                let drawn = m.notchDepth * m.sizeScale - NotchRootView.bezelBleed
+                XCTAssertEqual(drawn, hole.depth, accuracy: 0.001,
+                               "scale \(scale) open \(open)")
+            }
+        }
+    }
+
+    /// And folding changes the length alone, so the fold is a bar drawing itself
+    /// in along one axis rather than a shape changing into another shape.
+    func testFoldingChangesOnlyTheLength() {
+        let m = model(Notched())
+        let open = m.notchDepth
+        m.isExpanded = false
+        XCTAssertEqual(m.notchDepth, open, accuracy: 0.001,
+                       "the merged notch still changes depth as it folds")
+        XCTAssertLessThan(m.notchLength, m.shapeLength, "it should still shorten")
+    }
+
+    /// **The bridge has no step left to make.** With both bottom edges at one
+    /// depth the join is a straight line, which is the whole point of taking the
+    /// hardware's depth: there is no waist to see because there is no mismatch.
+    func testTheTwoBottomEdgesAreOneStraightLine() throws {
+        let screen = Notched()
+        let m = model(screen)
+        let hole = try hole(screen)
+        let far = outline(of: m, on: screen)
+            .filter { $0.x > hole.wall - 40 && $0.x < hole.wall + m.flare * m.sizeScale }
+            .map(\.depth)
+            .filter { $0 > hole.depth / 2 }
+        XCTAssertFalse(far.isEmpty)
+        XCTAssertEqual(far.min() ?? 0, hole.depth, accuracy: 0.6)
+        XCTAssertEqual(far.max() ?? 0, hole.depth, accuracy: 0.6,
+                       "the bottom edge steps by \((far.max() ?? 0) - hole.depth)pt where it "
+                       + "leaves the hole — at one depth there is nothing to step")
+    }
+
+    /// The cells are **fitted** into that depth rather than clipped by it, and
+    /// never enlarged past what the design frame asks for.
+    func testTheCellsAreFittedIntoTheHardwaresDepth() throws {
+        let screen = Notched()
+        for scale in [0.5, 0.589, 1.0, 1.5] as [CGFloat] {
+            for reading in [true, false] {
+                let m = model(screen, scale: scale)
+                m.showsNotchReadings = reading
+                let depth = try XCTUnwrap(m.mergedDepth) * m.sizeScale
+                let wanted = m.showsCellReading
+                    ? NotchLayout.cellExtent : NotchLayout.ringDiameter
+                let drawn = wanted * m.cellScale * m.sizeScale
+                let clear = depth * NotchLayout.ringMarginShare(for: .top) * 2
+
+                XCTAssertLessThanOrEqual(m.cellScale, 1.0001,
+                                         "scale \(scale): a cell was stretched to fill the bar")
+                XCTAssertLessThanOrEqual(drawn, depth - clear + 0.001,
+                                         "scale \(scale) reading \(reading): the cell is "
+                                         + "\(drawn)pt in \(depth)pt of bar — it is clipped")
+                XCTAssertGreaterThan(drawn, 0)
+            }
         }
     }
 

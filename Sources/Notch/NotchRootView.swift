@@ -305,12 +305,19 @@ struct NotchRootView: View {
                 showsWeeklyReading: model.weeklyReading,
                 showsReading: model.showsCellReading
             )
+                // Fitted to the depth the bar actually has: merged into the
+                // display's own notch that is the hardware's 38pt, which is less
+                // than the design frame budgets for a ring — see
+                // `NotchViewModel.cellScale`. One everywhere else.
+                .scaleEffect(model.cellScale)
                 // Pinned to what the cell claims along the stack, or the drawn
                 // rings stop lining up with the centres `ringCenter` hands to
                 // the hover bands and the tooltip tails. Across a horizontal
                 // edge that is the ring alone — the label sits below it, in the
                 // notch's depth, and claims nothing here.
-                .frame(width: model.edge.isVertical ? nil : NotchLayout.cellAlong(for: model.edge))
+                .frame(width: model.edge.isVertical
+                       ? nil
+                       : NotchLayout.cellAlong(for: model.edge) * model.cellScale)
                 .opacity(model.isExpanded ? 1 : 0)
                 // A short slide toward the edge, no scaling: the clip is
                 // already doing the concealing, and scaling on top of it
@@ -331,12 +338,13 @@ struct NotchRootView: View {
                 VStack(spacing: model.cellSpacing) { stack }
                     .padding(.top, leadIn)
                     // The contents keep the expanded layout while folding, so
-                    // the stack does not reflow on its way out; the shape clips it.
-                    .frame(width: NotchLayout.bodyDepth(for: model.edge))
+                    // the stack does not reflow on its way out; the shape clips
+                    // it. `contentDepth` is the open depth for that reason.
+                    .frame(width: model.contentDepth)
             } else {
                 HStack(spacing: model.cellSpacing) { stack }
                     .padding(.leading, leadIn)
-                    .frame(height: NotchLayout.bodyDepth(for: model.edge))
+                    .frame(height: model.contentDepth)
             }
         }
         .allowsHitTesting(model.isExpanded)
