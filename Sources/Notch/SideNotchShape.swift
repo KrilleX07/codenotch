@@ -99,6 +99,24 @@ struct SideNotchShape: Shape {
     /// in-between to animate through, and a copy's side is never changed while
     /// it is anything but symmetric.
     var reflected = false
+
+    /// **For the copy that widens the Mac's notch: how it comes out of the
+    /// hole.** `buried` is how far its joined end sits inside the hole, and
+    /// `corner` the hole's own corner radius, both in the shape's measure.
+    ///
+    /// Its far end comes out of the hole wearing the hole's own outline — a
+    /// straight wall and the Mac's corner — and puts on the notch's own curve
+    /// only as there is room for it outside: the flare at half the pace it
+    /// comes out, the corner no faster than it clears the hole's. Coming out
+    /// with its own end already on, its rounder corner cut across the Mac's
+    /// and its flare across the hole's wall, and for a moment the Mac's notch
+    /// looked like it had lost its corner. Worked out from the length it is
+    /// drawn at, so it keeps pace with the length however that animates.
+    struct Emergence: Equatable {
+        var buried: CGFloat
+        var corner: CGFloat
+    }
+    var emergesFrom: Emergence?
     var curlRadius: CGFloat = NotchLayout.curlRadius
     var cornerRadius: CGFloat = NotchLayout.cornerRadius
     /// The inverse curve where the shape meets the bezel, when the caller wants
@@ -348,7 +366,13 @@ struct SideNotchShape: Shape {
         // body, which is exactly what happens when the notch folds to its pill:
         // a 10pt-wide shape came out with square corners. The corner is claimed
         // first, out of half the width, and the flare takes what is left.
-        let wanted = max(0, min(cornerRadius, rect.width / 2))
+        var wanted = max(0, min(cornerRadius, rect.width / 2))
+        var flareShare = max(0, min(trailingFlare, 1))
+        if let e = emergesFrom {
+            let out = max(0, rect.height - e.buried)
+            flareShare = min(flareShare, out / 2 / max(flare, 0.001))
+            wanted = min(wanted, e.corner + max(0, out - flare * flareShare))
+        }
         // Along the bar, and across it.
         //
         // The two are independent only when the caller has asked for them to
@@ -364,12 +388,16 @@ struct SideNotchShape: Shape {
         let open = 1 - max(0, min(leadingJoin, 1))
         let leadCurl = curl * open
         let trailOpen = 1 - max(0, min(trailingJoin, 1))
-        let trailCurl = curl * max(0, min(trailingFlare, 1)) * trailOpen
-        let trailDepth = curlDepth * max(0, min(trailingFlare, 1)) * trailOpen
+        let trailCurl = curl * flareShare * trailOpen
+        let trailDepth = curlDepth * flareShare * trailOpen
         // Clamped by what the two ends take along the bar, which is what lets a
         // bar that has closed its flares be as short as nothing and still be a
         // clean shape rather than one turned inside out.
-        let corner = max(0, min(wanted, (rect.height - leadCurl - trailCurl) / 2))
+        // Shared between the ends that have one: a joined end is square and
+        // takes none, so a short copy widening the Mac's notch keeps its whole
+        // corner rather than one squeezed under the Mac's.
+        let rounded = max(1, open + trailOpen)
+        let corner = max(0, min(wanted, (rect.height - leadCurl - trailCurl) / rounded))
         let bodyTop = rect.minY + curl
         let bodyBottom = rect.maxY - trailCurl
 
@@ -389,7 +417,7 @@ struct SideNotchShape: Shape {
         // one of those left a point.
         let fullDepth = rect.width
         let leadEnd = curl * open + corner * open
-        let trailEnd = curl * max(0, min(trailingFlare, 1)) * (1 - max(0, min(trailingJoin, 1)))
+        let trailEnd = curl * flareShare * (1 - max(0, min(trailingJoin, 1)))
             + corner * (1 - max(0, min(trailingJoin, 1)))
         func eased(_ u: CGFloat) -> CGFloat {
             let t = min(max(u, 0), 1)

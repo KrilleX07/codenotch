@@ -570,27 +570,39 @@ final class NotchViewModel: ObservableObject {
     /// **The strand of black between a dragged notch and the hole.**
     ///
     /// Goo pulled off a surface does not part from it: it stretches, thins in
-    /// the middle, and lets go. On the goo curve from the wall to past the bar's
-    /// near end — full while the two touch, pinching in the middle as the gap
-    /// opens, and gone at `NotchGeometry.cutoutStretch`; coming the other way it
-    /// reaches across before they meet. Its two ends are tucked where they
-    /// cannot be seen, one inside the hole and one inside the bar's body, so
-    /// all that ever shows of it is its underside. Worked out from where the bar
-    /// is, so it follows the hand with nothing to catch up on.
+    /// the middle, and lets go, and at no moment does it meet either surface at
+    /// an angle. So the strand's underside always leaves the hole *along the
+    /// hole's own outline* — its foot, then its rounded corner, then its wall —
+    /// and arrives on the bar along the bar's own outline — its foot, its
+    /// corner, its side, its flare — each time heading the way that outline is
+    /// heading, so where one stops and the other starts there is nothing to
+    /// see. Pulled away, the two points it leaves from climb those outlines, its
+    /// middle thins up into the bezel, and each half draws back into the thing
+    /// it came from until nothing is left.
+    ///
+    /// It used to be one curve scaled toward the bezel as it went. Scaled, its
+    /// end at the hole was shallower than the hole's foot: it cut across the
+    /// Mac's rounded corner, or met the hole's wall square, and it ran into the
+    /// bar's side the same way — the points, and the corner that looked like
+    /// it had lost its radius. Worked out from where the bar is, so it follows
+    /// the hand with nothing to catch up on.
     struct Neck: Equatable {
-        /// Along the panel: its end inside the hole, the wall, and its end
-        /// inside the bar.
-        var inside: CGFloat
+        /// Along the panel: the hole's wall nearest the bar, and the bar's end
+        /// facing it. `side` is 1 when the bar is right of the wall, −1 left.
         var wall: CGFloat
-        var end: CGFloat
-        /// Down from the top of the screen: the hole's foot, and the bar's.
+        var tip: CGFloat
+        var side: CGFloat
+        /// Down from the top of the screen: the hole's foot, and the radius of
+        /// its corner.
         var holeDepth: CGFloat
+        var holeCorner: CGFloat
+        /// The bar's foot, and its end: the flare's reach and the corner's.
         var barDepth: CGFloat
-        /// How much of it there is, 0 to 1 — it grows down out of the bezel as
-        /// the two come together and draws back up into it as they part.
-        var presence: CGFloat
-        /// How far its middle has pinched, 0 to 1.
-        var thin: CGFloat
+        var barFlare: CGFloat
+        var barCorner: CGFloat
+        /// How far it has been pulled apart, 0 where the two touch to 1 where
+        /// it lets go.
+        var apart: CGFloat
     }
 
     var neck: Neck? {
@@ -608,33 +620,18 @@ final class NotchViewModel: ObservableObject {
         let gap = onTheRight ? tip - wall : wall - tip
         let stretch = NotchGeometry.cutoutStretch
         guard gap < stretch else { return nil }
-        let side: CGFloat = onTheRight ? 1 : -1
-        // Far enough into the hole to cover its rounded corner — a circular arc
-        // of 31.2px on a 90px-deep cutout, measured — as well as the join.
-        let into = max(NotchGeometry.cutoutOverlap, cutout.depth * 31.2 / 90)
-        // Reaching into the hole, the bar's own dip is the curve out of it, and
-        // all that is wanted here is the hole's rounded corner on this side
-        // filled — or, with the bar's end only just inside the wall, a wedge of
-        // wallpaper shows in it.
-        if gap < 0 {
-            return Neck(inside: wall - side * into, wall: wall, end: wall,
-                        holeDepth: cutout.depth, barDepth: cutout.depth,
-                        presence: 1, thin: 0)
-        }
-
-        // Across the gap and on over the bar's near end, where it lands flat on
-        // the bar's foot.
-        var end = tip + side * gooReach
-        end = onTheRight ? min(end, far) : max(end, far)
-        let apart = max(0, gap) / stretch
-        let x = 1 - apart
-        return Neck(inside: wall - side * into,
-                    wall: wall, end: end,
+        // The bar's end as `SideNotchShape` draws it, with no more room than
+        // the bar has for it.
+        let depth = max(cutout.depth, carrying.depth * sizeScale - NotchRootView.bezelBleed)
+        let flare = min(self.flare * sizeScale, depth)
+        let corner = max(0, min(drawnCornerRadius * sizeScale, depth - flare,
+                                (carrying.length - 2 * flare) / 2))
+        return Neck(wall: wall, tip: tip, side: onTheRight ? 1 : -1,
                     holeDepth: cutout.depth,
-                    barDepth: max(cutout.depth,
-                                  carrying.depth * sizeScale - NotchRootView.bezelBleed),
-                    presence: x * x * (3 - 2 * x),
-                    thin: apart)
+                    // Measured: a circular arc of 31.2px on a 90px-deep cutout.
+                    holeCorner: cutout.depth * 31.2 / 90,
+                    barDepth: depth, barFlare: flare, barCorner: corner,
+                    apart: max(0, gap) / stretch)
     }
 
     /// **Whether the other copy is coming out of the hole ahead of the join.**
@@ -763,8 +760,13 @@ final class NotchViewModel: ObservableObject {
         }
 
         // The other side: joined at its wall, and at its far end the same curve
-        // as the side with the readings.
+        // as the side with the readings — put on as it comes out of the hole.
         shape.leadingJoin = 1
+        let scale = max(sizeScale, 0.0001)
+        shape.emergesFrom = .init(
+            buried: (mergesWithCutout ? cutout.overlap : NotchGeometry.cutoutOverlap) / scale,
+            // Measured: a circular arc of 31.2px on a 90px-deep cutout.
+            corner: cutout.depth * 31.2 / 90 / scale)
         return shape
     }
 

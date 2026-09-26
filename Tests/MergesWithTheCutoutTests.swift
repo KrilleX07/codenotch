@@ -969,19 +969,16 @@ final class MergesWithTheCutoutTests: XCTestCase {
         let V = NotchGeometry.cutoutOverlap
         let stretch = NotchGeometry.cutoutStretch
 
-        // Touching: full, not pinched at all.
+        // Touching: not pulled apart at all.
         let touching = try XCTUnwrap(held(screen, at: V).neck, "no strand where they touch")
-        XCTAssertEqual(touching.presence, 1, accuracy: 0.001)
-        XCTAssertEqual(touching.thin, 0, accuracy: 0.001)
+        XCTAssertEqual(touching.apart, 0, accuracy: 0.001)
+        XCTAssertEqual(touching.holeDepth, hole.depth, accuracy: 0.001)
 
-        // Pulled further, it only ever thins and draws back.
+        // Pulled further, it only ever comes further apart.
         var last = touching
         for gap in stride(from: CGFloat(1), to: stretch, by: 1) {
             let n = try XCTUnwrap(held(screen, at: V + gap).neck, "at \(gap) the strand broke early")
-            XCTAssertLessThanOrEqual(n.presence, last.presence + 0.0001, "at \(gap) it grew back")
-            XCTAssertGreaterThanOrEqual(n.thin, last.thin - 0.0001, "at \(gap) it thickened")
-            // Its end at the wall never reaches below the hole.
-            XCTAssertLessThanOrEqual(n.presence * n.holeDepth, hole.depth + 0.001)
+            XCTAssertGreaterThan(n.apart, last.apart, "at \(gap) it drew back together")
             last = n
         }
         // And by the full stretch it has let go.
@@ -996,9 +993,31 @@ final class MergesWithTheCutoutTests: XCTestCase {
         // Animatable, so a notch let go near the hole carries it as it glides.
         var shape = GooNeck(neck: touching)
         var data = shape.animatableData
-        data.second.first.second = 0.25
+        data.second.second = 0.25
         shape.animatableData = data
-        XCTAssertEqual(shape.neck.presence, 0.25, accuracy: 0.0001)
+        XCTAssertEqual(shape.neck.apart, 0.25, accuracy: 0.0001)
+    }
+
+    /// **Nothing of the strand hangs below the hole's foot inside the hole**,
+    /// at any step of a pull.
+    func testTheStrandLeavesAlongTheOutlines() throws {
+        let screen = Notched()
+        let hole = try hole(screen)
+        let V = NotchGeometry.cutoutOverlap
+        for scale in [0.5888, 1.0] as [CGFloat] {
+            for gap in stride(from: CGFloat(0), to: NotchGeometry.cutoutStretch, by: 0.5) {
+                let m = held(screen, at: V + gap, scale: scale)
+                let n = try XCTUnwrap(m.neck)
+                let path = GooNeck(neck: n).path(in: .zero)
+                // Inside the hole, nothing below its foot.
+                let insideX = stride(from: n.wall - n.side * 30, to: n.wall, by: n.side * 0.5)
+                for x in insideX {
+                    let below = CGPoint(x: x, y: hole.depth + 0.75)
+                    XCTAssertFalse(path.contains(below),
+                                   "scale \(scale) gap \(gap): hangs below the hole at \(x)")
+                }
+            }
+        }
     }
 
     /// **No point anywhere along a drag.**

@@ -481,63 +481,213 @@ struct NotchRootView: View {
     }
 }
 
-/// **The goo curve**: how far down from the top of the screen the underside of
-/// the black is, at `u` along from a wall (0) to where it reaches the bar's foot
-/// (1) — the smoother step, flat at both ends, so it meets the hole's foot and
-/// the bar's without a crease. See `NotchViewModel.gooReach`.
-func gooDepth(_ u: CGFloat, hole: CGFloat, bar: CGFloat) -> CGFloat {
-    let t = min(max(u, 0), 1)
-    return hole + (bar - hole) * t * t * t * (t * (t * 6 - 15) + 10)
-}
-
 /// **The strand between a dragged notch and the display's hole**, drawn in the
 /// panel's own points along the top edge — see `NotchViewModel.Neck`.
 ///
-/// Its underside is the goo curve from the wall to past the bar's near end,
-/// pinched toward the middle of the gap as `thin` rises (on `sin²`, so the pinch
-/// leaves both ends flat) and scaled by `presence`, so it grows down out of the
-/// bezel and draws back up into it rather than appearing. Its ends stand inside
-/// the hole and inside the bar's body, where nothing of them can be seen.
+/// Worked out along the wall's outward normal, `s` out from the wall and `y`
+/// down from the top of the screen, and laid back onto the panel at the end.
+/// Its underside is two curves meeting in the middle of the gap. Each leaves
+/// its outline at a point on it and in the direction that outline runs there,
+/// so it carries straight on from it; the middle, flat, rises into the bezel
+/// as the two are pulled apart, and past that the halves are separate and
+/// each draws back along its own outline to nothing.
 struct GooNeck: Shape {
     var neck: NotchViewModel.Neck
 
     /// Animatable so a notch let go near the hole carries the strand with it as
-    /// it glides in, rather than leaving it where it was.
+    /// it glides, rather than leaving it where it was.
     var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
-                                       AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat>> {
+                                       AnimatablePair<CGFloat, CGFloat>> {
         get {
-            AnimatablePair(AnimatablePair(neck.wall, neck.end),
-                           AnimatablePair(AnimatablePair(neck.barDepth, neck.presence), neck.thin))
+            AnimatablePair(AnimatablePair(neck.wall, neck.tip),
+                           AnimatablePair(neck.barDepth, neck.apart))
         }
         set {
-            let moved = newValue.first.first - neck.wall
             neck.wall = newValue.first.first
-            neck.inside += moved
-            neck.end = newValue.first.second
-            neck.barDepth = newValue.second.first.first
-            neck.presence = newValue.second.first.second
-            neck.thin = newValue.second.second
+            neck.tip = newValue.first.second
+            neck.barDepth = newValue.second.first
+            neck.apart = newValue.second.second
         }
+    }
+
+    /// Where along it the pinch has reached the bezel, and the two halves part.
+    static let parting: CGFloat = 0.5
+
+    /// A point on an outline, and the way the strand heads leaving it.
+    private struct Departure {
+        var s: CGFloat
+        var y: CGFloat
+        var ds: CGFloat
+        var dy: CGFloat
+    }
+
+    private static func step(_ u: CGFloat) -> CGFloat {
+        let t = min(max(u, 0), 1)
+        return t * t * (3 - 2 * t)
+    }
+
+    /// The point `share` of the way along the hole's outline, heading out of
+    /// it: from its foot at the wall — the strand filling the crook of its
+    /// rounded corner — back along the foot to where the corner starts, round
+    /// the corner, and up the wall to depth `to`.
+    private func hole(_ share: CGFloat, to: CGFloat) -> Departure {
+        let H = neck.holeDepth, r = max(0.001, min(neck.holeCorner, H))
+        let arc = r * .pi / 2
+        var d = min(max(share, 0), 1) * (r + arc + max(0, H - r - to))
+        if d <= r { return Departure(s: -d, y: H, ds: 1, dy: 0) }
+        d -= r
+        if d <= arc {
+            let a = d / r
+            return Departure(s: -r + r * sin(a), y: H - r + r * cos(a), ds: cos(a), dy: -sin(a))
+        }
+        d -= arc
+        return Departure(s: 0, y: max(0, H - r - d), ds: 0, dy: -1)
+    }
+
+    /// The point on the bar's end at depth `y` — round its corner, up its side,
+    /// or round its flare into the bezel — heading toward the hole.
+    private func bar(depth y: CGFloat, gap: CGFloat) -> Departure {
+        let B = neck.barDepth, F = max(0.001, neck.barFlare), R = max(0.001, neck.barCorner)
+        let foot = gap + F + R
+        if y >= B { return Departure(s: foot, y: B, ds: -1, dy: 0) }
+        if y >= B - R {
+            let a = acos(min(max((y - (B - R)) / R, -1), 1))
+            return Departure(s: foot - R * sin(a), y: y, ds: -cos(a), dy: -sin(a))
+        }
+        if y >= min(F, B - R) { return Departure(s: gap + F, y: y, ds: 0, dy: -1) }
+        // On the flare: the same curve `SideNotchShape` draws it with, walked
+        // from the tip to the depth asked for. A circle in its place put the
+        // point off the bar's real outline, and the strand stood a step out
+        // from the bar there.
+        let walk = Self.flareWalk
+        let want = min(max(y / F, 0), 1)
+        var i = 1
+        while i < walk.count - 1 && walk[i].v < want { i += 1 }
+        let a = walk[i - 1], b = walk[i]
+        let t = b.v > a.v ? (want - a.v) / (b.v - a.v) : 0
+        let heading = a.heading + (b.heading - a.heading) * t
+        return Departure(s: gap + F * (a.u + (b.u - a.u) * t), y: F * want,
+                         ds: -cos(heading), dy: -sin(heading))
+    }
+
+    /// `SideNotchShape.fluidTurn` at the notch's own ramp, from the tip — along
+    /// the bar, then down — normalised to land on (1, 1).
+    private static let flareWalk: [(u: CGFloat, v: CGFloat, heading: CGFloat)] = {
+        let p: CGFloat = 0.5, steps = 96
+        let bend = (CGFloat.pi / 2) / (1 - p)
+        var heading: CGFloat = 0, u: CGFloat = 0, v: CGFloat = 0
+        var walk: [(u: CGFloat, v: CGFloat, heading: CGFloat)] = [(0, 0, 0)]
+        for i in 0..<steps {
+            let s = (CGFloat(i) + 0.5) / CGFloat(steps)
+            let share = s < p ? s / p : (s > 1 - p ? (1 - s) / p : 1)
+            let before = heading
+            heading += bend * share / CGFloat(steps)
+            u += cos(heading) / CGFloat(steps)
+            v += sin(heading) / CGFloat(steps)
+            walk.append((u, v, (before + heading) / 2))
+        }
+        let end = walk[walk.count - 1]
+        return walk.map { ($0.u / end.u, $0.v / end.v, $0.heading) }
+    }()
+
+    /// A cubic from `a`, leaving along its heading, to `b`, arriving along its
+    /// — its handles a little over a third of the way, and, off an outline
+    /// heading up, never so long that the curve climbs past where it is going.
+    private static func curve(_ path: inout Path, from a: Departure, to b: Departure,
+                              at place: (CGFloat, CGFloat) -> CGPoint) {
+        let chord = hypot(b.s - a.s, b.y - a.y)
+        func reach(_ dy: CGFloat, rise: CGFloat) -> CGFloat {
+            let k = 0.36 * chord
+            return dy < -0.001 && rise > 0 ? min(k, 0.9 * rise / -dy) : k
+        }
+        let ka = reach(a.dy, rise: a.y - b.y)
+        let kb = reach(-b.dy, rise: b.y - a.y)
+        path.addCurve(to: place(b.s, b.y),
+                      control1: place(a.s + a.ds * ka, a.y + a.dy * ka),
+                      control2: place(b.s - b.ds * kb, b.y - b.dy * kb))
     }
 
     func path(in rect: CGRect) -> Path {
         let n = neck
-        var path = Path()
-        // From above the screen's edge, where nothing shows, like the notch.
         let top = -NotchRootView.bezelBleed
-        path.move(to: CGPoint(x: n.inside, y: top))
-        path.addLine(to: CGPoint(x: n.end, y: top))
-        let steps = 64
-        for i in 0...steps {
-            // From the bar back to the wall.
-            let u = 1 - CGFloat(i) / CGFloat(steps)
-            let pinch = sin(.pi * u)
-            let depth = n.presence * gooDepth(u, hole: n.holeDepth, bar: n.barDepth)
-                * (1 - n.thin * pinch * pinch)
-            path.addLine(to: CGPoint(x: n.wall + (n.end - n.wall) * u, y: max(top, depth)))
+        let r = min(n.holeCorner, n.holeDepth)
+        let gap = n.side * (n.tip - n.wall)
+        let inside = -(r + 1)
+        func at(_ s: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: n.wall + n.side * s, y: y) }
+        var path = Path()
+
+        // Reaching into the hole, the bar's own dip is the curve out of it, and
+        // all that is wanted here is the crook of the hole's rounded corner on
+        // this side filled — or, with the bar's end only just inside the wall,
+        // a wedge of wallpaper shows in it.
+        guard gap >= 0 else {
+            path.move(to: at(inside, top))
+            path.addLine(to: at(0, top))
+            path.addLine(to: at(0, n.holeDepth))
+            path.addLine(to: at(inside, n.holeDepth))
+            path.closeSubpath()
+            return path
         }
-        // And flat along the hole's foot to its end inside the hole.
-        path.addLine(to: CGPoint(x: n.inside, y: max(top, n.presence * n.holeDepth)))
+
+        let apart = min(max(n.apart, 0), 1)
+        let H = n.holeDepth, B = max(n.barDepth, H)
+        // Past both, where the closing edges run, inside the hole and the bar.
+        let beyond = gap + n.barFlare + n.barCorner + 1
+        let place = { (s: CGFloat, y: CGFloat) in at(s, y) }
+
+        if apart < Self.parting {
+            // **One strand**, its middle thinning up toward the bezel. Each end
+            // leaves its outline half way between the outline's foot and the
+            // middle's depth, so it is always deeper than the middle and the
+            // curve from it only ever rises to it.
+            let thin = Self.step(apart / Self.parting)
+            let mid = (H + B) / 2
+            let my = mid * (1 - thin)
+            // At the wall on the hole's foot until the middle is up past it,
+            // then round the corner as the middle rises the rest of the way.
+            let h = hole(max(0, (H - my) / H), to: H / 2)
+            let b = bar(depth: B - 0.5 * thin * (B - my), gap: gap)
+            let ms = (h.s + b.s) / 2
+            let slope = (1 - thin) * 1.5 * (b.y - h.y) / max(1, b.s - h.s)
+            let length = hypot(1, slope)
+            let m = Departure(s: ms, y: my, ds: 1 / length, dy: slope / length)
+            path.move(to: at(inside, top))
+            path.addLine(to: at(beyond, top))
+            path.addLine(to: at(beyond, b.y))
+            path.addLine(to: at(b.s, b.y))
+            Self.curve(&path, from: b, to: Departure(s: m.s, y: m.y, ds: -m.ds, dy: -m.dy),
+                       at: place)
+            Self.curve(&path, from: Departure(s: m.s, y: m.y, ds: -m.ds, dy: -m.dy),
+                       to: Departure(s: h.s, y: h.y, ds: -h.ds, dy: -h.dy), at: place)
+            path.addLine(to: at(inside, h.y))
+            path.closeSubpath()
+            return path
+        }
+
+        // **Parted.** Each half ends flat on the bezel where the strand parted,
+        // and draws back into its own outline: the point it leaves from climbs
+        // to where that outline meets the bezel, and its end on the bezel
+        // follows it there.
+        let back = Self.step((apart - Self.parting) / (1 - Self.parting))
+        let h = hole(1, to: H / 2 * (1 - back))
+        let b = bar(depth: B / 2 * (1 - back), gap: gap)
+        let split = (hole(1, to: H / 2).s + bar(depth: B / 2, gap: gap).s) / 2
+        let mh = max(h.s, split * (1 - back))
+        let mb = min(b.s, split + (gap - split) * back)
+
+        path.move(to: at(inside, top))
+        path.addLine(to: at(mh, top))
+        path.addLine(to: at(mh, 0))
+        Self.curve(&path, from: Departure(s: mh, y: 0, ds: -1, dy: 0),
+                   to: Departure(s: h.s, y: h.y, ds: -h.ds, dy: -h.dy), at: place)
+        path.addLine(to: at(inside, h.y))
+        path.closeSubpath()
+
+        path.move(to: at(mb, top))
+        path.addLine(to: at(beyond, top))
+        path.addLine(to: at(beyond, b.y))
+        path.addLine(to: at(b.s, b.y))
+        Self.curve(&path, from: b, to: Departure(s: mb, y: 0, ds: -1, dy: 0), at: place)
         path.closeSubpath()
         return path
     }
