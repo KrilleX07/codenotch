@@ -603,6 +603,29 @@ final class MergesWithTheCutoutTests: XCTestCase {
                      "out of reach, something still pulls at it")
     }
 
+    /// **The other copy does not wait for nothing.**
+    ///
+    /// The bug: every landing paused before joining, so the second copy of the
+    /// bar turned up late — but most drags are let go with the end already
+    /// inside the hole, where there is nothing to wait for. Only a notch let go
+    /// outside the hole still has to reach it first.
+    func testItOnlyWaitsWhenItHasToReachTheHole() throws {
+        let cutout = try XCTUnwrap(Notched().hardwareNotch)
+        let bar: CGFloat = 150
+        let V = NotchGeometry.cutoutOverlap
+        let left = 2 * V - cutout.width - bar
+        for (letGo, atOnce) in [(CGFloat(0), true), (V - 1, true), (-20, true),
+                                (V + 1, false), (40, false),
+                                (left, true), (left - V + 1, true),
+                                (left - V - 1, false), (left - 40, false)] {
+            let landing = try XCTUnwrap(
+                NotchGeometry.cutoutLanding(alongOffset: letGo, width: cutout.width, bar: bar))
+            XCTAssertEqual(landing.joinsAtOnce, atOnce,
+                           "let go at \(letGo)pt it " + (atOnce ? "waited for nothing"
+                                                                 : "joined before its end was inside the hole"))
+        }
+    }
+
     // MARK: - A whole drag, tick by tick
 
     /// Where the panel lands on screen for the model as it stands.

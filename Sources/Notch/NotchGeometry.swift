@@ -201,13 +201,25 @@ enum NotchGeometry {
     /// **Where a dragged notch goes when it is let go**, in the drag's own
     /// measure — flush on whichever side of the hole most of it is on — or nil
     /// when it is out of reach and stays where it was put.
-    static func cutoutLanding(alongOffset a: CGFloat, width: CGFloat,
-                              bar: CGFloat) -> (free: CGFloat, standing: CGFloat)? {
+    ///
+    /// `joinsAtOnce` is whether the end that meets the hole is already inside
+    /// it where it was let go. Then there is nothing to wait for: the glide and
+    /// the join are one movement, and the other copy comes out of the hole at
+    /// the same moment. Only a notch let go *outside* the hole has to reach it
+    /// before it can take it — or its joined end, which is square, would be
+    /// drawn on the wallpaper for the length of the glide.
+    static func cutoutLanding(alongOffset a: CGFloat, width: CGFloat, bar: CGFloat)
+    -> (free: CGFloat, standing: CGFloat, joinsAtOnce: Bool)? {
         guard cutoutFreelyNear(alongOffset: a, width: width, bar: bar) else { return nil }
         let lead = width / 2 - cutoutOverlap + a
-        if lead + bar / 2 >= 0 { return (free: 0, standing: 0) }
-        return (free: 2 * cutoutOverlap - width - bar,
-                standing: 2 * (cutoutOverlap - cutoutDeepest))
+        if lead + bar / 2 >= 0 {
+            // Its leading tip is inside the right wall while it is left of it.
+            return (free: 0, standing: 0, joinsAtOnce: a < cutoutOverlap)
+        }
+        let free = 2 * cutoutOverlap - width - bar
+        // Its trailing tip is inside the left wall while it is right of it.
+        return (free: free, standing: 2 * (cutoutOverlap - cutoutDeepest),
+                joinsAtOnce: a > free - cutoutOverlap)
     }
 
     /// **Whether the notch is on the display's own hole**, at which end, and by

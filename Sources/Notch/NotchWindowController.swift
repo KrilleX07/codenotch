@@ -468,6 +468,20 @@ final class NotchWindowController {
             return
         }
 
+        // Let go with its end already inside the hole: one movement, now. The
+        // pause is only for a notch that still has to reach the hole — waiting
+        // it out anyway is the other copy turning up late for no reason.
+        guard !target.joinsAtOnce else {
+            withAnimation(NotchMotion.unfold) {
+                model.holdsOffTheCutout = false
+                model.alongOffset = target.standing
+                relocate()
+            }
+            updateInteractiveRects()
+            onReposition?(model.alongOffset)
+            return
+        }
+
         withAnimation(NotchMotion.unfold) {
             model.alongOffset = target.free
             relocate()
