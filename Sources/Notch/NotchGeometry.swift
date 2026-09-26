@@ -55,6 +55,17 @@ struct CutoutProximity: Equatable {
 
     /// How wide the hole is, which is the gap the pair is drawn either side of.
     var width: CGFloat = 0
+
+    /// **Whether the two actually overlap**, which is whether the join is
+    /// drawn at all.
+    ///
+    /// The notch is still *reported* for a way either side of that, and the
+    /// difference matters: the window is sized and placed for a notch that has
+    /// a hole beside it, joined or not, so that taking the hole and letting go
+    /// of it do not move the window. A window frame is set in one step and
+    /// cannot be animated — anything inside it that eases while it moves is
+    /// easing across the distance it moved.
+    var joined: Bool = true
 }
 
 /// Everything the geometry maths needs from a screen, so it can be faked in tests.
@@ -170,6 +181,12 @@ enum NotchGeometry {
         // the wall it meets — so this is the placement rather than a guess at it.
         let (atTrailingEnd, overlap) = cutoutStanding(alongOffset: alongOffset)
 
+        // **Near the hole at all**, which is a wider question than whether the
+        // join is drawn: the window has to be the same size and in the same
+        // place either side of that answer.
+        guard overlap >= cutoutOverlap - cutoutTravel,
+              overlap <= cutoutDeepest + cutoutTravel else { return nil }
+
         // **There is no join unless the two actually overlap.**
         //
         // The bridge used to reach across a gap, on the reasoning that two
@@ -184,9 +201,10 @@ enum NotchGeometry {
         // notch is a notch, with the flare it has on every other edge. And past
         // the hole's far wall there is none either, or the fill that hides
         // inside the hole would hang out the other side of it.
-        guard overlap >= cutoutOverlap, overlap <= cutoutDeepest else { return nil }
+        let joined = overlap >= cutoutOverlap && overlap <= cutoutDeepest
         return CutoutProximity(depth: cutout.height, overlap: overlap,
-                               atTrailingEnd: atTrailingEnd, width: cutout.width)
+                               atTrailingEnd: atTrailingEnd, width: cutout.width,
+                               joined: joined)
     }
 
     /// Anchor to the physical display edge, even when the Dock or menu bar
@@ -273,10 +291,13 @@ enum NotchGeometry {
             // the middle of the screen.
             var wanted: CGFloat = full.midX - width / 2 + alongOffset
             if cutoutProximity(for: screen, edge: edge, alongOffset: alongOffset) != nil {
-                // Joined, the notch is a pair either side of the hole and the
-                // panel holds both. It is centred on the hole because the pair
-                // is: the nudge is spent on how deep the two are buried, which
-                // is already in the width this was asked for.
+                // **Centred on the hole, joined or not.**
+                //
+                // Joined the notch is a pair either side of the cutout and the
+                // panel holds both; not joined it is one bar beside it and the
+                // panel holds the room the other would need. The same window
+                // either way, deliberately: taking the hole must not move it.
+                // Where each copy sits inside it is `NotchViewModel.wings`.
                 wanted = full.midX - width / 2
             } else if let cutout = screen.hardwareNotch {
                 let bar: CGFloat = width - 2 * slack

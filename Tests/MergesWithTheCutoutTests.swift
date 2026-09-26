@@ -475,13 +475,27 @@ final class MergesWithTheCutoutTests: XCTestCase {
     func testAGapIsNotAJoin() {
         let screen = Notched()
         for nudged in [CGFloat(1), 4, 12, 30] {
-            XCTAssertNil(model(screen, offset: nudged).cutout,
-                         "nudged \(nudged)pt off the hole it still draws the join, and the "
-                         + "square end of it is out in the open")
+            let m = model(screen, offset: nudged)
+            XCTAssertFalse(m.mergesWithCutout,
+                           "nudged \(nudged)pt off the hole it still draws the join, and "
+                           + "the square end of it is out in the open")
+            XCTAssertEqual(m.wings.count, 1, "nudged \(nudged)pt off, it is one bar")
+            XCTAssertEqual(m.cutoutBleed, 0,
+                           "nudged \(nudged)pt off, nothing of it is buried")
         }
         // Right up against it, it is joined.
-        XCTAssertNotNil(model(screen, offset: 0).cutout)
-        XCTAssertNotNil(model(screen, offset: -1).cutout)
+        XCTAssertTrue(model(screen, offset: 0).mergesWithCutout)
+        XCTAssertTrue(model(screen, offset: -1).mergesWithCutout)
+
+        // And the window is the same either side of that, which is the whole
+        // reason the cutout is still reported once the join has gone: a window
+        // frame is set in one step, so a join that moved it would drag a third
+        // of a screen of slide behind it.
+        let joined = model(screen, offset: 0)
+        let apart = model(screen, offset: 12)
+        XCTAssertEqual(apart.panelSize.width, joined.panelSize.width, accuracy: 0.001,
+                       "the window resizes as the notch takes the hole")
+        XCTAssertEqual(apart.slack, joined.slack, accuracy: 0.001)
     }
 
     /// **A nudge toward the hole is not a reason to let go of it.**

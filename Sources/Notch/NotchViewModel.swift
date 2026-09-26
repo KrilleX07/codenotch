@@ -286,6 +286,8 @@ final class NotchViewModel: ObservableObject {
     func adopt(screen: ScreenDescribing) {
         // `frame`, not `visibleFrame`: the panel is centred on the full screen
         // and may sit under the menu bar, so the menu bar is not room lost.
+        // Whether anything of this has been on screen yet.
+        let settled = screenSize != .zero
         let size = screen.frameValue.size
         if screenSize != size { screenSize = size }
         let near = NotchGeometry.cutoutProximity(for: screen, edge: edge,
@@ -295,26 +297,29 @@ final class NotchViewModel: ObservableObject {
         if leavesTheCutoutAtItsTrailingEnd != side { leavesTheCutoutAtItsTrailingEnd = side }
         guard cutout != near else { return }
 
-        // **Not animated here, and that is the fix rather than an omission.**
+        // **Joining the hole is a movement**, and it can be one again now that
+        // the window no longer moves with it — see `cutoutSpan`. Taking the
+        // hole changes the notch's depth, its size and both of its ends at
+        // once, because the hardware sets all three; stepped, that is a pop in
+        // the middle of a drag. On the fold's own spring it is the notch
+        // flowing into the hole and back out of it.
         //
-        // Taking the hole moves the *window*: it is centred on the cutout and
-        // wide enough for both copies when joined, and pinned beside it and
-        // half the width when not. AppKit sets a window frame in one step —
-        // there is no animating it — so anything inside that eases from where
-        // it used to be is easing from a place that no longer exists. Wrapped
-        // in `withAnimation` this put a quarter of a screen of slide into every
-        // join: the panel jumped to its new origin on the first frame and the
-        // bar inside it spent the spring catching up.
-        //
-        // What moves instead is each copy of the bar arriving and leaving —
-        // drawn out of the hole and back into it, carrying its own animation,
-        // from nothing at the wall. Every position is final from the first
-        // frame, and nothing is anywhere it does not belong on any of them.
-        cutout = near
+        // Not on the first screen the notch ever sees: there is nothing on
+        // screen to move from, and the notch would be watched assembling
+        // itself.
+        guard settled else {
+            cutout = near
+            return
+        }
+        withAnimation(NotchMotion.unfold) { cutout = near }
     }
 
     /// **Whether the notch is drawn as one shape with the display's own hole.**
-    var mergesWithCutout: Bool { cutout != nil }
+    ///
+    /// Not the same as having one nearby: `cutout` is reported for a way either
+    /// side of the join, because the window is sized and placed the same on both
+    /// sides of that answer and only what is drawn inside it changes.
+    var mergesWithCutout: Bool { cutout?.joined == true }
 
     /// Which side of the hole the notch is on, whether or not it is joined to
     /// it right now.
@@ -355,7 +360,7 @@ final class NotchViewModel: ObservableObject {
     /// of the screen: the row that has to land on the hole's bottom edge is that
     /// much further down the shape.
     var mergedScale: CGFloat? {
-        guard let cutout, contentDepth > 0 else { return nil }
+        guard let cutout, cutout.joined, contentDepth > 0 else { return nil }
         return (cutout.depth + NotchRootView.bezelBleed) / contentDepth
     }
 
@@ -369,7 +374,8 @@ final class NotchViewModel: ObservableObject {
     /// bridge reaches back for the hole then, and the tip it reaches from is
     /// the visible start of the bar.
     var cutoutBleed: CGFloat {
-        max(0, cutout?.overlap ?? 0) / max(sizeScale, 0.0001)
+        guard mergesWithCutout else { return 0 }
+        return max(0, cutout?.overlap ?? 0) / max(sizeScale, 0.0001)
     }
 
     /// **What each end of the bar spends on its own ending**, before the body
@@ -407,6 +413,26 @@ final class NotchViewModel: ObservableObject {
         var mirrored: Bool
     }
 
+    /// **The room the panel keeps along the edge, beside the display's hole.**
+    ///
+    /// Deliberately the same whether the notch is joined to the hole or not, and
+    /// that is the whole of why it is written from the *unjoined* bar at the
+    /// size that was asked for: neither of those changes when the notch takes
+    /// the hole. A joined bar is a little longer, for what is buried, and drawn
+    /// a little smaller, because the hardware sets the size — the headroom
+    /// covers the difference, and the window never has to move.
+    ///
+    /// A window frame is set in one step and cannot be animated. Anything
+    /// inside it that eases while it moves is easing across the distance it
+    /// moved, and joining moved it a third of the screen.
+    func cutoutSpan(cellCount: Int) -> CGFloat {
+        guard let cutout else { return shapeLength(cellCount: cellCount) * sizeScale }
+        let plain = NotchLayout.shapeLength(cellCount: cellCount, edge: edge, flare: flare,
+                                            spacing: cellSpacing(cellCount: cellCount))
+        return cutout.width - 2 * NotchGeometry.cutoutOverlap
+            + 2 * (plain * requestedScale + 2 * NotchGeometry.cutoutDeepest)
+    }
+
     /// **Every drawn copy of the notch.**
     ///
     /// One, until it joins the display's own notch — then two, mirrored about
@@ -420,13 +446,21 @@ final class NotchViewModel: ObservableObject {
             return [Wing(id: 0, lead: slack + (shapeLength * sizeScale - drawn) / 2,
                          mirrored: false)]
         }
-        // Each draws back toward the hole as it folds, so the joined end of
-        // each is the end that does not move.
-        let bar = shapeLength * sizeScale
-        let span = cutout.width - 2 * cutout.overlap + 2 * bar
+        // Measured out from the hole's own centre, which is the panel's centre
+        // too — see `NotchGeometry.panelFrame`. Each copy is welded to a wall
+        // of the hole and draws back toward it as it folds, so a copy on the
+        // right starts at its wall and one on the left ends at its own.
+        let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
+        let half = cutout.width / 2
+        let toTheRight = half - cutout.overlap + middle
+        let toTheLeft = cutout.overlap - half - drawn + middle
+        guard cutout.joined else {
+            return [Wing(id: 0, lead: cutout.atTrailingEnd ? toTheLeft : toTheRight,
+                         mirrored: false)]
+        }
         return [
-            Wing(id: 1, lead: slack + bar - drawn, mirrored: true),
-            Wing(id: 2, lead: slack + span - bar, mirrored: false)
+            Wing(id: 1, lead: toTheLeft, mirrored: true),
+            Wing(id: 2, lead: toTheRight, mirrored: false)
         ]
     }
 
@@ -990,12 +1024,9 @@ final class NotchViewModel: ObservableObject {
     /// panel had shrunk around a card that had not.
     func panelSize(cellCount: Int) -> CGSize {
         let card = maxCardHeight(cellCount: cellCount)
-        let bar = shapeLength(cellCount: cellCount) * sizeScale
-        // Both copies and the hole between them, where there are two.
-        let span = cutout.map { $0.width - 2 * $0.overlap + 2 * bar } ?? bar
         return NotchPlacement.panelSize(
             edge: edge,
-            length: span
+            length: cutoutSpan(cellCount: cellCount)
                 + 2 * NotchLayout.slack(for: edge, maxCardHeight: card, notchScale: sizeScale),
             depth: NotchLayout.bodyDepth(for: edge) * sizeScale
                 + NotchLayout.tooltipDepth(for: edge, maxCardHeight: card)
