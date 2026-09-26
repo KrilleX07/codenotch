@@ -286,11 +286,6 @@ final class NotchViewModel: ObservableObject {
     func adopt(screen: ScreenDescribing) {
         // `frame`, not `visibleFrame`: the panel is centred on the full screen
         // and may sit under the menu bar, so the menu bar is not room lost.
-        // Whether there was already a notch on a screen before this call, which
-        // is the difference between joining the hole and simply starting beside
-        // it. The first one must not animate: there is nothing on screen yet to
-        // animate from, and the notch would be seen assembling itself.
-        let settled = screenSize != .zero
         let size = screen.frameValue.size
         if screenSize != size { screenSize = size }
         let near = NotchGeometry.cutoutProximity(for: screen, edge: edge,
@@ -300,18 +295,22 @@ final class NotchViewModel: ObservableObject {
         if leavesTheCutoutAtItsTrailingEnd != side { leavesTheCutoutAtItsTrailingEnd = side }
         guard cutout != near else { return }
 
-        // **Joining the hole is a movement, not a redraw.**
+        // **Not animated here, and that is the fix rather than an omission.**
         //
-        // Taking it changes the notch's depth, its size and both of its ends at
-        // once — the hardware sets all three — so stepped it is a pop in the
-        // middle of whatever the user is doing, usually a drag. On the fold's
-        // own spring it is the notch flowing into the hole and back out of it,
-        // which is what it looks like it should do.
-        if settled {
-            withAnimation(NotchMotion.unfold) { cutout = near }
-        } else {
-            cutout = near
-        }
+        // Taking the hole moves the *window*: it is centred on the cutout and
+        // wide enough for both copies when joined, and pinned beside it and
+        // half the width when not. AppKit sets a window frame in one step —
+        // there is no animating it — so anything inside that eases from where
+        // it used to be is easing from a place that no longer exists. Wrapped
+        // in `withAnimation` this put a quarter of a screen of slide into every
+        // join: the panel jumped to its new origin on the first frame and the
+        // bar inside it spent the spring catching up.
+        //
+        // What moves instead is each copy of the bar arriving and leaving —
+        // drawn out of the hole and back into it, carrying its own animation,
+        // from nothing at the wall. Every position is final from the first
+        // frame, and nothing is anywhere it does not belong on any of them.
+        cutout = near
     }
 
     /// **Whether the notch is drawn as one shape with the display's own hole.**

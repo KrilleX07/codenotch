@@ -255,7 +255,8 @@ struct NotchRootView: View {
             // drawn back in at that same wall. Which is the movement the fold
             // is already made of — the joined end does not move, and the rest
             // of the bar comes out of it.
-            .transition(Self.emerging(from: joinedEnd(of: wing)))
+            .transition(Self.emerging(from: joinedEnd(of: wing))
+                            .animation(motion(NotchMotion.unfold)))
             // **The mirror**, for the copy on the other side of the hole.
             //
             // The container and nothing in it: the other copy carries no
@@ -302,6 +303,12 @@ struct NotchRootView: View {
     /// growing *down* out of the bezel rather than along it — and anchored at
     /// the end that is joined to the hole, so that end stays welded to the wall
     /// for every frame of the movement.
+    ///
+    /// It carries its own animation rather than taking one from the change that
+    /// caused it. The change that causes it also moves the window, in one step
+    /// that cannot be animated, so nothing else in here may ease: what eases
+    /// from where it used to be eases from a place that no longer exists. This
+    /// is the only thing in the join that moves, and it moves from nothing.
     private static func emerging(from anchor: UnitPoint) -> AnyTransition {
         .modifier(active: Emerging(amount: 0, anchor: anchor),
                   identity: Emerging(amount: 1, anchor: anchor))
