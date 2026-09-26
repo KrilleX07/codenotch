@@ -373,6 +373,14 @@ final class NotchViewModel: ObservableObject {
 
     /// **One drawn copy of the notch**, and where along the panel it starts.
     struct Wing: Identifiable, Equatable {
+        /// **Stable across joining and leaving the hole**, and that is the
+        /// whole of what it is for. The copy that carries the readings is
+        /// always this one identity and is never the mirror; the mirror is
+        /// always the other, and arrives and leaves rather than turning into
+        /// anything. Shared between them, SwiftUI keeps the view and animates
+        /// what changed — which is a `scaleEffect` going from 1 to -1, so the
+        /// bar turns over through nothing on its way in and out of the hole.
+        /// A flip is not what joining a notch looks like.
         var id: Int
         /// Panel points, from the panel's own leading edge.
         var lead: CGFloat
@@ -400,8 +408,8 @@ final class NotchViewModel: ObservableObject {
         let bar = shapeLength * sizeScale
         let span = cutout.width - 2 * cutout.overlap + 2 * bar
         return [
-            Wing(id: 0, lead: slack + bar - drawn, mirrored: true),
-            Wing(id: 1, lead: slack + span - bar, mirrored: false)
+            Wing(id: 1, lead: slack + bar - drawn, mirrored: true),
+            Wing(id: 0, lead: slack + span - bar, mirrored: false)
         ]
     }
 

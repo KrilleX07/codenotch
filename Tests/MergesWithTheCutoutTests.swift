@@ -275,6 +275,32 @@ final class MergesWithTheCutoutTests: XCTestCase {
                        "a notch with no hole should still fold to its own centre line")
     }
 
+    /// **The copy that carries the readings is never the mirror**, joined or
+    /// not, and it keeps the same identity either way.
+    ///
+    /// The bug: both copies were numbered in drawing order, so the one copy a
+    /// plain notch has shared an identity with the *mirror* once it joined the
+    /// hole. SwiftUI kept that view and animated the difference — a
+    /// `scaleEffect` from 1 to -1 — and the notch turned over through nothing
+    /// every time it took the hole or let go of it. The mirror has to arrive
+    /// and leave, not be turned into.
+    func testTheCarryingCopyIsNeverTheMirror() {
+        let plain = model(Plain())
+        let joined = model(Notched())
+        XCTAssertEqual(plain.wings.count, 1)
+        XCTAssertEqual(joined.wings.count, 2)
+        XCTAssertFalse(plain.cellWing.mirrored)
+        XCTAssertFalse(joined.cellWing.mirrored)
+        XCTAssertEqual(plain.cellWing.id, joined.cellWing.id,
+                       "the carrying copy changed identity on joining, so SwiftUI has "
+                       + "something to interpolate where it should have an insertion")
+        for wing in plain.wings + joined.wings where wing.mirrored {
+            XCTAssertNotEqual(wing.id, plain.cellWing.id,
+                              "the mirror shares an identity with the carrying copy")
+        }
+        XCTAssertFalse(joined.handleWing.mirrored, "the handles are on the mirror")
+    }
+
     /// **It is drawn on both sides of the hole**, mirrored, so the hardware's
     /// own notch reads as having the app either side of it rather than as
     /// something with a bar stuck to one edge.
