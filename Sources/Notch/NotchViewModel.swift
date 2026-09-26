@@ -613,10 +613,24 @@ final class NotchViewModel: ObservableObject {
         // showed up first beside the cutout because that sweep is shallow, but
         // a 33pt flare spends a third of its length in those two points.
         shape.bezelHidden = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
+        guard let cutout else { return shape }
+        shape.reflected = wing.onTheLeft
+
+        // **The copy that carries the readings eases into the join.** Its end
+        // at the hole closes up from flare to square as a number, on the same
+        // spring as its depth and its size, rather than being swapped for the
+        // joined end in one frame — see `SideNotchShape.leadingJoin`. Square at
+        // the hole's own depth, with the tip inside the hole, *is* the joined
+        // end, so there is nothing else to draw.
+        if wing.carriesCells {
+            shape.leadingJoin = cutout.joined ? 1 : 0
+            return shape
+        }
+
         // The copy that carries nothing is only ever welded to its wall of the
-        // hole — even while it is still all inside it — so it is drawn joined
-        // whenever there is a hole to join.
-        if let cutout, cutout.joined || !wing.carriesCells {
+        // hole — even while it is still all inside it — so it is drawn joined,
+        // bridge and all, whenever there is a hole to join.
+        do {
             // Into the shape's own space, which is design points: the hole is
             // measured on the screen and the shape is drawn at design size and
             // multiplied back up, so every one of these is divided by the size
@@ -627,8 +641,7 @@ final class NotchViewModel: ObservableObject {
             shape.cutout = SideNotchShape.Cutout(
                 depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
                 wall: (cutout.joined ? cutout.overlap : NotchGeometry.cutoutOverlap) / scale,
-                run: flare,
-                atTrailingEnd: wing.onTheLeft
+                run: flare
             )
         }
         return shape

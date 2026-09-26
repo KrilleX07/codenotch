@@ -38,12 +38,28 @@ struct SideNotchShape: Shape {
         /// steep the join is. A flare's worth keeps the first ring clear of it,
         /// which is the same bargain the flare it replaces was struck for.
         var run: CGFloat
-
-        /// Whether the hole is at this copy's trailing end — the copy on the
-        /// *left* of the cutout.
-        var atTrailingEnd: Bool = false
     }
     var cutout: Cutout?
+
+    /// **How far the leading end has become the joined one**, 0 to 1.
+    ///
+    /// At 0 it is the notch's own end, flare and corner. At 1 it is square: the
+    /// flare and the corner have closed up to nothing, and the end runs straight
+    /// down from the bezel — which, at the hole's own depth, is exactly the
+    /// joined end, with nothing to step and the tip inside the hole.
+    ///
+    /// A number, because a swap cannot be eased. Joining used to replace the
+    /// flared end with the joined one in a single frame — and that end is not
+    /// all inside the hole, so the flare visibly vanished. As a number the flare
+    /// is drawn *into* the corner of the hole on the same spring as everything
+    /// else, which is the fold's own kind of movement.
+    var leadingJoin: CGFloat = 0
+
+    /// Whether this copy is drawn turned round along the bar — the copy on the
+    /// left of the hole, whose joined end is its trailing one. A path has no
+    /// in-between to animate through, and a copy's side is never changed while
+    /// it is anything but symmetric.
+    var reflected = false
     var curlRadius: CGFloat = NotchLayout.curlRadius
     var cornerRadius: CGFloat = NotchLayout.cornerRadius
     /// The inverse curve where the shape meets the bezel, when the caller wants
@@ -95,16 +111,18 @@ struct SideNotchShape: Shape {
     /// display's hole is and not what the notch is doing: the morph across it
     /// is the rect's, as the body deepens past the hole and shallows back.
     var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
-                                       AnimatablePair<CGFloat, CGFloat>> {
+                                       AnimatablePair<CGFloat, AnimatablePair<CGFloat, CGFloat>>> {
         get {
             AnimatablePair(AnimatablePair(cornerRadius, filletRadius ?? 0),
-                           AnimatablePair(filletDepth ?? 0, bezelHidden))
+                           AnimatablePair(filletDepth ?? 0,
+                                          AnimatablePair(bezelHidden, leadingJoin)))
         }
         set {
             cornerRadius = newValue.first.first
             if filletRadius != nil { filletRadius = newValue.first.second }
             if filletDepth != nil { filletDepth = newValue.second.first }
-            bezelHidden = newValue.second.second
+            bezelHidden = newValue.second.second.first
+            leadingJoin = newValue.second.second.second
         }
     }
 
@@ -128,7 +146,7 @@ struct SideNotchShape: Shape {
         // under one identity, the bar turned over through nothing on the way.
         // A path has no in-between to animate through. It is the shape it is,
         // and what it carries is never reflected at all.
-        let turned = cutout?.atTrailingEnd == true
+        let turned = reflected
             ? canonical.applying(CGAffineTransform(a: 1, b: 0, c: 0, d: -1,
                                                    tx: 0, ty: length))
             : canonical
@@ -334,19 +352,26 @@ struct SideNotchShape: Shape {
             path.addLine(to: CGPoint(x: brim, y: wall))
             smoothStep(&path, to: CGPoint(x: rect.minX, y: wall + run))
         } else {
+            // The flare and the corner at this end, closed up by however far
+            // it has joined the hole — see `leadingJoin`.
+            let open = 1 - max(0, min(leadingJoin, 1))
+            let leadCurl = curl * open
+            let leadDepth = curlDepth * open
+            let leadCorner = corner * open
+            let leadTop = rect.minY + leadCurl
             // Screen edge, above the body.
             path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
             if hidden > 0 { path.addLine(to: CGPoint(x: rect.maxX - hidden, y: rect.minY)) }
             // Flare inward and down onto the top edge.
-            if curl > 0 {
-                fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden - curlDepth, y: bodyTop),
+            if leadCurl > 0.001 {
+                fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden - leadDepth, y: leadTop),
                           leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: -1, dy: 0),
                           ramp: filletRamp)
             }
-            path.addLine(to: CGPoint(x: rect.minX + corner, y: bodyTop))
-            turn(&path, to: CGPoint(x: rect.minX, y: bodyTop + corner),
+            path.addLine(to: CGPoint(x: rect.minX + leadCorner, y: leadTop))
+            turn(&path, to: CGPoint(x: rect.minX, y: leadTop + leadCorner),
                  leaving: CGVector(dx: -1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
-                 radius: corner)
+                 radius: leadCorner)
         }
         // The far end is the notch's own end, merged or not: the corner it has
         // on every other edge, and the flare that makes it read as moulded into

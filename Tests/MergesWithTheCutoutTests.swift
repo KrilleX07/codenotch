@@ -101,8 +101,16 @@ final class MergesWithTheCutoutTests: XCTestCase {
                 cursor = to
                 samples.append(place(to))
             case .line(let to):
+                // Along the line, not only at its ends: the joined end's bottom
+                // edge is one straight run from inside the hole out past its
+                // wall, and "what is at the wall" has to find a point there.
+                let steps = max(1, Int((hypot(to.x - cursor.x, to.y - cursor.y)).rounded(.up)))
+                for i in 1...steps {
+                    let t = CGFloat(i) / CGFloat(steps)
+                    samples.append(place(CGPoint(x: cursor.x + (to.x - cursor.x) * t,
+                                                 y: cursor.y + (to.y - cursor.y) * t)))
+                }
                 cursor = to
-                samples.append(place(to))
             case .quadCurve(let to, let control):
                 cubic(cursor,
                       CGPoint(x: cursor.x + 2.0 / 3 * (control.x - cursor.x),
@@ -205,7 +213,9 @@ final class MergesWithTheCutoutTests: XCTestCase {
             .filter { $0.x >= hole.wall - 0.5 && $0.x <= end }
             .filter { $0.depth >= hole.depth - 1 && $0.depth <= bar + 1 }
             .sorted { $0.x < $1.x }
-        XCTAssertGreaterThan(bridge.count, 8, "the bridge is too coarse to measure")
+        guard bridge.count > 8 else {
+            return XCTFail("the bridge is too coarse to measure")
+        }
 
         func slope(_ a: Sample, _ b: Sample) -> CGFloat {
             guard b.x - a.x > 0.0001 else { return .greatestFiniteMagnitude }
@@ -371,8 +381,10 @@ final class MergesWithTheCutoutTests: XCTestCase {
         let screen = Notched()
         let m = model(screen)
         let hole = try hole(screen)
+        // From the wall outward — where it leaves the hole. Inside the hole is
+        // the joined end's square tip, standing where nothing shows.
         let far = outline(of: m, on: screen)
-            .filter { $0.x > hole.wall - 40 && $0.x < hole.wall + m.flare * m.sizeScale }
+            .filter { $0.x >= hole.wall - 0.5 && $0.x < hole.wall + m.flare * m.sizeScale }
             .map(\.depth)
             .filter { $0 > hole.depth / 2 }
         XCTAssertFalse(far.isEmpty)
@@ -752,6 +764,34 @@ final class MergesWithTheCutoutTests: XCTestCase {
         XCTAssertTrue(m.cellWing.onTheLeft, "put down on the left, the readings went right")
         XCTAssertEqual(ends(m, screen).1, glided, accuracy: 0.5,
                        "joining sent its joined end somewhere else")
+    }
+
+    /// **Joining is a number easing, not a shape being swapped.**
+    ///
+    /// The bar the readings are on used to become a different kind of shape the
+    /// instant it joined — its flared end replaced by the joined end in one
+    /// frame, with part of that flare outside the hole where the jump showed.
+    /// It is the same shape either side of the join now, and the only thing
+    /// that changes is `leadingJoin`, which SwiftUI eases through
+    /// `animatableData` on the spring the rest of the notch is on.
+    func testJoiningEasesTheEndRatherThanSwappingIt() throws {
+        let screen = Notched()
+        let joined = model(screen)
+        let apart = model(screen, offset: 30)
+        for m in [joined, apart] {
+            XCTAssertNil(m.notchShape(for: m.cellWing).cutout,
+                         "the carrying bar is drawn as a different kind of shape")
+        }
+        XCTAssertEqual(joined.notchShape(for: joined.cellWing).leadingJoin, 1)
+        XCTAssertEqual(apart.notchShape(for: apart.cellWing).leadingJoin, 0)
+
+        // And it is carried by `animatableData`, which is what lets it ease.
+        var shape = SideNotchShape(edge: .top)
+        var data = shape.animatableData
+        data.second.second.second = 0.4
+        shape.animatableData = data
+        XCTAssertEqual(shape.leadingJoin, 0.4, accuracy: 0.0001,
+                       "leadingJoin is not animatable, so the join would snap")
     }
 
     /// No hole, no join — on a plain display and on the other three edges.

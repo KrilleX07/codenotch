@@ -229,6 +229,27 @@ struct NotchRootView: View {
             // slide out of the end of it; clipped, they are swallowed by the
             // outline as it closes, which is what a notch should do.
             .clipShape(shape)
+            // **Drawn out of the hole, and taken back into it the same way.**
+            //
+            // Along the bar only — never across it, which would grow the black
+            // down out of the bezel rather than along it, and leave a step at
+            // the join — and from the wall the copy is welded to, which holds
+            // still for every frame. Not a fade, and not a transition, which
+            // runs on a clock of its own: `reveal` changes with everything else
+            // and eases on the same spring.
+            //
+            // **Here, inside the size setting, and nowhere else.** An anchor is
+            // an edge of the view's own box, and out past the scale below that
+            // box is the notch at design size — wider than the bar drawn from
+            // it, by as much as the size setting takes off. Anchored out there
+            // the copy grew from a point seventy points inside the hole and slid
+            // out of it, which is not coming out of a wall. In here the box's
+            // edge *is* the bar's.
+            //
+            // Never exactly zero, which is a degenerate transform the layer can
+            // drop out of rather than close up.
+            .scaleEffect(x: max(wing.reveal, 0.0001), y: 1,
+                         anchor: wing.onTheLeft ? .trailing : .leading)
             // The size choice, applied to the notch and the cells it carries —
             // and to nothing else. Drawn at design-frame size and scaled from
             // there, so `NotchLayout` keeps measuring the one thing it is
@@ -248,19 +269,6 @@ struct NotchRootView: View {
             // shape grows inward from a corner that cannot move, animated or
             // not.
             //
-            // **Drawn out of the hole, and taken back into it the same way.**
-            //
-            // Along the bar only — never across it, which would grow the black
-            // down out of the bezel rather than along it — and from the wall
-            // the copy is welded to, which holds still for every frame. Not a
-            // fade: nothing about a notch joining the one the Mac already has
-            // is an opacity. Not a transition either, which runs on a clock of
-            // its own and made the second copy late: `reveal` changes with
-            // everything else and eases on the same spring. Never exactly zero,
-            // which is a degenerate transform the layer can drop out of rather
-            // than close up.
-            .scaleEffect(x: max(wing.reveal, 0.0001), y: 1,
-                         anchor: wing.onTheLeft ? .trailing : .leading)
             // Where this copy sits along the edge. One copy is centred in the
             // panel; a pair straddles the hole, each held against the wall it
             // is joined to — see `NotchViewModel.wings`.
