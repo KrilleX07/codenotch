@@ -411,9 +411,9 @@ final class NotchWindowController {
     /// The notch itself, in panel coordinates with a top-left origin.
     private var notchRect: CGRect {
         placement.rect(
-            along: model.slack,
+            along: model.wings.first?.lead ?? model.slack,
             across: 0,
-            length: model.shapeLength * model.sizeScale,
+            length: model.drawnAlongExtent,
             depth: model.notchDepth * model.sizeScale
         )
     }
@@ -422,13 +422,16 @@ final class NotchWindowController {
     /// exactly the hardware notch when it is joined to one — see
     /// `NotchViewModel.wakeLength` for both halves of that.
     private var pillRect: CGRect {
-        placement.rect(
-            along: model.restingAlongLead
-                + (model.restingLength * model.sizeScale - model.wakeLength) / 2,
-            across: 0,
-            length: model.wakeLength,
-            depth: model.wakeDepth
-        )
+        // Joined, that is both copies and the hole between them: the hardware's
+        // own notch is part of the target, which is the whole point of the
+        // notch being drawn as part of it.
+        let joined = model.mergesWithCutout
+        let length = joined ? model.drawnAlongExtent : model.wakeLength
+        let lead = joined
+            ? (model.wings.first?.lead ?? model.slack)
+            : model.restingAlongLead
+                + (model.restingLength * model.sizeScale - model.wakeLength) / 2
+        return placement.rect(along: lead, across: 0, length: length, depth: model.wakeDepth)
     }
 
     /// The handle's bounding box, for deciding whether the panel takes events
@@ -437,7 +440,7 @@ final class NotchWindowController {
     private var handleRect: CGRect {
         let side = model.orbHotZone
         let boxes = (model.orbHandlePoints + model.moveHandlePoints).map { point -> CGRect in
-            let centre = placement.point(along: model.slack + point.x * model.sizeScale,
+            let centre = placement.point(along: model.handleWing.lead + point.x * model.sizeScale,
                                          across: point.y * model.sizeScale)
             return CGRect(x: centre.x - side / 2, y: centre.y - side / 2,
                           width: side, height: side)
@@ -452,7 +455,7 @@ final class NotchWindowController {
         // is written in — the orb scales with the notch, so its hit test has to
         // be asked in the same space the shape was drawn in.
         model.isOnOrbHandle(
-            along: (placement.along(of: local) - model.slack) / model.sizeScale,
+            along: (placement.along(of: local) - model.handleWing.lead) / model.sizeScale,
             across: placement.across(of: local) / model.sizeScale
         )
     }
@@ -461,7 +464,7 @@ final class NotchWindowController {
     /// measurements `isOverHandle` uses.
     private func isOverMoveHandle(_ local: CGPoint) -> Bool {
         model.isOnMoveHandle(
-            along: (placement.along(of: local) - model.slack) / model.sizeScale,
+            along: (placement.along(of: local) - model.handleWing.lead) / model.sizeScale,
             across: placement.across(of: local) / model.sizeScale
         )
     }
@@ -634,7 +637,14 @@ final class NotchWindowController {
 
         var target: Int?
         if model.isExpanded, notchRect.contains(local) {
-            target = cellIndex(along: placement.along(of: local))
+            let hit = cell(along: placement.along(of: local))
+            target = hit?.index
+            // Which copy of the bar the ring is on, so the card opens under
+            // the one the pointer is actually over rather than always under
+            // the same one.
+            if let wing = hit?.wing, model.hoveredWingID != wing.id {
+                model.hoveredWingID = wing.id
+            }
         } else if model.isExpanded, let current = model.hoveredIndex,
                   let card = tooltipRect(index: current),
                   card.contains(local) {
@@ -1223,11 +1233,23 @@ final class NotchWindowController {
         updateInteractiveRects()
     }
 
+    /// Which ring a point along the panel is on, and on which copy of the bar.
+    ///
+    /// Both copies answer: they show the same providers, and a ring you can see
+    /// is a ring you can point at. Which copy matters only for where the card
+    /// then opens — under the ring the pointer is actually on.
     func cellIndex(along: CGFloat) -> Int? {
+        cell(along: along)?.index
+    }
+
+    func cell(along: CGFloat) -> (index: Int, wing: NotchViewModel.Wing)? {
         let pitch = model.cellPitch * model.sizeScale
-        for index in model.snapshots.indices {
-            let centre = model.slack + model.ringCenter(index: index) * model.sizeScale
-            if abs(along - centre) <= pitch / 2 { return index }
+        for wing in model.wings {
+            guard model.alongWithin(along, of: wing) != nil else { continue }
+            for index in model.snapshots.indices {
+                let centre = model.ringAlong(index: index, in: wing)
+                if abs(along - centre) <= pitch / 2 { return (index, wing) }
+            }
         }
         return nil
     }

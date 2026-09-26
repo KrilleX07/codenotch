@@ -17,7 +17,7 @@ struct NotchRootView: View {
             ZStack(alignment: .topLeading) {
                 Color.clear
 
-                notch(place)
+                ForEach(model.wings) { wing in notch(place, wing: wing) }
 
                 // Outside the notch and outside its clip: the orb hangs past
                 // the end of the shape, tucked into the corner the far flare
@@ -154,7 +154,7 @@ struct NotchRootView: View {
             : NotchMotion.merge
     }
 
-    private func notch(_ place: NotchPlacement) -> some View {
+    private func notch(_ place: NotchPlacement, wing: NotchViewModel.Wing) -> some View {
         // Configured by the model, never assembled here — see `notchShape`.
         let shape = model.notchShape
         // Glass is for the open notch only. Folded, the pill has to read as
@@ -219,7 +219,7 @@ struct NotchRootView: View {
             // on the root.
             .frame(width: model.notchSize.width, height: model.notchSize.height)
             // Aligned to the corner where the stack starts *and* the bezel is.
-            .overlay(alignment: contentAlignment) { cells }
+            .overlay(alignment: contentAlignment) { cells(mirrored: wing.mirrored) }
             // Masked by the notch itself, not by its bounding box. Without this
             // the cells simply sit on top of a shrinking shape and appear to
             // slide out of the end of it; clipped, they are swallowed by the
@@ -243,11 +243,20 @@ struct NotchRootView: View {
             // that never moves, there is nothing left to disagree about: the
             // shape grows inward from a corner that cannot move, animated or
             // not.
-            // Centred along the edge — or, merged into the display's own hole,
-            // held against it at the leading end instead. See
-            // `NotchViewModel.notchAlongCentre`.
+            // **The mirror**, for the copy on the other side of the hole.
+            //
+            // Applied to the shape and everything it carries, and then taken
+            // back off each cell one at a time — see `cells`. A ring survives
+            // being flipped; the percentage under it does not.
+            //
+            // Before `position`, so it turns the bar about its own centre
+            // rather than about the panel's.
+            .scaleEffect(x: wing.mirrored ? -1 : 1, y: 1)
+            // Where this copy sits along the edge. One copy is centred in the
+            // panel; a pair straddles the hole, each held against the wall it
+            // is joined to — see `NotchViewModel.wings`.
             .position(place.point(
-                along: model.notchAlongCentre(panelLength: place.panelLength),
+                along: wing.lead + model.notchLength * model.sizeScale / 2,
                 across: model.notchDepth / 2
             ))
             // Pushed a shade past the bezel, and then clipped by the panel.
@@ -295,7 +304,7 @@ struct NotchRootView: View {
     private var leadIn: CGFloat { model.cellsLeadIn }
 
     @ViewBuilder
-    private var cells: some View {
+    private func cells(mirrored: Bool) -> some View {
         let stack = ForEach(Array(model.snapshots.enumerated()), id: \.element.id) { index, snapshot in
             ProviderCell(
                 snapshot: snapshot,
@@ -311,6 +320,9 @@ struct NotchRootView: View {
                 // edge that is the ring alone — the label sits below it, in the
                 // notch's depth, and claims nothing here.
                 .frame(width: model.edge.isVertical ? nil : NotchLayout.cellAlong(for: model.edge))
+                // The mirror taken back off, so the bar is the other way round
+                // and its readings are not.
+                .scaleEffect(x: mirrored ? -1 : 1, y: 1)
                 .opacity(model.isExpanded ? 1 : 0)
                 // A short slide toward the edge, no scaling: the clip is
                 // already doing the concealing, and scaling on top of it
@@ -365,14 +377,14 @@ struct NotchRootView: View {
     /// orb against a scaled flare would sit off that corner.
     private func orbCentre(_ place: NotchPlacement) -> CGPoint {
         place.point(
-            along: model.slack + model.orbAlong * model.sizeScale,
+            along: model.handleWing.lead + model.orbAlong * model.sizeScale,
             across: model.orbInset * model.sizeScale
         )
     }
 
     private func moveCentre(_ place: NotchPlacement) -> CGPoint {
         place.point(
-            along: model.slack + model.moveAlong * model.sizeScale,
+            along: model.handleWing.lead + model.moveAlong * model.sizeScale,
             across: model.orbInset * model.sizeScale
         )
     }
@@ -401,7 +413,7 @@ struct NotchRootView: View {
     }
 
     private func tooltipTailOffset(index: Int, snapshot: ProviderSnapshot) -> CGFloat {
-        model.slack + model.ringCenter(index: index) * model.sizeScale
+        model.ringAlong(index: index, in: model.hoveredWing)
             - model.tooltipAlong(index: index, length: tooltipLength(snapshot))
     }
 

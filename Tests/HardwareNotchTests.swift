@@ -28,16 +28,15 @@ private let plain = FakeScreen(
 final class HardwareNotchGeometryTests: XCTestCase {
     private let size = CGSize(width: 700, height: 200)
 
-    /// It stays on the bezel and starts a little way *inside* the cutout, so
-    /// the two blacks share an edge instead of meeting at one — see
-    /// `AboveTheCutoutTests` and `MergesWithTheCutoutTests`.
-    func testATopNotchKeepsTheBezelAndReachesIntoTheHardware() {
+    /// It stays on the bezel and centres on the cutout, because what it holds
+    /// is a pair of bars either side of it — see `AboveTheCutoutTests` and
+    /// `MergesWithTheCutoutTests`.
+    func testATopNotchKeepsTheBezelAndCentresOnTheHardware() {
         let frame = NotchGeometry.panelFrame(for: notched, panelSize: size, edge: .top)
         XCTAssertEqual(frame.maxY, notched.frameValue.maxY, accuracy: 0.001,
                        "it left the bezel")
-        let wall = notched.frameValue.midX + realNotch.width / 2
-        XCTAssertEqual(wall - frame.minX, NotchGeometry.cutoutOverlap, accuracy: 0.5,
-                       "the overlap the join is drawn for is not the overlap it is given")
+        XCTAssertEqual(frame.midX, notched.frameValue.midX, accuracy: 0.5,
+                       "the pair is symmetric about the hole, so the panel is too")
     }
 
     func testWithoutOneItStillReachesThePhysicalTopEdge() {

@@ -67,12 +67,24 @@ final class MergesWithTheCutoutTests: XCTestCase {
             trailingExtent: m.trailingExtent, leadingExtent: m.leadingExtent
         )
         let path = m.notchShape.path(in: CGRect(origin: .zero, size: m.notchSize))
-        let lead = frame.minX + m.notchAlongLead
-        let place = { (p: CGPoint) in
-            Sample(x: lead + p.x * m.sizeScale,
-                   depth: p.y * m.sizeScale - NotchRootView.bezelBleed)
+        var samples: [Sample] = []
+        // Every drawn copy, mirrored where the view mirrors it — what is on
+        // screen is the pair, and "nothing hangs below the hole" has to hold
+        // for both halves of it.
+        for wing in m.wings {
+            let drawn = m.notchLength * m.sizeScale
+            let lead = frame.minX + wing.lead
+            let place = { (p: CGPoint) in
+                Sample(x: wing.mirrored ? lead + drawn - p.x * m.sizeScale
+                                        : lead + p.x * m.sizeScale,
+                       depth: p.y * m.sizeScale - NotchRootView.bezelBleed)
+            }
+            samples += walk(path, place)
         }
+        return samples
+    }
 
+    private func walk(_ path: Path, _ place: (CGPoint) -> Sample) -> [Sample] {
         var samples: [Sample] = []
         var cursor = CGPoint.zero
         var start = CGPoint.zero
@@ -239,13 +251,20 @@ final class MergesWithTheCutoutTests: XCTestCase {
     /// does not slide it along the edge. Joined to the hole it has to shrink
     /// toward the *hole* instead: a pill that retreated to the middle of its
     /// panel would leave the bridge stretched across a hundred points of bezel.
-    func testItFoldsTowardTheHoleRatherThanItsOwnCentre() {
+    func testItFoldsTowardTheHoleRatherThanItsOwnCentre() throws {
         let m = model(Notched())
-        let open = m.notchAlongLead
+        func joinedEnds(_ m: NotchViewModel) -> [CGFloat] {
+            let drawn = m.notchLength * m.sizeScale
+            // The end of each copy that meets the hole: the far end of the
+            // mirrored one, the near end of the other.
+            return m.wings.map { $0.mirrored ? $0.lead + drawn : $0.lead }
+        }
+        let open = joinedEnds(m)
+        XCTAssertEqual(open.count, 2, "joined, it is drawn either side of the hole")
         m.isExpanded = false
-        XCTAssertEqual(m.notchAlongLead, open, accuracy: 0.001,
-                       "the folded notch let go of the hole")
-        XCTAssertEqual(m.notchAlongLead, m.slack, accuracy: 0.001)
+        for (was, now) in zip(open, joinedEnds(m)) {
+            XCTAssertEqual(now, was, accuracy: 0.001, "a folded copy let go of the hole")
+        }
 
         // And a notch with no hole to hold on to still contracts in place.
         let plain = model(Plain())
@@ -254,6 +273,30 @@ final class MergesWithTheCutoutTests: XCTestCase {
         XCTAssertEqual(plain.notchAlongLead + plain.notchLength * plain.sizeScale / 2,
                        openCentre, accuracy: 0.001,
                        "a notch with no hole should still fold to its own centre line")
+    }
+
+    /// **It is drawn on both sides of the hole**, mirrored, so the hardware's
+    /// own notch reads as having the app either side of it rather than as
+    /// something with a bar stuck to one edge.
+    func testItIsDrawnEitherSideOfTheHole() throws {
+        let screen = Notched()
+        let m = model(screen)
+        let hole = try hole(screen)
+        XCTAssertEqual(m.wings.count, 2)
+        XCTAssertEqual(m.wings.filter(\.mirrored).count, 1, "one of the pair is the mirror")
+
+        let frame = NotchGeometry.panelFrame(
+            for: screen, panelSize: m.panelSize, edge: .top,
+            alongOffset: m.alongOffset, slack: m.slack,
+            trailingExtent: m.trailingExtent, leadingExtent: m.leadingExtent)
+        let bar = m.shapeLength * m.sizeScale
+        let left = frame.minX + (m.wings.first?.lead ?? 0)
+        let right = frame.minX + (m.wings.last?.lead ?? 0) + bar
+        XCTAssertEqual(hole.wall - right, left - hole.left, accuracy: 1.5,
+                       "the two reach the same distance either side of the hole")
+
+        // And a display with no hole gets one bar, as every other edge does.
+        XCTAssertEqual(model(Plain()).wings.count, 1)
     }
 
     /// The buried overlap is length nobody sees, so the bar is drawn longer by
@@ -493,26 +536,6 @@ final class MergesWithTheCutoutTests: XCTestCase {
                            "\(open): it meets the hole's left wall at \(atWall.max() ?? 0)pt "
                            + "against the hole's \(hole.depth) — a step is a seam")
         }
-    }
-
-    /// The taper is at the other end from the hole, wherever the hole is — and
-    /// so are the rings' allowances, or the far ring has its foot cut off by
-    /// the taper drawing back underneath it.
-    func testTheEndsSwapWithTheSide() throws {
-        let screen = Notched()
-        let cutout = try XCTUnwrap(screen.hardwareNotch)
-        // The same point of nudge either side of the flip, so the two have the
-        // same overlap to spend and only the side differs.
-        let right = model(screen, offset: 0)
-        let left = model(screen, offset: try flushOnTheLeft(screen))
-
-        XCTAssertEqual(right.leadAllowance, left.endAllowance, accuracy: 0.001)
-        XCTAssertEqual(right.endAllowance, left.leadAllowance, accuracy: 0.001)
-        XCTAssertEqual(right.shapeLength, left.shapeLength, accuracy: 0.001,
-                       "the same bar either side, only turned round")
-        // The settings handle hangs off the tapered end, never into the hole.
-        XCTAssertEqual(right.orbAlong, right.shapeLength, accuracy: 0.001)
-        XCTAssertEqual(left.orbAlong, 0, accuracy: 0.001)
     }
 
     /// No hole, no join — on a plain display and on the other three edges.

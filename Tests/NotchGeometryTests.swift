@@ -287,8 +287,11 @@ final class ScreenAnchorRegressionTests: XCTestCase {
                 let model = NotchViewModel()
                 model.edge = edge
                 model.sizeScale = size.scale
+                // Open: a tooltip only ever exists on an open notch, and that
+                // is the geometry its anchor is measured in.
+                model.isExpanded = true
                 let length: CGFloat = edge.isVertical ? 300 : NotchLayout.cardWidth
-                let ring = model.slack + model.ringCenter(index: 0) * size.scale
+                let ring = model.ringAlong(index: 0, in: model.hoveredWing)
                 XCTAssertEqual(model.tooltipAlong(index: 0, length: length), ring)
                 // Both ends of the screen: the ring remains on screen, while a
                 // card centred on it would lose its heading or its right edge.
@@ -446,27 +449,19 @@ final class AboveTheCutoutTests: XCTestCase {
 
     private let size = CGSize(width: 400, height: 120)
 
-    /// **Its leading tip lands inside the cutout, not beside it.**
+    /// **The panel is centred on the cutout**, because what it holds is a pair
+    /// of bars either side of it.
     ///
-    /// Centred would bury the whole notch in the hole, where nothing drawn is
-    /// on screen at all. Dropped below the hole it hangs in the wallpaper
-    /// attached to nothing. Beside it with a gap — which this was first — reads
-    /// as one shape with a fault in it. So it overlaps, by exactly enough for
-    /// the two blacks to share an edge.
-    func testItsLeadingTipLandsInsideTheCutout() throws {
+    /// Where each of the two *lands* is `NotchViewModel.wings` and is measured
+    /// in `MergesWithTheCutoutTests`; all this has to do is give them a window
+    /// that spans the hole and both of them, on the bezel.
+    func testThePanelIsCentredOnTheCutout() {
         let screen = Notched()
         let frame = NotchGeometry.panelFrame(for: screen, panelSize: size, edge: .top)
-        let cutout = try XCTUnwrap(screen.hardwareNotch)
-
         XCTAssertEqual(frame.maxY, screen.frameValue.maxY, accuracy: 0.5,
                        "it left the bezel — the notch belongs on the screen's edge")
-
-        // The visible notch, not the padded panel: `slack` at each end is room
-        // for a card that is not there, and this call passes none.
-        let holeRight = screen.frameValue.midX + cutout.width / 2
-        XCTAssertEqual(holeRight - frame.minX, NotchGeometry.cutoutOverlap, accuracy: 0.5,
-                       "the tip is \(holeRight - frame.minX)pt inside the hole, and the "
-                       + "join is drawn for \(NotchGeometry.cutoutOverlap)")
+        XCTAssertEqual(frame.midX, screen.frameValue.midX, accuracy: 0.5,
+                       "the pair is symmetric about the hole, so the panel is too")
     }
 
     /// A display without one loses nothing: centred, on the bezel, as before.

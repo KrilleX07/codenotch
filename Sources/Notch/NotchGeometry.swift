@@ -47,7 +47,14 @@ struct CutoutProximity: Equatable {
     /// leading end. Dragged the other way it ends up on the *left* of the
     /// cutout, where the end that meets the hole is its trailing one — the same
     /// join, at the other end of the same shape.
+    ///
+    /// Only of consequence while the notch is coming off the hole or going back
+    /// on to it: joined, it is drawn on *both* sides at once, and a pair that is
+    /// symmetric about the hole has no side.
     var atTrailingEnd: Bool = false
+
+    /// How wide the hole is, which is the gap the pair is drawn either side of.
+    var width: CGFloat = 0
 }
 
 /// Everything the geometry maths needs from a screen, so it can be faked in tests.
@@ -179,7 +186,7 @@ enum NotchGeometry {
         // inside the hole would hang out the other side of it.
         guard overlap >= cutoutOverlap, overlap <= cutoutDeepest else { return nil }
         return CutoutProximity(depth: cutout.height, overlap: overlap,
-                               atTrailingEnd: atTrailingEnd)
+                               atTrailingEnd: atTrailingEnd, width: cutout.width)
     }
 
     /// Anchor to the physical display edge, even when the Dock or menu bar
@@ -265,7 +272,13 @@ enum NotchGeometry {
             // after it has let go of the hole, out past it rather than back to
             // the middle of the screen.
             var wanted: CGFloat = full.midX - width / 2 + alongOffset
-            if let cutout = screen.hardwareNotch {
+            if cutoutProximity(for: screen, edge: edge, alongOffset: alongOffset) != nil {
+                // Joined, the notch is a pair either side of the hole and the
+                // panel holds both. It is centred on the hole because the pair
+                // is: the nudge is spent on how deep the two are buried, which
+                // is already in the width this was asked for.
+                wanted = full.midX - width / 2
+            } else if let cutout = screen.hardwareNotch {
                 let bar: CGFloat = width - 2 * slack
                 let stand = cutoutStanding(alongOffset: alongOffset)
                 wanted = stand.atTrailingEnd

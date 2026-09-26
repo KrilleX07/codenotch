@@ -39,9 +39,6 @@ struct SideNotchShape: Shape {
         /// which is the same bargain the flare it replaces was struck for.
         var run: CGFloat
 
-        /// Whether the hole is at the shape's trailing end rather than its
-        /// leading one — the notch dragged to the *left* of the cutout.
-        var atTrailingEnd: Bool = false
     }
     var cutout: Cutout?
     var curlRadius: CGFloat = NotchLayout.curlRadius
@@ -120,21 +117,10 @@ struct SideNotchShape: Shape {
             flareDepth: filletDepth
         )
 
-        // **The other side of the hole is the same shape, turned round.**
-        //
-        // The bridge is written at the leading end and the taper at the
-        // trailing one, because that is the placement the notch has by default.
-        // Dragged past the cutout it wants them the other way about — and that
-        // is a reflection along the bar, not a second path to write and keep in
-        // step with this one. What is *not* reflected is what the bar carries:
-        // the rings stay in reading order, and the model pays each end its own
-        // allowance so they sit clear of whichever ending it has.
-        let turned = cutout?.atTrailingEnd == true
-            ? canonical.applying(CGAffineTransform(a: 1, b: 0, c: 0, d: -1,
-                                                   tx: 0, ty: length))
-            : canonical
-
-        return turned
+        // The copy on the other side of the hole is this shape mirrored, and
+        // the view does that — along with taking the mirror back off each
+        // reading it carries, which is not this type's business.
+        return canonical
             .applying(Self.transform(for: edge, depth: depth))
             .applying(CGAffineTransform(translationX: rect.minX, y: rect.minY))
     }

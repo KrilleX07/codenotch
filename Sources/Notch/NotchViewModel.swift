@@ -229,13 +229,40 @@ final class NotchViewModel: ObservableObject {
     /// Visible slice of the panel along its edge, in local stack coordinates.
     @Published var visibleAlongRange: ClosedRange<CGFloat>?
 
+    /// The copy of the bar the pointer last picked a ring on, which is the one
+    /// its card belongs under. Meaningless until there are two of them.
+    @Published var hoveredWingID: Int = 0
+
+    var hoveredWing: Wing {
+        wings.first { $0.id == hoveredWingID } ?? handleWing
+    }
+
     /// How close the display's own hole is, or nil when there is none in reach.
     /// Set by `adopt(screen:)` and read by everything that has to know the
     /// notch is joined to something at its leading end.
     @Published var cutout: CutoutProximity?
 
+    /// Where a ring's centre falls along the panel, on a given copy of the bar.
+    func ringAlong(index: Int, in wing: Wing) -> CGFloat {
+        let local = ringCenter(index: index) * sizeScale
+        // Mirrored, the notch's own measurements run back from the copy's far
+        // end rather than forward from its near one.
+        return wing.mirrored
+            ? wing.lead + notchLength * sizeScale - local
+            : wing.lead + local
+    }
+
+    /// And how far along a copy a point in the panel is, in the notch's own
+    /// measurements — nil when the point is not on that copy at all.
+    func alongWithin(_ along: CGFloat, of wing: Wing) -> CGFloat? {
+        let drawn = notchLength * sizeScale
+        guard along >= wing.lead - 0.001, along <= wing.lead + drawn + 0.001 else { return nil }
+        let local = wing.mirrored ? wing.lead + drawn - along : along - wing.lead
+        return local / max(sizeScale, 0.0001)
+    }
+
     func tooltipAlong(index: Int, length: CGFloat) -> CGFloat {
-        let centre = slack + ringCenter(index: index) * sizeScale
+        let centre = ringAlong(index: index, in: hoveredWing)
         guard let range = visibleAlongRange else { return centre }
         let lower = range.lowerBound + length / 2
         let upper = range.upperBound - length / 2
@@ -342,57 +369,70 @@ final class NotchViewModel: ObservableObject {
         max(0, cutout?.overlap ?? 0) / max(sizeScale, 0.0001)
     }
 
-    /// Which end of the bar the hole is at, or neither.
-    var cutoutAtTrailingEnd: Bool { cutout?.atTrailingEnd ?? false }
-
     /// **What each end of the bar spends on its own ending**, before the body
     /// with the rings in it begins.
     ///
     /// A flare at both ends, as every edge has always had — plus, at the end
     /// that meets the hole, whatever of the bar is buried inside it, which is
     /// length nobody can see and so length the rings must not be measured from.
-    var leadAllowance: CGFloat {
-        flare + (cutoutAtTrailingEnd ? 0 : cutoutBleed)
+    var leadAllowance: CGFloat { flare + cutoutBleed }
+
+    var endAllowance: CGFloat { flare }
+
+    /// **One drawn copy of the notch**, and where along the panel it starts.
+    struct Wing: Identifiable, Equatable {
+        var id: Int
+        /// Panel points, from the panel's own leading edge.
+        var lead: CGFloat
+        /// Whether this copy is the mirror image of the other one. Only the
+        /// *shape* is mirrored: what it carries is drawn the right way round,
+        /// or every reading in it would be back to front.
+        var mirrored: Bool
     }
 
-    var endAllowance: CGFloat {
-        flare + (cutoutAtTrailingEnd ? cutoutBleed : 0)
-    }
-
-    /// Where the drawn notch starts along the panel, in panel points.
+    /// **Every drawn copy of the notch.**
     ///
-    /// Folded, the notch normally shrinks toward its own centre line, so that
-    /// hiding does not also slide it along the edge. Merged into the hole it
-    /// shrinks toward its leading end instead: that end is *attached*, and a
-    /// notch that folded toward its middle would pull away from the thing it is
-    /// joined to and leave the bridge stretched across nothing.
-    var notchAlongLead: CGFloat {
-        alongLead(of: notchLength)
-    }
-
-    /// The same for the folded notch, whatever state it is in right now — the
-    /// hit region that wakes it has to know where it will be.
-    var restingAlongLead: CGFloat {
-        alongLead(of: restingLength)
-    }
-
-    private func alongLead(of length: CGFloat) -> CGFloat {
-        guard mergesWithCutout else {
-            return slack + (shapeLength - length) * sizeScale / 2
+    /// One, until it joins the display's own notch — then two, mirrored about
+    /// the hole, because a bar hanging off one side of the cutout is not what
+    /// the machine looks like. The pair reads as the hardware's own notch with
+    /// the app either side of it rather than as something stuck to one edge of
+    /// it, and it costs seeing each reading twice.
+    var wings: [Wing] {
+        let drawn = notchLength * sizeScale
+        guard let cutout else {
+            return [Wing(id: 0, lead: slack + (shapeLength * sizeScale - drawn) / 2,
+                         mirrored: false)]
         }
-        // Toward the hole, whichever end that is: the joined end is the one
-        // that must not move, or the bridge is left stretched across bezel.
-        return cutoutAtTrailingEnd
-            ? slack + (shapeLength - length) * sizeScale
-            : slack
+        // Each draws back toward the hole as it folds, so the joined end of
+        // each is the end that does not move.
+        let bar = shapeLength * sizeScale
+        let span = cutout.width - 2 * cutout.overlap + 2 * bar
+        return [
+            Wing(id: 0, lead: slack + bar - drawn, mirrored: true),
+            Wing(id: 1, lead: slack + span - bar, mirrored: false)
+        ]
     }
 
-    /// Where the middle of the drawn notch falls along a panel of this length.
-    /// Taken from the panel itself when the notch is centred in it, so that the
-    /// rounding AppKit applied to the window is the rounding the shape gets.
-    func notchAlongCentre(panelLength: CGFloat) -> CGFloat {
-        guard mergesWithCutout else { return panelLength / 2 }
-        return notchAlongLead + notchLength * sizeScale / 2
+    /// Where the first drawn copy starts along the panel.
+    var notchAlongLead: CGFloat { wings.first?.lead ?? slack }
+
+    /// The copy the settings handle and the move handle hang off — one set of
+    /// handles, not two, however many copies of the bar there are.
+    var handleWing: Wing { wings.last ?? Wing(id: 0, lead: slack, mirrored: false) }
+
+    /// Where the folded notch starts along the panel, whatever state it is in
+    /// right now — the hit region that wakes it has to know where it will be.
+    var restingAlongLead: CGFloat {
+        guard cutout == nil else { return wings.first?.lead ?? slack }
+        return slack + (shapeLength - restingLength) * sizeScale / 2
+    }
+
+    /// How far the drawn notch reaches along the panel, from the first copy's
+    /// start to the last one's end. The pair and the hole between them.
+    var drawnAlongExtent: CGFloat {
+        let drawn = notchLength * sizeScale
+        guard let first = wings.first, let last = wings.last else { return drawn }
+        return last.lead + drawn - first.lead
     }
 
     /// How much of the hardware's own height a ring may use, as a fraction of
@@ -444,8 +484,7 @@ final class NotchViewModel: ObservableObject {
             shape.cutout = SideNotchShape.Cutout(
                 depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
                 wall: cutout.overlap / scale,
-                run: flare,
-                atTrailingEnd: cutout.atTrailingEnd
+                run: flare
             )
         }
         return shape
@@ -528,9 +567,7 @@ final class NotchViewModel: ObservableObject {
     var orbScale: CGFloat { 1 }
 
     var orbAlong: CGFloat {
-        // Never into the hole: joined at the trailing end, the settings handle
-        // hangs off the *leading* tip, which is the tapered one there.
-        guard orbHugsCorner else { return cutoutAtTrailingEnd ? 0 : shapeLength }
+        guard orbHugsCorner else { return shapeLength }
         return cornerCentreAlong
             + NotchLayout.orbCornerOffset(corner: drawnCornerRadius, scale: orbScale)
     }
@@ -550,8 +587,7 @@ final class NotchViewModel: ObservableObject {
     /// orb sits past `shapeLength`, so the pair stay symmetric about the notch
     /// at every size and on every edge.
     var moveAlong: CGFloat {
-        guard !cutoutAtTrailingEnd else { return shapeLength - cutoutBleed }
-        return cutoutBleed + shapeLength - orbAlong
+        cutoutBleed + shapeLength - orbAlong
     }
 
     /// The mirror of `trailingExtent` at the near end — the room the move
@@ -930,9 +966,12 @@ final class NotchViewModel: ObservableObject {
     /// panel had shrunk around a card that had not.
     func panelSize(cellCount: Int) -> CGSize {
         let card = maxCardHeight(cellCount: cellCount)
+        let bar = shapeLength(cellCount: cellCount) * sizeScale
+        // Both copies and the hole between them, where there are two.
+        let span = cutout.map { $0.width - 2 * $0.overlap + 2 * bar } ?? bar
         return NotchPlacement.panelSize(
             edge: edge,
-            length: shapeLength(cellCount: cellCount) * sizeScale
+            length: span
                 + 2 * NotchLayout.slack(for: edge, maxCardHeight: card, notchScale: sizeScale),
             depth: NotchLayout.bodyDepth(for: edge) * sizeScale
                 + NotchLayout.tooltipDepth(for: edge, maxCardHeight: card)
