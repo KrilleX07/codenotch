@@ -431,6 +431,7 @@ final class NotchWindowController {
                                             width: cutout.width, bar: model.plainBarLength)
         let wasJoined = model.mergesWithCutout
         let lift = {
+            self.model.revealsTheOtherCopy = false
             self.model.holdsOffTheCutout = true
             self.model.alongOffset = free
             self.relocate()
@@ -473,6 +474,7 @@ final class NotchWindowController {
         // it out anyway is the other copy turning up late for no reason.
         guard !target.joinsAtOnce else {
             withAnimation(NotchMotion.unfold) {
+                model.revealsTheOtherCopy = false
                 model.holdsOffTheCutout = false
                 model.alongOffset = target.standing
                 relocate()
@@ -482,7 +484,12 @@ final class NotchWindowController {
             return
         }
 
+        // The other copy starts out of its wall *now*, on the same spring as
+        // this glide, so the pair arrive together rather than one after the
+        // other. It is safe to show before the join: it is only ever welded to
+        // its wall, and its joined end is inside the hole throughout.
         withAnimation(NotchMotion.unfold) {
+            model.revealsTheOtherCopy = true
             model.alongOffset = target.free
             relocate()
         }
@@ -491,6 +498,7 @@ final class NotchWindowController {
                 guard let self else { return }
                 self.landing = nil
                 withAnimation(NotchMotion.unfold) {
+                    self.model.revealsTheOtherCopy = false
                     self.model.holdsOffTheCutout = false
                     self.model.alongOffset = target.standing
                     self.relocate()

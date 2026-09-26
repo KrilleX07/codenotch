@@ -426,6 +426,19 @@ final class NotchViewModel: ObservableObject {
         /// Whether this copy carries the readings. Only one does; the other is
         /// the container and nothing else.
         var carriesCells: Bool
+        /// **How far this copy has come out of the hole**, 0 to 1 — along the
+        /// bar, from the wall it is joined to.
+        ///
+        /// A number rather than a transition, and that is the fix for the
+        /// second copy turning up late. A transition runs on its own clock,
+        /// started by the view appearing, so the copy it brought in grew out of
+        /// the hole on one timeline while the copy beside it changed on
+        /// another, and the two never agreed. As a number it changes in the same
+        /// transaction as everything else about the notch, and SwiftUI eases it
+        /// on the same spring, from the same moment, as the copy it is paired
+        /// with. The copy is always there near the hole; at 0 it is simply all
+        /// still inside it.
+        var reveal: CGFloat = 1
     }
 
     /// **The room the panel keeps along the edge, beside the display's hole.**
@@ -467,21 +480,51 @@ final class NotchViewModel: ObservableObject {
         // right starts at its wall and one on the left ends at its own.
         let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
         let half = cutout.width / 2
-        let toTheRight = half - cutout.overlap + middle
-        let toTheLeft = cutout.overlap - half - drawn + middle
-        guard cutout.joined else {
-            let left = cutout.atTrailingEnd
-            return [Wing(id: 0, lead: left ? toTheLeft : toTheRight,
-                         onTheLeft: left, carriesCells: true)]
-        }
-        // The readings stay on the side the notch was put down on; the other
-        // side gets the container alone.
-        let left = cutout.atTrailingEnd
-        return [
-            Wing(id: left ? 0 : 1, lead: toTheLeft, onTheLeft: true, carriesCells: left),
-            Wing(id: left ? 1 : 0, lead: toTheRight, onTheLeft: false, carriesCells: !left)
-        ]
+        func toTheRight(_ overlap: CGFloat) -> CGFloat { half - overlap + middle }
+        func toTheLeft(_ overlap: CGFloat) -> CGFloat { overlap - half - drawn + middle }
+
+        // The copy that carries the readings. Held, it is measured from the
+        // right-hand wall point for point with the pointer, whichever side of
+        // the hole it has been dragged to.
+        let carryingLeft = mergesWithCutout ? cutout.atTrailingEnd
+                                            : (holdsOffTheCutout ? false : cutout.atTrailingEnd)
+        let carrying = Wing(id: 0,
+                            lead: carryingLeft ? toTheLeft(cutout.overlap)
+                                               : toTheRight(cutout.overlap),
+                            onTheLeft: carryingLeft, carriesCells: true)
+
+        // And the other one, at the far wall, flush — always here, near the
+        // hole, and only as far out of it as the join says. It stays on the
+        // side opposite the one the carrying copy is *on*, which is what keeps
+        // it from ever having to cross the hole on its way out.
+        let otherLeft = !carryingSide
+        let otherOverlap = mergesWithCutout ? cutout.overlap : NotchGeometry.cutoutOverlap
+        let other = Wing(id: 1,
+                         lead: otherLeft ? toTheLeft(otherOverlap) : toTheRight(otherOverlap),
+                         onTheLeft: otherLeft, carriesCells: false,
+                         reveal: mergesWithCutout || revealsTheOtherCopy ? 1 : 0)
+        return otherLeft ? [other, carrying] : [carrying, other]
     }
+
+    /// Which side of the hole the copy that carries the readings is *on* —
+    /// joined, the side it was put down on; in the hand, the side most of it is
+    /// over, which is the side it will be put down on.
+    private var carryingSide: Bool {
+        guard let cutout else { return false }
+        if mergesWithCutout || !holdsOffTheCutout { return cutout.atTrailingEnd }
+        // Held: its leading tip is `overlap` inside the right wall, so its
+        // middle is half a bar on from there.
+        let bar = shapeLength * sizeScale
+        return cutout.width / 2 - cutout.overlap + bar / 2 < 0
+    }
+
+    /// **Whether the other copy is coming out of the hole ahead of the join.**
+    ///
+    /// Set the moment a dragged notch is let go near the hole, so the other copy
+    /// starts flowing out of its wall *while* the carrying copy glides to its
+    /// own, rather than after it has arrived. The join then finds it already on
+    /// its way and simply carries on.
+    @Published var revealsTheOtherCopy = false
 
     /// Where the first drawn copy starts along the panel.
     var notchAlongLead: CGFloat { wings.first?.lead ?? slack }
@@ -508,7 +551,9 @@ final class NotchViewModel: ObservableObject {
     /// Where the folded notch starts along the panel, whatever state it is in
     /// right now — the hit region that wakes it has to know where it will be.
     var restingAlongLead: CGFloat {
-        guard cutout == nil else { return wings.first?.lead ?? slack }
+        guard cutout == nil else {
+            return wings.first { $0.reveal > 0 }?.lead ?? slack
+        }
         return slack + (shapeLength - restingLength) * sizeScale / 2
     }
 
@@ -516,7 +561,8 @@ final class NotchViewModel: ObservableObject {
     /// start to the last one's end. The pair and the hole between them.
     var drawnAlongExtent: CGFloat {
         let drawn = notchLength * sizeScale
-        guard let first = wings.first, let last = wings.last else { return drawn }
+        let shown = wings.filter { $0.reveal > 0 }
+        guard let first = shown.first, let last = shown.last else { return drawn }
         return last.lead + drawn - first.lead
     }
 
@@ -567,7 +613,10 @@ final class NotchViewModel: ObservableObject {
         // showed up first beside the cutout because that sweep is shallow, but
         // a 33pt flare spends a third of its length in those two points.
         shape.bezelHidden = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
-        if let cutout, cutout.joined {
+        // The copy that carries nothing is only ever welded to its wall of the
+        // hole — even while it is still all inside it — so it is drawn joined
+        // whenever there is a hole to join.
+        if let cutout, cutout.joined || !wing.carriesCells {
             // Into the shape's own space, which is design points: the hole is
             // measured on the screen and the shape is drawn at design size and
             // multiplied back up, so every one of these is divided by the size
@@ -577,7 +626,7 @@ final class NotchViewModel: ObservableObject {
             let scale = max(sizeScale, 0.0001)
             shape.cutout = SideNotchShape.Cutout(
                 depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
-                wall: cutout.overlap / scale,
+                wall: (cutout.joined ? cutout.overlap : NotchGeometry.cutoutOverlap) / scale,
                 run: flare,
                 atTrailingEnd: wing.onTheLeft
             )

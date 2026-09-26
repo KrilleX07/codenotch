@@ -69,7 +69,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
         var samples: [Sample] = []
         // Every drawn copy, as the shape it is drawn as — the one on the left
         // of the hole is reflected in its own path, not flipped by the view.
-        for wing in m.wings {
+        for wing in m.wings where wing.reveal > 0 {
             let path = m.notchShape(for: wing).path(in: CGRect(origin: .zero, size: m.notchSize))
             let lead = frame.minX + wing.lead
             let place = { (p: CGPoint) in
@@ -475,7 +475,8 @@ final class MergesWithTheCutoutTests: XCTestCase {
             XCTAssertFalse(m.mergesWithCutout,
                            "nudged \(nudged)pt off the hole it still draws the join, and "
                            + "the square end of it is out in the open")
-            XCTAssertEqual(m.wings.count, 1, "nudged \(nudged)pt off, it is one bar")
+            XCTAssertEqual(m.wings.filter { $0.reveal > 0 }.count, 1,
+                           "nudged \(nudged)pt off, it is one bar")
             XCTAssertEqual(m.cutoutBleed, 0,
                            "nudged \(nudged)pt off, nothing of it is buried")
         }
@@ -693,7 +694,8 @@ final class MergesWithTheCutoutTests: XCTestCase {
             XCTAssertFalse(m.mergesWithCutout, "at \(a) the join is drawn while in the hand")
             XCTAssertNil(m.notchShape(for: m.cellWing).cutout,
                          "at \(a) the square joined end is drawn on the wallpaper")
-            XCTAssertEqual(m.wings.count, 1, "at \(a) there is a second copy in the hand")
+            XCTAssertEqual(m.wings.filter { $0.reveal > 0 }.count, 1,
+                           "at \(a) a second copy is showing while in the hand")
             let tip = ends(m, screen).0
             XCTAssertEqual(tip, hole.wall - NotchGeometry.cutoutOverlap + a, accuracy: 0.5,
                            "at \(a) the bar is not under the pointer")
@@ -715,17 +717,36 @@ final class MergesWithTheCutoutTests: XCTestCase {
         let before = frameOfReference(m, screen)
         let landing = try XCTUnwrap(NotchGeometry.cutoutLanding(alongOffset: letGo,
                                                                 width: 220, bar: bar))
-        // First half: the glide, still in the hand.
+        // The other copy is there before it is let go, all inside the hole, on
+        // the side it will come out of.
+        let waiting = try XCTUnwrap(m.wings.first { !$0.carriesCells })
+        XCTAssertEqual(waiting.reveal, 0)
+        XCTAssertFalse(waiting.onTheLeft, "put down on the left, the other copy is on the left too")
+
+        // First half: the glide, still in the hand — and the other copy coming
+        // out of its wall at the same moment, not after.
+        m.revealsTheOtherCopy = true
         m.alongOffset = landing.free
         m.adopt(screen: screen)
+        let coming = try XCTUnwrap(m.wings.first { !$0.carriesCells })
+        XCTAssertEqual(coming.reveal, 1, "the other copy waits for the glide to finish")
+        XCTAssertEqual(coming.id, waiting.id)
+        XCTAssertEqual(coming.onTheLeft, waiting.onTheLeft, "the other copy changed sides")
         XCTAssertEqual(frameOfReference(m, screen), before, "the glide moved the window")
         let glided = ends(m, screen).1
         XCTAssertEqual(glided, hole.left + NotchGeometry.cutoutOverlap, accuracy: 0.5,
                        "it glided somewhere other than flush on the left wall")
         // Second half: it takes the hole.
+        m.revealsTheOtherCopy = false
         m.holdsOffTheCutout = false
         m.alongOffset = landing.standing
         m.adopt(screen: screen)
+        let arrived = try XCTUnwrap(m.wings.first { !$0.carriesCells })
+        XCTAssertEqual(arrived.reveal, 1, "joining took the other copy back in")
+        XCTAssertEqual(arrived.id, coming.id)
+        XCTAssertEqual(arrived.onTheLeft, coming.onTheLeft)
+        XCTAssertEqual(arrived.lead, coming.lead, accuracy: 0.5,
+                       "the other copy moved when the join caught up with it")
         XCTAssertTrue(m.mergesWithCutout, "put down against the hole, it did not join it")
         XCTAssertEqual(frameOfReference(m, screen), before, "joining moved the window")
         XCTAssertTrue(m.cellWing.onTheLeft, "put down on the left, the readings went right")

@@ -250,14 +250,17 @@ struct NotchRootView: View {
             //
             // **Drawn out of the hole, and taken back into it the same way.**
             //
-            // Not a fade. Nothing about a notch joining the one the Mac already
-            // has is an opacity: it is a body of black leaving another one, so
-            // it grows along the bezel from the wall it is joined to, and is
-            // drawn back in at that same wall. Which is the movement the fold
-            // is already made of — the joined end does not move, and the rest
-            // of the bar comes out of it.
-            .transition(Self.emerging(from: joinedEnd(of: wing))
-                            .animation(motion(NotchMotion.unfold)))
+            // Along the bar only — never across it, which would grow the black
+            // down out of the bezel rather than along it — and from the wall
+            // the copy is welded to, which holds still for every frame. Not a
+            // fade: nothing about a notch joining the one the Mac already has
+            // is an opacity. Not a transition either, which runs on a clock of
+            // its own and made the second copy late: `reveal` changes with
+            // everything else and eases on the same spring. Never exactly zero,
+            // which is a degenerate transform the layer can drop out of rather
+            // than close up.
+            .scaleEffect(x: max(wing.reveal, 0.0001), y: 1,
+                         anchor: wing.onTheLeft ? .trailing : .leading)
             // Where this copy sits along the edge. One copy is centred in the
             // panel; a pair straddles the hole, each held against the wall it
             // is joined to — see `NotchViewModel.wings`.
@@ -277,51 +280,6 @@ struct NotchRootView: View {
             // at the bezel and everything past it is simply not drawn.
             .offset(x: model.edge.outward.x * Self.bezelBleed,
                     y: model.edge.outward.y * Self.bezelBleed)
-    }
-
-    /// The end of a copy that is welded to the hole, which is the end its
-    /// movement is anchored at: the near end of a copy on the right of the
-    /// hole, the far end of one on its left. Nothing is flipped by the view, so
-    /// that is the end on screen too — a copy never comes out of thin air at one
-    /// end and goes back into the wrong wall at the other.
-    private func joinedEnd(of wing: NotchViewModel.Wing) -> UnitPoint {
-        wing.onTheLeft ? .trailing : .leading
-    }
-
-    /// The transition a copy of the notch arrives and leaves on.
-    ///
-    /// Scaled along the bar only — never across it, which would have the black
-    /// growing *down* out of the bezel rather than along it — and anchored at
-    /// the end that is joined to the hole, so that end stays welded to the wall
-    /// for every frame of the movement.
-    ///
-    /// It carries its own animation rather than taking one from the change that
-    /// caused it. The change that causes it also moves the window, in one step
-    /// that cannot be animated, so nothing else in here may ease: what eases
-    /// from where it used to be eases from a place that no longer exists. This
-    /// is the only thing in the join that moves, and it moves from nothing.
-    private static func emerging(from anchor: UnitPoint) -> AnyTransition {
-        .modifier(active: Emerging(amount: 0, anchor: anchor),
-                  identity: Emerging(amount: 1, anchor: anchor))
-    }
-
-    private struct Emerging: ViewModifier, Animatable {
-        var amount: CGFloat
-        var anchor: UnitPoint
-
-        /// Explicit, so the spring carries the length itself. Left to the
-        /// modifier's own equality SwiftUI has two states and no way between
-        /// them, and falls back to swapping one for the other.
-        var animatableData: CGFloat {
-            get { amount }
-            set { amount = newValue }
-        }
-
-        func body(content: Content) -> some View {
-            // Never exactly zero: a scale of nothing is a degenerate transform
-            // and the layer it is on can drop out rather than close up.
-            content.scaleEffect(x: max(amount, 0.0001), y: 1, anchor: anchor)
-        }
     }
 
     /// The bezel side as a scaling anchor: the edge the notch is welded to
