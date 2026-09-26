@@ -330,25 +330,16 @@ final class NotchViewModel: ObservableObject {
     /// **What each end of the bar spends on its own ending**, before the body
     /// with the rings in it begins.
     ///
-    /// A plain notch spends a flare at both ends and always did. Merged, the
-    /// two ends do quite different things and the old figure is wrong for both.
-    /// The end at the hole spends only what is buried in it: there is no taper
-    /// there, the bar stands at full depth from the wall out, so a ring may sit
-    /// its own padding from the wall and no further. The far end spends the
-    /// taper, which is as long as the bar is deep — a good deal more than a
-    /// flare, and a ring left at the flare's allowance had its foot cut off by
-    /// the taper drawing back underneath it.
+    /// A flare at both ends, as every edge has always had — plus, at the end
+    /// that meets the hole, whatever of the bar is buried inside it, which is
+    /// length nobody can see and so length the rings must not be measured from.
     var leadAllowance: CGFloat {
-        guard mergesWithCutout else { return flare }
-        return cutoutAtTrailingEnd ? taperAllowance : cutoutBleed
+        flare + (cutoutAtTrailingEnd ? 0 : cutoutBleed)
     }
 
     var endAllowance: CGFloat {
-        guard mergesWithCutout else { return flare }
-        return cutoutAtTrailingEnd ? cutoutBleed : taperAllowance
+        flare + (cutoutAtTrailingEnd ? cutoutBleed : 0)
     }
-
-    private var taperAllowance: CGFloat { notchDepth }
 
     /// Where the drawn notch starts along the panel, in panel points.
     ///

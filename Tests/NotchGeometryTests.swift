@@ -510,13 +510,8 @@ final class AboveTheCutoutTests: XCTestCase {
                        "the top edge grew its own corner again")
         XCTAssertEqual(m.flare, plain.flare, accuracy: 0.001,
                        "the top edge grew its own flare again")
-        XCTAssertEqual(m.cellsLeadIn - m.cutoutBleed,
-                       NotchLayout.padStart(for: .top), accuracy: 0.001,
-                       "merged, the bar stands at full depth from the wall out, so the "
-                       + "first ring is its own padding past it and no more")
-        XCTAssertEqual(plain.cellsLeadIn,
-                       plain.flare + NotchLayout.padStart(for: .top), accuracy: 0.001,
-                       "a plain edge tapers in first and pads after")
+        XCTAssertEqual(m.cellsLeadIn - m.cutoutBleed, plain.cellsLeadIn, accuracy: 0.001,
+                       "the top edge grew its own padding again")
         XCTAssertNil(plain.mergedScale,
                      "a display with no hole must be drawn at the size that was asked for")
         XCTAssertNotNil(m.mergedScale, "the hardware sets the size where there is a hole")

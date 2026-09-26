@@ -350,41 +350,20 @@ struct SideNotchShape: Shape {
                  leaving: CGVector(dx: -1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
                  radius: corner)
         }
-        if let cutout {
-            // **And away into the bezel**, in one curve rather than three.
-            //
-            // The corner, a straight, and then the flare is the right end for a
-            // bar with depth to spend: the corner is the hardware's own rounding
-            // and the flare, holding flat and turning late, is what makes a deep
-            // bar read as moulded into the bezel rather than stuck on it.
-            //
-            // At the cutout's depth there is no depth to spend. Measured on this
-            // Mac the three came out as a 12pt corner, a 20pt dead-straight wall
-            // and a turn crammed into the last 5pt — better than half the end
-            // was a straight line between two small curves, which is exactly the
-            // faceted, stiff thing the flare was rebuilt to stop.
-            //
-            // So the whole end is one step instead: no corner, no straight, no
-            // curvature to jump anywhere, the bottom edge leaving flat and the
-            // bezel arriving flat. The hidden band is still a straight run at
-            // the tip, or the curve's own flat landing draws a hairline wedge
-            // creeping along the bezel — the thing `bezelHidden` exists for.
-            let taper = max(0, min(rect.width,
-                                   rect.height - cutout.wall - cutout.run))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - taper))
-            smoothStep(&path, to: CGPoint(x: rect.maxX - hidden, y: rect.maxY))
-        } else {
-            path.addLine(to: CGPoint(x: rect.minX, y: bodyBottom - corner))
-            turn(&path, to: CGPoint(x: rect.minX + corner, y: bodyBottom),
-                 leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: 1, dy: 0),
-                 radius: corner)
-            path.addLine(to: CGPoint(x: rect.maxX - hidden - curlDepth, y: bodyBottom))
-            // Flare back out to the screen edge.
-            if curl > 0 {
-                fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden, y: rect.maxY),
-                          leaving: CGVector(dx: 1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
-                          ramp: filletRamp)
-            }
+        // The far end is the notch's own end, merged or not: the corner it has
+        // on every other edge, and the flare that makes it read as moulded into
+        // the bezel rather than stuck on it. This is the drawn shape and it is
+        // not the join's to change.
+        path.addLine(to: CGPoint(x: rect.minX, y: bodyBottom - corner))
+        turn(&path, to: CGPoint(x: rect.minX + corner, y: bodyBottom),
+             leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: 1, dy: 0),
+             radius: corner)
+        path.addLine(to: CGPoint(x: rect.maxX - hidden - curlDepth, y: bodyBottom))
+        // Flare back out to the screen edge.
+        if curl > 0 {
+            fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden, y: rect.maxY),
+                      leaving: CGVector(dx: 1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
+                      ramp: filletRamp)
         }
         // Back out across the hidden band, whether or not there was a sweep —
         // left inside the branch above it, the flush shape came out a band
