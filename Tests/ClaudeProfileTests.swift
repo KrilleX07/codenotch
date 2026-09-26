@@ -562,3 +562,48 @@ final class ClaudePlanNameTests: XCTestCase {
         XCTAssertNil(ClaudeOAuthProvider.planName(nil))
     }
 }
+
+/// The sign-in command is run, not printed, so its path has to be quoted.
+final class SignInCommandQuotingTests: XCTestCase {
+    /// It was written for a guidance line — "Run this in Terminal" — where an
+    /// unquoted path was cosmetic. #323 put it behind a button that types it
+    /// into the user's shell, and at that point a config directory named
+    /// `a dir; touch x` stops being a display bug: what follows the `;` is a
+    /// second command.
+    func testAClaudeProfilePathIsQuoted() {
+        let profile = ClaudeProfile(
+            slug: "work",
+            configDirectory: URL(fileURLWithPath: "/tmp/a dir; touch /tmp/pwned"))
+        let command = profile.signInCommand
+        XCTAssertTrue(command.contains("'/tmp/a dir; touch /tmp/pwned'"),
+                      "the path is not quoted: \(command)")
+        XCTAssertFalse(command.contains("=/tmp/a dir;"),
+                       "the path reaches the shell unquoted: \(command)")
+    }
+
+    /// An apostrophe in a directory name must not close the quoting.
+    func testAnApostropheCannotCloseTheQuote() {
+        let profile = ClaudeProfile(
+            slug: "work", configDirectory: URL(fileURLWithPath: "/Users/O'Brien/.claude-work"))
+        XCTAssertTrue(profile.signInCommand.contains("'\"'\"'"),
+                      "an apostrophe is not escaped: \(profile.signInCommand)")
+    }
+
+    /// The real path, not the `~` abbreviation: a quoted tilde does not
+    /// expand, and would send the CLI to a directory actually named `~`.
+    func testItUsesTheRealPathRatherThanTheTilde() {
+        let home = NSHomeDirectory()
+        let profile = ClaudeProfile(
+            slug: "work", configDirectory: URL(fileURLWithPath: home + "/.claude-work"))
+        XCTAssertFalse(profile.signInCommand.contains("'~"),
+                       "a quoted tilde will not expand: \(profile.signInCommand)")
+        XCTAssertTrue(profile.signInCommand.contains(home))
+    }
+
+    /// The default login has no path at all, so it stays the bare command.
+    func testTheDefaultLoginIsUnchanged() {
+        let profile = ClaudeProfile(slug: nil,
+                                    configDirectory: URL(fileURLWithPath: "/tmp/.claude"))
+        XCTAssertEqual(profile.signInCommand, "claude")
+    }
+}

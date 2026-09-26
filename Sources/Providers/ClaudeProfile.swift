@@ -360,9 +360,23 @@ struct ClaudeProfile: Equatable, Hashable {
         slug == nil ? "Claude Code" : "Claude Code in \(displayPath)"
     }
 
-    /// The command that signs this profile in, for the row that has no button.
+    /// The command that signs this profile in.
+    ///
+    /// Quoted, because this is *run* and not merely printed. It was written
+    /// for a guidance line — "Run this in Terminal" — where an unquoted path
+    /// was only cosmetic. #323 put it behind a button that types it into the
+    /// user's shell, and at that point a config directory with a space or a
+    /// `;` in its name stops being a display bug: whatever follows the `;`
+    /// is a second command. `CodexProfile.signInCommand` already quoted its
+    /// own path for exactly this reason.
+    ///
+    /// The real path rather than `displayPath`, too: a quoted `~` does not
+    /// expand, so the abbreviation that reads well in a label would send the
+    /// CLI to a directory named `~`.
     var signInCommand: String {
-        slug == nil ? "claude" : "CLAUDE_CONFIG_DIR=\(displayPath) claude"
+        guard slug != nil else { return "claude" }
+        let path = "'" + configDirectory.path.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+        return "CLAUDE_CONFIG_DIR=\(path) claude"
     }
 }
 
