@@ -110,6 +110,10 @@ pub struct Config {
     /// false = no arc above the notch to carry it by. Nothing is lost: Appearance → Edge moves it too.
     #[serde(default = "yes")]
     pub show_move_handle: bool,
+    /// true = the folded pill follows what is behind it, which means reading the screen beside it
+    /// (backdrop.rs). Opt-in for that reason; off, the pill takes Theme's colour.
+    #[serde(default)]
+    pub adaptive_pill: bool,
 }
 
 fn default_notch_y() -> f64 {
@@ -263,6 +267,7 @@ impl Default for Config {
             notch_on_hover: true,
             tray_visible: true,
             show_move_handle: true,
+            adaptive_pill: false,
         }
     }
 }

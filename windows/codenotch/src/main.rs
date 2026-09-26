@@ -1,6 +1,7 @@
 #![cfg_attr(all(not(debug_assertions), windows), windows_subsystem = "windows")]
 
 mod autostart;
+mod backdrop;
 mod config;
 mod doctor;
 mod focus;
@@ -809,8 +810,9 @@ static HOT: Mutex<Vec<[f64; 4]>> = Mutex::new(Vec::new());
 static EXPANDED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[tauri::command]
-fn set_hot(rects: Vec<[f64; 4]>, expanded: bool) {
+fn set_hot(rects: Vec<[f64; 4]>, expanded: bool, probe: Option<[f64; 4]>) {
     *HOT.lock().unwrap() = rects;
+    backdrop::set_probe(probe);
     EXPANDED.store(expanded, std::sync::atomic::Ordering::Relaxed);
     if expanded {
         antigravity::request_hover_refresh();
@@ -1601,6 +1603,25 @@ fn set_move_handle(app: AppHandle, on: bool) -> bool {
     on
 }
 
+#[tauri::command]
+fn get_adaptive_pill(app: AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.adaptive_pill
+}
+
+#[tauri::command]
+fn set_adaptive_pill(app: AppHandle, on: bool) -> bool {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.adaptive_pill = on;
+        config::save(&c);
+    }
+    backdrop::set_enabled(&app, on);
+    on
+}
+
 /// One attached monitor, as Settings lists it.
 #[derive(serde::Serialize)]
 pub struct MonitorInfo {
@@ -1882,6 +1903,8 @@ fn main() {
             begin_move,
             get_move_handle,
             set_move_handle,
+            get_adaptive_pill,
+            set_adaptive_pill,
             dropzones::get_zones,
             settings_window::get_system_look,
             settings_window::quit_app,
@@ -1916,6 +1939,7 @@ fn main() {
             let gh = handle.clone();
             std::thread::spawn(move || reload_glyphs(&gh));
             start_pointer_watchdog(handle.clone());
+            backdrop::start(handle.clone());
             start_work_area_watch(handle.clone());
             topmost::start_watchdog(handle.clone());
             // Seen-clears-it scan
