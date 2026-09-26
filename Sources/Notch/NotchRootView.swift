@@ -217,7 +217,10 @@ struct NotchRootView: View {
             // animating one shape rather than swapping one view for another
             // mid-flight; the crossfade rides on the unfold animation already
             // on the root.
-            .frame(width: model.notchSize.width, height: model.notchSize.height)
+            // This copy's own size — the carrying bar's, or the notch's width
+            // as far as it has widened — so a copy grows by being drawn longer,
+            // corner and all, rather than by being stretched.
+            .frame(width: copySize(wing).width, height: copySize(wing).height)
             // Aligned to the corner where the stack starts *and* the bezel is.
             // Only one copy carries the readings. The other is the container
             // mirrored and nothing else: the point of it is that the hardware's
@@ -229,27 +232,6 @@ struct NotchRootView: View {
             // slide out of the end of it; clipped, they are swallowed by the
             // outline as it closes, which is what a notch should do.
             .clipShape(shape)
-            // **Drawn out of the hole, and taken back into it the same way.**
-            //
-            // Along the bar only — never across it, which would grow the black
-            // down out of the bezel rather than along it, and leave a step at
-            // the join — and from the wall the copy is welded to, which holds
-            // still for every frame. Not a fade, and not a transition, which
-            // runs on a clock of its own: `reveal` changes with everything else
-            // and eases on the same spring.
-            //
-            // **Here, inside the size setting, and nowhere else.** An anchor is
-            // an edge of the view's own box, and out past the scale below that
-            // box is the notch at design size — wider than the bar drawn from
-            // it, by as much as the size setting takes off. Anchored out there
-            // the copy grew from a point seventy points inside the hole and slid
-            // out of it, which is not coming out of a wall. In here the box's
-            // edge *is* the bar's.
-            //
-            // Never exactly zero, which is a degenerate transform the layer can
-            // drop out of rather than close up.
-            .scaleEffect(x: max(wing.reveal, 0.0001), y: 1,
-                         anchor: wing.onTheLeft ? .trailing : .leading)
             // The size choice, applied to the notch and the cells it carries —
             // and to nothing else. Drawn at design-frame size and scaled from
             // there, so `NotchLayout` keeps measuring the one thing it is
@@ -273,8 +255,8 @@ struct NotchRootView: View {
             // panel; a pair straddles the hole, each held against the wall it
             // is joined to — see `NotchViewModel.wings`.
             .position(place.point(
-                along: wing.lead + model.notchLength * model.sizeScale / 2,
-                across: model.notchDepth / 2
+                along: wing.lead + wing.length / 2,
+                across: wing.depth / 2
             ))
             // Pushed a shade past the bezel, and then clipped by the panel.
             //
@@ -288,6 +270,14 @@ struct NotchRootView: View {
             // at the bezel and everything past it is simply not drawn.
             .offset(x: model.edge.outward.x * Self.bezelBleed,
                     y: model.edge.outward.y * Self.bezelBleed)
+    }
+
+    /// A copy's frame in the notch's design measurements, which the size
+    /// setting then scales from the bezel like everything else in it.
+    private func copySize(_ wing: NotchViewModel.Wing) -> CGSize {
+        NotchPlacement.panelSize(edge: model.edge,
+                                 length: wing.length / max(model.sizeScale, 0.0001),
+                                 depth: wing.depth)
     }
 
     /// The bezel side as a scaling anchor: the edge the notch is welded to

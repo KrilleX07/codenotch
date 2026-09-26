@@ -55,6 +55,12 @@ struct SideNotchShape: Shape {
     /// else, which is the fold's own kind of movement.
     var leadingJoin: CGFloat = 0
 
+    /// **How much of the flare the far end keeps**, 0 to 1. At 0 the far end
+    /// meets the bezel square, straight up from its corner, which is how the
+    /// display's own notch ends — used for the hardware's notch widening, as
+    /// opposed to the bar that grows out of it.
+    var trailingFlare: CGFloat = 1
+
     /// Whether this copy is drawn turned round along the bar — the copy on the
     /// left of the hole, whose joined end is its trailing one. A path has no
     /// in-between to animate through, and a copy's side is never changed while
@@ -320,9 +326,16 @@ struct SideNotchShape: Shape {
         let curl = flareDepth == nil
             ? curlDepth
             : max(0, min(flare, rect.height / 2))
-        let corner = max(0, min(wanted, (rect.height - 2 * curl) / 2))
+        let open = 1 - max(0, min(leadingJoin, 1))
+        let leadCurl = curl * open
+        let trailCurl = curl * max(0, min(trailingFlare, 1))
+        let trailDepth = curlDepth * max(0, min(trailingFlare, 1))
+        // Clamped by what the two ends take along the bar, which is what lets a
+        // bar that has closed its flares be as short as nothing and still be a
+        // clean shape rather than one turned inside out.
+        let corner = max(0, min(wanted, (rect.height - leadCurl - trailCurl) / 2))
         let bodyTop = rect.minY + curl
-        let bodyBottom = rect.maxY - curl
+        let bodyBottom = rect.maxY - trailCurl
 
         // Never more than the band itself, and never so much that it eats the
         // sweep it is making room for.
@@ -354,8 +367,6 @@ struct SideNotchShape: Shape {
         } else {
             // The flare and the corner at this end, closed up by however far
             // it has joined the hole — see `leadingJoin`.
-            let open = 1 - max(0, min(leadingJoin, 1))
-            let leadCurl = curl * open
             let leadDepth = curlDepth * open
             let leadCorner = corner * open
             let leadTop = rect.minY + leadCurl
@@ -381,9 +392,9 @@ struct SideNotchShape: Shape {
         turn(&path, to: CGPoint(x: rect.minX + corner, y: bodyBottom),
              leaving: CGVector(dx: 0, dy: 1), arriving: CGVector(dx: 1, dy: 0),
              radius: corner)
-        path.addLine(to: CGPoint(x: rect.maxX - hidden - curlDepth, y: bodyBottom))
+        path.addLine(to: CGPoint(x: rect.maxX - hidden - trailDepth, y: bodyBottom))
         // Flare back out to the screen edge.
-        if curl > 0 {
+        if trailCurl > 0.001 {
             fluidTurn(&path, to: CGPoint(x: rect.maxX - hidden, y: rect.maxY),
                       leaving: CGVector(dx: 1, dy: 0), arriving: CGVector(dx: 0, dy: 1),
                       ramp: filletRamp)

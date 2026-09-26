@@ -175,6 +175,38 @@ enum NotchGeometry {
         return a >= cutoutOverlap - width - bar - reach && a <= cutoutOverlap + reach
     }
 
+    /// **How far out the hole's pull reaches**, while the notch is dragged.
+    static let cutoutCapture: CGFloat = 36
+
+    /// **How hard it holds on**: at the very spot, how much of the pointer's
+    /// movement the notch still follows. A tenth-and-a-half — enough to show
+    /// it is being held, little enough that it is plainly *held*.
+    static let cutoutGrip: CGFloat = 0.15
+
+    /// **The magnet.** Where a dragged notch is drawn, for where the pointer has
+    /// actually taken it.
+    ///
+    /// Following the pointer exactly everywhere, the notch only took the hole
+    /// once it was let go, and until then there was no sense of the hole being
+    /// there at all. Near either of the two places it can join — flush against
+    /// the right wall, or the left — the pointer's distance from that place is
+    /// bent: `d · (g + (1 − g)·(d/C)²)`. At the place itself the notch follows
+    /// only `g` of the pointer, so it sits heavy and has to be tugged. Toward
+    /// the edge of the pull the curve steepens past one, so coming in, the
+    /// notch is drawn ahead of the pointer onto the wall, and pulling away it
+    /// catches up with a snap as it breaks free. At the edge of the pull it
+    /// meets the pointer again exactly, so there is nothing to jump across,
+    /// and it never runs backwards: the curve only ever rises.
+    static func magnetised(_ a: CGFloat, width: CGFloat, bar: CGFloat) -> CGFloat {
+        for target in [0, 2 * cutoutOverlap - width - bar] {
+            let d = a - target
+            guard abs(d) < cutoutCapture else { continue }
+            let x = d / cutoutCapture
+            return target + d * (cutoutGrip + (1 - cutoutGrip) * x * x)
+        }
+        return a
+    }
+
     /// The drag's measure of a notch placed by `cutoutStanding` — the same spot
     /// on screen, said the plain way.
     static func freeOffset(fromStanding a: CGFloat, width: CGFloat,

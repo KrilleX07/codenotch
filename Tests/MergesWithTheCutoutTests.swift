@@ -69,8 +69,11 @@ final class MergesWithTheCutoutTests: XCTestCase {
         var samples: [Sample] = []
         // Every drawn copy, as the shape it is drawn as — the one on the left
         // of the hole is reflected in its own path, not flipped by the view.
-        for wing in m.wings where wing.reveal > 0 {
-            let path = m.notchShape(for: wing).path(in: CGRect(origin: .zero, size: m.notchSize))
+        for wing in m.wings where wing.length > 0 {
+            let size = NotchPlacement.panelSize(edge: .top,
+                                                length: wing.length / m.sizeScale,
+                                                depth: wing.depth)
+            let path = m.notchShape(for: wing).path(in: CGRect(origin: .zero, size: size))
             let lead = frame.minX + wing.lead
             let place = { (p: CGPoint) in
                 Sample(x: lead + p.x * m.sizeScale,
@@ -487,7 +490,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
             XCTAssertFalse(m.mergesWithCutout,
                            "nudged \(nudged)pt off the hole it still draws the join, and "
                            + "the square end of it is out in the open")
-            XCTAssertEqual(m.wings.filter { $0.reveal > 0 }.count, 1,
+            XCTAssertEqual(m.wings.filter { $0.length > 0 }.count, 1,
                            "nudged \(nudged)pt off, it is one bar")
             XCTAssertEqual(m.cutoutBleed, 0,
                            "nudged \(nudged)pt off, nothing of it is buried")
@@ -706,7 +709,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
             XCTAssertFalse(m.mergesWithCutout, "at \(a) the join is drawn while in the hand")
             XCTAssertNil(m.notchShape(for: m.cellWing).cutout,
                          "at \(a) the square joined end is drawn on the wallpaper")
-            XCTAssertEqual(m.wings.filter { $0.reveal > 0 }.count, 1,
+            XCTAssertEqual(m.wings.filter { $0.length > 0 }.count, 1,
                            "at \(a) a second copy is showing while in the hand")
             let tip = ends(m, screen).0
             XCTAssertEqual(tip, hole.wall - NotchGeometry.cutoutOverlap + a, accuracy: 0.5,
@@ -732,7 +735,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
         // The other copy is there before it is let go, all inside the hole, on
         // the side it will come out of.
         let waiting = try XCTUnwrap(m.wings.first { !$0.carriesCells })
-        XCTAssertEqual(waiting.reveal, 0)
+        XCTAssertEqual(waiting.length, 0, "the notch has widened before it was let go")
         XCTAssertFalse(waiting.onTheLeft, "put down on the left, the other copy is on the left too")
 
         // First half: the glide, still in the hand — and the other copy coming
@@ -741,7 +744,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
         m.alongOffset = landing.free
         m.adopt(screen: screen)
         let coming = try XCTUnwrap(m.wings.first { !$0.carriesCells })
-        XCTAssertEqual(coming.reveal, 1, "the other copy waits for the glide to finish")
+        XCTAssertGreaterThan(coming.length, 0, "the other side waits for the glide to finish")
         XCTAssertEqual(coming.id, waiting.id)
         XCTAssertEqual(coming.onTheLeft, waiting.onTheLeft, "the other copy changed sides")
         XCTAssertEqual(frameOfReference(m, screen), before, "the glide moved the window")
@@ -754,11 +757,14 @@ final class MergesWithTheCutoutTests: XCTestCase {
         m.alongOffset = landing.standing
         m.adopt(screen: screen)
         let arrived = try XCTUnwrap(m.wings.first { !$0.carriesCells })
-        XCTAssertEqual(arrived.reveal, 1, "joining took the other copy back in")
+        XCTAssertGreaterThan(arrived.length, 0, "joining took the widening back in")
         XCTAssertEqual(arrived.id, coming.id)
         XCTAssertEqual(arrived.onTheLeft, coming.onTheLeft)
-        XCTAssertEqual(arrived.lead, coming.lead, accuracy: 0.5,
-                       "the other copy moved when the join caught up with it")
+        func wallEnd(_ w: NotchViewModel.Wing) -> CGFloat {
+            w.onTheLeft ? w.lead + w.length : w.lead
+        }
+        XCTAssertEqual(wallEnd(arrived), wallEnd(coming), accuracy: 0.5,
+                       "the widening came off its wall when the join caught up with it")
         XCTAssertTrue(m.mergesWithCutout, "put down against the hole, it did not join it")
         XCTAssertEqual(frameOfReference(m, screen), before, "joining moved the window")
         XCTAssertTrue(m.cellWing.onTheLeft, "put down on the left, the readings went right")
@@ -792,6 +798,73 @@ final class MergesWithTheCutoutTests: XCTestCase {
         shape.animatableData = data
         XCTAssertEqual(shape.leadingJoin, 0.4, accuracy: 0.0001,
                        "leadingJoin is not animatable, so the join would snap")
+    }
+
+    // MARK: - The magnet
+
+    /// **Near the hole it pulls, holds, and lets go with a snap** — and never
+    /// jumps or runs backwards to do it.
+    func testTheHolesPullIsAMagnet() {
+        let W: CGFloat = 220, bar: CGFloat = 150
+        let C = NotchGeometry.cutoutCapture, g = NotchGeometry.cutoutGrip
+        let left = 2 * NotchGeometry.cutoutOverlap - W - bar
+        for target in [CGFloat(0), left] {
+            func pulled(_ d: CGFloat) -> CGFloat {
+                NotchGeometry.magnetised(target + d, width: W, bar: bar) - target
+            }
+            // At the spot it sits heavy: a point of pointer is a fraction of one.
+            XCTAssertEqual(pulled(1), g, accuracy: 0.01, "it does not hold on")
+            XCTAssertEqual(pulled(0), 0, accuracy: 0.0001)
+            // Out past the pull it follows the pointer exactly.
+            XCTAssertEqual(pulled(C + 5), C + 5, accuracy: 0.0001)
+            XCTAssertEqual(pulled(-C - 5), -C - 5, accuracy: 0.0001)
+            // And at the edge of the pull it meets the pointer — nothing to
+            // jump across, coming in or breaking free.
+            XCTAssertEqual(pulled(C - 0.001), C, accuracy: 0.01)
+            XCTAssertEqual(pulled(-C + 0.001), -C, accuracy: 0.01)
+            // Steeper than the pointer near that edge: drawn in ahead of it, and
+            // snapping to catch up as it breaks free.
+            XCTAssertGreaterThan(pulled(C - 1) - pulled(C - 2), 1.5,
+                                 "it does not snap — it drifts")
+            // It never runs backwards.
+            var last = pulled(-C - 2)
+            for d in stride(from: -C - 1.5, through: C + 2, by: 0.5) {
+                let now = pulled(d)
+                XCTAssertGreaterThanOrEqual(now, last, "at \(d) it moved against the pointer")
+                last = now
+            }
+        }
+    }
+
+    /// **The other side is the notch widening, not a mirror of the bar.**
+    ///
+    /// Always exactly the hole's depth, the hole's own corner at its foot, and
+    /// square to the bezel at its far side — so the display's notch simply
+    /// looks wider. And it widens by being drawn longer: nothing at all until
+    /// the notch is joined, the carrying bar's own length once it is.
+    func testTheOtherSideIsTheNotchWidening() throws {
+        let screen = Notched()
+        let hole = try hole(screen)
+        for scale in [0.5, 1.0, 1.5] as [CGFloat] {
+            let m = model(screen, scale: scale)
+            let widening = try XCTUnwrap(m.wings.first { !$0.carriesCells })
+            XCTAssertEqual(widening.depth * m.sizeScale - NotchRootView.bezelBleed,
+                           hole.depth, accuracy: 0.001,
+                           "scale \(scale): the notch widened to a different depth")
+            let shape = m.notchShape(for: widening)
+            XCTAssertEqual(shape.trailingFlare, 0, "it flares out like the bar")
+            XCTAssertEqual(shape.leadingJoin, 1)
+            XCTAssertEqual(shape.cornerRadius * m.sizeScale,
+                           NotchLayout.cutoutCornerShare * hole.depth, accuracy: 0.001,
+                           "scale \(scale): its corner is not the hole's")
+            XCTAssertEqual(widening.length, m.notchLength * m.sizeScale, accuracy: 0.001,
+                           "scale \(scale): it widened by a different amount on each side")
+        }
+        // Near the hole but not joined to it, it has not widened at all.
+        let apart = model(screen, offset: 6)
+        XCTAssertFalse(apart.mergesWithCutout)
+        XCTAssertEqual(try XCTUnwrap(apart.wings.first { !$0.carriesCells }).length, 0,
+                       "the notch widened before anything joined it")
     }
 
     /// No hole, no join — on a plain display and on the other three edges.

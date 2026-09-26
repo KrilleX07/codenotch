@@ -377,9 +377,24 @@ final class NotchWindowController {
     /// edge's x — so no sign flip belongs here; adding one would make the
     /// pill run away from the cursor instead of following it.
     private func dragged(dx: CGFloat, dy: CGFloat) {
-        model.alongOffset += model.edge.isVertical ? dy : dx
+        let delta = model.edge.isVertical ? dy : dx
+        guard model.holdsOffTheCutout, let cutout = heldCutout else {
+            model.alongOffset += delta
+            relocate()
+            return
+        }
+        // Where the pointer has really taken it, and where it is drawn for
+        // that: bent by the hole's pull near either wall — see
+        // `NotchGeometry.magnetised`. Kept apart so the pull can hold the notch
+        // back without losing track of the hand.
+        heldPointer += delta
+        model.alongOffset = NotchGeometry.magnetised(heldPointer, width: cutout.width,
+                                                     bar: model.plainBarLength)
         relocate()
     }
+
+    /// Where the pointer has taken a held notch, before the hole's pull.
+    private var heldPointer: CGFloat = 0
 
     private func beginOptionDrag() {
         guard !isOptionDragging else { return }
@@ -430,6 +445,7 @@ final class NotchWindowController {
         let free = NotchGeometry.freeOffset(fromStanding: model.alongOffset,
                                             width: cutout.width, bar: model.plainBarLength)
         let wasJoined = model.mergesWithCutout
+        heldPointer = free
         let lift = {
             self.model.revealsTheOtherCopy = false
             self.model.holdsOffTheCutout = true
