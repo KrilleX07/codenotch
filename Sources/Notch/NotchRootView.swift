@@ -211,47 +211,15 @@ struct NotchRootView: View {
                 // at full opacity.
                 shape.fill(Palette.notch).opacity(glassy ? 0 : 1)
 
-                // The band at the hardware's height is the strip beside a hole in
-                // the screen. Glass there makes the cutout read as a black
-                // rectangle set into a sheet of glass; black there makes the hole
-                // and the shape we draw one wide notch again, and the glass begins
-                // below it, where the readings begin. A hardware notch only ever
-                // joins the top edge, so `.top` is the right alignment; the band is
-                // clipped by the `.clipShape(shape)` below, which keeps the bezel
-                // fillets at its corners.
-                //
-                // Deeper than the hardware by the bleed below, and undoing the
-                // scale on that one number: the whole shape is pushed `bezelBleed`
-                // points past the screen edge after it is scaled, so a band drawn
-                // exactly `contentInset` deep ends that far short of the hole and
-                // leaves a strip of glass along the bottom of the cutout.
-                // Not when the readings sit beside the hole: the shape is then
-                // the hardware's own depth, so a band of that height would cover
-                // the whole thing. The shape already meets the bezel there.
-                if model.joinedNotch != nil, !model.splitsAroundHardwareNotch {
-                    Rectangle()
-                        .fill(Palette.notch)
-                        .frame(height: model.contentInset + Self.bezelBleed / model.sizeScale)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
             }
         }   
             // The glass and the fill both stay mounted so folding keeps
             // animating one shape rather than swapping one view for another
             // mid-flight; the crossfade rides on the unfold animation already
-            // on the root. The band above them is opaque in every state and
-            // takes no part in it.
+            // on the root.
             .frame(width: model.notchSize.width, height: model.notchSize.height)
-            // Aligned to the corner where the stack starts *and* the bezel is,
-            // then pushed clear of any hardware notch. Centring the contents in
-            // a shape that had been made deeper is what put the top of every
-            // ring inside the hole in the display.
-            .overlay(alignment: contentAlignment) {
-                // `contentInset` is zero when the readings sit beside the hole
-                // rather than under it, so this is the same expression either
-                // way — the inset is the thing that changes, not the layout.
-                cells.padding(bezelSide, model.contentInset)
-            }
+            // Aligned to the corner where the stack starts *and* the bezel is.
+            .overlay(alignment: contentAlignment) { cells }
             // Masked by the notch itself, not by its bounding box. Without this
             // the cells simply sit on top of a shrinking shape and appear to
             // slide out of the end of it; clipped, they are swallowed by the
@@ -275,10 +243,7 @@ struct NotchRootView: View {
             // that never moves, there is nothing left to disagree about: the
             // shape grows inward from a corner that cannot move, animated or
             // not.
-            // Centred along the edge — except where the rings sit either side
-            // of the hardware notch, where what must land on the hardware is
-            // the shape's *gap*, not its middle. An uneven split moves the two
-            // apart, so the shape is pushed back by half the difference.
+            // Centred along the edge.
             .position(place.point(
                 along: (model.edge.isVertical ? place.panelSize.height
                                               : place.panelSize.width) / 2
@@ -314,43 +279,20 @@ struct NotchRootView: View {
     /// notch is not visibly shallower for it, large enough to swallow a
     /// rounding error at any size.
     /// How far the shape overhangs the bezel so no wallpaper hairline shows.
-    /// Not private: the split layout has to add it back to its depth, or the
-    /// overhang eats the two points that make the bar the hardware's height.
+    /// Not private: `SideNotchShape` keeps that band straight, so a flare
+    /// begins at the first row on screen rather than behind the bezel.
     static let bezelBleed: CGFloat = 2
 
     /// The cells fade and lift into place a beat after the shape starts opening,
     /// each trailing the one before it. Folded shut they are not just hidden but
     /// pulled toward the edge, so the whole thing reads as one movement.
-    /// The cells either side of the hole, as `(offset, element)` pairs so each
-    /// keeps the index the geometry knows it by.
-    private var splitGroups: (left: [(offset: Int, element: ProviderSnapshot)],
-                              right: [(offset: Int, element: ProviderSnapshot)]) {
-        let all = Array(model.snapshots.enumerated()).map { (offset: $0.offset, element: $0.element) }
-        let cut = min(model.splitLeftCount, all.count)
-        return (Array(all[..<cut]), Array(all[cut...]))
-    }
 
-    /// One cell, drawn for the strip beside the hardware notch: ring only, at
-    /// the size the strip leaves for it.
-    @ViewBuilder
-    private func cell(_ pair: (offset: Int, element: ProviderSnapshot)) -> some View {
-        ProviderCell(
-            snapshot: pair.element,
-            activity: model.activity(for: pair.element),
-            isRefreshing: model.isRefreshing(pair.element),
-            weeklyRing: model.weeklyRing,
-            showsWeeklyReading: model.weeklyReading,
-            showsReading: model.showsCellReading
-        )
-            .frame(width: NotchLayout.cellAlong(for: model.edge) * model.splitCellScale)
-            .scaleEffect(model.splitCellScale)
-            .opacity(model.isExpanded ? 1 : 0)
-            .offset(
-                x: model.isExpanded ? 0 : model.edge.outward.x * Design.px(28),
-                y: model.isExpanded ? 0 : model.edge.outward.y * Design.px(28)
-            )
-            .animation(motion(NotchMotion.stagger(index: pair.offset)), value: model.isExpanded)
-    }
+    /// Distance from the start of the shape to the first cell, widening
+    /// included so the readings stay in the middle of a bar that was stretched
+    /// to cover the hardware notch.
+    /// Taken from the model so the rings are drawn exactly where the geometry
+    /// says they are. Computing it here as well is what let the two drift.
+    private var leadIn: CGFloat { model.cellsLeadIn }
 
     @ViewBuilder
     private var cells: some View {
@@ -391,29 +333,6 @@ struct NotchRootView: View {
                     // The contents keep the expanded layout while folding, so
                     // the stack does not reflow on its way out; the shape clips it.
                     .frame(width: NotchLayout.bodyDepth(for: model.edge))
-            } else if model.splitsAroundHardwareNotch {
-                // Two groups with the hardware between them. Each side hugs
-                // its own rings; the shape is shifted rather than padded so the
-                // gap lands on the hole, even when the counts are uneven — see
-                // `NotchViewModel.splitShift`. Positions come from the model so
-                // the drawn rings and `ringCenter` cannot disagree.
-                //
-                // Outer spacing is zero on purpose. An `HStack` puts its
-                // spacing between *every* adjacent pair, so a gap in a spaced
-                // stack is drawn as `gap + 2 × spacing` — wider than the shape
-                // was sized for, which pushed the right-hand group past the end
-                // and `.clipShape` cut it in half.
-                HStack(spacing: 0) {
-                    HStack(spacing: model.drawnCellSpacing) {
-                        ForEach(splitGroups.left, id: \.offset) { cell($0) }
-                    }
-                    Color.clear.frame(width: model.splitGap)
-                    HStack(spacing: model.drawnCellSpacing) {
-                        ForEach(splitGroups.right, id: \.offset) { cell($0) }
-                    }
-                }
-                .padding(.leading, leadIn)
-                .frame(height: model.notchDepth)
             } else {
                 HStack(spacing: model.cellSpacing) { stack }
                     .padding(.leading, leadIn)
@@ -433,23 +352,6 @@ struct NotchRootView: View {
         case .bottom: return .bottomLeading
         }
     }
-
-    /// Which side of that frame faces the bezel.
-    private var bezelSide: Edge.Set {
-        switch model.edge {
-        case .right:  return .trailing
-        case .left:   return .leading
-        case .top:    return .top
-        case .bottom: return .bottom
-        }
-    }
-
-    /// Distance from the start of the shape to the first cell, widening
-    /// included so the readings stay in the middle of a bar that was stretched
-    /// to cover the hardware notch.
-    /// Taken from the model so the rings are drawn exactly where the geometry
-    /// says they are. Computing it here as well is what let the two drift.
-    private var leadIn: CGFloat { model.cellsLeadIn }
 
     private func motion(_ animation: Animation) -> Animation? {
         NotchMotion.respectingReduceMotion(animation, reduceMotion)
