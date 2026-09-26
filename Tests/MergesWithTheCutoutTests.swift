@@ -113,9 +113,12 @@ final class MergesWithTheCutoutTests: XCTestCase {
     }
 
     /// Where the hole's trailing wall stands, and how deep the hole is.
-    private func hole(_ screen: ScreenDescribing) throws -> (wall: CGFloat, depth: CGFloat) {
+    private func hole(_ screen: ScreenDescribing) throws
+    -> (wall: CGFloat, left: CGFloat, depth: CGFloat) {
         let cutout = try XCTUnwrap(screen.hardwareNotch)
-        return (screen.frameValue.midX + cutout.width / 2, cutout.height)
+        return (screen.frameValue.midX + cutout.width / 2,
+                screen.frameValue.midX - cutout.width / 2,
+                cutout.height)
     }
 
     // MARK: - The join
@@ -253,8 +256,9 @@ final class MergesWithTheCutoutTests: XCTestCase {
         let merged = model(Notched())
         XCTAssertEqual(merged.cutoutBleed * merged.sizeScale,
                        NotchGeometry.cutoutOverlap, accuracy: 0.001)
-        XCTAssertEqual(merged.cellsLeadIn - merged.cutoutBleed, model(Plain()).cellsLeadIn,
-                       accuracy: 0.001, "the first ring moved relative to the visible start")
+        XCTAssertEqual(merged.cellsLeadIn - merged.cutoutBleed,
+                       NotchLayout.padStart(for: .top), accuracy: 0.001,
+                       "the first ring is not its own padding from the wall")
     }
 
     // MARK: - One thickness
@@ -440,7 +444,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
     /// all, on the only display that has a hole to join.
     func testANudgeIntoTheHoleStaysJoined() throws {
         let screen = Notched()
-        for offset in [CGFloat(-42), -80, -120] {
+        for offset in [CGFloat(-42), -80, -100] {
             let m = model(screen, scale: 0.589, offset: offset)
             let near = try XCTUnwrap(m.cutout, "a nudge of \(offset)pt *into* the hole let go of it")
             XCTAssertEqual(near.overlap, NotchGeometry.cutoutOverlap - offset, accuracy: 0.001)
@@ -452,6 +456,70 @@ final class MergesWithTheCutoutTests: XCTestCase {
                 .filter { $0.x < hole.wall - 0.5 }.map(\.depth).max() ?? 0
             XCTAssertLessThanOrEqual(deepest, hole.depth + 0.6, "offset \(offset)")
         }
+    }
+
+    // MARK: - The other side of the hole
+
+    /// **It merges on the left of the cutout too.**
+    ///
+    /// It did not, and there was no reason for it beyond the order the two
+    /// sides were built in: the bridge was written at the leading end because
+    /// that is the end the default placement puts against the hole. Dragged past
+    /// the cutout the notch sits on its left, where the end that meets the hole
+    /// is its trailing one — the same join, at the other end of the same shape.
+    func testItMergesOnTheLeftOfTheCutoutToo() throws {
+        let screen = Notched()
+        let cutout = try XCTUnwrap(screen.hardwareNotch)
+        let m = model(screen, offset: -cutout.width / 2 - 1)
+        let near = try XCTUnwrap(m.cutout, "dragged to the left of the hole it let go")
+        XCTAssertTrue(near.atTrailingEnd, "it is still joining at the wrong end")
+        XCTAssertEqual(near.overlap, NotchGeometry.cutoutOverlap, accuracy: 1.5,
+                       "it should land flush against the hole's left wall")
+    }
+
+    /// And the join is drawn at that end: nothing of the notch hangs out below
+    /// the hole on that side either, and it meets the left wall at the hole's
+    /// own depth.
+    func testTheLeftHandJoinIsDrawnAtTheFarEnd() throws {
+        let screen = Notched()
+        let cutout = try XCTUnwrap(screen.hardwareNotch)
+        let hole = try hole(screen)
+        for open in [true, false] {
+            let m = model(screen, open: open, offset: -cutout.width / 2 - 1)
+            let drawn = outline(of: m, on: screen)
+
+            let inside = drawn.filter { $0.x > hole.left + 0.5 }
+            XCTAssertFalse(inside.isEmpty, "\(open): nothing overlaps the hole, so there "
+                           + "is no join — only two shapes side by side")
+            XCTAssertLessThanOrEqual(inside.map(\.depth).max() ?? 0, hole.depth + 0.6,
+                                     "\(open): it hangs \(inside.map(\.depth).max() ?? 0)pt "
+                                     + "below a hole \(hole.depth)pt deep")
+
+            let atWall = drawn.filter { abs($0.x - hole.left) < 1.5 }.map(\.depth)
+            XCTAssertEqual(atWall.max() ?? 0, hole.depth, accuracy: 1.0,
+                           "\(open): it meets the hole's left wall at \(atWall.max() ?? 0)pt "
+                           + "against the hole's \(hole.depth) — a step is a seam")
+        }
+    }
+
+    /// The taper is at the other end from the hole, wherever the hole is — and
+    /// so are the rings' allowances, or the far ring has its foot cut off by
+    /// the taper drawing back underneath it.
+    func testTheEndsSwapWithTheSide() throws {
+        let screen = Notched()
+        let cutout = try XCTUnwrap(screen.hardwareNotch)
+        // The same point of nudge either side of the flip, so the two have the
+        // same overlap to spend and only the side differs.
+        let right = model(screen, offset: 1)
+        let left = model(screen, offset: -cutout.width / 2 - 1)
+
+        XCTAssertEqual(right.leadAllowance, left.endAllowance, accuracy: 0.001)
+        XCTAssertEqual(right.endAllowance, left.leadAllowance, accuracy: 0.001)
+        XCTAssertEqual(right.shapeLength, left.shapeLength, accuracy: 0.001,
+                       "the same bar either side, only turned round")
+        // The settings handle hangs off the tapered end, never into the hole.
+        XCTAssertEqual(right.orbAlong, right.shapeLength, accuracy: 0.001)
+        XCTAssertEqual(left.orbAlong, 0, accuracy: 0.001)
     }
 
     /// No hole, no join — on a plain display and on the other three edges.

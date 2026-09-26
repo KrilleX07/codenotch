@@ -36,13 +36,21 @@ struct CutoutProximity: Equatable {
     /// How deep the hole is.
     var depth: CGFloat
 
-    /// How far the notch's leading tip lies *inside* the hole.
+    /// How far the notch's own end lies *inside* the hole.
     ///
     /// Positive is the resting case: the two overlap, so there is no seam to
     /// see between them. Negative means the notch has been nudged clear along
     /// the edge and the join has to reach back for the hole — which it will do
     /// while they are still close enough to read as one object.
     var overlap: CGFloat
+
+    /// **Which end of the notch the hole is at.**
+    ///
+    /// The notch is placed to the right of the cutout and joins it at its
+    /// leading end. Dragged the other way it ends up on the *left* of the
+    /// cutout, where the end that meets the hole is its trailing one — the same
+    /// join, at the other end of the same shape.
+    var atTrailingEnd: Bool = false
 }
 
 /// Everything the geometry maths needs from a screen, so it can be faked in tests.
@@ -124,17 +132,35 @@ enum NotchGeometry {
     /// good place for it to be — the tip is inside the hole and the bar starts
     /// at the wall, exactly as it does with no nudge at all — and a rule written
     /// on the size of the nudge threw all of it away.
+    /// **Which side of the hole a nudge has taken the notch to.**
+    ///
+    /// Dragged past the middle of the cutout it belongs on the other side of
+    /// it, and the end that meets the hole is its trailing one. There is no
+    /// third answer: a notch *over* the hole is a notch nobody can see, so the
+    /// nudge picks a side rather than a position while it is anywhere near.
+    static func cutoutIsAtTrailingEnd(_ cutout: HardwareNotch,
+                                      alongOffset: CGFloat) -> Bool {
+        alongOffset < -cutout.width / 2
+    }
+
     static func cutoutProximity(for screen: ScreenDescribing, edge: NotchEdge,
                                 alongOffset: CGFloat) -> CutoutProximity? {
         guard edge == .top, let cutout = screen.hardwareNotch else { return nil }
-        let overlap = cutoutOverlap - alongOffset
-        // Dragged along the bezel the two come apart, and there is only so far
-        // the bridge will reach. Dragged the other way the notch climbs through
-        // the hole, and once its tip is out the far side the fill that hides
-        // inside the hole would be hanging past the hole's other wall.
+        let atTrailingEnd = cutoutIsAtTrailingEnd(cutout, alongOffset: alongOffset)
+        // Measured on the end that meets the hole, which `panelFrame` pins to
+        // the wall it meets — so this is the placement rather than a guess at
+        // it, on either side.
+        let overlap = atTrailingEnd
+            ? cutoutOverlap + alongOffset + cutout.width / 2
+            : cutoutOverlap - alongOffset
+        // Dragged clear along the bezel the two come apart, and there is only
+        // so far the bridge will reach. Dragged the other way the notch climbs
+        // into the hole, and once the joined end has passed the far wall the
+        // fill that hides inside the hole would hang out past it.
         guard overlap >= -cutoutReach,
               overlap <= cutout.width - cutoutOverlap else { return nil }
-        return CutoutProximity(depth: cutout.height, overlap: overlap)
+        return CutoutProximity(depth: cutout.height, overlap: overlap,
+                               atTrailingEnd: atTrailingEnd)
     }
 
     /// Anchor to the physical display edge, even when the Dock or menu bar
@@ -215,7 +241,12 @@ enum NotchGeometry {
             var besideCutout: CGFloat = 0
             if let cutout = screen.hardwareNotch {
                 let half: CGFloat = cutout.width / 2
-                besideCutout = half - cutoutOverlap + width / 2 - slack
+                besideCutout = cutoutIsAtTrailingEnd(cutout, alongOffset: alongOffset)
+                    // On the left of the hole it is the notch's *far* end that
+                    // has to land on the wall, so the whole bar is placed back
+                    // from it rather than out in front of it.
+                    ? cutoutOverlap + slack - width / 2
+                    : half - cutoutOverlap + width / 2 - slack
             }
             let centred: CGFloat = full.midX - width / 2 + alongOffset
             let x = clamp(centred + besideCutout,

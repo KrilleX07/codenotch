@@ -324,6 +324,32 @@ final class NotchViewModel: ObservableObject {
         max(0, cutout?.overlap ?? 0) / max(sizeScale, 0.0001)
     }
 
+    /// Which end of the bar the hole is at, or neither.
+    var cutoutAtTrailingEnd: Bool { cutout?.atTrailingEnd ?? false }
+
+    /// **What each end of the bar spends on its own ending**, before the body
+    /// with the rings in it begins.
+    ///
+    /// A plain notch spends a flare at both ends and always did. Merged, the
+    /// two ends do quite different things and the old figure is wrong for both.
+    /// The end at the hole spends only what is buried in it: there is no taper
+    /// there, the bar stands at full depth from the wall out, so a ring may sit
+    /// its own padding from the wall and no further. The far end spends the
+    /// taper, which is as long as the bar is deep — a good deal more than a
+    /// flare, and a ring left at the flare's allowance had its foot cut off by
+    /// the taper drawing back underneath it.
+    var leadAllowance: CGFloat {
+        guard mergesWithCutout else { return flare }
+        return cutoutAtTrailingEnd ? taperAllowance : cutoutBleed
+    }
+
+    var endAllowance: CGFloat {
+        guard mergesWithCutout else { return flare }
+        return cutoutAtTrailingEnd ? cutoutBleed : taperAllowance
+    }
+
+    private var taperAllowance: CGFloat { notchDepth }
+
     /// Where the drawn notch starts along the panel, in panel points.
     ///
     /// Folded, the notch normally shrinks toward its own centre line, so that
@@ -342,8 +368,14 @@ final class NotchViewModel: ObservableObject {
     }
 
     private func alongLead(of length: CGFloat) -> CGFloat {
-        guard !mergesWithCutout else { return slack }
-        return slack + (shapeLength - length) * sizeScale / 2
+        guard mergesWithCutout else {
+            return slack + (shapeLength - length) * sizeScale / 2
+        }
+        // Toward the hole, whichever end that is: the joined end is the one
+        // that must not move, or the bridge is left stretched across bezel.
+        return cutoutAtTrailingEnd
+            ? slack + (shapeLength - length) * sizeScale
+            : slack
     }
 
     /// Where the middle of the drawn notch falls along a panel of this length.
@@ -370,7 +402,7 @@ final class NotchViewModel: ObservableObject {
     /// drawn at another, which put them back under the cutout however carefully
     /// the shape was placed.
     var cellsLeadIn: CGFloat {
-        cutoutBleed + flare + NotchLayout.padStart(for: edge)
+        leadAllowance + NotchLayout.padStart(for: edge)
     }
 
 
@@ -403,7 +435,8 @@ final class NotchViewModel: ObservableObject {
             shape.cutout = SideNotchShape.Cutout(
                 depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
                 wall: cutout.overlap / scale,
-                run: flare
+                run: flare,
+                atTrailingEnd: cutout.atTrailingEnd
             )
         }
         return shape
@@ -486,7 +519,9 @@ final class NotchViewModel: ObservableObject {
     var orbScale: CGFloat { 1 }
 
     var orbAlong: CGFloat {
-        guard orbHugsCorner else { return shapeLength }
+        // Never into the hole: joined at the trailing end, the settings handle
+        // hangs off the *leading* tip, which is the tapered one there.
+        guard orbHugsCorner else { return cutoutAtTrailingEnd ? 0 : shapeLength }
         return cornerCentreAlong
             + NotchLayout.orbCornerOffset(corner: drawnCornerRadius, scale: orbScale)
     }
@@ -506,7 +541,8 @@ final class NotchViewModel: ObservableObject {
     /// orb sits past `shapeLength`, so the pair stay symmetric about the notch
     /// at every size and on every edge.
     var moveAlong: CGFloat {
-        cutoutBleed + shapeLength - orbAlong
+        guard !cutoutAtTrailingEnd else { return shapeLength - cutoutBleed }
+        return cutoutBleed + shapeLength - orbAlong
     }
 
     /// The mirror of `trailingExtent` at the near end — the room the move
@@ -666,14 +702,14 @@ final class NotchViewModel: ObservableObject {
     var bodyLength: CGFloat {
         NotchLayout.bodyLength(
             cellCount: snapshots.count, edge: edge, spacing: cellSpacing
-        ) + cutoutBleed
+        )
     }
 
     /// Distance along the stack to cell `index`'s ring centre, widening
     /// included so the readings stay in the middle of the bar.
     func ringCenter(index: Int) -> CGFloat {
-        NotchLayout.ringCenter(index: index, edge: edge, flare: flare,
-                               spacing: cellSpacing) + cutoutBleed
+        NotchLayout.ringCenter(index: index, edge: edge, flare: leadAllowance,
+                               spacing: cellSpacing)
     }
 
     var cellSpacing: CGFloat { cellSpacing(cellCount: snapshots.count) }
@@ -868,10 +904,9 @@ final class NotchViewModel: ObservableObject {
     /// model back. Taking the count as an argument is the only way to be sure
     /// the panel is sized for the list that caused the change.
     func shapeLength(cellCount: Int) -> CGFloat {
-        NotchLayout.shapeLength(cellCount: cellCount,
-                                edge: edge, flare: flare,
-                                spacing: cellSpacing(cellCount: cellCount))
-            + cutoutBleed
+        NotchLayout.bodyLength(cellCount: cellCount, edge: edge,
+                               spacing: cellSpacing(cellCount: cellCount))
+            + leadAllowance + endAllowance
     }
 
     /// The panel as it lands on screen, size choice included.
