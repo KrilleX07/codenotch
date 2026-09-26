@@ -787,14 +787,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if let account = profile.accountID() { accounts[path] = account }
                 transcripts[path] = ClaudeTranscriptReader(projects: profile.projectsDirectory)
             }
+            let profileIDs = Dictionary(uniqueKeysWithValues: claudeProfiles.map {
+                ($0.sessionsDirectory.path, $0.id)
+            })
             for (profile, monitor) in claudeMonitorsByProfile {
-                monitor.ownership = ClaudeSessionOwnership(
+                var ownership = ClaudeSessionOwnership(
                     own: profile.sessionsDirectory,
                     directories: directories,
                     accounts: accounts,
                     transcripts: transcripts,
                     index: index
                 )
+                ownership.isShown = { [weak preferences] directory in
+                    guard let preferences, let id = profileIDs[directory.path] else { return true }
+                    return preferences.isConnected(id)
+                }
+                monitor.ownership = ownership
             }
             let named = accounts.count, total = claudeProfiles.count
             Log.sessions.info("claude session ownership: \(named, privacy: .public) of \(total, privacy: .public) profiles name an account")
