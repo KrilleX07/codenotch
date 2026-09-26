@@ -2338,6 +2338,10 @@ private struct AccountRow: View {
             return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
         case .guidance:
             return false
+        case .command:
+            // Installed or not, the button does something: it runs the login
+            // or opens the install page.
+            return true
         }
     }
 

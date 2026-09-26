@@ -49814,6 +49814,39 @@
           }
         }
       }
+    },
+    "Install the %@ CLI first; Sign in opens its install page.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instale a CLI do %@ primeiro; Entrar abre a página de instalação."
+          }
+        }
+      }
+    },
+    "Runs %@ in your terminal; it opens the browser to sign in and saves the session this reads.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roda %@ no seu terminal; ele abre o navegador para entrar e guarda a sessão que o app lê."
+          }
+        }
+      }
+    },
+    "Runs %@ in your terminal; sign in there with /login and the notch reads the session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roda %@ no seu terminal; entre lá com /login e o notch lê a sessão."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

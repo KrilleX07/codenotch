@@ -24,7 +24,7 @@ actor KimiProvider: UsageProvider {
     }
 
     nonisolated var signInRoute: SignInRoute {
-        .guidance(L10n.t("Run kimi and sign in with /login — it writes and refreshes the token this reads."))
+        .command("kimi", name: "Kimi", install: URL(string: "https://moonshotai.github.io/kimi-cli/en/guides/getting-started.html"))
     }
 
     nonisolated func account() -> ProviderAccount? { KimiCredentials.account() }
