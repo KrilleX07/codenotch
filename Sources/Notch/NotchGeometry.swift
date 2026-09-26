@@ -183,6 +183,10 @@ enum NotchGeometry {
     /// it is being held, little enough that it is plainly *held*.
     static let cutoutGrip: CGFloat = 0.15
 
+    /// **How far the strand between a dragged notch and the hole stretches**
+    /// before it has thinned to nothing.
+    static let cutoutStretch: CGFloat = 48
+
     /// **The magnet.** Where a dragged notch is drawn, for where the pointer has
     /// actually taken it.
     ///

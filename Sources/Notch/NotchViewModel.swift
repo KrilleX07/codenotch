@@ -524,6 +524,99 @@ final class NotchViewModel: ObservableObject {
         return cutout.width / 2 - cutout.overlap + bar / 2 < 0
     }
 
+    /// **Where a dragged notch is squeezed to pass through the hole.**
+    ///
+    /// Goo through a gap narrower than itself does not slide *under* the gap,
+    /// it squeezes into it — and keeps its own size either side. Deeper than
+    /// the hole, a bar dragged through the display's notch showed its foot
+    /// passing underneath. Now, while it is in the hand, nothing of it is drawn
+    /// below the hole's depth inside the hole's width, and either side the cut
+    /// eases back down to the bar's own depth over a flare's length, so the bar
+    /// necks into the hole as it goes in and swells as it comes out.
+    ///
+    /// A cut rather than a change of size, because the size is what the pointer
+    /// holds: shrinking the bar to fit was tried, and it moved whichever end was
+    /// not under the pointer — a bar going into the hole from the left shrank
+    /// away from it instead of into it.
+    struct Squeeze: Equatable {
+        /// Along the panel: the hole's two walls.
+        var left: CGFloat
+        var right: CGFloat
+        /// Down from the top of the screen: the hole's foot, and the bar's.
+        var holeDepth: CGFloat
+        var barDepth: CGFloat
+        /// How far either side of the hole the cut takes to ease out.
+        var shoulder: CGFloat
+    }
+
+    var squeeze: Squeeze? {
+        guard holdsOffTheCutout, isExpanded, let cutout else { return nil }
+        let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
+        let half = cutout.width / 2
+        return Squeeze(left: middle - half, right: middle + half,
+                       holeDepth: cutout.depth,
+                       barDepth: max(cutout.depth,
+                                     notchDepth * sizeScale - NotchRootView.bezelBleed),
+                       shoulder: flare * sizeScale)
+    }
+
+    /// **The strand of black between a dragged notch and the hole.**
+    ///
+    /// Goo pulled off a surface does not part from it: it stretches, thins in
+    /// the middle, and lets go. Pulled away from the display's notch, the
+    /// strand runs from inside the hole's wall to inside the bar's near end —
+    /// both of which hide its ends — full while the two touch, pinching in the
+    /// middle as the gap opens, and gone at `NotchGeometry.cutoutStretch`.
+    /// Coming the other way it reaches across before they meet. Worked out from
+    /// where the bar is, so it follows the hand with nothing to catch up on.
+    struct Neck: Equatable {
+        /// Along the panel: the end inside the hole, and the end inside the bar.
+        var wall: CGFloat
+        var bar: CGFloat
+        /// How far down from the top of the screen each end reaches.
+        var wallDepth: CGFloat
+        var barDepth: CGFloat
+        /// How much of it there is, 0 to 1 — it grows down out of the bezel as
+        /// the two come together and draws back up into it as they part.
+        var presence: CGFloat
+        /// How far its middle has pinched, 0 to 1.
+        var thin: CGFloat
+    }
+
+    var neck: Neck? {
+        guard holdsOffTheCutout, isExpanded, let cutout else { return nil }
+        let carrying = cellWing
+        let drawn = carrying.length
+        let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
+        let half = cutout.width / 2
+        // The wall nearest the bar, and the bar's end that faces it.
+        let onTheRight = carrying.lead + drawn / 2 >= middle
+        let wall = onTheRight ? middle + half : middle - half
+        let tip = onTheRight ? carrying.lead : carrying.lead + drawn
+        let gap = onTheRight ? tip - wall : wall - tip
+        let stretch = NotchGeometry.cutoutStretch
+        guard gap < stretch else { return nil }
+        let apart = max(0, gap) / stretch
+        let x = 1 - apart
+        // Into the hole and into the bar by enough to hide both of its ends:
+        // the join's own overlap at the wall, the flare's length at the bar.
+        let into = NotchGeometry.cutoutOverlap
+        let reach = flare * sizeScale
+        // Never past the bar's other end. A bar gone all the way into the hole
+        // has nothing out on this side to be joined to, and a strand reaching
+        // out past it was a block of black left stuck to the wall.
+        let far = onTheRight ? carrying.lead + drawn : carrying.lead
+        let end = onTheRight ? min(max(tip, wall) + reach, far)
+                             : max(min(tip, wall) - reach, far)
+        guard onTheRight ? end > wall : end < wall else { return nil }
+        return Neck(wall: onTheRight ? wall - into : wall + into,
+                    bar: end,
+                    wallDepth: cutout.depth,
+                    barDepth: carrying.depth * sizeScale - NotchRootView.bezelBleed,
+                    presence: x * x * (3 - 2 * x),
+                    thin: apart)
+    }
+
     /// **Whether the other copy is coming out of the hole ahead of the join.**
     ///
     /// Set the moment a dragged notch is let go near the hole, so the other copy

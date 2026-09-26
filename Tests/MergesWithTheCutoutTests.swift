@@ -905,6 +905,108 @@ final class MergesWithTheCutoutTests: XCTestCase {
                        "the notch widened before anything joined it")
     }
 
+    // MARK: - Goo
+
+    /// A notch in the hand at a given place, the drag's own measure.
+    private func held(_ screen: ScreenDescribing, at a: CGFloat,
+                      scale: CGFloat = 0.5888) -> NotchViewModel {
+        let m = NotchViewModel()
+        m.edge = .top
+        m.requestedScale = scale
+        m.snapshots = [ProviderSnapshot(id: "p", displayName: "P", glyph: .claude,
+                                        fidelity: .official, status: .ok, windows: [])]
+        m.isExpanded = true
+        m.holdsOffTheCutout = true
+        m.alongOffset = a
+        m.adopt(screen: screen)
+        return m
+    }
+
+    /// **It squeezes through the hole rather than sliding under it** — and
+    /// keeps its own size doing it.
+    ///
+    /// Deeper than the hole, a bar dragged through the display's notch showed
+    /// its foot passing underneath. In the hand, nothing of it is drawn below
+    /// the hole's depth within the hole's width, easing back to the bar's own
+    /// depth either side. Shrinking the bar to fit was tried first, and moved
+    /// whichever end was not under the pointer: at full size, a bar let go on
+    /// the left landed 136pt short of the wall.
+    func testItSqueezesThroughTheHole() throws {
+        let screen = Notched()
+        let hole = try hole(screen)
+        for scale in [0.5888, 1.0, 1.5] as [CGFloat] {
+            let m = held(screen, at: -60, scale: scale)
+            let squeeze = try XCTUnwrap(m.squeeze, "scale \(scale): no squeeze in the hand")
+            XCTAssertEqual(m.sizeScale, scale, accuracy: 0.0001,
+                           "scale \(scale): squeezing changed its size")
+            let frame = NotchGeometry.panelFrame(
+                for: screen, panelSize: m.panelSize, edge: .top,
+                alongOffset: m.alongOffset, slack: m.slack,
+                trailingExtent: m.trailingExtent, leadingExtent: m.leadingExtent,
+                heldBar: m.plainBarLength)
+            // In the panel's own rect, which is what the view hands it.
+            let mask = SqueezeMask(squeeze: squeeze)
+                .path(in: CGRect(origin: .zero, size: frame.size))
+            func kept(_ x: CGFloat, _ depth: CGFloat) -> Bool {
+                mask.contains(CGPoint(x: x - frame.minX, y: depth))
+            }
+            for x in stride(from: hole.left + 1, to: hole.wall - 1, by: 7) {
+                XCTAssertFalse(kept(x, hole.depth + 1),
+                               "scale \(scale): its foot shows below the hole at \(x)")
+                XCTAssertTrue(kept(x, hole.depth - 1),
+                              "scale \(scale): it is cut above the hole's foot at \(x)")
+            }
+            // Clear of the shoulders it is the whole bar.
+            let deep = squeeze.barDepth - 1
+            XCTAssertTrue(kept(hole.wall + squeeze.shoulder + 2, deep),
+                          "scale \(scale): it is cut right of the hole")
+            XCTAssertTrue(kept(hole.left - squeeze.shoulder - 2, deep),
+                          "scale \(scale): it is cut left of the hole")
+        }
+        // Not in the hand, nothing is squeezed.
+        XCTAssertNil(model(screen).squeeze)
+    }
+
+    /// **Pulled away, a strand stretches between it and the hole, thins, and
+    /// lets go** — and only while it is in the hand.
+    func testTheStrandStretchesAndLetsGo() throws {
+        let screen = Notched()
+        let hole = try hole(screen)
+        let V = NotchGeometry.cutoutOverlap
+        let stretch = NotchGeometry.cutoutStretch
+
+        // Touching: full, not pinched at all.
+        let touching = try XCTUnwrap(held(screen, at: V).neck, "no strand where they touch")
+        XCTAssertEqual(touching.presence, 1, accuracy: 0.001)
+        XCTAssertEqual(touching.thin, 0, accuracy: 0.001)
+
+        // Pulled further, it only ever thins and draws back.
+        var last = touching
+        for gap in stride(from: CGFloat(1), to: stretch, by: 1) {
+            let n = try XCTUnwrap(held(screen, at: V + gap).neck, "at \(gap) the strand broke early")
+            XCTAssertLessThanOrEqual(n.presence, last.presence + 0.0001, "at \(gap) it grew back")
+            XCTAssertGreaterThanOrEqual(n.thin, last.thin - 0.0001, "at \(gap) it thickened")
+            // Its end at the wall never reaches below the hole.
+            XCTAssertLessThanOrEqual(n.presence * n.wallDepth, hole.depth + 0.001)
+            last = n
+        }
+        // And by the full stretch it has let go.
+        XCTAssertNil(held(screen, at: V + stretch).neck, "it never lets go")
+
+        // All the way inside the hole there is nothing out here to join to.
+        XCTAssertNil(held(screen, at: -120).neck,
+                     "a strand is left on the wall with the bar inside the hole")
+        // Not in the hand, no strand at all.
+        XCTAssertNil(model(screen).neck)
+
+        // Animatable, so a notch let go near the hole carries it as it glides.
+        var shape = GooNeck(neck: touching)
+        var data = shape.animatableData
+        data.second.first.second = 0.25
+        shape.animatableData = data
+        XCTAssertEqual(shape.neck.presence, 0.25, accuracy: 0.0001)
+    }
+
     /// No hole, no join — on a plain display and on the other three edges.
     func testOnlyTheTopEdgeOfANotchedDisplayMerges() {
         XCTAssertNil(model(Plain()).cutout)

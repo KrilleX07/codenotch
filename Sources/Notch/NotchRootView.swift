@@ -17,7 +17,27 @@ struct NotchRootView: View {
             ZStack(alignment: .topLeading) {
                 Color.clear
 
-                ForEach(model.wings) { wing in notch(place, wing: wing) }
+                ZStack {
+                    // Under the bar, so the bar's own outline is what shows where
+                    // the two overlap. No transition: it only ever appears and
+                    // goes with nothing of it to see — see `NotchViewModel.neck`.
+                    if let neck = model.neck {
+                        GooNeck(neck: neck)
+                            .fill(Palette.notch)
+                            .transition(.identity)
+                    }
+                    ForEach(model.wings) { wing in notch(place, wing: wing) }
+                }
+                // Squeezed through the hole while it is in the hand — see
+                // `NotchViewModel.squeeze`. The notch and its strand only; the
+                // handles and the cards are not part of what goes through.
+                .mask {
+                    if let squeeze = model.squeeze {
+                        SqueezeMask(squeeze: squeeze)
+                    } else {
+                        Rectangle().padding(-NotchRootView.bezelBleed * 4)
+                    }
+                }
 
                 // Outside the notch and outside its clip: the orb hangs past
                 // the end of the shape, tucked into the corner the far flare
@@ -462,5 +482,98 @@ struct NotchRootView: View {
             along: model.tooltipAlong(index: index, length: cardAlong),
             across: model.tooltipInset + (NotchLayout.tailLength + card) / 2
         )
+    }
+}
+
+/// **The strand between a dragged notch and the display's hole**, drawn in the
+/// panel's own points along the top edge — see `NotchViewModel.Neck`.
+///
+/// Its underside runs from the hole's depth at the wall to the bar's at the
+/// bar, and pinches toward the middle as `thin` rises, on `sin²` so it leaves
+/// both ends flat rather than creasing where it meets them. The whole of it is
+/// scaled by `presence`, so it grows down out of the bezel and draws back up
+/// into it rather than appearing.
+struct GooNeck: Shape {
+    var neck: NotchViewModel.Neck
+
+    /// Animatable so a notch let go near the hole carries the strand with it as
+    /// it glides in, rather than leaving it where it was.
+    var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
+                                       AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat>> {
+        get {
+            AnimatablePair(AnimatablePair(neck.wall, neck.bar),
+                           AnimatablePair(AnimatablePair(neck.barDepth, neck.presence), neck.thin))
+        }
+        set {
+            neck.wall = newValue.first.first
+            neck.bar = newValue.first.second
+            neck.barDepth = newValue.second.first.first
+            neck.presence = newValue.second.first.second
+            neck.thin = newValue.second.second
+        }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        // From above the screen's edge, where nothing shows, like the notch.
+        let top = -NotchRootView.bezelBleed
+        path.move(to: CGPoint(x: neck.wall, y: top))
+        path.addLine(to: CGPoint(x: neck.bar, y: top))
+        let steps = 48
+        for i in 0...steps {
+            // From the bar back to the wall.
+            let t = 1 - CGFloat(i) / CGFloat(steps)
+            let pinch = sin(.pi * t)
+            let depth = neck.presence
+                * (neck.wallDepth + (neck.barDepth - neck.wallDepth) * t)
+                * (1 - neck.thin * pinch * pinch)
+            path.addLine(to: CGPoint(x: neck.wall + (neck.bar - neck.wall) * t,
+                                     y: max(top, depth)))
+        }
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// **What of a dragged notch is drawn**, near the display's hole: everything,
+/// except below the hole's depth within the hole's width — easing back down to
+/// the bar's own depth over `shoulder` either side, on the smoother step, so the
+/// bar necks into the hole rather than being cut off at its walls. See
+/// `NotchViewModel.Squeeze`.
+struct SqueezeMask: Shape {
+    var squeeze: NotchViewModel.Squeeze
+
+    func path(in rect: CGRect) -> Path {
+        let s = squeeze
+        // Well past the panel on every side, so nothing but the cut is cut —
+        // including the band above the screen's edge the notch is pushed into.
+        let top = rect.minY - 100, bottom = rect.maxY + 100
+        let start = rect.minX - 100, end = rect.maxX + 100
+        let steps = 32
+        func eased(_ t: CGFloat) -> CGFloat { t * t * t * (t * (t * 6 - 15) + 10) }
+
+        var path = Path()
+        path.move(to: CGPoint(x: start, y: top))
+        path.addLine(to: CGPoint(x: end, y: top))
+        path.addLine(to: CGPoint(x: end, y: bottom))
+        path.addLine(to: CGPoint(x: s.right + s.shoulder, y: bottom))
+        path.addLine(to: CGPoint(x: s.right + s.shoulder, y: s.barDepth))
+        // Up into the hole's right wall.
+        for i in 1...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            path.addLine(to: CGPoint(x: s.right + s.shoulder * (1 - t),
+                                     y: s.barDepth + (s.holeDepth - s.barDepth) * eased(t)))
+        }
+        path.addLine(to: CGPoint(x: s.left, y: s.holeDepth))
+        // And back down out of the left one.
+        for i in 1...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            path.addLine(to: CGPoint(x: s.left - s.shoulder * t,
+                                     y: s.holeDepth + (s.barDepth - s.holeDepth) * eased(t)))
+        }
+        path.addLine(to: CGPoint(x: s.left - s.shoulder, y: bottom))
+        path.addLine(to: CGPoint(x: start, y: bottom))
+        path.closeSubpath()
+        return path
     }
 }
