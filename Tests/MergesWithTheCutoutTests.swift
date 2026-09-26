@@ -334,6 +334,44 @@ final class MergesWithTheCutoutTests: XCTestCase {
         XCTAssertEqual(model(Plain(), scale: 1.5).sizeScale, 1.5, accuracy: 0.001)
     }
 
+    /// **No wall at the far end.**
+    ///
+    /// The corner, a straight and then the flare is the right end for a bar with
+    /// depth to spend, and on a plain edge it is what the notch has. Measured at
+    /// the cutout's depth it came out as a 12pt corner, a **20pt dead-straight
+    /// vertical wall** and a turn crammed into the last 5pt — better than half
+    /// the end was a straight line between two small curves. That is the
+    /// faceted, stiff thing the flare was rebuilt to stop, and at this depth the
+    /// flare's own held-flat start is most of it.
+    ///
+    /// So the end is one step instead: it draws back the whole way, and nowhere
+    /// in it stands near vertical.
+    func testTheFarEndHasNoStraightWallInIt() throws {
+        let screen = Notched()
+        let m = model(screen)
+        let hole = try hole(screen)
+        let end = outline(of: m, on: screen)
+            .filter { $0.depth >= 0 && $0.depth <= hole.depth }
+            .filter { $0.x > hole.wall + 40 }
+            .sorted { $0.depth < $1.depth }
+        XCTAssertGreaterThan(end.count, 20, "too few samples to measure the end")
+
+        // How far along the edge travels across the whole depth of the bar. A
+        // wall does not travel; a taper must.
+        let travel = (end.first?.x ?? 0) - (end.last?.x ?? 0)
+        XCTAssertGreaterThan(travel, hole.depth / 3,
+                             "the far end drew back only \(travel)pt across \(hole.depth)pt "
+                             + "of depth — that is a wall, not a taper")
+
+        // And nowhere in it is steeper than this, which is what a wall is.
+        for (a, b) in zip(end, end.dropFirst()) where b.depth - a.depth > 0.4 {
+            let slope = abs(b.depth - a.depth) / max(abs(b.x - a.x), 0.0001)
+            XCTAssertLessThan(slope, 4,
+                              "the end stands at \(Int(atan(slope) * 180 / .pi))° "
+                              + "\(a.depth)pt down — all but vertical")
+        }
+    }
+
     /// **Every proportion in it is the design's**, which is what taking one
     /// scale buys over pinning the depth and letting the rest follow a slider.
     /// The contents fit the depth, and the clear space around the ring is the
