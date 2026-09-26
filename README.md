@@ -289,7 +289,7 @@ built and signed by the maintainer.
 ## Building
 
 ```sh
-brew install xcodegen   # once
+brew install xcodegen create-dmg   # once
 make run                # generate, build, launch a Debug build
 make test               # unit tests
 ```
