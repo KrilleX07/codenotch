@@ -710,3 +710,59 @@ final class CellPitchTests: XCTestCase {
         )
     }
 }
+
+/// The flare meets the screen's border on every edge, rather than being cut by it.
+@MainActor
+final class FlareMeetsTheBorderOnEveryEdgeTests: XCTestCase {
+    /// `bezelBleed` pushes the shape past the screen's edge so no wallpaper
+    /// hairline shows. A flare that starts up there arrives on screen already
+    /// part way through its turn — the tip sits *over* the border instead of
+    /// on it. The band is kept straight so the curve begins at the first row
+    /// anyone can see.
+    ///
+    /// This was fixed beside the hardware notch first, where the sweep is
+    /// shallow enough to make it obvious. It was always true of the other
+    /// three: a 33pt flare spends about a third of its length in those two
+    /// points of depth.
+    func testTheHiddenBandIsStraightOnEveryEdge() {
+        for edge in NotchEdge.allCases {
+            let m = NotchViewModel()
+            m.edge = edge
+            m.isExpanded = true
+            m.snapshots = (0..<3).map {
+                ProviderSnapshot(id: "p\($0)", displayName: "p", glyph: .claude,
+                                 fidelity: .official, status: .ok, windows: [])
+            }
+            XCTAssertEqual(m.notchShape.bezelHidden * m.sizeScale,
+                           NotchRootView.bezelBleed, accuracy: 0.001,
+                           "\(edge): the flare still starts behind the bezel")
+        }
+    }
+
+    /// And what that means on the path: the shape is its full extent at the
+    /// row that meets the border, not already narrowed by a curve spent
+    /// out of sight.
+    func testTheShapeIsFullWidthWhereItMeetsTheBorder() {
+        for edge in [NotchEdge.right, .left, .bottom] {
+            let m = NotchViewModel()
+            m.edge = edge
+            m.isExpanded = true
+            m.snapshots = (0..<3).map {
+                ProviderSnapshot(id: "p\($0)", displayName: "p", glyph: .claude,
+                                 fidelity: .official, status: .ok, windows: [])
+            }
+            let size = m.notchSize
+            let place = NotchPlacement(edge: edge, panelSize: size)
+            let path = m.notchShape.path(in: CGRect(origin: .zero, size: size))
+            let along = m.notchLength / 2
+
+            func drawn(at across: CGFloat) -> Bool {
+                path.contains(place.point(along: along, across: across))
+            }
+            // Anywhere inside the hidden band the shape is still there.
+            XCTAssertTrue(drawn(at: 0.3), "\(edge): nothing at the bezel")
+            XCTAssertTrue(drawn(at: NotchRootView.bezelBleed - 0.3),
+                          "\(edge): the shape stops short of the border")
+        }
+    }
+}

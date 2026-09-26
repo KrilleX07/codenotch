@@ -523,8 +523,13 @@ final class NotchViewModel: ObservableObject {
         shape.filletRadius = drawnFillet
         shape.filletDepth = drawnFilletDepth
         shape.filletRamp = splitsAroundHardwareNotch ? NotchLayout.splitFilletRamp : 0
-        shape.bezelHidden = splitsAroundHardwareNotch
-            ? NotchRootView.bezelBleed / max(sizeScale, 0.0001) : 0
+        // Every edge, not only the hardware one. `bezelBleed` pushes the shape
+        // past the screen's edge on all four — see `NotchRootView` — so on all
+        // four the flare used to begin off-screen and arrive already part way
+        // through its turn, cut off by the border rather than meeting it. It
+        // showed up first beside the cutout because that sweep is shallow, but
+        // a 33pt flare spends a third of its length in those two points.
+        shape.bezelHidden = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
         shape.cornerCapOverride = splitsAroundHardwareNotch ? drawnCornerRadius : nil
         return shape
     }
