@@ -347,6 +347,7 @@ let cursorSnap={status:'absent',windows:[],fetched_at:0,note:''};
 // Grok Build credits, from the Grok CLI's own session; absent until that CLI is signed in
 let grokSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let glmSnap={status:'absent',windows:[],fetched_at:0,note:''};
+let opencodeSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let agSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let glyphs={}; // id → {kind:'mark'|'appicon', url}
 let activity=[]; // working state of the non-Claude providers: {provider,state:'busy'|'waiting',name,detail,since}
@@ -994,6 +995,7 @@ function providers(){
   const list=claudeCells();
   if(codexSnap.status!=='absent') list.push({id:'codex',base:'codex',name:'Codex',glyph:'Cx',snap:codexSnap});
   if(glmSnap.status!=='absent') list.push({id:'glm',base:'glm',name:'z.ai',glyph:'Z.ai',snap:glmSnap});
+  if(opencodeSnap.status!=='absent') list.push({id:'opencode',base:'opencode',name:'OpenCode Go',glyph:'OC',snap:opencodeSnap});
   if(cursorSnap.status!=='absent') list.push({id:'cursor',base:'cursor',name:'Cursor',glyph:'Cu',snap:cursorSnap});
   if(grokSnap.status!=='absent') list.push({id:'grok',base:'grok',name:'Grok',glyph:'Gk',snap:grokSnap});
   if(agSnap.status!=='absent') list.push({id:'gemini',base:'gemini',name:'Antigravity',glyph:'Ag',snap:agSnap});
@@ -1028,6 +1030,7 @@ function headlineOf(snap,id){
   if(id==='cursor') return byId('included')||byId('api');
   if(id==='grok') return byId('credits')||ws[0];
   if(id==='glm') return byId('session');
+  if(id==='opencode') return byId('rolling');
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
   if(agPrefs.limit!=='automatic'){ const w=tightestOf(lanes.filter(w=>laneIs(w,agPrefs.limit))); if(w) return w; }
   return tightestOf(lanes.filter(w=>w.used<1))||tightestOf(lanes)||lanes[0];
@@ -1044,6 +1047,7 @@ function weeklyOf(snap,id){
   if(id==='cursor') return null;
   if(id==='grok') return null; // the credits window is already the weekly one
   if(id==='glm') return byId('weekly');
+  if(id==='opencode') return byId('weekly');
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
   return tightestOf(lanes.filter(w=>laneIs(w,'weekly')));
 }
@@ -1564,6 +1568,8 @@ listen('antigravity',e=>{agSnap=e.payload||agSnap;settle('gemini');renderRing();
 invoke('get_antigravity').then(u=>{agSnap=u||agSnap;renderRing();}).catch(()=>{});
 listen('glm',e=>{glmSnap=e.payload||glmSnap;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 invoke('get_glm').then(u=>{glmSnap=u||glmSnap;renderRing();}).catch(()=>{});
+listen('opencode',e=>{opencodeSnap=e.payload||opencodeSnap;settle('opencode');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_opencode').then(u=>{opencodeSnap=u||opencodeSnap;renderRing();}).catch(()=>{});
 invoke('get_notch_slots').then(v=>{if(Array.isArray(v)){notchSlots=v;renderRing();}}).catch(()=>{});
 listen('notch_slots',e=>{
   notchSlots=Array.isArray(e.payload)?e.payload:null;
