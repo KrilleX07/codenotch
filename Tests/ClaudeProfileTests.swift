@@ -334,6 +334,28 @@ final class ClaudeProfileTests: XCTestCase {
 
     /// A home directory with `.claude/` and a `.claude.json` beside it, as the
     /// default profile expects them.
+    /// A reading from Claude Desktop's cache carries no plan, so the profile's
+    /// own record has to say whose it is. Matched to the profile by the same
+    /// record's organization, so the two cannot disagree.
+    func testTheOrganizationNamesThePlan() throws {
+        let home = try accountHome(address: "one@example.com")
+        let json = #"{"oauthAccount":{"emailAddress":"one@example.com","organizationUuid":"org-one","organizationType":"claude_enterprise"}}"#
+        try Data(json.utf8).write(to: home.appendingPathComponent(".claude.json"))
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_800_000_500)],
+                                              ofItemAtPath: home.appendingPathComponent(".claude.json").path)
+
+        let profile = ClaudeProfile.default(home: home)
+        XCTAssertEqual(profile.organizationPlan(), "enterprise")
+        XCTAssertEqual(ClaudeOAuthProvider.planName(profile.organizationPlan()), "Enterprise")
+    }
+
+    /// An older record names no organization type, and then there is simply
+    /// nothing to say — not a guess.
+    func testNoOrganizationTypeMeansNoPlan() throws {
+        let profile = ClaudeProfile.default(home: try accountHome(address: "one@example.com"))
+        XCTAssertNil(profile.organizationPlan())
+    }
+
     private func accountHome(address: String,
                              organization: String = "org-one") throws -> URL {
         let home = FileManager.default.temporaryDirectory
@@ -521,5 +543,22 @@ final class ClaudeAccountNameTests: XCTestCase {
     private func write(_ address: String, to url: URL) throws {
         let json = #"{"oauthAccount":{"emailAddress":"\#(address)","organizationUuid":"org"}}"#
         try Data(json.utf8).write(to: url)
+    }
+}
+
+/// The plan the way Claude names it, whichever source it came from.
+final class ClaudePlanNameTests: XCTestCase {
+    func testTheCredentialsWordsAreCapitalised() {
+        XCTAssertEqual(ClaudeOAuthProvider.planName("enterprise"), "Enterprise")
+        XCTAssertEqual(ClaudeOAuthProvider.planName("max"), "Max")
+        XCTAssertEqual(ClaudeOAuthProvider.planName("team"), "Team")
+    }
+
+    /// Anything that is not one bare lowercase word is shown as it came.
+    func testAnythingElseIsLeftAlone() {
+        XCTAssertEqual(ClaudeOAuthProvider.planName("extra usage"), "extra usage")
+        XCTAssertEqual(ClaudeOAuthProvider.planName("Team"), "Team")
+        XCTAssertNil(ClaudeOAuthProvider.planName("  "))
+        XCTAssertNil(ClaudeOAuthProvider.planName(nil))
     }
 }

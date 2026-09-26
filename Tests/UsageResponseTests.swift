@@ -346,6 +346,17 @@ final class UsageArchiveTests: XCTestCase {
         XCTAssertEqual(restored?.fetchedAt, taken)
     }
 
+    /// A remembered reading is exactly when "whose numbers are these?" is
+    /// hardest to answer, so the plan is kept with it.
+    func testThePlanRoundTrips() {
+        let defaults = makeDefaults()
+        var withPlan = reading
+        withPlan.plan = "Enterprise"
+        UsageArchive(defaults: defaults).save(["claude": (withPlan, Date())])
+
+        XCTAssertEqual(UsageArchive(defaults: defaults).load()["claude"]?.snapshot.plan, "Enterprise")
+    }
+
     func testCodexDailyUsageRoundTripsWithTheQuotaReading() {
         let defaults = makeDefaults()
         let usage = CodexTokenUsage(
