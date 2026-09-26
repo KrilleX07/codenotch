@@ -297,10 +297,7 @@ final class GLMCredentialsTests: XCTestCase {
         XCTAssertNil(credential)
     }
 
-    /// #71: a Start Plan key is not a Coding Plan key — the monitor rejects it
-    /// — so it is never claimed as a credential, but it is noticed, so the row
-    /// can say the plan has no published usage instead of asking for a key.
-    func testAStartPlanIsNoticedButNeverClaimed() throws {
+    func testReadsAZCodeStartPlanKey() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("zcode-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: url) }
         try """
@@ -309,7 +306,10 @@ final class GLMCredentialsTests: XCTestCase {
             "options": { "apiKey": "start-key",
                          "baseURL": "https://zcode.z.ai/api/v1/zcode-plan/anthropic" } } } }
         """.write(to: url, atomically: true, encoding: .utf8)
-        XCTAssertNil(GLMCredentials.zcodePlanKey(url))
+        let credential = GLMCredentials.zcodePlanKey(url)
+        XCTAssertEqual(credential?.token, "start-key")
+        XCTAssertEqual(credential?.source, "ZCode")
+        XCTAssertEqual(credential?.baseURL.host, "api.z.ai")
         XCTAssertTrue(GLMCredentials.zcodeHasStartPlan(url))
 
         try """
