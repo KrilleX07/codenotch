@@ -300,7 +300,8 @@ final class NotchWindowController {
             for: screen, panelSize: size, edge: model.edge,
             alongOffset: model.alongOffset, slack: model.slack,
             trailingExtent: model.trailingExtent,
-            leadingExtent: model.leadingExtent
+            leadingExtent: model.leadingExtent,
+            heldBar: model.holdsOffTheCutout ? model.plainBarLength : nil
         )
 
         if let panel {
@@ -316,9 +317,9 @@ final class NotchWindowController {
             panel.onDragStart = { [weak self] in self?.beginOptionDrag() }
             panel.onDrag = { [weak self] dx, dy in self?.dragged(dx: dx, dy: dy) }
             panel.onDragEnd = { [weak self] in
-                guard let self else { return }
-                self.onReposition?(self.model.alongOffset)
-                self.endOptionDrag()
+                // Where it lands is saved by the landing — see `putDown` — not
+                // here: a drag let go near the hole is not where it stays.
+                self?.endOptionDrag()
             }
 
             // The hosting view goes *inside* a plain container rather than
@@ -383,6 +384,7 @@ final class NotchWindowController {
     private func beginOptionDrag() {
         guard !isOptionDragging else { return }
         isOptionDragging = true
+        pickUp()
         clearHoverWork?.cancel()
         clearHoverWork = nil
         foldWork?.cancel()
@@ -397,36 +399,102 @@ final class NotchWindowController {
     private func endOptionDrag() {
         guard isOptionDragging else { return }
         isOptionDragging = false
-        settleOnCutout()
+        putDown()
         cursorMoved()
     }
 
-    /// **Let go near the display's own notch and it settles onto it.**
+    // MARK: - The notch in the hand
+
+    /// The second half of a landing, if it has not happened yet.
+    private var landing: DispatchWorkItem?
+
+    /// The hole on the screen the notch is on, if it is on the one edge that
+    /// has one.
+    private var heldCutout: HardwareNotch? {
+        guard model.edge == .top else { return nil }
+        return currentScreen()?.hardwareNotch
+    }
+
+    /// **Picked up, it lets go of the hole.**
     ///
-    /// The drag itself steps, because a bar that eases after the pointer is a
-    /// bar that is not under it. This is the one moment there is something to
-    /// ease *to*: the hand is off, the notch is near the hole, and the nearer
-    /// of its two walls is where it belongs.
+    /// A joined notch is attached and cannot follow the pointer: dragging it
+    /// used to move only how deep it was buried, which nothing on screen shows,
+    /// so the drag went dead for fifty points and then jumped. In the hand it is
+    /// a lone bar measured the plain way — leading tip point for point with the
+    /// pointer — and it lets go of the hole on the fold's spring. The window is
+    /// the same before and after, which is the only reason that may be eased.
+    private func pickUp() {
+        landing?.cancel()
+        landing = nil
+        guard let cutout = heldCutout, !model.holdsOffTheCutout else { return }
+        let free = NotchGeometry.freeOffset(fromStanding: model.alongOffset,
+                                            width: cutout.width, bar: model.plainBarLength)
+        let wasJoined = model.mergesWithCutout
+        let lift = {
+            self.model.holdsOffTheCutout = true
+            self.model.alongOffset = free
+            self.relocate()
+        }
+        if wasJoined { withAnimation(NotchMotion.unfold, lift) } else { lift() }
+    }
+
+    /// **Put down near the hole, it glides onto the nearer wall and joins it.**
     ///
-    /// Animated around `relocate` rather than around the offset alone, because
-    /// what is drawn follows `NotchViewModel.cutout`, and that is worked out in
-    /// there. Safe to ease only because the window does not move for any of it
-    /// — it is the same size and in the same place anywhere near the hole, by
-    /// `NotchViewModel.cutoutSpan`, and easing anything inside a window that
-    /// moves eases it across the distance the window moved.
-    private func settleOnCutout() {
-        guard let screen = currentScreen(),
-              let magnet = NotchGeometry.cutoutMagnet(for: screen, edge: model.edge,
-                                                      alongOffset: model.alongOffset),
-              model.alongOffset != magnet
-        else { return }
+    /// Two movements, one after the other, because they are two different
+    /// things and doing both at once was the glitch. First the bar travels to
+    /// the wall as the bar it is — the same copy, the same shape, only moving.
+    /// Then, with its end already inside the hole where nothing shows, it
+    /// takes the hole: the size and depth the hardware sets, and the other copy
+    /// drawn out of the far wall. Neither moves the window, because the window
+    /// is the same anywhere near the hole; that is what lets both ease.
+    ///
+    /// Put down out of reach, it stays exactly where it was put.
+    private func putDown() {
+        guard let cutout = heldCutout, model.holdsOffTheCutout else {
+            onReposition?(model.alongOffset)
+            return
+        }
+        let bar = model.plainBarLength
+        guard let target = NotchGeometry.cutoutLanding(alongOffset: model.alongOffset,
+                                                       width: cutout.width, bar: bar)
+        else {
+            // Out of reach: say where it is the way it is kept, and it stays.
+            model.holdsOffTheCutout = false
+            model.alongOffset = NotchGeometry.standingOffset(fromFree: model.alongOffset,
+                                                             width: cutout.width, bar: bar)
+            relocate()
+            updateInteractiveRects()
+            onReposition?(model.alongOffset)
+            return
+        }
+
         withAnimation(NotchMotion.unfold) {
-            model.alongOffset = magnet
+            model.alongOffset = target.free
             relocate()
         }
-        onReposition?(model.alongOffset)
+        let join = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.landing = nil
+                withAnimation(NotchMotion.unfold) {
+                    self.model.holdsOffTheCutout = false
+                    self.model.alongOffset = target.standing
+                    self.relocate()
+                }
+                self.updateInteractiveRects()
+                self.onReposition?(self.model.alongOffset)
+            }
+        }
+        landing = join
+        // Most of the glide, not all of it: the spring's tail is a settle a few
+        // hundredths of a point wide, and waiting it out reads as a pause.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.landingBeat, execute: join)
         updateInteractiveRects()
     }
+
+    /// How long the glide onto the wall is given before the notch takes the
+    /// hole.
+    static let landingBeat: TimeInterval = 0.32
 
     // MARK: - Hit regions
 

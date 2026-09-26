@@ -158,6 +158,58 @@ enum NotchGeometry {
         return (atTrailingEnd: true, overlap: cutoutDeepest + alongOffset - flip)
     }
 
+    // MARK: - While the notch is in the hand
+
+    /// **Near the hole, for a notch that is being dragged.**
+    ///
+    /// A drag measures the notch the plain way — its leading tip, point for
+    /// point with the pointer, `alongOffset` from where it sits flush on the
+    /// right — rather than through `cutoutStanding`, whose buried stretches
+    /// and side-hop are what made a drag go dead for fifty points and then
+    /// jump. Near is anywhere either end is within reach of its own wall of the
+    /// hole, and inside it the window is the one that holds a joined pair, so
+    /// the notch can be let go of into a join without the window moving.
+    static func cutoutFreelyNear(alongOffset a: CGFloat, width: CGFloat,
+                                 bar: CGFloat) -> Bool {
+        let reach = 2 * cutoutDeepest
+        return a >= cutoutOverlap - width - bar - reach && a <= cutoutOverlap + reach
+    }
+
+    /// The drag's measure of a notch placed by `cutoutStanding` — the same spot
+    /// on screen, said the plain way.
+    static func freeOffset(fromStanding a: CGFloat, width: CGFloat,
+                           bar: CGFloat) -> CGFloat {
+        let stand = cutoutStanding(alongOffset: a)
+        guard stand.atTrailingEnd else { return a }
+        // On the left its trailing tip is `overlap` inside the left wall, and
+        // its leading tip a bar's length back from that.
+        return cutoutOverlap - width + stand.overlap - bar
+    }
+
+    /// And back: the placement a dragged notch has once it is let go, on
+    /// whichever side of the hole most of it is.
+    static func standingOffset(fromFree a: CGFloat, width: CGFloat,
+                               bar: CGFloat) -> CGFloat {
+        let flip = cutoutOverlap - cutoutDeepest
+        // The bar's middle against the hole's, both measured from the hole's.
+        let lead = width / 2 - cutoutOverlap + a
+        guard lead + bar / 2 < 0 else { return max(a, flip) }
+        let overlap = lead + bar + width / 2
+        return min(overlap - cutoutDeepest + flip, flip - 0.5)
+    }
+
+    /// **Where a dragged notch goes when it is let go**, in the drag's own
+    /// measure — flush on whichever side of the hole most of it is on — or nil
+    /// when it is out of reach and stays where it was put.
+    static func cutoutLanding(alongOffset a: CGFloat, width: CGFloat,
+                              bar: CGFloat) -> (free: CGFloat, standing: CGFloat)? {
+        guard cutoutFreelyNear(alongOffset: a, width: width, bar: bar) else { return nil }
+        let lead = width / 2 - cutoutOverlap + a
+        if lead + bar / 2 >= 0 { return (free: 0, standing: 0) }
+        return (free: 2 * cutoutOverlap - width - bar,
+                standing: 2 * (cutoutOverlap - cutoutDeepest))
+    }
+
     /// **Whether the notch is on the display's own hole**, at which end, and by
     /// how much.
     ///
@@ -174,27 +226,19 @@ enum NotchGeometry {
     /// good place for it to be — the tip is inside the hole and the bar starts
     /// at the wall, exactly as it does with no nudge at all — and a rule written
     /// on the size of the nudge threw all of it away.
-    /// **Where the notch settles when it is let go near the hole.**
-    ///
-    /// There are two places worth being, and they are the two walls: flush
-    /// against the right one and flush against the left. Everywhere between is
-    /// the notch buried further into the cutout, which looks exactly the same
-    /// as flush — the buried part is inside the hole where nothing shows — so
-    /// it is a position with nothing to recommend it and nothing to hold on to.
-    ///
-    /// Nil once the notch is out of reach, where the nudge means what it says
-    /// and the notch stays where it was put.
-    static func cutoutMagnet(for screen: ScreenDescribing, edge: NotchEdge,
-                             alongOffset: CGFloat) -> CGFloat? {
-        guard cutoutProximity(for: screen, edge: edge, alongOffset: alongOffset) != nil
-        else { return nil }
-        let onTheLeft = 2 * (cutoutOverlap - cutoutDeepest)
-        return abs(alongOffset) <= abs(alongOffset - onTheLeft) ? 0 : onTheLeft
-    }
-
     static func cutoutProximity(for screen: ScreenDescribing, edge: NotchEdge,
-                                alongOffset: CGFloat) -> CutoutProximity? {
+                                alongOffset: CGFloat,
+                                heldBar: CGFloat? = nil) -> CutoutProximity? {
         guard edge == .top, let cutout = screen.hardwareNotch else { return nil }
+        // **In the hand, it is never joined.** Joined, the notch is attached
+        // and cannot follow the pointer; it lets go when it is picked up and
+        // takes the hole again when it is put down — see `cutoutLanding`.
+        if let bar = heldBar {
+            guard cutoutFreelyNear(alongOffset: alongOffset, width: cutout.width, bar: bar)
+            else { return nil }
+            return CutoutProximity(depth: cutout.height, overlap: cutoutOverlap - alongOffset,
+                                   atTrailingEnd: false, width: cutout.width, joined: false)
+        }
         // Measured on the end that meets the hole, which `panelFrame` pins to
         // the wall it meets — so this is the placement rather than a guess at it.
         let (atTrailingEnd, overlap) = cutoutStanding(alongOffset: alongOffset)
@@ -258,7 +302,10 @@ enum NotchGeometry {
         // The handles can hang past either end of the body. Those parts of
         // the padding must stay on screen even when the hover card may not.
         trailingExtent: CGFloat = 0,
-        leadingExtent: CGFloat = 0
+        leadingExtent: CGFloat = 0,
+        // The notch's own length when it is being dragged, nil otherwise — a
+        // held notch is placed point for point with the pointer.
+        heldBar: CGFloat? = nil
     ) -> CGRect {
         let full = screen.frameValue
         let width = panelSize.width.rounded(.up)
@@ -308,7 +355,14 @@ enum NotchGeometry {
             // after it has let go of the hole, out past it rather than back to
             // the middle of the screen.
             var wanted: CGFloat = full.midX - width / 2 + alongOffset
-            if cutoutProximity(for: screen, edge: edge, alongOffset: alongOffset) != nil {
+            if let bar = heldBar, let cutout = screen.hardwareNotch {
+                // In the hand: the window that holds a pair while the notch is
+                // anywhere near the hole, so letting go into a join does not
+                // move it, and the plain pin beside the hole once it is not.
+                wanted = cutoutFreelyNear(alongOffset: alongOffset, width: cutout.width, bar: bar)
+                    ? full.midX - width / 2
+                    : full.midX + cutout.width / 2 - cutoutOverlap + alongOffset - slack
+            } else if cutoutProximity(for: screen, edge: edge, alongOffset: alongOffset) != nil {
                 // **Centred on the hole, joined or not.**
                 //
                 // Joined the notch is a pair either side of the cutout and the

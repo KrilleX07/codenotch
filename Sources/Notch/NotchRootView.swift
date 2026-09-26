@@ -156,7 +156,7 @@ struct NotchRootView: View {
 
     private func notch(_ place: NotchPlacement, wing: NotchViewModel.Wing) -> some View {
         // Configured by the model, never assembled here — see `notchShape`.
-        let shape = model.notchShape
+        let shape = model.notchShape(for: wing)
         // Glass is for the open notch only. Folded, the pill has to read as
         // part of the bezel — and as the hardware notch itself on a MacBook —
         // so it stays black; and glass under a `.statusBar` panel at rest
@@ -223,7 +223,7 @@ struct NotchRootView: View {
             // mirrored and nothing else: the point of it is that the hardware's
             // notch has the app either side of it, not that every number is
             // printed twice.
-            .overlay(alignment: contentAlignment) { if !wing.mirrored { cells } }
+            .overlay(alignment: contentAlignment) { if wing.carriesCells { cells } }
             // Masked by the notch itself, not by its bounding box. Without this
             // the cells simply sit on top of a shrinking shape and appear to
             // slide out of the end of it; clipped, they are swallowed by the
@@ -247,21 +247,7 @@ struct NotchRootView: View {
             // that never moves, there is nothing left to disagree about: the
             // shape grows inward from a corner that cannot move, animated or
             // not.
-            // **The mirror**, for the copy on the other side of the hole.
             //
-            // The container and nothing in it: the other copy carries no
-            // readings, which is the only reason a flip is safe here. Before
-            // `position`, so it turns the bar about its own centre rather than
-            // about the panel's.
-            //
-            // And before the transition, which is the part that matters. A
-            // transition wraps the view beneath it, so anchored above this the
-            // growth was measured on the bar *unflipped* — and the end it held
-            // still was the mirror's outer end rather than the one against the
-            // hole. The copy flowed out of the cutout and the mirror appeared
-            // out in the bezel and reached back for it. Two halves of a
-            // movement going opposite ways is the flip that would not go away.
-            .scaleEffect(x: wing.mirrored ? -1 : 1, y: 1)
             // **Drawn out of the hole, and taken back into it the same way.**
             //
             // Not a fade. Nothing about a notch joining the one the Mac already
@@ -294,17 +280,12 @@ struct NotchRootView: View {
     }
 
     /// The end of a copy that is welded to the hole, which is the end its
-    /// movement is anchored at.
-    ///
-    /// Read on the bar **as it is drawn**, mirror and all — the flip is applied
-    /// below the transition for exactly that reason. So the mirror's is its far
-    /// end, always, and the other copy's is its near end while it is on the
-    /// right of the hole and its far end on the left. A bar that popped out to
-    /// the left while drawing itself from the right would be coming out of thin
-    /// air and going back into the wrong wall.
+    /// movement is anchored at: the near end of a copy on the right of the
+    /// hole, the far end of one on its left. Nothing is flipped by the view, so
+    /// that is the end on screen too — a copy never comes out of thin air at one
+    /// end and goes back into the wrong wall at the other.
     private func joinedEnd(of wing: NotchViewModel.Wing) -> UnitPoint {
-        if wing.mirrored { return .trailing }
-        return model.leavesTheCutoutAtItsTrailingEnd ? .trailing : .leading
+        wing.onTheLeft ? .trailing : .leading
     }
 
     /// The transition a copy of the notch arrives and leaves on.

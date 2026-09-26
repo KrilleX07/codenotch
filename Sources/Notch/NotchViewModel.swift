@@ -229,6 +229,21 @@ final class NotchViewModel: ObservableObject {
     /// Visible slice of the panel along its edge, in local stack coordinates.
     @Published var visibleAlongRange: ClosedRange<CGFloat>?
 
+    /// **Whether the notch is in the hand**: being ⌥-dragged, or on its way to
+    /// where it was let go. Held, it is never joined to the hole — a joined
+    /// notch is attached and cannot follow the pointer — and it is measured the
+    /// plain way, its leading tip point for point with the pointer. See
+    /// `NotchGeometry.cutoutFreelyNear`.
+    @Published var holdsOffTheCutout = false
+
+    /// The notch's length as a lone bar at the size that was asked for — what
+    /// it is while it is in the hand, joined or not a moment before.
+    var plainBarLength: CGFloat {
+        NotchLayout.shapeLength(cellCount: snapshots.count, edge: edge, flare: flare,
+                                spacing: cellSpacing(cellCount: snapshots.count))
+            * requestedScale
+    }
+
     /// How close the display's own hole is, or nil when there is none in reach.
     /// Set by `adopt(screen:)` and read by everything that has to know the
     /// notch is joined to something at its leading end.
@@ -236,12 +251,7 @@ final class NotchViewModel: ObservableObject {
 
     /// Where a ring's centre falls along the panel, on a given copy of the bar.
     func ringAlong(index: Int, in wing: Wing) -> CGFloat {
-        let local = ringCenter(index: index) * sizeScale
-        // Mirrored, the notch's own measurements run back from the copy's far
-        // end rather than forward from its near one.
-        return wing.mirrored
-            ? wing.lead + notchLength * sizeScale - local
-            : wing.lead + local
+        wing.lead + ringCenter(index: index) * sizeScale
     }
 
     /// And how far along a copy a point in the panel is, in the notch's own
@@ -249,8 +259,7 @@ final class NotchViewModel: ObservableObject {
     func alongWithin(_ along: CGFloat, of wing: Wing) -> CGFloat? {
         let drawn = notchLength * sizeScale
         guard along >= wing.lead - 0.001, along <= wing.lead + drawn + 0.001 else { return nil }
-        let local = wing.mirrored ? wing.lead + drawn - along : along - wing.lead
-        return local / max(sizeScale, 0.0001)
+        return (along - wing.lead) / max(sizeScale, 0.0001)
     }
 
     func tooltipAlong(index: Int, length: CGFloat) -> CGFloat {
@@ -290,8 +299,9 @@ final class NotchViewModel: ObservableObject {
         let settled = screenSize != .zero
         let size = screen.frameValue.size
         if screenSize != size { screenSize = size }
-        let near = NotchGeometry.cutoutProximity(for: screen, edge: edge,
-                                                 alongOffset: alongOffset)
+        let near = NotchGeometry.cutoutProximity(
+            for: screen, edge: edge, alongOffset: alongOffset,
+            heldBar: holdsOffTheCutout ? plainBarLength : nil)
         let side = edge == .top && screen.hardwareNotch != nil
             && NotchGeometry.cutoutStanding(alongOffset: alongOffset).atTrailingEnd
         if leavesTheCutoutAtItsTrailingEnd != side { leavesTheCutoutAtItsTrailingEnd = side }
@@ -391,33 +401,31 @@ final class NotchViewModel: ObservableObject {
     /// A flare at both ends, as every edge has always had — plus, at the end
     /// that meets the hole, whatever of the bar is buried inside it, which is
     /// length nobody can see and so length the rings must not be measured from.
-    var leadAllowance: CGFloat { flare + cutoutBleed }
+    var leadAllowance: CGFloat { flare + (carriedOnTheLeft ? 0 : cutoutBleed) }
 
-    var endAllowance: CGFloat { flare }
+    var endAllowance: CGFloat { flare + (carriedOnTheLeft ? cutoutBleed : 0) }
 
     /// **One drawn copy of the notch**, and where along the panel it starts.
     struct Wing: Identifiable, Equatable {
-        /// **Never shared between a copy and its mirror**, and never shared
-        /// between the pair and the lone bar they replace.
+        /// **0 is always the copy that carries the readings; 1 is the other.**
         ///
-        /// Shared with the mirror, SwiftUI keeps the view and animates the
-        /// difference — a `scaleEffect` going from 1 to -1 — so the bar turns
-        /// over through nothing on its way into the hole. Shared with the lone
-        /// bar, the copy that carries the readings does not arrive at all: it
-        /// is the same view moving and resizing, so one side of the pair flows
-        /// out of the hole and the other slides into place beside it, which is
-        /// half a movement and reads as a jump.
-        ///
-        /// Three identities, so joining is the bar being drawn into the hole
-        /// and a pair coming out of it, both ends flowing, and nothing
-        /// anywhere interpolating between two shapes.
+        /// Never shared, and never reused for something else. Whatever a copy
+        /// is — which side of the hole, whether it carries anything — it keeps
+        /// for as long as it has that identity, so SwiftUI only ever animates a
+        /// copy *moving* and never one copy turning into a different one. The
+        /// carrying copy has one identity from the moment it is picked up to
+        /// the moment it is put down, so a drag and its landing are one bar
+        /// moving; the other copy arrives out of the hole and leaves into it.
         var id: Int
         /// Panel points, from the panel's own leading edge.
         var lead: CGFloat
-        /// Whether this copy is the mirror image of the other one. Only the
-        /// *shape* is mirrored: what it carries is drawn the right way round,
-        /// or every reading in it would be back to front.
-        var mirrored: Bool
+        /// Whether this copy is on the left of the hole, which is the copy whose
+        /// joined end is its trailing one. Drawn by `SideNotchShape` as its own
+        /// shape, reflected in the path — never flipped by the view.
+        var onTheLeft: Bool
+        /// Whether this copy carries the readings. Only one does; the other is
+        /// the container and nothing else.
+        var carriesCells: Bool
     }
 
     /// **The room the panel keeps along the edge, beside the display's hole.**
@@ -451,7 +459,7 @@ final class NotchViewModel: ObservableObject {
         let drawn = notchLength * sizeScale
         guard let cutout else {
             return [Wing(id: 0, lead: slack + (shapeLength * sizeScale - drawn) / 2,
-                         mirrored: false)]
+                         onTheLeft: false, carriesCells: true)]
         }
         // Measured out from the hole's own centre, which is the panel's centre
         // too — see `NotchGeometry.panelFrame`. Each copy is welded to a wall
@@ -462,28 +470,40 @@ final class NotchViewModel: ObservableObject {
         let toTheRight = half - cutout.overlap + middle
         let toTheLeft = cutout.overlap - half - drawn + middle
         guard cutout.joined else {
-            return [Wing(id: 0, lead: cutout.atTrailingEnd ? toTheLeft : toTheRight,
-                         mirrored: false)]
+            let left = cutout.atTrailingEnd
+            return [Wing(id: 0, lead: left ? toTheLeft : toTheRight,
+                         onTheLeft: left, carriesCells: true)]
         }
+        // The readings stay on the side the notch was put down on; the other
+        // side gets the container alone.
+        let left = cutout.atTrailingEnd
         return [
-            Wing(id: 1, lead: toTheLeft, mirrored: true),
-            Wing(id: 2, lead: toTheRight, mirrored: false)
+            Wing(id: left ? 0 : 1, lead: toTheLeft, onTheLeft: true, carriesCells: left),
+            Wing(id: left ? 1 : 0, lead: toTheRight, onTheLeft: false, carriesCells: !left)
         ]
     }
 
     /// Where the first drawn copy starts along the panel.
     var notchAlongLead: CGFloat { wings.first?.lead ?? slack }
 
-    /// The copy that carries the readings — the one that is not the mirror.
-    /// Rings, hover bands, tooltips and handles all belong to it; the other is
-    /// the container and nothing else.
+    /// The copy that carries the readings. Rings, hover bands, tooltips and
+    /// handles all belong to it; the other is the container and nothing else.
     var cellWing: Wing {
-        wings.first { !$0.mirrored } ?? Wing(id: 0, lead: slack, mirrored: false)
+        wings.first { $0.carriesCells }
+            ?? Wing(id: 0, lead: slack, onTheLeft: false, carriesCells: true)
     }
 
     /// The copy the settings handle and the move handle hang off — one set of
     /// handles, not two, however many copies of the bar there are.
-    var handleWing: Wing { wings.last ?? Wing(id: 0, lead: slack, mirrored: false) }
+    var handleWing: Wing { cellWing }
+
+    /// Whether the copy that carries everything is the one on the left of the
+    /// hole, which turns its ends round: its joined end is its trailing one.
+    ///
+    /// Read from the cutout, which is where `wings` reads it too — and never
+    /// from `wings`, which needs the bar's length to place the copies, whose
+    /// length needs this. Asked the other way round it is a loop with no floor.
+    var carriedOnTheLeft: Bool { mergesWithCutout && cutout?.atTrailingEnd == true }
 
     /// Where the folded notch starts along the panel, whatever state it is in
     /// right now — the hit region that wakes it has to know where it will be.
@@ -528,7 +548,16 @@ final class NotchViewModel: ObservableObject {
     /// shape that was never on screen. A `SideNotchShape()` with four
     /// properties left at their defaults is a different object from the one
     /// the view draws, and there is no way to see that at the call site.
-    var notchShape: SideNotchShape {
+    var notchShape: SideNotchShape { notchShape(for: cellWing) }
+
+    /// The shape one copy is drawn as.
+    ///
+    /// **The join is drawn only while the notch is joined.** It was drawn
+    /// whenever the hole was merely *near*, and the joined end is a square tip
+    /// and a flat run at the hole's own depth — invisible inside the hole, the
+    /// only reason it may be square, and a hard cut edge hanging on the
+    /// wallpaper anywhere else. Near but not joined, the notch is a notch.
+    func notchShape(for wing: Wing) -> SideNotchShape {
         var shape = SideNotchShape(edge: edge)
         shape.cornerRadius = drawnCornerRadius
         // Every edge, not only the hardware one. `bezelBleed` pushes the shape
@@ -538,7 +567,7 @@ final class NotchViewModel: ObservableObject {
         // showed up first beside the cutout because that sweep is shallow, but
         // a 33pt flare spends a third of its length in those two points.
         shape.bezelHidden = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
-        if let cutout {
+        if let cutout, cutout.joined {
             // Into the shape's own space, which is design points: the hole is
             // measured on the screen and the shape is drawn at design size and
             // multiplied back up, so every one of these is divided by the size
@@ -549,7 +578,8 @@ final class NotchViewModel: ObservableObject {
             shape.cutout = SideNotchShape.Cutout(
                 depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
                 wall: cutout.overlap / scale,
-                run: flare
+                run: flare,
+                atTrailingEnd: wing.onTheLeft
             )
         }
         return shape
@@ -632,7 +662,9 @@ final class NotchViewModel: ObservableObject {
     var orbScale: CGFloat { 1 }
 
     var orbAlong: CGFloat {
-        guard orbHugsCorner else { return shapeLength }
+        // Never into the hole: on the left of it, the settings handle hangs
+        // off the copy's *leading* tip, which is its outer one there.
+        guard orbHugsCorner else { return carriedOnTheLeft ? 0 : shapeLength }
         return cornerCentreAlong
             + NotchLayout.orbCornerOffset(corner: drawnCornerRadius, scale: orbScale)
     }
@@ -652,7 +684,8 @@ final class NotchViewModel: ObservableObject {
     /// orb sits past `shapeLength`, so the pair stay symmetric about the notch
     /// at every size and on every edge.
     var moveAlong: CGFloat {
-        cutoutBleed + shapeLength - orbAlong
+        guard !carriedOnTheLeft else { return shapeLength - cutoutBleed }
+        return cutoutBleed + shapeLength - orbAlong
     }
 
     /// The mirror of `trailingExtent` at the near end — the room the move

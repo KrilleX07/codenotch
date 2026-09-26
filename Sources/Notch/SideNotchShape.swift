@@ -39,6 +39,9 @@ struct SideNotchShape: Shape {
         /// which is the same bargain the flare it replaces was struck for.
         var run: CGFloat
 
+        /// Whether the hole is at this copy's trailing end — the copy on the
+        /// *left* of the cutout.
+        var atTrailingEnd: Bool = false
     }
     var cutout: Cutout?
     var curlRadius: CGFloat = NotchLayout.curlRadius
@@ -117,10 +120,19 @@ struct SideNotchShape: Shape {
             flareDepth: filletDepth
         )
 
-        // The copy on the other side of the hole is this shape mirrored, and
-        // the view does that — along with taking the mirror back off each
-        // reading it carries, which is not this type's business.
-        return canonical
+        // **The copy on the left of the hole is this shape reflected**, and it
+        // is reflected here, in the path, rather than by the view.
+        //
+        // The view used to do it with `scaleEffect(x: -1)`, and a scale is a
+        // number SwiftUI will happily animate: any time a copy's side changed
+        // under one identity, the bar turned over through nothing on the way.
+        // A path has no in-between to animate through. It is the shape it is,
+        // and what it carries is never reflected at all.
+        let turned = cutout?.atTrailingEnd == true
+            ? canonical.applying(CGAffineTransform(a: 1, b: 0, c: 0, d: -1,
+                                                   tx: 0, ty: length))
+            : canonical
+        return turned
             .applying(Self.transform(for: edge, depth: depth))
             .applying(CGAffineTransform(translationX: rect.minX, y: rect.minY))
     }
