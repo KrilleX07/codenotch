@@ -286,39 +286,29 @@ final class NotchViewModel: ObservableObject {
     func adopt(screen: ScreenDescribing) {
         // `frame`, not `visibleFrame`: the panel is centred on the full screen
         // and may sit under the menu bar, so the menu bar is not room lost.
-        // Whether anything of this has been on screen yet.
-        let settled = screenSize != .zero
         let size = screen.frameValue.size
         if screenSize != size { screenSize = size }
         let near = NotchGeometry.cutoutProximity(for: screen, edge: edge,
                                                  alongOffset: alongOffset)
-        let side = edge == .top && screen.hardwareNotch != nil
-            && NotchGeometry.cutoutStanding(alongOffset: alongOffset).atTrailingEnd
-        if leavesTheCutoutAtItsTrailingEnd != side { leavesTheCutoutAtItsTrailingEnd = side }
         guard cutout != near else { return }
 
-        // **The one change worth animating is taking the hole or letting go of
-        // it**, and nothing else here is that.
+        // **Taking the hole is not animated, and should not be tried again
+        // without reading this.**
         //
-        // This runs on every tick of an ⌥-drag, because how deep the notch is
-        // buried changes with every delta of the pointer. Animated, each of
-        // those tiny changes started a 0.62s spring, so the bar chased the
-        // cursor on a long spring for the whole drag instead of tracking it —
-        // which is most of what "still glitchy" was.
+        // Four attempts, each one worse than stepping it. The window moves when
+        // the notch joins, and a window frame is set in one step — so anything
+        // eased inside it is eased across the distance the window moved.
+        // Sizing the window the same either side of the join fixed that, and
+        // the next attempt animated every tick of an ⌥-drag, because how deep
+        // the notch is buried changes with every delta of the pointer; the bar
+        // chased the cursor on a spring for the whole drag. Fixing *that* left
+        // the two copies growing in opposite directions, the mirror reaching
+        // back for the hole while its twin came out of it, because a transition
+        // wraps the view beneath it and the mirror's flip sat above.
         //
-        // And only while the window is standing still. It holds its size and
-        // place across the join, but not across the notch drifting out of
-        // reach of the hole entirely — and a frame is set in one step, so
-        // easing anything while it moves is easing across the distance it
-        // moved. Between two states the window is the same in, the depth, the
-        // size and both ends ease together, which is the movement this is for.
-        let joins = (cutout?.joined ?? false) != (near?.joined ?? false)
-        let stillWindow = cutout != nil && near != nil
-        guard settled, joins, stillWindow else {
-            cutout = near
-            return
-        }
-        withAnimation(NotchMotion.unfold) { cutout = near }
+        // Stepped, none of that can happen: the notch is simply drawn the way
+        // it is now. The fold is where the movement is, and always was.
+        cutout = near
     }
 
     /// **Whether the notch is drawn as one shape with the display's own hole.**
@@ -327,15 +317,6 @@ final class NotchViewModel: ObservableObject {
     /// side of the join, because the window is sized and placed the same on both
     /// sides of that answer and only what is drawn inside it changes.
     var mergesWithCutout: Bool { cutout?.joined == true }
-
-    /// Which side of the hole the notch is on, whether or not it is joined to
-    /// it right now.
-    ///
-    /// Joined, the pair is symmetric and there is no side; this is for the lone
-    /// bar that comes out of the hole and goes back into it, which has to flow
-    /// out of the wall it is actually leaving. Popping out to the right while
-    /// drawing itself from the left is the one thing that reads as a flip.
-    @Published var leavesTheCutoutAtItsTrailingEnd = false
 
     /// **What the contents need across the bar**, in the design's measurements.
     ///

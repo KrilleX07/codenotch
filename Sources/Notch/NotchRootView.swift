@@ -262,16 +262,6 @@ struct NotchRootView: View {
             // out in the bezel and reached back for it. Two halves of a
             // movement going opposite ways is the flip that would not go away.
             .scaleEffect(x: wing.mirrored ? -1 : 1, y: 1)
-            // **Drawn out of the hole, and taken back into it the same way.**
-            //
-            // Not a fade. Nothing about a notch joining the one the Mac already
-            // has is an opacity: it is a body of black leaving another one, so
-            // it grows along the bezel from the wall it is joined to, and is
-            // drawn back in at that same wall. Which is the movement the fold
-            // is already made of — the joined end does not move, and the rest
-            // of the bar comes out of it.
-            .transition(Self.emerging(from: joinedEnd(of: wing))
-                            .animation(motion(NotchMotion.unfold)))
             // Where this copy sits along the edge. One copy is centred in the
             // panel; a pair straddles the hole, each held against the wall it
             // is joined to — see `NotchViewModel.wings`.
@@ -291,56 +281,6 @@ struct NotchRootView: View {
             // at the bezel and everything past it is simply not drawn.
             .offset(x: model.edge.outward.x * Self.bezelBleed,
                     y: model.edge.outward.y * Self.bezelBleed)
-    }
-
-    /// The end of a copy that is welded to the hole, which is the end its
-    /// movement is anchored at.
-    ///
-    /// Read on the bar **as it is drawn**, mirror and all — the flip is applied
-    /// below the transition for exactly that reason. So the mirror's is its far
-    /// end, always, and the other copy's is its near end while it is on the
-    /// right of the hole and its far end on the left. A bar that popped out to
-    /// the left while drawing itself from the right would be coming out of thin
-    /// air and going back into the wrong wall.
-    private func joinedEnd(of wing: NotchViewModel.Wing) -> UnitPoint {
-        if wing.mirrored { return .trailing }
-        return model.leavesTheCutoutAtItsTrailingEnd ? .trailing : .leading
-    }
-
-    /// The transition a copy of the notch arrives and leaves on.
-    ///
-    /// Scaled along the bar only — never across it, which would have the black
-    /// growing *down* out of the bezel rather than along it — and anchored at
-    /// the end that is joined to the hole, so that end stays welded to the wall
-    /// for every frame of the movement.
-    ///
-    /// It carries its own animation rather than taking one from the change that
-    /// caused it. The change that causes it also moves the window, in one step
-    /// that cannot be animated, so nothing else in here may ease: what eases
-    /// from where it used to be eases from a place that no longer exists. This
-    /// is the only thing in the join that moves, and it moves from nothing.
-    private static func emerging(from anchor: UnitPoint) -> AnyTransition {
-        .modifier(active: Emerging(amount: 0, anchor: anchor),
-                  identity: Emerging(amount: 1, anchor: anchor))
-    }
-
-    private struct Emerging: ViewModifier, Animatable {
-        var amount: CGFloat
-        var anchor: UnitPoint
-
-        /// Explicit, so the spring carries the length itself. Left to the
-        /// modifier's own equality SwiftUI has two states and no way between
-        /// them, and falls back to swapping one for the other.
-        var animatableData: CGFloat {
-            get { amount }
-            set { amount = newValue }
-        }
-
-        func body(content: Content) -> some View {
-            // Never exactly zero: a scale of nothing is a degenerate transform
-            // and the layer it is on can drop out rather than close up.
-            content.scaleEffect(x: max(amount, 0.0001), y: 1, anchor: anchor)
-        }
     }
 
     /// The bezel side as a scaling anchor: the edge the notch is welded to
