@@ -485,14 +485,23 @@ struct NotchRootView: View {
     }
 }
 
+/// **The goo curve**: how far down from the top of the screen the underside of
+/// the black is, at `u` along from a wall (0) to where it reaches the bar's foot
+/// (1) — the smoother step, flat at both ends, so it meets the hole's foot and
+/// the bar's without a crease. See `NotchViewModel.gooReach`.
+func gooDepth(_ u: CGFloat, hole: CGFloat, bar: CGFloat) -> CGFloat {
+    let t = min(max(u, 0), 1)
+    return hole + (bar - hole) * t * t * t * (t * (t * 6 - 15) + 10)
+}
+
 /// **The strand between a dragged notch and the display's hole**, drawn in the
 /// panel's own points along the top edge — see `NotchViewModel.Neck`.
 ///
-/// Its underside runs from the hole's depth at the wall to the bar's at the
-/// bar, and pinches toward the middle as `thin` rises, on `sin²` so it leaves
-/// both ends flat rather than creasing where it meets them. The whole of it is
-/// scaled by `presence`, so it grows down out of the bezel and draws back up
-/// into it rather than appearing.
+/// Its underside is the goo curve from the wall to past the bar's near end,
+/// pinched toward the middle of the gap as `thin` rises (on `sin²`, so the pinch
+/// leaves both ends flat) and scaled by `presence`, so it grows down out of the
+/// bezel and draws back up into it rather than appearing. Its ends stand inside
+/// the hole and inside the bar's body, where nothing of them can be seen.
 struct GooNeck: Shape {
     var neck: NotchViewModel.Neck
 
@@ -501,12 +510,14 @@ struct GooNeck: Shape {
     var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
                                        AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat>> {
         get {
-            AnimatablePair(AnimatablePair(neck.wall, neck.bar),
+            AnimatablePair(AnimatablePair(neck.wall, neck.end),
                            AnimatablePair(AnimatablePair(neck.barDepth, neck.presence), neck.thin))
         }
         set {
+            let moved = newValue.first.first - neck.wall
             neck.wall = newValue.first.first
-            neck.bar = newValue.first.second
+            neck.inside += moved
+            neck.end = newValue.first.second
             neck.barDepth = newValue.second.first.first
             neck.presence = newValue.second.first.second
             neck.thin = newValue.second.second
@@ -514,32 +525,32 @@ struct GooNeck: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
+        let n = neck
         var path = Path()
         // From above the screen's edge, where nothing shows, like the notch.
         let top = -NotchRootView.bezelBleed
-        path.move(to: CGPoint(x: neck.wall, y: top))
-        path.addLine(to: CGPoint(x: neck.bar, y: top))
-        let steps = 48
+        path.move(to: CGPoint(x: n.inside, y: top))
+        path.addLine(to: CGPoint(x: n.end, y: top))
+        let steps = 64
         for i in 0...steps {
             // From the bar back to the wall.
-            let t = 1 - CGFloat(i) / CGFloat(steps)
-            let pinch = sin(.pi * t)
-            let depth = neck.presence
-                * (neck.wallDepth + (neck.barDepth - neck.wallDepth) * t)
-                * (1 - neck.thin * pinch * pinch)
-            path.addLine(to: CGPoint(x: neck.wall + (neck.bar - neck.wall) * t,
-                                     y: max(top, depth)))
+            let u = 1 - CGFloat(i) / CGFloat(steps)
+            let pinch = sin(.pi * u)
+            let depth = n.presence * gooDepth(u, hole: n.holeDepth, bar: n.barDepth)
+                * (1 - n.thin * pinch * pinch)
+            path.addLine(to: CGPoint(x: n.wall + (n.end - n.wall) * u, y: max(top, depth)))
         }
+        // And flat along the hole's foot to its end inside the hole.
+        path.addLine(to: CGPoint(x: n.inside, y: max(top, n.presence * n.holeDepth)))
         path.closeSubpath()
         return path
     }
 }
 
 /// **What of a dragged notch is drawn**, near the display's hole: everything,
-/// except below the hole's depth within the hole's width — easing back down to
-/// the bar's own depth over `shoulder` either side, on the smoother step, so the
-/// bar necks into the hole rather than being cut off at its walls. See
-/// `NotchViewModel.Squeeze`.
+/// except below the hole's depth within the hole's width — and at a wall the bar
+/// reaches across, below the goo curve out from that wall, so its foot eases
+/// into the hole rather than being cut off square. See `NotchViewModel.Squeeze`.
 struct SqueezeMask: Shape {
     var squeeze: NotchViewModel.Squeeze
 
@@ -549,29 +560,36 @@ struct SqueezeMask: Shape {
         // including the band above the screen's edge the notch is pushed into.
         let top = rect.minY - 100, bottom = rect.maxY + 100
         let start = rect.minX - 100, end = rect.maxX + 100
-        let steps = 32
-        func eased(_ t: CGFloat) -> CGFloat { t * t * t * (t * (t * 6 - 15) + 10) }
+        let steps = 48
 
         var path = Path()
         path.move(to: CGPoint(x: start, y: top))
         path.addLine(to: CGPoint(x: end, y: top))
         path.addLine(to: CGPoint(x: end, y: bottom))
-        path.addLine(to: CGPoint(x: s.right + s.shoulder, y: bottom))
-        path.addLine(to: CGPoint(x: s.right + s.shoulder, y: s.barDepth))
-        // Up into the hole's right wall.
-        for i in 1...steps {
-            let t = CGFloat(i) / CGFloat(steps)
-            path.addLine(to: CGPoint(x: s.right + s.shoulder * (1 - t),
-                                     y: s.barDepth + (s.holeDepth - s.barDepth) * eased(t)))
+        // Right wall: eased out along the goo curve if the bar crosses it,
+        // straight down if not.
+        if s.easesRight {
+            path.addLine(to: CGPoint(x: s.right + s.reach, y: bottom))
+            for i in 0...steps {
+                let u = 1 - CGFloat(i) / CGFloat(steps)
+                path.addLine(to: CGPoint(x: s.right + s.reach * u,
+                                         y: gooDepth(u, hole: s.holeDepth, bar: s.barDepth)))
+            }
+        } else {
+            path.addLine(to: CGPoint(x: s.right, y: bottom))
+            path.addLine(to: CGPoint(x: s.right, y: s.holeDepth))
         }
         path.addLine(to: CGPoint(x: s.left, y: s.holeDepth))
-        // And back down out of the left one.
-        for i in 1...steps {
-            let t = CGFloat(i) / CGFloat(steps)
-            path.addLine(to: CGPoint(x: s.left - s.shoulder * t,
-                                     y: s.holeDepth + (s.barDepth - s.holeDepth) * eased(t)))
+        if s.easesLeft {
+            for i in 0...steps {
+                let u = CGFloat(i) / CGFloat(steps)
+                path.addLine(to: CGPoint(x: s.left - s.reach * u,
+                                         y: gooDepth(u, hole: s.holeDepth, bar: s.barDepth)))
+            }
+            path.addLine(to: CGPoint(x: s.left - s.reach, y: bottom))
+        } else {
+            path.addLine(to: CGPoint(x: s.left, y: bottom))
         }
-        path.addLine(to: CGPoint(x: s.left - s.shoulder, y: bottom))
         path.addLine(to: CGPoint(x: start, y: bottom))
         path.closeSubpath()
         return path

@@ -958,9 +958,9 @@ final class MergesWithTheCutoutTests: XCTestCase {
             }
             // Clear of the shoulders it is the whole bar.
             let deep = squeeze.barDepth - 1
-            XCTAssertTrue(kept(hole.wall + squeeze.shoulder + 2, deep),
+            XCTAssertTrue(kept(hole.wall + squeeze.reach + 2, deep),
                           "scale \(scale): it is cut right of the hole")
-            XCTAssertTrue(kept(hole.left - squeeze.shoulder - 2, deep),
+            XCTAssertTrue(kept(hole.left - squeeze.reach - 2, deep),
                           "scale \(scale): it is cut left of the hole")
         }
         // Not in the hand, nothing is squeezed.
@@ -987,7 +987,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
             XCTAssertLessThanOrEqual(n.presence, last.presence + 0.0001, "at \(gap) it grew back")
             XCTAssertGreaterThanOrEqual(n.thin, last.thin - 0.0001, "at \(gap) it thickened")
             // Its end at the wall never reaches below the hole.
-            XCTAssertLessThanOrEqual(n.presence * n.wallDepth, hole.depth + 0.001)
+            XCTAssertLessThanOrEqual(n.presence * n.holeDepth, hole.depth + 0.001)
             last = n
         }
         // And by the full stretch it has let go.
@@ -1005,6 +1005,71 @@ final class MergesWithTheCutoutTests: XCTestCase {
         data.second.first.second = 0.25
         shape.animatableData = data
         XCTAssertEqual(shape.neck.presence, 0.25, accuracy: 0.0001)
+    }
+
+    /// **No point anywhere along a drag.**
+    ///
+    /// The bar, the strand and the squeeze were each smooth, and wherever two of
+    /// their edges crossed they left a point — 108 of them along one drag,
+    /// sliding along with the pointer, which is what read as glitchy. They all
+    /// follow one curve now. This drags a notch from right of the hole, through
+    /// it, and out past the left, and traces the underside of everything black
+    /// on screen at every step — the display's own notch included, which hides
+    /// whatever is drawn inside it — for any spike down or notch up narrower
+    /// than six points and deeper than three.
+    func testNoPointAnywhereAlongADrag() {
+        let screen = Notched()
+        let hole = Path(roundedRect: CGRect(x: 790, y: -20, width: 220, height: 58),
+                        cornerRadius: 38 * 31.2 / 90)
+        var points: [String] = []
+        for scale in [0.5888, 1.0] as [CGFloat] {
+            for a in stride(from: CGFloat(70), through: -520, by: -6) {
+                let m = held(screen, at: a, scale: scale)
+                guard m.cutout != nil else { continue }
+                let f = NotchGeometry.panelFrame(
+                    for: screen, panelSize: m.panelSize, edge: .top,
+                    alongOffset: m.alongOffset, slack: m.slack,
+                    trailingExtent: m.trailingExtent, leadingExtent: m.leadingExtent,
+                    heldBar: m.plainBarLength)
+                let rect = CGRect(origin: .zero, size: f.size)
+                let mask = m.squeeze.map { SqueezeMask(squeeze: $0).path(in: rect) }
+                let neck = m.neck.map { GooNeck(neck: $0).path(in: rect) }
+                let bars = m.wings.filter { $0.length > 0 }.map { w -> (NotchViewModel.Wing, Path) in
+                    let size = NotchPlacement.panelSize(edge: .top, length: w.length / m.sizeScale,
+                                                        depth: w.depth)
+                    return (w, m.notchShape(for: w).path(in: CGRect(origin: .zero, size: size)))
+                }
+                let xs = Array(stride(from: CGFloat(730), through: 1070, by: 1))
+                let bottom: [CGFloat] = xs.map { x in
+                    var lowest: CGFloat = -1
+                    for yi in 0..<120 {
+                        let y = CGFloat(yi) + 0.5
+                        let local = CGPoint(x: x - f.minX, y: y)
+                        var black = hole.contains(CGPoint(x: x, y: y))
+                        let kept = mask.map { $0.contains(local) } ?? true
+                        if !black, kept, let neck, neck.contains(local) { black = true }
+                        for (w, path) in bars where !black && kept {
+                            let lx = (x - (f.minX + w.lead)) / m.sizeScale
+                            let ly = (y + NotchRootView.bezelBleed) / m.sizeScale
+                            if path.contains(CGPoint(x: lx, y: ly)) { black = true }
+                        }
+                        if black { lowest = y }
+                    }
+                    return lowest
+                }
+                for i in 3..<(bottom.count - 3) where bottom[i] >= 0 {
+                    let l = bottom[i - 3], r = bottom[i + 3]
+                    guard l >= 0, r >= 0 else { continue }
+                    let size = max(min(bottom[i] - l, bottom[i] - r),
+                                   min(l - bottom[i], r - bottom[i]))
+                    if size > 3 {
+                        points.append("scale \(scale) at \(a): \(Int(size))pt at x \(Int(xs[i]))")
+                    }
+                }
+            }
+        }
+        XCTAssertTrue(points.isEmpty, "\(points.count) points along the drag, first: "
+                      + points.prefix(5).joined(separator: "; "))
     }
 
     /// No hole, no join — on a plain display and on the other three edges.
