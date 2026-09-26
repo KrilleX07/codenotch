@@ -496,11 +496,10 @@ final class NotchViewModel: ObservableObject {
                             onTheLeft: carryingLeft, carriesCells: true,
                             length: drawn, depth: notchDepth)
 
-        // **And the notch widening on the other side.** Not a copy of the bar:
-        // the display's own notch getting wider, so it is always exactly the
-        // hole's depth and turns the hole's own corner, and it is only as long
-        // as the join says — nothing at all until the notch is let go against
-        // the hole. It stays on the side opposite the one the carrying copy is
+        // **And the notch widening on the other side** — always exactly the
+        // hole's depth, ending in the same curve as the side with the readings,
+        // and only as long as the join says: nothing at all until the notch is
+        // let go against the hole. It stays on the side opposite the one the carrying copy is
         // *on*, which keeps it from ever having to cross the hole to get there.
         let otherLeft = !carryingSide
         let otherOverlap = mergesWithCutout ? cutout.overlap : NotchGeometry.cutoutOverlap
@@ -631,30 +630,18 @@ final class NotchViewModel: ObservableObject {
         // joined end in one frame — see `SideNotchShape.leadingJoin`. Square at
         // the hole's own depth, with the tip inside the hole, *is* the joined
         // end, so there is nothing else to draw.
-        // **Joined, both sides end the same way: the display's own notch,
-        // widened.** The side with the readings used to keep its flare while
-        // the other side ended square with the hole's corner, and the two did
-        // not match. Its flare and its corner now ease into the hole's on the
-        // same spring as the join, so the pair is one shape either side of the
-        // hole. Not joined, it is the notch it is everywhere else.
-        let hardwareCorner = NotchLayout.cutoutCornerShare * cutout.depth
-            / max(sizeScale, 0.0001)
+        // **Both sides end with the notch's own curve** — the flare into the
+        // bezel and the corner below it, the end this shape has everywhere.
+        // Joined, the side with the readings keeps it, and the other side has
+        // exactly the same one, so the pair balances about the hole.
         if wing.carriesCells {
             shape.leadingJoin = cutout.joined ? 1 : 0
-            if cutout.joined {
-                shape.trailingFlare = 0
-                shape.cornerRadius = hardwareCorner
-            }
             return shape
         }
 
-        // The notch widening: joined at its wall, square to the bezel at its
-        // far side with no flare, and the hole's own corner at its foot —
-        // `NotchLayout.cutoutCornerShare` — so the display's notch simply looks
-        // wider. In design measurements, like everything the shape is given.
+        // The other side: joined at its wall, and at its far end the same curve
+        // as the side with the readings.
         shape.leadingJoin = 1
-        shape.trailingFlare = 0
-        shape.cornerRadius = hardwareCorner
         return shape
     }
 

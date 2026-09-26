@@ -55,16 +55,6 @@ enum NotchLayout {
 
 
 
-    /// **The display's own cutout's corner, as a share of its depth.**
-    ///
-    /// Measured, not guessed: a circular arc of radius 31.2px on a 90px-deep
-    /// notch, fitted over the whole sweep. (Read off the bottom row instead it
-    /// comes out 15% small — the boundary is horizontal down there, so a
-    /// fraction of a row of error throws it by several pixels.) It is what the
-    /// hardware's notch looks like where it turns, so it is what the notch
-    /// looks like when it widens.
-    static let cutoutCornerShare: CGFloat = 31.2 / 90
-
     /// The corner the bar turns where it meets the bezel, beside the hardware.
     /// Derived from the hardware's own height rather than fixed — see
     /// `splitCornerFraction`.

@@ -807,11 +807,9 @@ final class MergesWithTheCutoutTests: XCTestCase {
 
     /// **Joined, the two sides are the same shape.**
     ///
-    /// The bug: the side with the readings kept its flare and its own corner
-    /// while the side that widened ended square with the hole's corner, and
-    /// the pair did not balance. Both are the display's notch widened now —
-    /// same corner, same square end, same length, mirror images of each other
-    /// about the hole.
+    /// Both end with the notch's own curve — the one the side with the readings
+    /// has — the same corner, the same length, mirror images of each other about
+    /// the hole.
     func testTheTwoSidesBalance() throws {
         let screen = Notched()
         for offset in [CGFloat(0), -2 * NotchGeometry.cutoutTravel] {
@@ -822,7 +820,8 @@ final class MergesWithTheCutoutTests: XCTestCase {
             let a = m.notchShape(for: carrying), b = m.notchShape(for: other)
             XCTAssertEqual(a.cornerRadius, b.cornerRadius, accuracy: 0.001,
                            "the two sides turn different corners")
-            XCTAssertEqual(a.trailingFlare, b.trailingFlare, "one side flares and the other does not")
+            XCTAssertEqual(a.trailingFlare, 1, "the side with the readings lost its curve")
+            XCTAssertEqual(b.trailingFlare, 1, "the other side lost its curve")
             XCTAssertEqual(a.leadingJoin, b.leadingJoin)
             XCTAssertEqual(carrying.length, other.length, accuracy: 0.001)
             XCTAssertEqual(carrying.depth, other.depth, accuracy: 0.001)
@@ -877,12 +876,12 @@ final class MergesWithTheCutoutTests: XCTestCase {
         }
     }
 
-    /// **The other side is the notch widening, not a mirror of the bar.**
+    /// **The other side is the notch widening, with the same curve.**
     ///
-    /// Always exactly the hole's depth, the hole's own corner at its foot, and
-    /// square to the bezel at its far side — so the display's notch simply
-    /// looks wider. And it widens by being drawn longer: nothing at all until
-    /// the notch is joined, the carrying bar's own length once it is.
+    /// Always exactly the hole's depth, and ending with the notch's own curve —
+    /// the flare and the corner the side with the readings has — never the
+    /// hardware's square end. It widens by being drawn longer: nothing at all
+    /// until the notch is joined, the carrying side's own length once it is.
     func testTheOtherSideIsTheNotchWidening() throws {
         let screen = Notched()
         let hole = try hole(screen)
@@ -893,11 +892,9 @@ final class MergesWithTheCutoutTests: XCTestCase {
                            hole.depth, accuracy: 0.001,
                            "scale \(scale): the notch widened to a different depth")
             let shape = m.notchShape(for: widening)
-            XCTAssertEqual(shape.trailingFlare, 0, "it flares out like the bar")
-            XCTAssertEqual(shape.leadingJoin, 1)
-            XCTAssertEqual(shape.cornerRadius * m.sizeScale,
-                           NotchLayout.cutoutCornerShare * hole.depth, accuracy: 0.001,
-                           "scale \(scale): its corner is not the hole's")
+            XCTAssertEqual(shape.trailingFlare, 1, "it lost the curve")
+            XCTAssertEqual(shape.cornerRadius, m.drawnCornerRadius, accuracy: 0.001,
+                           "scale \(scale): its corner is not the notch's own")
             XCTAssertEqual(widening.length, m.notchLength * m.sizeScale, accuracy: 0.001,
                            "scale \(scale): it widened by a different amount on each side")
         }
