@@ -798,6 +798,47 @@ final class MergesWithTheCutoutTests: XCTestCase {
         shape.animatableData = data
         XCTAssertEqual(shape.leadingJoin, 0.4, accuracy: 0.0001,
                        "leadingJoin is not animatable, so the join would snap")
+        data = shape.animatableData
+        data.second.first.second = 0.3
+        shape.animatableData = data
+        XCTAssertEqual(shape.trailingFlare, 0.3, accuracy: 0.0001,
+                       "the far end's flare is not animatable, so it would snap")
+    }
+
+    /// **Joined, the two sides are the same shape.**
+    ///
+    /// The bug: the side with the readings kept its flare and its own corner
+    /// while the side that widened ended square with the hole's corner, and
+    /// the pair did not balance. Both are the display's notch widened now —
+    /// same corner, same square end, same length, mirror images of each other
+    /// about the hole.
+    func testTheTwoSidesBalance() throws {
+        let screen = Notched()
+        for offset in [CGFloat(0), -2 * NotchGeometry.cutoutTravel] {
+            let m = model(screen, offset: offset)
+            XCTAssertTrue(m.mergesWithCutout)
+            let carrying = m.cellWing
+            let other = try XCTUnwrap(m.wings.first { !$0.carriesCells })
+            let a = m.notchShape(for: carrying), b = m.notchShape(for: other)
+            XCTAssertEqual(a.cornerRadius, b.cornerRadius, accuracy: 0.001,
+                           "the two sides turn different corners")
+            XCTAssertEqual(a.trailingFlare, b.trailingFlare, "one side flares and the other does not")
+            XCTAssertEqual(a.leadingJoin, b.leadingJoin)
+            XCTAssertEqual(carrying.length, other.length, accuracy: 0.001)
+            XCTAssertEqual(carrying.depth, other.depth, accuracy: 0.001)
+            XCTAssertNotEqual(carrying.onTheLeft, other.onTheLeft, "both on one side")
+
+            // And on screen: each reaches the same distance out from its wall.
+            let hole = try hole(screen)
+            let drawn = outline(of: m, on: screen)
+            let leftReach = hole.left - (drawn.map(\.x).min() ?? 0)
+            let rightReach = (drawn.map(\.x).max() ?? 0) - hole.wall
+            XCTAssertEqual(leftReach, rightReach, accuracy: 1.0,
+                           "offset \(offset): one side reaches further than the other")
+        }
+        // Apart from the hole it is the notch it is on every other edge.
+        let apart = model(screen, offset: 6)
+        XCTAssertEqual(apart.notchShape(for: apart.cellWing).trailingFlare, 1)
     }
 
     // MARK: - The magnet

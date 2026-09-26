@@ -117,16 +117,18 @@ struct SideNotchShape: Shape {
     /// display's hole is and not what the notch is doing: the morph across it
     /// is the rect's, as the body deepens past the hole and shallows back.
     var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
-                                       AnimatablePair<CGFloat, AnimatablePair<CGFloat, CGFloat>>> {
+                                       AnimatablePair<AnimatablePair<CGFloat, CGFloat>,
+                                                      AnimatablePair<CGFloat, CGFloat>>> {
         get {
             AnimatablePair(AnimatablePair(cornerRadius, filletRadius ?? 0),
-                           AnimatablePair(filletDepth ?? 0,
+                           AnimatablePair(AnimatablePair(filletDepth ?? 0, trailingFlare),
                                           AnimatablePair(bezelHidden, leadingJoin)))
         }
         set {
             cornerRadius = newValue.first.first
             if filletRadius != nil { filletRadius = newValue.first.second }
-            if filletDepth != nil { filletDepth = newValue.second.first }
+            if filletDepth != nil { filletDepth = newValue.second.first.first }
+            trailingFlare = newValue.second.first.second
             bezelHidden = newValue.second.second.first
             leadingJoin = newValue.second.second.second
         }

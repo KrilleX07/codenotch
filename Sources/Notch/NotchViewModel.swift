@@ -631,8 +631,20 @@ final class NotchViewModel: ObservableObject {
         // joined end in one frame — see `SideNotchShape.leadingJoin`. Square at
         // the hole's own depth, with the tip inside the hole, *is* the joined
         // end, so there is nothing else to draw.
+        // **Joined, both sides end the same way: the display's own notch,
+        // widened.** The side with the readings used to keep its flare while
+        // the other side ended square with the hole's corner, and the two did
+        // not match. Its flare and its corner now ease into the hole's on the
+        // same spring as the join, so the pair is one shape either side of the
+        // hole. Not joined, it is the notch it is everywhere else.
+        let hardwareCorner = NotchLayout.cutoutCornerShare * cutout.depth
+            / max(sizeScale, 0.0001)
         if wing.carriesCells {
             shape.leadingJoin = cutout.joined ? 1 : 0
+            if cutout.joined {
+                shape.trailingFlare = 0
+                shape.cornerRadius = hardwareCorner
+            }
             return shape
         }
 
@@ -642,8 +654,7 @@ final class NotchViewModel: ObservableObject {
         // wider. In design measurements, like everything the shape is given.
         shape.leadingJoin = 1
         shape.trailingFlare = 0
-        shape.cornerRadius = NotchLayout.cutoutCornerShare * cutout.depth
-            / max(sizeScale, 0.0001)
+        shape.cornerRadius = hardwareCorner
         return shape
     }
 
