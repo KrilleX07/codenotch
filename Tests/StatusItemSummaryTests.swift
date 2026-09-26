@@ -474,6 +474,98 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertGreaterThan(image.size.width, 0)
     }
 
+    private func ink(_ image: NSImage, in rect: NSRect) -> Int {
+        let scale: CGFloat = 2
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil,
+                                   pixelsWide: Int(image.size.width * scale),
+                                   pixelsHigh: Int(image.size.height * scale),
+                                   bitsPerSample: 8, samplesPerPixel: 4,
+                                   hasAlpha: true, isPlanar: false,
+                                   colorSpaceName: .deviceRGB,
+                                   bytesPerRow: 0, bitsPerPixel: 0)!
+        rep.size = image.size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+        NSGraphicsContext.restoreGraphicsState()
+        var count = 0
+        for y in 0..<rep.pixelsHigh {
+            for x in 0..<rep.pixelsWide {
+                let point = NSPoint(x: CGFloat(x) / scale,
+                                    y: image.size.height - CGFloat(y) / scale)
+                if rect.contains(point),
+                   (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.5 {
+                    count += 1
+                }
+            }
+        }
+        return count
+    }
+
+    func testReduceMotionUsesAStaticBadgeOnOnlyTheActiveProvider() throws {
+        let result = summary([claude(0.72, resetIn: hour), codex(0.41, resetIn: 2 * hour)])
+        let plain = StatusItemArtwork(summary: result,
+                                      font: .monospacedDigitSystemFont(ofSize: 13, weight: .regular),
+                                      height: 22)
+        let badged = StatusItemArtwork(summary: result,
+                                       font: .monospacedDigitSystemFont(ofSize: 13, weight: .regular),
+                                       height: 22,
+                                       activityBadgeProviderIDs: ["codex"])
+        let claude = try XCTUnwrap(plain.glyphFrame(for: "claude")).insetBy(dx: -2, dy: -2)
+        let codex = try XCTUnwrap(plain.glyphFrame(for: "codex")).insetBy(dx: -2, dy: -2)
+
+        XCTAssertEqual(badged.size, plain.size, "activity never moves other menu bar items")
+        XCTAssertEqual(ink(badged.image(), in: claude), ink(plain.image(), in: claude),
+                       "the idle provider is unchanged")
+        XCTAssertNotEqual(ink(badged.image(), in: codex), ink(plain.image(), in: codex),
+                          "the active provider carries a still badge")
+        XCTAssertTrue(badged.image().isTemplate)
+    }
+
+    func testPulseRunsFromFullToSubtleAndBackThroughTheArtworkMask() throws {
+        let result = summary([claude(0.72, resetIn: hour), codex(0.41, resetIn: 2 * hour)])
+        let artwork = StatusItemArtwork(summary: result,
+                                        font: .monospacedDigitSystemFont(ofSize: 13, weight: .regular),
+                                        height: 22)
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: artwork.size.width + 14, height: 22))
+        view.wantsLayer = true
+        let glyphs = Dictionary(uniqueKeysWithValues: result.entries.compactMap { entry in
+            artwork.glyphFrame(for: entry.id).map { (entry.id, $0) }
+        })
+        let pulse = StatusItemPulse()
+        pulse.update(view: view, imageSize: artwork.size, glyphs: glyphs, working: ["codex"])
+
+        XCTAssertEqual(pulse.pulsing, ["codex"])
+        let mask = try XCTUnwrap(view.layer?.mask)
+        let marks = (mask.sublayers ?? []).filter { !($0 is CAShapeLayer) }
+        let mark = try XCTUnwrap(marks.first)
+        let animation = try XCTUnwrap(
+            mark.animation(forKey: StatusItemPulse.animationKey) as? CABasicAnimation)
+        XCTAssertEqual(animation.keyPath, "opacity")
+        XCTAssertEqual(animation.fromValue as? Float, 1)
+        XCTAssertEqual(animation.toValue as? Float, StatusItemPulse.dimmest)
+        XCTAssertTrue(animation.autoreverses)
+        XCTAssertEqual(animation.repeatCount, .infinity)
+        XCTAssertEqual(animation.duration * 2, StatusItemPulse.period)
+        XCTAssertGreaterThan(animation.beginTime, 0)
+
+        pulse.update(view: view, imageSize: artwork.size, glyphs: glyphs, working: ["codex"])
+        let redrawnMask = try XCTUnwrap(view.layer?.mask)
+        let redrawnMarks = (redrawnMask.sublayers ?? []).filter { !($0 is CAShapeLayer) }
+        let redrawnMark = try XCTUnwrap(redrawnMarks.first)
+        let redrawnAnimation = try XCTUnwrap(
+            redrawnMark.animation(forKey: StatusItemPulse.animationKey) as? CABasicAnimation)
+        XCTAssertTrue(redrawnMask === mask, "routine redraws retain the mask layer")
+        XCTAssertEqual(redrawnMarks.count, 1)
+        XCTAssertTrue(redrawnMark === mark, "routine redraws retain the provider layer")
+        XCTAssertEqual(redrawnAnimation.beginTime, animation.beginTime,
+                       "routine redraws preserve the animation phase")
+
+        pulse.clear()
+        XCTAssertNil(view.layer?.mask, "Reduce Motion can remove the animation synchronously")
+        XCTAssertTrue(pulse.pulsing.isEmpty)
+    }
+
     func testWeeklyRingAddsNoMenuBarWidth() {
         let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         let snapshot = claude(0.72, resetIn: hour)

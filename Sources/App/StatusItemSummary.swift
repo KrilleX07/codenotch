@@ -170,16 +170,22 @@ struct StatusItemArtwork {
     let summary: StatusItemSummary
     let font: NSFont
     let height: CGFloat
+    /// Reduce Motion's stand-in for the pulse: a still dot on each working
+    /// provider's mark. It is part of the template image, so AppKit gives it
+    /// the same tint as the rest of the item.
+    let activityBadgeProviderIDs: Set<String>
 
     /// The menu bar's own type size, with figures of one width: "72%" and
     /// "18%" take the same room, so nothing jitters as the numbers move.
     init(summary: StatusItemSummary,
          font: NSFont = .monospacedDigitSystemFont(ofSize: NSFont.menuBarFont(ofSize: 0).pointSize,
                                                    weight: .regular),
-         height: CGFloat = NSStatusBar.system.thickness) {
+         height: CGFloat = NSStatusBar.system.thickness,
+         activityBadgeProviderIDs: Set<String> = []) {
         self.summary = summary
         self.font = font
         self.height = height
+        self.activityBadgeProviderIDs = activityBadgeProviderIDs
     }
 
     private enum Mark {
@@ -187,6 +193,8 @@ struct StatusItemArtwork {
         case text(String, NSPoint)
         /// The upright rule between two providers' readings.
         case rule(NSRect)
+        /// Reduce Motion's still indication, cut clear of the mark below it.
+        case activityBadge(NSRect)
     }
 
     private var separator: String { " · " }
@@ -212,21 +220,27 @@ struct StatusItemArtwork {
     var size: NSSize { NSSize(width: layout().width, height: height) }
 
     func image() -> NSImage {
-        let (width, marks) = layout()
+        let (width, marks, _) = layout()
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
             for (mark, alpha) in marks { draw(mark, alpha: alpha) }
             return true
         }
+        image.cacheMode = .always
         image.isTemplate = true
         return image
     }
 
-    private func layout() -> (width: CGFloat, marks: [(Mark, CGFloat)]) {
+    func glyphFrame(for providerID: String) -> NSRect? {
+        layout().glyphFrames[providerID]
+    }
+
+    private func layout() -> (width: CGFloat, marks: [(Mark, CGFloat)], glyphFrames: [String: NSRect]) {
         // Figures centred on the bar by their cap height, which is what the eye
         // measures digits by; the marks are centred on the same line.
         let baseline = ((height - font.capHeight) / 2 * 2).rounded() / 2
         let middle = baseline + font.capHeight / 2
         var marks: [(Mark, CGFloat)] = []
+        var glyphFrames: [String: NSRect] = [:]
         var x: CGFloat = 0
         func text(_ string: String, alpha: CGFloat) {
             marks.append((.text(string, NSPoint(x: x, y: baseline)), alpha))
@@ -244,7 +258,11 @@ struct StatusItemArtwork {
             }
             let alpha: CGFloat = entry.isStale ? 0.5 : 1
             let box = NSRect(x: x, y: middle - glyphSize / 2, width: glyphSize, height: glyphSize)
+            glyphFrames[entry.id] = box
             marks.append((.glyph(entry.glyph, box, weeklyFraction: entry.weeklyFraction), alpha))
+            if activityBadgeProviderIDs.contains(entry.id) {
+                marks.append((.activityBadge(activityBadge(on: box)), alpha))
+            }
             x += glyphSize + glyphGap
             if let label = entry.label {
                 text(label, alpha: alpha)
@@ -265,7 +283,16 @@ struct StatusItemArtwork {
                 x = max(x, start + countdownRoom)
             }
         }
-        return (x.rounded(.up), marks)
+        return (x.rounded(.up), marks, glyphFrames)
+    }
+
+    /// The badge sits in the lower trailing corner, where macOS icon badges
+    /// normally sit, and lands on whole points so it stays round at 1x.
+    private func activityBadge(on box: NSRect) -> NSRect {
+        let diameter = max(3, (glyphSize * 0.32).rounded())
+        return NSRect(x: (box.maxX - diameter * 0.8).rounded(),
+                      y: (box.minY - diameter * 0.2).rounded(),
+                      width: diameter, height: diameter)
     }
 
     private func width(_ string: String) -> CGFloat {
@@ -341,6 +368,15 @@ struct StatusItemArtwork {
             }
             ink.setFill()
             path.fill()
+        case .activityBadge(let dot):
+            // A clear ring separates the dot from the mark it overlaps.
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current?.compositingOperation = .destinationOut
+            NSColor.black.setFill()
+            NSBezierPath(ovalIn: dot.insetBy(dx: -1.5, dy: -1.5)).fill()
+            NSGraphicsContext.restoreGraphicsState()
+            ink.setFill()
+            NSBezierPath(ovalIn: dot).fill()
         }
     }
 }
