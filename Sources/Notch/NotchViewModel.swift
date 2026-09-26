@@ -297,17 +297,24 @@ final class NotchViewModel: ObservableObject {
         if leavesTheCutoutAtItsTrailingEnd != side { leavesTheCutoutAtItsTrailingEnd = side }
         guard cutout != near else { return }
 
-        // **Joining the hole is a movement**, and it can be one again now that
-        // the window no longer moves with it — see `cutoutSpan`. Taking the
-        // hole changes the notch's depth, its size and both of its ends at
-        // once, because the hardware sets all three; stepped, that is a pop in
-        // the middle of a drag. On the fold's own spring it is the notch
-        // flowing into the hole and back out of it.
+        // **The one change worth animating is taking the hole or letting go of
+        // it**, and nothing else here is that.
         //
-        // Not on the first screen the notch ever sees: there is nothing on
-        // screen to move from, and the notch would be watched assembling
-        // itself.
-        guard settled else {
+        // This runs on every tick of an ⌥-drag, because how deep the notch is
+        // buried changes with every delta of the pointer. Animated, each of
+        // those tiny changes started a 0.62s spring, so the bar chased the
+        // cursor on a long spring for the whole drag instead of tracking it —
+        // which is most of what "still glitchy" was.
+        //
+        // And only while the window is standing still. It holds its size and
+        // place across the join, but not across the notch drifting out of
+        // reach of the hole entirely — and a frame is set in one step, so
+        // easing anything while it moves is easing across the distance it
+        // moved. Between two states the window is the same in, the depth, the
+        // size and both ends ease together, which is the movement this is for.
+        let joins = (cutout?.joined ?? false) != (near?.joined ?? false)
+        let stillWindow = cutout != nil && near != nil
+        guard settled, joins, stillWindow else {
             cutout = near
             return
         }
