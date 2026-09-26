@@ -291,7 +291,7 @@ final class ScreenAnchorRegressionTests: XCTestCase {
                 // is the geometry its anchor is measured in.
                 model.isExpanded = true
                 let length: CGFloat = edge.isVertical ? 300 : NotchLayout.cardWidth
-                let ring = model.ringAlong(index: 0, in: model.hoveredWing)
+                let ring = model.ringAlong(index: 0, in: model.cellWing)
                 XCTAssertEqual(model.tooltipAlong(index: 0, length: length), ring)
                 // Both ends of the screen: the ring remains on screen, while a
                 // card centred on it would lose its heading or its right edge.

@@ -637,14 +637,7 @@ final class NotchWindowController {
 
         var target: Int?
         if model.isExpanded, notchRect.contains(local) {
-            let hit = cell(along: placement.along(of: local))
-            target = hit?.index
-            // Which copy of the bar the ring is on, so the card opens under
-            // the one the pointer is actually over rather than always under
-            // the same one.
-            if let wing = hit?.wing, model.hoveredWingID != wing.id {
-                model.hoveredWingID = wing.id
-            }
+            target = cellIndex(along: placement.along(of: local))
         } else if model.isExpanded, let current = model.hoveredIndex,
                   let card = tooltipRect(index: current),
                   card.contains(local) {
@@ -1233,23 +1226,17 @@ final class NotchWindowController {
         updateInteractiveRects()
     }
 
-    /// Which ring a point along the panel is on, and on which copy of the bar.
+    /// Which ring a point along the panel is on.
     ///
-    /// Both copies answer: they show the same providers, and a ring you can see
-    /// is a ring you can point at. Which copy matters only for where the card
-    /// then opens — under the ring the pointer is actually on.
+    /// The copy that carries the readings, and only that one: the mirror is the
+    /// container with nothing in it, so there is nothing on it to point at.
     func cellIndex(along: CGFloat) -> Int? {
-        cell(along: along)?.index
-    }
-
-    func cell(along: CGFloat) -> (index: Int, wing: NotchViewModel.Wing)? {
+        let wing = model.cellWing
+        guard model.alongWithin(along, of: wing) != nil else { return nil }
         let pitch = model.cellPitch * model.sizeScale
-        for wing in model.wings {
-            guard model.alongWithin(along, of: wing) != nil else { continue }
-            for index in model.snapshots.indices {
-                let centre = model.ringAlong(index: index, in: wing)
-                if abs(along - centre) <= pitch / 2 { return (index, wing) }
-            }
+        for index in model.snapshots.indices {
+            let centre = model.ringAlong(index: index, in: wing)
+            if abs(along - centre) <= pitch / 2 { return index }
         }
         return nil
     }

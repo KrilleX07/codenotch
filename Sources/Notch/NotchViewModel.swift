@@ -229,14 +229,6 @@ final class NotchViewModel: ObservableObject {
     /// Visible slice of the panel along its edge, in local stack coordinates.
     @Published var visibleAlongRange: ClosedRange<CGFloat>?
 
-    /// The copy of the bar the pointer last picked a ring on, which is the one
-    /// its card belongs under. Meaningless until there are two of them.
-    @Published var hoveredWingID: Int = 0
-
-    var hoveredWing: Wing {
-        wings.first { $0.id == hoveredWingID } ?? handleWing
-    }
-
     /// How close the display's own hole is, or nil when there is none in reach.
     /// Set by `adopt(screen:)` and read by everything that has to know the
     /// notch is joined to something at its leading end.
@@ -262,7 +254,7 @@ final class NotchViewModel: ObservableObject {
     }
 
     func tooltipAlong(index: Int, length: CGFloat) -> CGFloat {
-        let centre = ringAlong(index: index, in: hoveredWing)
+        let centre = ringAlong(index: index, in: cellWing)
         guard let range = visibleAlongRange else { return centre }
         let lower = range.lowerBound + length / 2
         let upper = range.upperBound - length / 2
@@ -415,6 +407,13 @@ final class NotchViewModel: ObservableObject {
 
     /// Where the first drawn copy starts along the panel.
     var notchAlongLead: CGFloat { wings.first?.lead ?? slack }
+
+    /// The copy that carries the readings — the one that is not the mirror.
+    /// Rings, hover bands, tooltips and handles all belong to it; the other is
+    /// the container and nothing else.
+    var cellWing: Wing {
+        wings.first { !$0.mirrored } ?? Wing(id: 0, lead: slack, mirrored: false)
+    }
 
     /// The copy the settings handle and the move handle hang off — one set of
     /// handles, not two, however many copies of the bar there are.

@@ -219,7 +219,11 @@ struct NotchRootView: View {
             // on the root.
             .frame(width: model.notchSize.width, height: model.notchSize.height)
             // Aligned to the corner where the stack starts *and* the bezel is.
-            .overlay(alignment: contentAlignment) { cells(mirrored: wing.mirrored) }
+            // Only one copy carries the readings. The other is the container
+            // mirrored and nothing else: the point of it is that the hardware's
+            // notch has the app either side of it, not that every number is
+            // printed twice.
+            .overlay(alignment: contentAlignment) { if !wing.mirrored { cells } }
             // Masked by the notch itself, not by its bounding box. Without this
             // the cells simply sit on top of a shrinking shape and appear to
             // slide out of the end of it; clipped, they are swallowed by the
@@ -245,12 +249,10 @@ struct NotchRootView: View {
             // not.
             // **The mirror**, for the copy on the other side of the hole.
             //
-            // Applied to the shape and everything it carries, and then taken
-            // back off each cell one at a time — see `cells`. A ring survives
-            // being flipped; the percentage under it does not.
-            //
-            // Before `position`, so it turns the bar about its own centre
-            // rather than about the panel's.
+            // The container and nothing in it: the other copy carries no
+            // readings, which is the only reason a flip is safe here. Before
+            // `position`, so it turns the bar about its own centre rather than
+            // about the panel's.
             .scaleEffect(x: wing.mirrored ? -1 : 1, y: 1)
             // Where this copy sits along the edge. One copy is centred in the
             // panel; a pair straddles the hole, each held against the wall it
@@ -304,7 +306,7 @@ struct NotchRootView: View {
     private var leadIn: CGFloat { model.cellsLeadIn }
 
     @ViewBuilder
-    private func cells(mirrored: Bool) -> some View {
+    private var cells: some View {
         let stack = ForEach(Array(model.snapshots.enumerated()), id: \.element.id) { index, snapshot in
             ProviderCell(
                 snapshot: snapshot,
@@ -320,9 +322,6 @@ struct NotchRootView: View {
                 // edge that is the ring alone — the label sits below it, in the
                 // notch's depth, and claims nothing here.
                 .frame(width: model.edge.isVertical ? nil : NotchLayout.cellAlong(for: model.edge))
-                // The mirror taken back off, so the bar is the other way round
-                // and its readings are not.
-                .scaleEffect(x: mirrored ? -1 : 1, y: 1)
                 .opacity(model.isExpanded ? 1 : 0)
                 // A short slide toward the edge, no scaling: the clip is
                 // already doing the concealing, and scaling on top of it
@@ -413,7 +412,7 @@ struct NotchRootView: View {
     }
 
     private func tooltipTailOffset(index: Int, snapshot: ProviderSnapshot) -> CGFloat {
-        model.ringAlong(index: index, in: model.hoveredWing)
+        model.ringAlong(index: index, in: model.cellWing)
             - model.tooltipAlong(index: index, length: tooltipLength(snapshot))
     }
 
