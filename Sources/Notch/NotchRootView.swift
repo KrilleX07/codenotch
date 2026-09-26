@@ -255,7 +255,7 @@ struct NotchRootView: View {
             // drawn back in at that same wall. Which is the movement the fold
             // is already made of — the joined end does not move, and the rest
             // of the bar comes out of it.
-            .transition(Self.emerging(from: wing.mirrored ? .trailing : .leading))
+            .transition(Self.emerging(from: joinedEnd(of: wing)))
             // **The mirror**, for the copy on the other side of the hole.
             //
             // The container and nothing in it: the other copy carries no
@@ -282,6 +282,18 @@ struct NotchRootView: View {
             // at the bezel and everything past it is simply not drawn.
             .offset(x: model.edge.outward.x * Self.bezelBleed,
                     y: model.edge.outward.y * Self.bezelBleed)
+    }
+
+    /// The end of a copy that is welded to the hole, which is the end its
+    /// movement is anchored at.
+    ///
+    /// The mirror's is its far end, always. The other copy's is its near end
+    /// while it is on the right of the hole and its far end on the left — a bar
+    /// that popped out to the left while drawing itself from the right would be
+    /// coming out of thin air and going back into the wrong wall.
+    private func joinedEnd(of wing: NotchViewModel.Wing) -> UnitPoint {
+        if wing.mirrored { return .trailing }
+        return model.leavesTheCutoutAtItsTrailingEnd ? .trailing : .leading
     }
 
     /// The transition a copy of the notch arrives and leaves on.

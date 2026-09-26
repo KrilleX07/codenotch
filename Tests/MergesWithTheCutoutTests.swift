@@ -275,29 +275,31 @@ final class MergesWithTheCutoutTests: XCTestCase {
                        "a notch with no hole should still fold to its own centre line")
     }
 
-    /// **The copy that carries the readings is never the mirror**, joined or
-    /// not, and it keeps the same identity either way.
+    /// **Nothing that is drawn shares an identity with anything it is not.**
     ///
-    /// The bug: both copies were numbered in drawing order, so the one copy a
+    /// Two bugs, the same shape. Numbered in drawing order, the one copy a
     /// plain notch has shared an identity with the *mirror* once it joined the
-    /// hole. SwiftUI kept that view and animated the difference — a
-    /// `scaleEffect` from 1 to -1 — and the notch turned over through nothing
-    /// every time it took the hole or let go of it. The mirror has to arrive
-    /// and leave, not be turned into.
-    func testTheCarryingCopyIsNeverTheMirror() {
+    /// hole, and SwiftUI animated the difference — a `scaleEffect` from 1 to -1
+    /// — so the notch turned over through nothing on its way in. Numbered so
+    /// the carrying copy is stable instead, it does not arrive at all: it is
+    /// the same view moving and resizing, so one side of the pair flowed out of
+    /// the hole while the other slid into place beside it. Half a movement
+    /// reads as a jump.
+    ///
+    /// Three identities: the lone bar, the copy, and the mirror. Joining is the
+    /// one being drawn into the hole and the two coming out of it.
+    func testEveryDrawnCopyHasItsOwnIdentity() {
         let plain = model(Plain())
         let joined = model(Notched())
         XCTAssertEqual(plain.wings.count, 1)
         XCTAssertEqual(joined.wings.count, 2)
         XCTAssertFalse(plain.cellWing.mirrored)
         XCTAssertFalse(joined.cellWing.mirrored)
-        XCTAssertEqual(plain.cellWing.id, joined.cellWing.id,
-                       "the carrying copy changed identity on joining, so SwiftUI has "
-                       + "something to interpolate where it should have an insertion")
-        for wing in plain.wings + joined.wings where wing.mirrored {
-            XCTAssertNotEqual(wing.id, plain.cellWing.id,
-                              "the mirror shares an identity with the carrying copy")
-        }
+
+        let ids = (plain.wings + joined.wings).map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count,
+                       "two of the drawn copies share an identity, so SwiftUI has "
+                       + "something to interpolate where it should have a movement")
         XCTAssertFalse(joined.handleWing.mirrored, "the handles are on the mirror")
     }
 

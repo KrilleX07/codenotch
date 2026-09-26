@@ -295,6 +295,9 @@ final class NotchViewModel: ObservableObject {
         if screenSize != size { screenSize = size }
         let near = NotchGeometry.cutoutProximity(for: screen, edge: edge,
                                                  alongOffset: alongOffset)
+        let side = edge == .top && screen.hardwareNotch != nil
+            && NotchGeometry.cutoutStanding(alongOffset: alongOffset).atTrailingEnd
+        if leavesTheCutoutAtItsTrailingEnd != side { leavesTheCutoutAtItsTrailingEnd = side }
         guard cutout != near else { return }
 
         // **Joining the hole is a movement, not a redraw.**
@@ -313,6 +316,15 @@ final class NotchViewModel: ObservableObject {
 
     /// **Whether the notch is drawn as one shape with the display's own hole.**
     var mergesWithCutout: Bool { cutout != nil }
+
+    /// Which side of the hole the notch is on, whether or not it is joined to
+    /// it right now.
+    ///
+    /// Joined, the pair is symmetric and there is no side; this is for the lone
+    /// bar that comes out of the hole and goes back into it, which has to flow
+    /// out of the wall it is actually leaving. Popping out to the right while
+    /// drawing itself from the left is the one thing that reads as a flip.
+    @Published var leavesTheCutoutAtItsTrailingEnd = false
 
     /// **What the contents need across the bar**, in the design's measurements.
     ///
@@ -373,14 +385,20 @@ final class NotchViewModel: ObservableObject {
 
     /// **One drawn copy of the notch**, and where along the panel it starts.
     struct Wing: Identifiable, Equatable {
-        /// **Stable across joining and leaving the hole**, and that is the
-        /// whole of what it is for. The copy that carries the readings is
-        /// always this one identity and is never the mirror; the mirror is
-        /// always the other, and arrives and leaves rather than turning into
-        /// anything. Shared between them, SwiftUI keeps the view and animates
-        /// what changed — which is a `scaleEffect` going from 1 to -1, so the
-        /// bar turns over through nothing on its way in and out of the hole.
-        /// A flip is not what joining a notch looks like.
+        /// **Never shared between a copy and its mirror**, and never shared
+        /// between the pair and the lone bar they replace.
+        ///
+        /// Shared with the mirror, SwiftUI keeps the view and animates the
+        /// difference — a `scaleEffect` going from 1 to -1 — so the bar turns
+        /// over through nothing on its way into the hole. Shared with the lone
+        /// bar, the copy that carries the readings does not arrive at all: it
+        /// is the same view moving and resizing, so one side of the pair flows
+        /// out of the hole and the other slides into place beside it, which is
+        /// half a movement and reads as a jump.
+        ///
+        /// Three identities, so joining is the bar being drawn into the hole
+        /// and a pair coming out of it, both ends flowing, and nothing
+        /// anywhere interpolating between two shapes.
         var id: Int
         /// Panel points, from the panel's own leading edge.
         var lead: CGFloat
@@ -409,7 +427,7 @@ final class NotchViewModel: ObservableObject {
         let span = cutout.width - 2 * cutout.overlap + 2 * bar
         return [
             Wing(id: 1, lead: slack + bar - drawn, mirrored: true),
-            Wing(id: 0, lead: slack + span - bar, mirrored: false)
+            Wing(id: 2, lead: slack + span - bar, mirrored: false)
         ]
     }
 
