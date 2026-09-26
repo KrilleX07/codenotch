@@ -445,18 +445,37 @@ final class AboveTheCutoutTests: XCTestCase {
 
     private let size = CGSize(width: 400, height: 120)
 
-    func testNothingIsDrawnInTheCutoutsBand() {
-        let frame = NotchGeometry.panelFrame(for: Notched(), panelSize: size, edge: .top)
-        let screenTop = Notched().frameValue.maxY
-        XCTAssertEqual(screenTop - frame.maxY, 38, accuracy: 0.5,
-                       "the panel reaches \(screenTop - frame.maxY)pt from the screen's top, "
-                       + "so \(38 - (screenTop - frame.maxY))pt of it is behind the hole")
+    /// **It sits beside the cutout, on the bezel.**
+    ///
+    /// Centred would bury it in the hole, where nothing drawn is on screen at
+    /// all. Dropped below the hole it hangs in the wallpaper attached to
+    /// nothing — which is what it looked like, and why this moved sideways
+    /// instead.
+    func testItSitsBesideTheCutoutRatherThanInOrUnderIt() throws {
+        let screen = Notched()
+        let frame = NotchGeometry.panelFrame(for: screen, panelSize: size, edge: .top)
+        let cutout = try? XCTUnwrap(screen.hardwareNotch)
+
+        XCTAssertEqual(frame.maxY, screen.frameValue.maxY, accuracy: 0.5,
+                       "it left the bezel — the notch belongs on the screen's edge")
+
+        // The visible notch, not the padded panel: `slack` at each end is room
+        // for a card that is not there.
+        let holeRight = screen.frameValue.midX + (cutout?.width ?? 0) / 2
+        XCTAssertGreaterThanOrEqual(frame.minX, holeRight,
+                                    "the notch overlaps the hole, where it cannot be seen")
+        XCTAssertLessThan(frame.minX - holeRight, 40,
+                          "it is \(frame.minX - holeRight)pt from the hole — beside it, "
+                          + "not merely somewhere else on the edge")
     }
 
-    /// A display without one loses nothing: the panel is on the bezel.
-    func testAPlainDisplayKeepsTheBezel() {
-        let frame = NotchGeometry.panelFrame(for: Plain(), panelSize: size, edge: .top)
-        XCTAssertEqual(frame.maxY, Plain().frameValue.maxY, accuracy: 0.5)
+    /// A display without one loses nothing: centred, on the bezel, as before.
+    func testAPlainDisplayIsCentredOnTheBezel() {
+        let screen = Plain()
+        let frame = NotchGeometry.panelFrame(for: screen, panelSize: size, edge: .top)
+        XCTAssertEqual(frame.maxY, screen.frameValue.maxY, accuracy: 0.5)
+        XCTAssertEqual(frame.midX, screen.frameValue.midX, accuracy: 0.5,
+                       "a display with no cutout should not be shifted off centre")
     }
 
     /// And the other three edges never cared.

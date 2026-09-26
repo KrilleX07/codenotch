@@ -69,6 +69,11 @@ extension NSScreen: ScreenDescribing {
 }
 
 enum NotchGeometry {
+    /// Bezel left between the display's cutout and a notch placed beside it.
+    /// Enough to read as two objects rather than one smudge, little enough to
+    /// read as *beside* rather than merely elsewhere on the edge.
+    static let cutoutGap: CGFloat = 10
+
     /// Anchor to the physical display edge, even when the Dock or menu bar
     /// reserves part of the desktop. Showing or hiding either must not move
     /// a position the user chose.
@@ -121,21 +126,35 @@ enum NotchGeometry {
                           max: full.maxY - height + slack - leadingExtent)
             origin = CGPoint(x: full.minX, y: y)
         case .top:
-            let x = clamp(full.midX - width / 2 + alongOffset,
-                          min: full.minX - slack + leadingExtent,
-                          max: full.maxX - width + slack - trailingExtent)
-            // Below the display's own cutout, where it has one.
+            // **Beside the display's own cutout, where it has one.**
             //
             // The notch is drawn the same way on all four edges — see
-            // `NotchViewModel`, which knows nothing about the hardware. The one
-            // thing the hardware decides is *where* the top edge starts,
-            // because the band the cutout occupies is a hole in the display:
-            // pixels there are not dim or clipped, they are absent. Anything
-            // drawn in it is simply not on screen.
+            // `NotchViewModel`, which knows nothing about the hardware. The
+            // one thing the cutout decides is where the top edge's notch
+            // *sits*, and that is settled here.
             //
-            // A placement concern, not a layout one, which is the whole reason
-            // the top edge no longer needs a layout of its own.
-            origin = CGPoint(x: x, y: full.maxY - height - (screen.hardwareNotch?.height ?? 0))
+            // Not centred, which buries it in the hole: that band is not a dim
+            // part of the screen, it is absent, and anything drawn there is not
+            // on screen at all. Not below it either — dropping the panel clear
+            // of the hole leaves the notch hanging in the wallpaper under the
+            // cutout, attached to nothing. So it sits on the bezel immediately
+            // past the hole's edge, which is the only placement that reads as
+            // belonging to the machine.
+            //
+            // Measured on the *visible* notch, not the panel: the panel
+            // carries `slack` at each end for a hover card that is usually not
+            // there, so the panel's centre has to land that much further right
+            // for the notch inside it to clear the hole.
+            var besideCutout: CGFloat = 0
+            if let cutout = screen.hardwareNotch {
+                let half: CGFloat = cutout.width / 2
+                besideCutout = half + cutoutGap + width / 2 - slack
+            }
+            let centred: CGFloat = full.midX - width / 2 + alongOffset
+            let x = clamp(centred + besideCutout,
+                          min: full.minX - slack + leadingExtent,
+                          max: full.maxX - width + slack - trailingExtent)
+            origin = CGPoint(x: x, y: full.maxY - height)
         case .bottom:
             let x = clamp(full.midX - width / 2 + alongOffset,
                           min: full.minX - slack + leadingExtent,

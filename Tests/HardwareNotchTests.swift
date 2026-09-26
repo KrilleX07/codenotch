@@ -28,15 +28,15 @@ private let plain = FakeScreen(
 final class HardwareNotchGeometryTests: XCTestCase {
     private let size = CGSize(width: 700, height: 200)
 
-    /// It used to run up to the physical top to *meet* the hardware, back when
-    /// the top edge drew itself around the cutout. It now starts below it: the
-    /// notch is the same shape on every edge, and the band the hole occupies
-    /// is not screen at all.
-    func testATopNotchStartsBelowTheHardware() {
+    /// It stays on the bezel, and moves sideways to clear the cutout — see
+    /// `AboveTheCutoutTests`. It used to run up to the physical top to *meet*
+    /// the hardware, back when the top edge drew itself around it.
+    func testATopNotchKeepsTheBezelAndClearsTheHardware() {
         let frame = NotchGeometry.panelFrame(for: notched, panelSize: size, edge: .top)
-        XCTAssertEqual(notched.frameValue.maxY - frame.maxY, realNotch.height,
-                       accuracy: 0.001,
-                       "part of the panel is behind the hole in the display")
+        XCTAssertEqual(frame.maxY, notched.frameValue.maxY, accuracy: 0.001,
+                       "it left the bezel")
+        XCTAssertGreaterThanOrEqual(frame.minX, notched.frameValue.midX + realNotch.width / 2,
+                                    "it overlaps the hole in the display")
     }
 
     func testWithoutOneItStillReachesThePhysicalTopEdge() {
