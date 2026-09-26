@@ -380,19 +380,30 @@ final class MergesWithTheCutoutTests: XCTestCase {
     func testItLetsGoOnceItHasBeenDraggedClear() {
         let screen = Notched()
         XCTAssertNotNil(model(screen, offset: 0).cutout)
-        XCTAssertNotNil(model(screen, offset: NotchGeometry.cutoutOverlap).cutout,
-                        "flush with the wall is still joined")
         XCTAssertNil(model(screen, offset: 400).cutout,
                      "dragged half a screen away it is still claiming to be merged")
-        XCTAssertNil(model(screen, offset: -400).cutout,
-                     "dragged out the far side of the hole it is still claiming to be merged")
+        XCTAssertNotNil(model(screen, offset: -400).cutout,
+                        "dragged past the cutout it belongs on its other side, flush")
+    }
 
-        // Reaching back for it, the bridge starts left of the notch's own tip.
-        let reaching = model(screen, offset: NotchGeometry.cutoutOverlap + 10)
-        XCTAssertEqual(reaching.cutout?.overlap, -10)
-        XCTAssertEqual(reaching.cutoutBleed, 0,
-                       "there is nothing buried when the two are apart, so there is "
-                       + "nothing to pay for in length")
+    /// **A gap is not a join.**
+    ///
+    /// The bridge reached across one for a while, on the reasoning that two
+    /// shapes a few points apart still read as one object. They do not: what is
+    /// drawn at the joined end is a square tip and a flat run at the hole's own
+    /// depth, and the only reason that may be square is that it is *inside* the
+    /// hole where nothing shows. Over a gap it is a hard cut edge hanging in the
+    /// open on a shape that has no other straight edge anywhere.
+    func testAGapIsNotAJoin() {
+        let screen = Notched()
+        for nudged in [CGFloat(1), 4, 12, 30] {
+            XCTAssertNil(model(screen, offset: nudged).cutout,
+                         "nudged \(nudged)pt off the hole it still draws the join, and the "
+                         + "square end of it is out in the open")
+        }
+        // Right up against it, it is joined.
+        XCTAssertNotNil(model(screen, offset: 0).cutout)
+        XCTAssertNotNil(model(screen, offset: -1).cutout)
     }
 
     /// **A nudge toward the hole is not a reason to let go of it.**
@@ -471,7 +482,7 @@ final class MergesWithTheCutoutTests: XCTestCase {
         let cutout = try XCTUnwrap(screen.hardwareNotch)
         // The same point of nudge either side of the flip, so the two have the
         // same overlap to spend and only the side differs.
-        let right = model(screen, offset: 1)
+        let right = model(screen, offset: 0)
         let left = model(screen, offset: -cutout.width / 2 - 1)
 
         XCTAssertEqual(right.leadAllowance, left.endAllowance, accuracy: 0.001)

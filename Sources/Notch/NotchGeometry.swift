@@ -36,12 +36,9 @@ struct CutoutProximity: Equatable {
     /// How deep the hole is.
     var depth: CGFloat
 
-    /// How far the notch's own end lies *inside* the hole.
-    ///
-    /// Positive is the resting case: the two overlap, so there is no seam to
-    /// see between them. Negative means the notch has been nudged clear along
-    /// the edge and the join has to reach back for the hole — which it will do
-    /// while they are still close enough to read as one object.
+    /// How far the notch's own end lies *inside* the hole. Never less than
+    /// `NotchGeometry.cutoutOverlap`: short of that there is no join — see
+    /// `cutoutProximity`.
     var overlap: CGFloat
 
     /// **Which end of the notch the hole is at.**
@@ -107,14 +104,6 @@ enum NotchGeometry {
     /// nobody sees, and the bar is drawn longer to pay for it.
     static let cutoutOverlap: CGFloat = 12
 
-    /// How wide a gap the join will still reach across.
-    ///
-    /// ⌥-dragging along the edge pulls the two apart. Up to this much they still
-    /// read as one object and the bridge simply reaches further back for the
-    /// hole; past it the notch is somewhere else on the bezel and is drawn as it
-    /// is on every other edge, flares and all.
-    static let cutoutReach: CGFloat = 24
-
     /// **Whether the notch is near enough to the display's own hole to merge
     /// with it**, and by how much.
     ///
@@ -149,15 +138,29 @@ enum NotchGeometry {
         let atTrailingEnd = cutoutIsAtTrailingEnd(cutout, alongOffset: alongOffset)
         // Measured on the end that meets the hole, which `panelFrame` pins to
         // the wall it meets — so this is the placement rather than a guess at
-        // it, on either side.
-        let overlap = atTrailingEnd
-            ? cutoutOverlap + alongOffset + cutout.width / 2
-            : cutoutOverlap - alongOffset
-        // Dragged clear along the bezel the two come apart, and there is only
-        // so far the bridge will reach. Dragged the other way the notch climbs
-        // into the hole, and once the joined end has passed the far wall the
-        // fill that hides inside the hole would hang out past it.
-        guard overlap >= -cutoutReach,
+        // it, on either side. A nudge toward the hole buries the joined end
+        // deeper; a nudge away from it takes the notch off the hole.
+        // On the left it is simply flush and stays there. One number cannot say
+        // *which* side and *how far along* it at once, and the side is the part
+        // worth having: a notch snapped to the far wall of the hole is a
+        // placement, a notch three points off it is a mistake.
+        let overlap = atTrailingEnd ? cutoutOverlap : cutoutOverlap - alongOffset
+
+        // **There is no join unless the two actually overlap.**
+        //
+        // The bridge used to reach across a gap, on the reasoning that two
+        // shapes a few points apart still read as one. They do not. What is
+        // drawn at the joined end is a square tip and a flat run at the hole's
+        // depth — invisible while it is *inside* the hole, which is the only
+        // reason it may be square. Hanging in the open over a gap it is exactly
+        // the hard, cut edge that has no business being on this shape, and the
+        // notch is plainly not merged with anything.
+        //
+        // So short of the overlap the join is drawn for, there is no join: the
+        // notch is a notch, with the flare it has on every other edge. And past
+        // the hole's far wall there is none either, or the fill that hides
+        // inside the hole would hang out the other side of it.
+        guard overlap >= cutoutOverlap,
               overlap <= cutout.width - cutoutOverlap else { return nil }
         return CutoutProximity(depth: cutout.height, overlap: overlap,
                                atTrailingEnd: atTrailingEnd)
@@ -244,8 +247,11 @@ enum NotchGeometry {
                 besideCutout = cutoutIsAtTrailingEnd(cutout, alongOffset: alongOffset)
                     // On the left of the hole it is the notch's *far* end that
                     // has to land on the wall, so the whole bar is placed back
-                    // from it rather than out in front of it.
-                    ? cutoutOverlap + slack - width / 2
+                    // from it rather than out in front of it — and flush, which
+                    // is what cancelling the nudge here comes to. Past the
+                    // middle of the cutout the nudge has said which side, and
+                    // that is all it has left to say.
+                    ? cutoutOverlap - half - width / 2 - alongOffset + slack
                     : half - cutoutOverlap + width / 2 - slack
             }
             let centred: CGFloat = full.midX - width / 2 + alongOffset
