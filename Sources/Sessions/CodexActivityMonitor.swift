@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import Darwin
 import Foundation
 
 /// The small, stable part of a Codex rollout that is useful for activity.
@@ -180,7 +181,8 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
     static func read(stateStore: URL, desktopStore: URL,
                      staleAfter: TimeInterval, now: Date = Date(),
                      profile: CodexProfile = .default(),
-                     cache: CodexStoreCache = CodexStoreCache()) -> [AgentSession] {
+                     cache: CodexStoreCache = CodexStoreCache(),
+                     openRollouts: Set<String>? = nil) -> [AgentSession] {
         var found: [AgentSession] = []
         // Every thread id that is part of a conversation drawn below, so the
         // desktop app's copy of the same conversation is not drawn again.
@@ -189,8 +191,12 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
         // "Codex" is two programs that record their work in different places:
         // the CLI and the VS Code extension append to a rollout, and the
         // desktop app writes to its own catalogue.
+        let openRollouts = openRollouts ?? CodexOpenRollouts.paths(
+            under: profile.configDirectory.appendingPathComponent("sessions")
+        )
         for conversation in liveConversations(cache.recentThreads(in: stateStore),
-                                              staleAfter: staleAfter, now: now, cache: cache) {
+                                              staleAfter: staleAfter, now: now, cache: cache,
+                                              openRollouts: openRollouts) {
             let root = conversation.root
             // The id the single row always had, so a conversation that is not
             // a sub-agent's keeps it and nothing keyed on it moves.
@@ -198,7 +204,8 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
             guard let session = session(id: "\(profile.id).\(handle)",
                                         name: root.label(fallback: profile.displayName),
                                         modified: conversation.at, state: conversation.state,
-                                        staleAfter: staleAfter, now: now)
+                                        staleAfter: staleAfter, now: now,
+                                        allowStale: conversation.isOpen)
             else { continue }
             found.append(session)
             drawn.formUnion(conversation.members)
@@ -224,6 +231,7 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
         let at: Date
         let state: AgentSession.State
         let members: Set<String>
+        let isOpen: Bool
     }
 
     /// Every conversation with a rollout written inside the window, each once.
@@ -237,7 +245,8 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
     static func liveConversations(_ threads: [CodexThread],
                                   staleAfter: TimeInterval,
                                   now: Date,
-                                  cache: CodexStoreCache = CodexStoreCache()) -> [Conversation] {
+                                  cache: CodexStoreCache = CodexStoreCache(),
+                                  openRollouts: Set<String> = []) -> [Conversation] {
         let byID = Dictionary(threads.filter { !$0.id.isEmpty }.map { ($0.id, $0) },
                               uniquingKeysWith: { first, _ in first })
 
@@ -254,11 +263,17 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
         var newest: [String: Date] = [:]
         var roots: [String: CodexThread] = [:]
         var members: [String: Set<String>] = [:]
+        var busyRoots: Set<String> = []
+        var openRoots: Set<String> = []
+        let rollouts = Set(threads.compactMap { $0.rollout?.path })
         for thread in threads {
             guard let rollout = thread.rollout,
                   let modified = (try? FileManager.default
-                      .attributesOfItem(atPath: rollout.path))?[.modificationDate] as? Date,
-                  now.timeIntervalSince(modified) <= staleAfter
+                      .attributesOfItem(atPath: rollout.path))?[.modificationDate] as? Date
+            else { continue }
+            let activity = cache.rolloutState(of: rollout, keeping: rollouts)
+            let isRecent = now.timeIntervalSince(modified) <= staleAfter
+            guard isRecent || (openRollouts.contains(rollout.path) && activity == .busy)
             else { continue }
             let root = root(of: thread)
             // A helper whose conversation cannot be found is not drawn at all.
@@ -268,6 +283,10 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
             guard !root.isHelper else { continue }
             roots[root.key] = root
             members[root.key, default: []].formUnion([thread.id, root.id].filter { !$0.isEmpty })
+            if activity == .busy || thread.key != root.key { busyRoots.insert(root.key) }
+            if openRollouts.contains(rollout.path), activity == .busy {
+                openRoots.insert(root.key)
+            }
             if newest[root.key].map({ $0 < modified }) ?? true { newest[root.key] = modified }
         }
 
@@ -275,9 +294,11 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
         return roots.compactMap { key, root in
             guard let at = newest[key] else { return nil }
             return Conversation(root: root, at: at,
-                                state: state(of: root, staleAfter: staleAfter, now: now,
-                                             cache: cache, live: live),
-                                members: members[key] ?? [])
+                                state: busyRoots.contains(key) ? .busy
+                                    : state(of: root, staleAfter: staleAfter, now: now,
+                                            cache: cache, live: live),
+                                members: members[key] ?? [],
+                                isOpen: openRoots.contains(key))
         }
     }
 
@@ -336,9 +357,10 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
     static func session(
         id: String, name: String, modified: Date,
         state: AgentSession.State = .busy,
-        staleAfter: TimeInterval, now: Date
+        staleAfter: TimeInterval, now: Date,
+        allowStale: Bool = false
     ) -> AgentSession? {
-        guard now.timeIntervalSince(modified) <= staleAfter else { return nil }
+        guard allowStale || now.timeIntervalSince(modified) <= staleAfter else { return nil }
 
         return AgentSession(
             id: id,
@@ -348,5 +370,73 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
             waitingFor: nil,
             since: modified
         )
+    }
+}
+
+enum CodexOpenRollouts {
+    static func paths(under root: URL, pids suppliedPIDs: [pid_t]? = nil) -> Set<String> {
+        let pids: [pid_t]
+        if let suppliedPIDs {
+            pids = suppliedPIDs
+        } else {
+            var count = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
+            guard count > 0 else { return [] }
+            var listed = [pid_t](repeating: 0,
+                                 count: Int(count) / MemoryLayout<pid_t>.stride + 16)
+            count = proc_listpids(UInt32(PROC_ALL_PIDS), 0, &listed,
+                                  Int32(listed.count * MemoryLayout<pid_t>.stride))
+            guard count > 0 else { return [] }
+            pids = listed.prefix(Int(count) / MemoryLayout<pid_t>.stride).filter(isCodex)
+        }
+
+        let prefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        var resolvedPrefix = prefix
+        if let resolved = realpath(root.path, nil) {
+            let path = String(cString: resolved)
+            free(resolved)
+            resolvedPrefix = path.hasSuffix("/") ? path : path + "/"
+        }
+        var found: Set<String> = []
+        for pid in pids where pid > 0 {
+            let size = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, nil, 0)
+            guard size > 0 else { continue }
+            var fds = [proc_fdinfo](repeating: proc_fdinfo(),
+                                    count: Int(size) / MemoryLayout<proc_fdinfo>.stride + 8)
+            let read = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, &fds,
+                                    Int32(fds.count * MemoryLayout<proc_fdinfo>.stride))
+            guard read > 0 else { continue }
+            for fd in fds.prefix(Int(read) / MemoryLayout<proc_fdinfo>.stride)
+                where fd.proc_fdtype == UInt32(PROX_FDTYPE_VNODE) {
+                var info = vnode_fdinfowithpath()
+                let infoSize = Int32(MemoryLayout<vnode_fdinfowithpath>.size)
+                guard proc_pidfdinfo(pid, fd.proc_fd, PROC_PIDFDVNODEPATHINFO,
+                                     &info, infoSize) == infoSize else { continue }
+                let path = withUnsafePointer(to: &info.pvip.vip_path) {
+                    $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                        String(cString: $0)
+                    }
+                }
+                guard path.hasSuffix(".jsonl") else { continue }
+                if path.hasPrefix(prefix) {
+                    found.insert(path)
+                } else if path.hasPrefix(resolvedPrefix) {
+                    found.insert(prefix + path.dropFirst(resolvedPrefix.count))
+                }
+            }
+        }
+        return found
+    }
+
+    private static func isCodex(_ pid: pid_t) -> Bool {
+        var info = proc_bsdinfo()
+        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info,
+                           Int32(MemoryLayout<proc_bsdinfo>.size))
+                == Int32(MemoryLayout<proc_bsdinfo>.size)
+        else { return false }
+        return withUnsafePointer(to: &info.pbi_comm) {
+            $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXCOMLEN)) {
+                String(cString: $0) == "codex"
+            }
+        }
     }
 }
