@@ -737,11 +737,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // what the vendor said. Paired with the preference so flipping the
             // toggle redraws at once, without a fetch. The weekly-first ring
             // is laid the same way, and for the same reasons — see `drawn`.
+            // Auto-order rides along after the derivations, so "most left"
+            // means the window actually leading each ring.
             store.$notchSnapshots
-                .combineLatest(preferences.$claudeDailyPaceRing, preferences.$weeklyHeadline)
+                .combineLatest(preferences.$claudeDailyPaceRing, preferences.$weeklyHeadline,
+                               preferences.$autoOrderByRemaining)
                 .receive(on: RunLoop.main)
-                .sink { [weak fleet] snapshots, paced, weekly in
-                    fleet?.setSnapshots(Self.drawn(snapshots, weekly: weekly, paced: paced))
+                .sink { [weak fleet] snapshots, paced, weekly, autoOrder in
+                    var drawn = Self.drawn(snapshots, weekly: weekly, paced: paced)
+                    if autoOrder { drawn = ProviderOrder.byRemainingUsage(drawn) }
+                    fleet?.setSnapshots(drawn)
                 }
                 .store(in: &cancellables)
 

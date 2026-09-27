@@ -299,6 +299,18 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(shutRingsWhenSpent, forKey: Keys.shutRingsWhenSpent) }
     }
 
+    /// Whether the notch sorts rings by what is left instead of the manual
+    /// order: most remaining first, by the window that leads each ring. A
+    /// high number that cannot be spent yet sinks below usable accounts but
+    /// stays above empty ones; the Accounts list keeps the manual order,
+    /// which breaks ties.
+    ///
+    /// Off by default: the manual arrangement is what dragging built, and
+    /// re-sorting unasked would strand it.
+    @Published var autoOrderByRemaining: Bool {
+        didSet { defaults.set(autoOrderByRemaining, forKey: Keys.autoOrderByRemaining) }
+    }
+
     @Published var weeklyRingDashed: Bool {
         didSet { defaults.set(weeklyRingDashed, forKey: Keys.weeklyRingDashed) }
     }
@@ -568,6 +580,7 @@ final class Preferences: ObservableObject {
         static let showsNotchReadings = "showsNotchReadings"
         static let weeklyReading = "weeklyReading"
         static let shutRingsWhenSpent = "shutRingsWhenSpent"
+        static let autoOrderByRemaining = "autoOrderByRemaining"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
         static let weeklyHeadline = "weeklyHeadline"
         static let showsMoveHandle = "showsMoveHandle"
@@ -931,6 +944,7 @@ final class Preferences: ObservableObject {
         // choice for whoever budgets from the other end.
         self.showsRemainingInNotch = defaults.bool(forKey: Self.showsRemainingInNotchKey)
         self.shutRingsWhenSpent = defaults.object(forKey: Keys.shutRingsWhenSpent) as? Bool ?? true
+        self.autoOrderByRemaining = defaults.bool(forKey: Keys.autoOrderByRemaining)
 
         self.weeklyRing = defaults.string(forKey: Keys.weeklyRing)
             .flatMap(WeeklyRing.init(rawValue:)) ?? .off

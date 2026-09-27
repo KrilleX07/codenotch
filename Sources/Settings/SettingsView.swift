@@ -736,6 +736,11 @@ struct SettingsView: View {
             // so dragging it was arranging something that is not on screen.
             Section(L10n.t("Connected")) {
                 if needsSetup { setupNote }
+                Toggle(L10n.t("Auto-order based on remaining usage"), isOn: $preferences.autoOrderByRemaining)
+                Text(L10n.t("The notch sorts rings by what is left of the window that leads each ring, most first. A high number that cannot be spent yet sinks below usable accounts but stays above empty ones. This list keeps your manual order, which breaks ties."))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
                 ForEach(connected) { account in
                     AccountRow(provider: account, preferences: preferences,
                                signOut: signOut, signIn: signIn,
@@ -754,7 +759,9 @@ struct SettingsView: View {
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if !connected.isEmpty {
-                    Text(L10n.t("The notch draws these in this order. Drag one by its handle to move it."))
+                    Text(preferences.autoOrderByRemaining
+                         ? L10n.t("Auto-order is on: the notch sorts these by remaining usage. Dragging still sets the order ties break in.")
+                         : L10n.t("The notch draws these in this order. Drag one by its handle to move it."))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)

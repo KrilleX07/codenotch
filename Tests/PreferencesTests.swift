@@ -314,6 +314,17 @@ final class PreferencesMigrationTests: XCTestCase {
         XCTAssertFalse(Preferences(defaults: UserDefaults(suiteName: name)!).shutRingsWhenSpent)
     }
 
+    /// Off by default — the manual arrangement is what dragging built — and
+    /// once somebody flips it, it has to stay flipped across a relaunch.
+    func testAutoOrderStaysManualUntilAskedForAndThenSurvivesARelaunch() {
+        let (fresh, name) = makeDefaults()
+        XCTAssertFalse(Preferences(defaults: fresh).autoOrderByRemaining)
+
+        Preferences(defaults: fresh).autoOrderByRemaining = true
+
+        XCTAssertTrue(Preferences(defaults: UserDefaults(suiteName: name)!).autoOrderByRemaining)
+    }
+
     /// The size has to outlive the launch that chose it, or it reads as a
     /// setting that did not take.
     func testTheNotchSizeSurvivesARelaunch() {
