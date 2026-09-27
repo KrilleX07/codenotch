@@ -183,8 +183,8 @@ Cursor account — so the notch honestly reported zero usage belonging to somebo
 who was not the user. The two identities were only visible side by side:
 
 ```
-editor state.vscdb : google-oauth2|user_01JT4P1FS4AB8WA4N7QVSYZRTT  (raphaelvinz.rv@…, "Vinz")
-WebView /api/auth/me:              user_01JXH6KPZ5D7XZHMEQ181QRG2S  (xurfa9@…,        "Xurfa")
+editor state.vscdb : google-oauth2|<editor-account-id>  (account A)
+WebView /api/auth/me:              <webview-account-id> (account B)
 ```
 
 `CursorCredentials` now reads `cursorAuth/accessToken` and
@@ -583,8 +583,8 @@ would be theatre. What there *is* to show is whose readings these are:
 
 ```
 Claude  Pro · via Claude Code
-Cursor  raphaelvinz.rv@gmail.com · Free · via Cursor
-Codex   raphaelvinz.rv@gmail.com · Free · via Codex
+Cursor  [account email] · Free · via Cursor
+Codex   [account email] · Free · via Codex
 ```
 
 That is not decoration. Borrowing a credential means the account being read can
