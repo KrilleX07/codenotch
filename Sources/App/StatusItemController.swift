@@ -352,7 +352,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// reading lands.
     func menuWillOpen(_ menu: NSMenu) {
         rebuild(menu: menu, now: Date())
-        startMenuClock(menu)
+        startMenuClock()
     }
 
     func menuDidClose(_ menu: NSMenu) {
@@ -382,9 +382,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// `.common` mode, because AppKit runs a menu in its own tracking mode and
     /// a timer in the default mode would not fire until the menu closed —
     /// which is exactly when it is no longer needed.
-    private func startMenuClock(_ menu: NSMenu) {
+    private func startMenuClock() {
         menuClock?.invalidate()
-        _ = menu
         let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
