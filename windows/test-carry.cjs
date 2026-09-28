@@ -64,6 +64,17 @@ test('every place is on one edge and back, round the whole border', () => {
   assert.ok(Math.abs(run('signed(perimeter() - 10)') + 10) < .001, 'just behind the start is a step back');
 });
 
+test('it knows when it reaches round a corner', () => {
+  const run = page();
+  assert.equal(run('cornerFor(900, 200)'), null, 'in the middle of the top');
+  const round = run('cornerFor(1800 - 40, 200)');
+  assert.equal(round.corner, 'topRight');
+  assert.ok(Math.abs(round.before - 140) < .001 && Math.abs(round.after - 60) < .001);
+  const wrapped = run('cornerFor(30, 200)');
+  assert.equal(wrapped.corner, 'topLeft', 'across the start of the line');
+  assert.ok(Math.abs(wrapped.before + wrapped.after - 200) < .001 && Math.abs(wrapped.after - 130) < .001);
+});
+
 test('it comes to rest where its window can be put down', () => {
   const run = page();
   // The window is 650 long and kept in the work area, so the notch's middle stays 325 from an end
@@ -79,4 +90,48 @@ test('the drawing is turned over on the left and bottom edges, so its flares sti
   assert.equal(sweeps('top'), '1001');
   assert.equal(sweeps('left'), '0110');
   assert.equal(sweeps('bottom'), '0110');
+});
+
+test('going round a corner it turns from one edge\'s size to the other\'s without a step', () => {
+  const run = page();
+  // Flat on the top the notch is 200 long, upright on the right 300: along the top it is the one,
+  // all the way round the other, and never anything but in between
+  let last = null;
+  for (let p = 1800 - 150; p <= 1800 + 200; p += 2) {
+    const { length, turned } = JSON.parse(run(`JSON.stringify(shapeAt(${p}, 0))`));
+    assert.ok(length >= 200 - .001 && length <= 300 + .001, `at ${p} it is ${length} long`);
+    assert.ok(turned >= 0 && turned <= 1);
+    if (last !== null) assert.ok(Math.abs(length - last) < 6, `at ${p} it jumped from ${last} to ${length}`);
+    last = length;
+  }
+});
+
+test('the rings go round a corner on a curve, never a step', () => {
+  const run = page();
+  for (const [corner, inset] of [[1800, 34.5], [0, 47.5], [1800 + 1169, 40]]) {
+    let last = null;
+    for (let t = corner - 200; t <= corner + 200; t += 1) {
+      const [x, y] = JSON.parse(run(`JSON.stringify(ringPoint(wrap(${t}), ${inset}))`));
+      if (last) assert.ok(Math.hypot(x - last[0], y - last[1]) < 2, `stepped at ${t} near ${corner}`);
+      last = [x, y];
+    }
+  }
+});
+
+test('let go round a corner, it flows off onto the edge more of it was on, and rests there', () => {
+  const run = page();
+  run(`passing = { corner: 'topRight', before: 150, after: 50 }; target = 1800; letGo();`);
+  assert.deepEqual(JSON.parse(run('JSON.stringify(placeAt(target))')), ['top', 1800 - 325]);
+  run(`passing = { corner: 'topRight', before: 40, after: 160 }; target = 1800; letGo();`);
+  assert.deepEqual(JSON.parse(run('JSON.stringify(placeAt(target))')), ['right', 325]);
+  assert.equal(run('settling'), true);
+});
+
+test('a part in the corner closes up square as the notch goes round, and not before', () => {
+  const run = page();
+  const arcs = (source) => [...run(source).matchAll(/A([\d.]+) [\d.]+ 0 0 \d/g)].map((m) => Number(m[1]));
+  // Just arrived at the corner, its end there is still the notch's own: flare and corner
+  assert.deepEqual(arcs(`piece('top', 'topRight', 200, true, 0, 0, 95)`), [38.7, 20, 20, 38.7]);
+  // Gone round by its whole depth, that end is square
+  assert.deepEqual(arcs(`piece('top', 'topRight', 200, true, 1, 95, 95)`), [38.7, 20, 0, 0]);
 });

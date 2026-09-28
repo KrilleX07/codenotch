@@ -20,9 +20,13 @@
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden;user-select:none;cursor:default}
   body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
-  svg#body{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+  /* 40 px bigger than the screen all round (OFF in the script): the body runs on past the screen's
+     edge, and the goo's blur needs it there, or it eats back into the edge and the body comes away */
+  svg#body{position:absolute;left:-40px;top:-40px;width:calc(100% + 80px);height:calc(100% + 80px);overflow:hidden}
   /* The edge line inside the shape, as notch.html's border is: twice as wide, clipped to the shape */
   #notch{fill:var(--pill);stroke:var(--edge);stroke-width:2}
+  #parts path{fill:#000}
+  .rim{flood-color:var(--edge)} .fill{flood-color:var(--pill)}
   .slot{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 
   /* notch.html's cells */
@@ -52,8 +56,25 @@
 </head>
 <body>
 <svg id="body">
-  <defs><clipPath id="clip"><path id="clipShape"/></clipPath></defs>
-  <path id="notch" clip-path="url(#clip)"/>
+  <defs>
+    <clipPath id="clip"><path id="clipShape"/></clipPath>
+    <!-- Round a corner: the two parts blurred together and cut back at half strength, so where they
+         meet they run into one body the way two drops do; then the edge line drawn inside it. -->
+    <filter id="goo" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 18 -8.5" result="shape"/>
+      <feMorphology in="shape" operator="erode" radius="1" result="inner"/>
+      <feFlood class="rim" result="rimColour"/>
+      <feComposite in="rimColour" in2="shape" operator="in" result="rim"/>
+      <feFlood class="fill" result="fillColour"/>
+      <feComposite in="fillColour" in2="inner" operator="in" result="body"/>
+      <feMerge><feMergeNode in="rim"/><feMergeNode in="body"/></feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(40 40)">
+    <path id="notch" clip-path="url(#clip)"/>
+    <g id="parts" filter="url(#goo)"><path id="first"/><path id="second"/></g>
+  </g>
 </svg>
 <div id="cells"></div>
 <script>
@@ -80,6 +101,17 @@ function positionOn(edge, along){
   if(edge === 'bottom') return 2 * w + h - c(along, w);
   return wrap(2 * w + 2 * h - c(along, h));
 }
+/* The corner a notch `length` long, centred at `p`, reaches round, and how much of it is before the
+   corner and how much after — BorderTrack.corner(for:length:). */
+function cornerFor(p, length){
+  const { w, h } = st;
+  for(const [corner, at] of [['topRight', w], ['bottomRight', w + h], ['bottomLeft', 2 * w + h], ['topLeft', 0]]){
+    const d = signed(at - p);
+    if(Math.abs(d) < length / 2){ const before = d + length / 2; return { corner, before, after: length - before }; }
+  }
+  return null;
+}
+
 /* ---- the spring (NotchWindowController.spring) ----------------------------------------------
    Following the hand it is brisk and all but dead; coming to rest on its own it is gentler, with a
    little give past where it stops and back. Two half steps keep a stiff spring steady at a slow frame. */
@@ -105,16 +137,24 @@ function toScreen(edge, u, v){
   return [u, v];
 }
 const mirrored = edge => edge === 'left' || edge === 'bottom';
-const OFF = 40; // how far the body runs on past the screen's edge, out of sight
+const OFF = 40; // how far the body runs on past the screen's edge, out of sight; svg#body's margin
+const EDGES_OF = { topRight: ['top', 'right'], bottomRight: ['right', 'bottom'], bottomLeft: ['bottom', 'left'], topLeft: ['left', 'top'] };
+const cornerAt = corner => ({ topRight: st.w, bottomRight: st.w + st.h, bottomLeft: 2 * st.w + st.h, topLeft: 0 })[corner];
 
 /* The notch on `edge` from `a` to `b` along it: notch.html's pill — `depth` deep, its free corners
-   rounded by `r`, and a flare of radius `f` either end curving into the screen's edge. */
-function notchPath(edge, a, b, depth, r, f){
+   rounded by `r`, and a flare of radius `f` either end curving into the screen's edge. An end that
+   is in a corner closes up square as the notch goes round it — `ja` and `jb`, 0 to 1 — flare and
+   corner both, so neither end changes in a step (SideNotchShape's leadingJoin and trailingJoin). */
+function notchPath(edge, a, b, depth, r, f, ja = 0, jb = 0){
   const flip = mirrored(edge);
+  const fa = f * (1 - ja), fb = f * (1 - jb);
+  let ra = r * (1 - ja), rb = r * (1 - jb);
+  // A part just coming round is shorter than its two corners: they share what there is
+  if(ra + rb > b - a){ const k = Math.max(b - a, 0) / (ra + rb); ra *= k; rb *= k; }
   const pt = (u, v) => toScreen(edge, u, v).map(n => n.toFixed(2)).join(' ');
   const arc = (rad, sweep, u, v) => `A${rad.toFixed(2)} ${rad.toFixed(2)} 0 0 ${flip ? 1 - sweep : sweep} ${pt(u, v)}`;
-  return `M${pt(a - f, -OFF)} L${pt(a - f, 0)} ${arc(f, 1, a, f)} L${pt(a, depth - r)} ${arc(r, 0, a + r, depth)}`
-    + ` L${pt(b - r, depth)} ${arc(r, 0, b, depth - r)} L${pt(b, f)} ${arc(f, 1, b + f, 0)} L${pt(b + f, -OFF)} Z`;
+  return `M${pt(a - fa, -OFF)} L${pt(a - fa, 0)} ${arc(fa, 1, a, fa)} L${pt(a, depth - ra)} ${arc(ra, 0, a + ra, depth)}`
+    + ` L${pt(b - rb, depth)} ${arc(rb, 0, b, depth - rb)} L${pt(b, fb)} ${arc(fb, 1, b + fb, 0)} L${pt(b + fb, -OFF)} Z`;
 }
 
 function dims(edge){
@@ -122,7 +162,68 @@ function dims(edge){
   return { depth: o.depth * k, length: o.length * k, pitch: o.pitch * k, inset: o.inset * k };
 }
 
+/* The notch with its middle at `p`: the corner it is going round, if any, and how long it is there —
+   turning from the one edge's length to the other's as it goes round, so there is no size it
+   arrives at in a step. Twice, because how far round decides the length and the length how far round. */
+function shapeAt(p, stretch){
+  const drawn = 1 + stretch;
+  let length = dims(placeAt(p)[0]).length * drawn;
+  let round = cornerFor(p, length);
+  if(!round) return { round: null, length, turned: 0 };
+  const [first, second] = EDGES_OF[round.corner];
+  let turned = 0;
+  for(let i = 0; i < 2; i++){
+    const t = Math.min(Math.max(round.after / Math.max(length, 1), 0), 1);
+    turned = t * t * (3 - 2 * t);
+    length = (dims(first).length + (dims(second).length - dims(first).length) * turned) * drawn;
+    const again = cornerFor(p, length);
+    if(!again) return { round: null, length, turned };
+    round = again;
+  }
+  return { round, length, turned };
+}
+
+/* One part of a notch going round `corner`: on `edge`, `length` of it up to the corner, its end in
+   the corner closed up by `closing` and run on past the corner by as much of the notch as has gone
+   round, up to the margin — just arrived, not at all, so it is the notch's own end there. */
+function piece(edge, corner, length, trailing, closing, past, depth){
+  const at = cornerAt(corner);
+  const start = trailing ? at - length : at, end = trailing ? at : at + length;
+  const a = placeAt(start + .001)[1], b = placeAt(end - .001)[1];
+  let low = Math.min(a, b), high = Math.max(a, b);
+  const cornerIsLow = (edge === 'top' && corner === 'topLeft') || (edge === 'left' && corner === 'topLeft')
+    || (edge === 'right' && corner === 'topRight') || (edge === 'bottom' && corner === 'bottomLeft');
+  const run = Math.min(Math.max(past, 0), OFF);
+  if(cornerIsLow) low -= run; else high += run;
+  const join = Math.min(Math.max(closing, 0), 1), r = st.shape.radius * st.size, f = st.shape.fillet * st.size;
+  return notchPath(edge, low, high, depth, r, f, cornerIsLow ? join : 0, cornerIsLow ? 0 : join);
+}
+
+/* A cell's centre for a place on the border: `d` in from it, and round each corner on a curve rather
+   than across it, so the rings go round with the notch rather than stepping from edge to edge. */
+const HEADING = { top: [1, 0], right: [0, 1], bottom: [-1, 0], left: [0, -1] };
+function ringPoint(t, d){
+  const inset = t => {
+    const [edge, along] = placeAt(t);
+    return edge === 'top' ? [along, d] : edge === 'right' ? [st.w - d, along] : edge === 'bottom' ? [along, st.h - d] : [d, along];
+  };
+  const round = 1.6 * d;
+  for(const corner of Object.keys(EDGES_OF)){
+    const at = cornerAt(corner), off = signed(t - at);
+    if(Math.abs(off) >= round) continue;
+    const a = inset(at - round), b = inset(at + round);
+    const [first, second] = EDGES_OF[corner], da = HEADING[first], db = HEADING[second];
+    const k = (round - d) * .8, u = (off + round) / (2 * round), v = 1 - u;
+    const c1 = [a[0] + da[0] * k, a[1] + da[1] * k], c2 = [b[0] - db[0] * k, b[1] - db[1] * k];
+    const bez = i => v * v * v * a[i] + 3 * v * v * u * c1[i] + 3 * v * u * u * c2[i] + u * u * u * b[i];
+    return [bez(0), bez(1)];
+  }
+  return inset(t);
+}
+
 const body = document.getElementById('notch'), clipShape = document.getElementById('clipShape');
+const parts = document.getElementById('parts'), firstPart = document.getElementById('first'), secondPart = document.getElementById('second');
+const goo = document.getElementById('goo'), blur = goo.querySelector('feGaussianBlur');
 const cellBox = document.getElementById('cells');
 let slots = [];
 function buildCells(){
@@ -130,13 +231,50 @@ function buildCells(){
   slots = [...cellBox.children].map(el => ({ el, w: el.offsetWidth, h: el.offsetHeight }));
 }
 
-function draw(p){
-  const [edge, along] = placeAt(p), d = dims(edge), k = st.size;
-  const shape = notchPath(edge, along - d.length / 2, along + d.length / 2, d.depth, st.shape.radius * k, st.shape.fillet * k);
-  body.setAttribute('d', shape); clipShape.setAttribute('d', shape);
-  const n = slots.length;
+/* How much it stretches with speed: dragged fast it draws out along the way it is going and thins,
+   its back end trailing, and takes its own shape again as it slows (NotchWindowController). */
+const MAX_STRETCH = .14, STRETCH_SPEED = 2600;
+/* The corner the drawing was last going round, for a let-go mid-corner to flow off. */
+let passing = null;
+
+function draw(hand){
+  const stretch = still ? 0 : MAX_STRETCH * Math.min(1, Math.abs(velocity) / STRETCH_SPEED);
+  // Stretched, it draws out behind: its front stays with the hand and its middle falls back by
+  // half what it gained. The rings are solid, so they stay with the hand.
+  const back = (velocity >= 0 ? 1 : -1) * dims(placeAt(hand)[0]).length * stretch / 2;
+  const p = wrap(hand - back);
+  const { round, length, turned } = shapeAt(p, stretch);
+  const thin = 1 - stretch * .35;
+  const [first, second] = round ? EDGES_OF[round.corner] : [placeAt(p)[0], placeAt(p)[0]];
+  const from = dims(first), to = dims(second);
+  passing = round;
+  if(!round){
+    const a = placeAt(p - length / 2 + .001)[1], b = placeAt(p + length / 2 - .001)[1];
+    const d = notchPath(first, Math.min(a, b), Math.max(a, b), from.depth * thin, st.shape.radius * st.size, st.shape.fillet * st.size);
+    body.setAttribute('d', d); clipShape.setAttribute('d', d);
+    parts.style.display = 'none'; body.style.display = '';
+  } else {
+    const { corner, before, after } = round;
+    const depthA = from.depth * thin, depthB = to.depth * thin;
+    firstPart.setAttribute('d', before > .5 ? piece(first, corner, before, true, after / Math.max(depthA, 1), after, depthA) : '');
+    secondPart.setAttribute('d', after > .5 ? piece(second, corner, after, false, before / Math.max(depthB, 1), before, depthB) : '');
+    // Nothing at all as it arrives at a corner or leaves it, its full run only as it wraps the
+    // corner, so where the drawing hands over to the notch the outline is the notch's own
+    const share = Math.min(1, 4 * Math.min(before, after) / length);
+    const amount = depthA * .28 * share * share * (3 - 2 * share);
+    blur.setAttribute('stdDeviation', Math.max(amount, .5).toFixed(2));
+    // Only the square round the corner is filtered: over the whole screen it was every pixel, every frame
+    const [cx, cy] = toScreen(first, placeAt(cornerAt(corner) - .001)[1], 0);
+    const reach = length + Math.max(depthA, depthB) + 3 * amount + OFF;
+    goo.setAttribute('x', cx - reach); goo.setAttribute('y', cy - reach);
+    goo.setAttribute('width', 2 * reach); goo.setAttribute('height', 2 * reach);
+    body.style.display = 'none'; parts.style.display = '';
+  }
+  const n = slots.length, k = st.size;
+  const sign = st.edge === 'top' || st.edge === 'right' ? 1 : -1;
+  const pitch = from.pitch + (to.pitch - from.pitch) * turned, inset = from.inset + (to.inset - from.inset) * turned;
   slots.forEach((s, i) => {
-    const [x, y] = toScreen(edge, along + (i - (n - 1) / 2) * d.pitch, d.inset);
+    const [x, y] = ringPoint(wrap(p + sign * (i - (n - 1) / 2) * pitch + back), inset);
     s.el.style.transform = `translate(${(x - s.w * k / 2).toFixed(2)}px,${(y - s.h * k / 2).toFixed(2)}px) scale(${k})`;
   });
 }
@@ -151,6 +289,21 @@ function resting(p){
   const [edge, along] = placeAt(p), span = vertical(edge) ? st.h : st.w;
   const low = st.reach, high = span - st.reach;
   return positionOn(edge, low <= high ? Math.min(Math.max(along, low), high) : span / 2);
+}
+
+/* Let go round a corner, it flows off it: on along the border, on the same glide it followed the
+   hand with, to where the whole of it is on whichever edge more of it was already on, straightening
+   as it goes. Pulled onto the edge in one frame, it snapped from the bend to its resting shape. */
+function letGo(){
+  let place = target;
+  if(passing){
+    const [first, second] = EDGES_OF[passing.corner];
+    const onto = passing.before >= passing.after ? first : second;
+    const half = dims(onto).length / 2 + 1;
+    place = wrap(onto === first ? cornerAt(passing.corner) - half : cornerAt(passing.corner) + half);
+  }
+  target = resting(place);
+  settling = true;
 }
 
 function tick(t){
@@ -175,7 +328,7 @@ function start(init){
   if(!init) return;
   st = init;
   shown = target = init.place;
-  velocity = 0; lastTick = null; settling = false;
+  velocity = 0; lastTick = null; settling = false; passing = null;
   buildCells();
   draw(shown);
   if(!ticking){ ticking = true; requestAnimationFrame(tick); }
@@ -185,7 +338,7 @@ function start(init){
 
 listen('carry_init', e => start(e.payload)).catch(() => {});
 listen('carry_target', e => { if(st && !settling) target = e.payload; }).catch(() => {});
-listen('carry_release', () => { if(st){ target = resting(target); settling = true; } }).catch(() => {});
+listen('carry_release', () => { if(st) letGo(); }).catch(() => {});
 invoke('get_carry').then(v => { if(v && (!st || st.seq !== v.seq)) start(v); }).catch(() => {});
 </script>
 </body>

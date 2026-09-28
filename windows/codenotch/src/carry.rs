@@ -207,6 +207,8 @@ pub struct Init {
     w: f64,
     h: f64,
     place: f64,
+    /// The edge it was picked up from, whose order its rings keep all the way round.
+    edge: &'static str,
     shape: serde_json::Value,
     size: f64,
     /// How near an end of an edge the notch's middle can be put down: its window is kept wholly in
@@ -307,6 +309,7 @@ fn run(app: &AppHandle, shape: serde_json::Value) {
         w: track.width,
         h: track.height,
         place: middle,
+        edge: from.as_str(),
         shape,
         size,
         reach: reach_on(&mon, size),
