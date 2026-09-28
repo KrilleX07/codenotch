@@ -20,11 +20,11 @@
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden;user-select:none;cursor:default}
   body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
-  /* 40 px bigger than the screen all round (OFF in the script): the body runs on past the screen's
-     edge, and the goo's blur needs it there, or it eats back into the edge and the body comes away */
-  svg#body{position:absolute;left:-40px;top:-40px;width:calc(100% + 80px);height:calc(100% + 80px);overflow:hidden}
-  /* The edge line inside the shape, as notch.html's border is: twice as wide, clipped to the shape */
-  #notch{fill:var(--pill);stroke:var(--edge);stroke-width:2}
+  /* Only as big as what is drawn, and moved with it (`fit`): a surface the size of the screen was
+     every pixel of the screen redrawn every frame, which stuttered. It may reach past the screen's
+     edge, where the goo's blur needs the body to go on, or it eats back into the edge. */
+  svg#body{position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;will-change:transform}
+  #notch{fill:var(--pill);stroke:var(--edge);stroke-width:1}
   #parts path{fill:#000}
   .rim{flood-color:var(--edge)} .fill{flood-color:var(--pill)}
   .slot{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
@@ -57,7 +57,6 @@
 <body>
 <svg id="body">
   <defs>
-    <clipPath id="clip"><path id="clipShape"/></clipPath>
     <!-- Round a corner: the two parts blurred together and cut back at half strength, so where they
          meet they run into one body the way two drops do; then the edge line drawn inside it. -->
     <filter id="goo" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
@@ -71,10 +70,8 @@
       <feMerge><feMergeNode in="rim"/><feMergeNode in="body"/></feMerge>
     </filter>
   </defs>
-  <g transform="translate(40 40)">
-    <path id="notch" clip-path="url(#clip)"/>
-    <g id="parts" filter="url(#goo)"><path id="first"/><path id="second"/></g>
-  </g>
+  <path id="notch"/>
+  <g id="parts" filter="url(#goo)"><path id="first"/><path id="second"/></g>
 </svg>
 <div id="cells"></div>
 <script>
@@ -137,7 +134,7 @@ function toScreen(edge, u, v){
   return [u, v];
 }
 const mirrored = edge => edge === 'left' || edge === 'bottom';
-const OFF = 40; // how far the body runs on past the screen's edge, out of sight; svg#body's margin
+const OFF = 40; // how far the body runs on past the screen's edge, out of sight
 const EDGES_OF = { topRight: ['top', 'right'], bottomRight: ['right', 'bottom'], bottomLeft: ['bottom', 'left'], topLeft: ['left', 'top'] };
 const cornerAt = corner => ({ topRight: st.w, bottomRight: st.w + st.h, bottomLeft: 2 * st.w + st.h, topLeft: 0 })[corner];
 
@@ -221,7 +218,15 @@ function ringPoint(t, d){
   return inset(t);
 }
 
-const body = document.getElementById('notch'), clipShape = document.getElementById('clipShape');
+const svg = document.getElementById('body'), body = document.getElementById('notch');
+/* The drawing surface put round what is drawn, in whole pixels so it does not shimmer as it moves */
+function fit(x0, y0, x1, y1){
+  const x = Math.floor(Math.min(x0, x1)) - 2, y = Math.floor(Math.min(y0, y1)) - 2;
+  const w = Math.ceil(Math.max(x0, x1)) + 2 - x, h = Math.ceil(Math.max(y0, y1)) + 2 - y;
+  svg.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
+  svg.style.width = w + 'px'; svg.style.height = h + 'px';
+  svg.style.transform = `translate(${x}px,${y}px)`;
+}
 const parts = document.getElementById('parts'), firstPart = document.getElementById('first'), secondPart = document.getElementById('second');
 const goo = document.getElementById('goo'), blur = goo.querySelector('feGaussianBlur');
 const cellBox = document.getElementById('cells');
@@ -251,8 +256,12 @@ function draw(hand){
   if(!round){
     const a = placeAt(p - length / 2 + .001)[1], b = placeAt(p + length / 2 - .001)[1];
     const d = notchPath(first, Math.min(a, b), Math.max(a, b), from.depth * thin, st.shape.radius * st.size, st.shape.fillet * st.size);
-    body.setAttribute('d', d); clipShape.setAttribute('d', d);
+    body.setAttribute('d', d);
     parts.style.display = 'none'; body.style.display = '';
+    // Room either end for the flares, and its depth across
+    const room = st.shape.fillet * st.size + 4;
+    const [x0, y0] = toScreen(first, Math.min(a, b) - room, -2), [x1, y1] = toScreen(first, Math.max(a, b) + room, from.depth * thin + 2);
+    fit(x0, y0, x1, y1);
   } else {
     const { corner, before, after } = round;
     const depthA = from.depth * thin, depthB = to.depth * thin;
@@ -268,6 +277,7 @@ function draw(hand){
     const reach = length + Math.max(depthA, depthB) + 3 * amount + OFF;
     goo.setAttribute('x', cx - reach); goo.setAttribute('y', cy - reach);
     goo.setAttribute('width', 2 * reach); goo.setAttribute('height', 2 * reach);
+    fit(cx - reach, cy - reach, cx + reach, cy + reach);
     body.style.display = 'none'; parts.style.display = '';
   }
   const n = slots.length, k = st.size;
