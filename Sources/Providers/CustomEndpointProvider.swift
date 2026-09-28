@@ -400,7 +400,7 @@ public actor CustomEndpointNetwork {
     public func scanCommonLocalPorts() async -> [CustomEndpointPreset] {
         let candidates: [(name: String, port: Int, defaultModel: String, glyph: String, color: String)] = [
             ("Local vLLM", 8000, "", "ollama", "#10B981"),
-            ("Local llama.cpp", 8080, "", "lmstudio", "#8B5CF6"),
+            ("Local llama.cpp", 8080, "", "llamacpp", "#8B5CF6"),
             ("Local LM Studio / Proxy", 1234, "", "lmstudio", "#8B5CF6"),
             ("Local Ollama", 11434, "", "ollama-local", "#14B8A6"),
             ("Local AI Server", 5000, "", "openai", "#3B82F6")

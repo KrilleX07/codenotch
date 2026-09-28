@@ -462,7 +462,7 @@ public struct CustomEndpointPreset: Identifiable, Sendable {
             baseURL: "http://localhost:8080/v1",
             headerKey: "Authorization",
             defaultModel: "",
-            iconPreset: "lmstudio",
+            iconPreset: "llamacpp",
             accentColorHex: "#8B5CF6"
         ),
         CustomEndpointPreset(
