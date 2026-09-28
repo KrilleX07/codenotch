@@ -102,17 +102,18 @@ first time with *Windows protected your PC*: choose **More info**, then **Run an
 ### Updates
 
 Codenotch looks for a newer release about twenty seconds after it starts, and again whenever
-**Check for updates** is pressed in Settings → General. The feed is `latest.json` on the newest
-release, written by the Windows Package workflow beside the installer it describes, so publishing
-a release is the whole of shipping an update.
+**Check for updates** is pressed in Settings → General. It compares the installed version with
+GitHub's latest release and confirms that release carries a Windows installer. When the maintainer
+has published a signed `latest.json` feed for that same version, **Update** downloads and installs
+it through Tauri. Otherwise **Download installer** opens the official GitHub asset for you to run.
 
-Nothing about this nags. A check that fails — no network, an unreachable feed — leaves the app
-as it was and says so only next to the version. There is no dialogue and no badge.
+Nothing about this nags. A check that fails — no network or no Windows installer yet — leaves the
+app as it was and says so next to the version. Before the first completed check, the page makes
+no "Up to date" claim. There is no dialogue and no badge.
 
-The download is a minisign-signed archive, and the signature is checked against the public key in
-`tauri.conf.json` before anything is run. This is what stands in for code signing here: the
-installer itself is unsigned, so SmartScreen still warns on a first manual install, but an update
-delivered to an already-installed copy is verified.
+Automatic updates use a minisign-signed archive; Tauri checks its signature against the public
+key in `tauri.conf.json` before running it. The manually downloaded installer is unsigned, so
+SmartScreen may warn, as it does for a first installation.
 
 Before the first signed release, the key has to exist:
 
@@ -123,9 +124,9 @@ npx --yes @tauri-apps/cli@2.11.4 signer generate -w $env:USERPROFILE\.tauri\code
 Put the **private** key in the repository secret `TAURI_SIGNING_PRIVATE_KEY` and its password in
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, and paste the **public** key into `plugins.updater.pubkey`
 in `codenotch/tauri.conf.json`, replacing `REPLACE_WITH_TAURI_PUBLIC_KEY`. Until that is done the
-app skips the check entirely rather than reporting a failure nobody can act on; the packaging job
-builds an ordinary installer and warns that it made no feed, and a `v*` release fails loudly rather
-than going out with an update path nobody can use.
+app still checks GitHub releases and offers the manual installer. The packaging job builds an
+ordinary installer without a signed feed, and a `v*` release job fails to flag the missing signing
+configuration to the maintainer.
 
 Keep the private key. Losing it means no installed copy can be updated again, because every one of
 them checks against the public key it shipped with — they would all have to reinstall by hand.

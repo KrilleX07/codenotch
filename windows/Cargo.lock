@@ -514,6 +514,7 @@ dependencies = [
  "notify",
  "png 0.17.16",
  "rusqlite",
+ "semver",
  "serde",
  "serde_json",
  "tauri",

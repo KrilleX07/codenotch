@@ -200,7 +200,7 @@
           <div class="item cap">Codenotch opens by itself every time you sign in to this computer, and waits quietly in the background until a coding session starts. Turn it off and you have to open Codenotch yourself.</div>
           <div class="item"><span>Version</span><span class="value" id="about-version" data-dynamic>0.3.0</span></div>
           <div class="item"><span>Updates</span><span class="value" id="update-status" data-dynamic></span><button class="btn" id="btn-update" data-dynamic>Check for updates</button></div>
-          <div class="item cap">Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.</div>
+          <div class="item cap">Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.</div>
         </div>
         <div class="group">
           <div class="item"><span>Data folder</span><button class="btn" id="btn-data">Open folder</button></div>
@@ -261,11 +261,13 @@ const PT_BR_STATIC = {
   'Updates':'Atualizações',
   'Check for updates':'Verificar atualizações',
   'Update':'Atualizar',
+  'Download installer':'Baixar instalador',
   'Checking…':'Verificando…',
   'Installing…':'Instalando…',
   'Up to date':'Atualizado',
   'Could not check for updates':'Não foi possível verificar atualizações',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'O Codenotch procura uma nova versão pouco depois de iniciar e pode instalá-la para você. O download vem do GitHub e a assinatura é verificada antes de qualquer execução.',
+  'Could not install the update':'Não foi possível instalar a atualização',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'O Codenotch procura novas versões para Windows pouco depois de iniciar. Atualizações assinadas são instaladas aqui; caso contrário, baixe e execute o instalador oficial do GitHub.',
   'Settings sections':'Seções das configurações',
   'Close':'Fechar',
   'Accounts':'Contas',
@@ -366,11 +368,13 @@ const RU_STATIC = {
   'Updates':'Обновления',
   'Check for updates':'Проверить обновления',
   'Update':'Обновить',
+  'Download installer':'Скачать установщик',
   'Checking…':'Проверка…',
   'Installing…':'Установка…',
   'Up to date':'Актуальная версия',
   'Could not check for updates':'Не удалось проверить обновления',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch проверяет наличие новой версии вскоре после запуска и может установить её за вас. Загрузка идёт с GitHub, а её подпись проверяется до того, как что-либо будет запущено.',
+  'Could not install the update':'Не удалось установить обновление',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch проверяет новые версии для Windows вскоре после запуска. Подписанные обновления устанавливаются здесь; иначе скачайте и запустите официальный установщик с GitHub.',
   'Settings sections':'Разделы настроек', 'Close':'Закрыть',
   'Accounts':'Аккаунты', 'Appearance':'Внешний вид', 'General':'Общие', 'Quit Codenotch':'Выйти из Codenotch',
   'Connected':'Подключён', 'Not connected':'Не подключён',
@@ -438,11 +442,13 @@ const ZH_STATIC = {
   'Updates':'更新',
   'Check for updates':'检查更新',
   'Update':'更新',
+  'Download installer':'下载安装程序',
   'Checking…':'正在检查…',
   'Installing…':'正在安装…',
   'Up to date':'已是最新版本',
   'Could not check for updates':'无法检查更新',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch 会在启动后不久查找新版本，并可以为你安装。下载来自 GitHub，运行任何内容之前都会校验其签名。',
+  'Could not install the update':'无法安装更新',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch 启动后会检查新的 Windows 版本。已签名的更新可在此安装；否则请从 GitHub 下载并运行官方安装程序。',
   'Settings sections':'设置部分',
   'Accounts':'账号',
   'Appearance':'外观',
@@ -541,11 +547,13 @@ const ZH_HANT_STATIC = {
   'Updates':'更新',
   'Check for updates':'檢查更新',
   'Update':'更新',
+  'Download installer':'下載安裝程式',
   'Checking…':'正在檢查…',
   'Installing…':'正在安裝…',
   'Up to date':'已是最新版本',
   'Could not check for updates':'無法檢查更新',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch 會在啟動後不久尋找新版本，並可以為你安裝。下載來自 GitHub，執行任何內容之前都會驗證其簽章。',
+  'Could not install the update':'無法安裝更新',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch 啟動後會檢查新的 Windows 版本。已簽署的更新可在此安裝；否則請從 GitHub 下載並執行官方安裝程式。',
   'Settings sections':'設定部分',
   'Accounts':'帳號',
   'Appearance':'外觀',
@@ -644,11 +652,13 @@ const JA_STATIC = {
   'Updates':'アップデート',
   'Check for updates':'アップデートを確認',
   'Update':'アップデート',
+  'Download installer':'インストーラーをダウンロード',
   'Checking…':'確認中…',
   'Installing…':'インストール中…',
   'Up to date':'最新の状態です',
   'Could not check for updates':'アップデートを確認できませんでした',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch は起動して間もなく新しいバージョンを探し、あなたの代わりにインストールできます。ダウンロードは GitHub から行われ、何かを実行する前に署名が検証されます。',
+  'Could not install the update':'アップデートをインストールできませんでした',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch は起動後まもなく新しい Windows 版を確認します。署名済みの更新はここからインストールできます。それ以外は GitHub から公式インストーラーをダウンロードして実行してください。',
   'Show move handle':'移動ハンドルを表示',
   'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'ノッチの上にある弧です。長押しすると、ノッチを別の辺へ運べます。上の「配置する辺」でも同じことができます。',
   'Settings sections':'設定セクション',
@@ -734,11 +744,13 @@ const KO_STATIC = {
   'Updates':'업데이트',
   'Check for updates':'업데이트 확인',
   'Update':'업데이트',
+  'Download installer':'설치 프로그램 다운로드',
   'Checking…':'확인 중…',
   'Installing…':'설치 중…',
   'Up to date':'최신 버전입니다',
   'Could not check for updates':'업데이트를 확인할 수 없습니다',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch는 시작한 직후에 새 버전을 찾아보고, 대신 설치해 줄 수 있습니다. 다운로드는 GitHub에서 이루어지며, 무엇이든 실행하기 전에 서명을 확인합니다.',
+  'Could not install the update':'업데이트를 설치할 수 없습니다',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch는 시작 직후 새 Windows 버전을 확인합니다. 서명된 업데이트는 여기서 설치할 수 있으며, 그렇지 않으면 GitHub에서 공식 설치 프로그램을 다운로드해 실행하세요.',
   'Settings sections':'설정 섹션',
   'Accounts':'계정',
   'Appearance':'모양',
@@ -839,11 +851,13 @@ const UK_STATIC = {
   'Updates':'Оновлення',
   'Check for updates':'Перевірити оновлення',
   'Update':'Оновити',
+  'Download installer':'Завантажити інсталятор',
   'Checking…':'Перевірка…',
   'Installing…':'Встановлення…',
   'Up to date':'Актуальна версія',
   'Could not check for updates':'Не вдалося перевірити оновлення',
-  'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch шукає нову версію невдовзі після запуску і може встановити її за вас. Завантаження надходить із GitHub, а його підпис перевіряється перед тим, як щось буде запущено.',
+  'Could not install the update':'Не вдалося встановити оновлення',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch перевіряє нові версії для Windows невдовзі після запуску. Підписані оновлення встановлюються тут; інакше завантажте й запустіть офіційний інсталятор з GitHub.',
   'Settings sections':'Розділи налаштувань',
   'Accounts':'Акаунти',
   'Appearance':'Зовнішній вигляд',
@@ -1559,6 +1573,7 @@ const updBtn = document.getElementById('btn-update');
 const updStatus = document.getElementById('update-status');
 /* The state arrives before the language does, so the row keeps it and is drawn again by renderAll */
 let updState = null;
+let updateEventSeen = false;
 function renderUpdate(st){
   st = updState = st || {};
   const busy = !!(st.checking || st.installing);
@@ -1566,23 +1581,25 @@ function renderUpdate(st){
   if(st.installing){ updStatus.textContent = ui('Installing…', 'Installing…'); updBtn.textContent = ui('Update', 'Update'); return; }
   if(st.checking){ updStatus.textContent = ui('Checking…', 'Checking…'); updBtn.textContent = ui('Check for updates', 'Check for updates'); return; }
   if(st.available){
-    // The version is a number, so it is shown as one rather than translated into a sentence.
-    updStatus.textContent = st.available;
-    updBtn.textContent = ui('Update', 'Update');
+    updStatus.textContent = st.message ? ui(st.message, st.message) : st.available;
+    updBtn.textContent = st.can_install ? ui('Update', 'Update') : ui('Download installer', 'Download installer');
     return;
   }
-  updStatus.textContent = st.message ? ui('Could not check for updates', 'Could not check for updates')
-                                     : ui('Up to date', 'Up to date');
+  updStatus.textContent = st.message ? ui(st.message, st.message)
+                        : st.checked ? ui('Up to date', 'Up to date') : '';
   updBtn.textContent = ui('Check for updates', 'Check for updates');
 }
 updBtn.addEventListener('click', () => {
-  const available = updStatus.textContent && updBtn.textContent === ui('Update', 'Update');
-  invoke(available ? 'install_update' : 'check_for_update')
+  const st = updState || {};
+  const cmd = st.available ? (st.can_install ? 'install_update' : 'open_update_installer') : 'check_for_update';
+  invoke(cmd)
     .catch(e => strip('update failed: ' + errText(e)));
 });
-invoke('get_update_state').then(renderUpdate).catch(() => {});
-try { window.__TAURI__.event.listen('update_state', e => renderUpdate(e.payload)); }
-catch(e) { /* the row still answers the button */ }
+let updateListener;
+try { updateListener = window.__TAURI__.event.listen('update_state', e => { updateEventSeen = true; renderUpdate(e.payload); }); }
+catch(e) { /* the button can still request a check */ }
+Promise.resolve(updateListener).catch(() => {}).then(() =>
+  invoke('get_update_state').then(st => { if(!updateEventSeen) renderUpdate(st); }).catch(() => {}));
 
 /* ---- start ---------------------------------------------------------------- */
 function renderAll(){
