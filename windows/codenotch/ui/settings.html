@@ -164,8 +164,6 @@
           <div class="item cap" id="cap-transition" data-dynamic></div>
           <div class="item"><span>Edge</span><span class="seg" id="seg-edge"><button data-v="left">Left</button><button data-v="right">Right</button><button data-v="top">Top</button><button data-v="bottom">Bottom</button></span></div>
           <div class="item cap" id="cap-edge" data-dynamic></div>
-          <div class="item"><span>Show move handle</span><button class="switch" id="sw-move" role="switch" aria-checked="false" aria-label="Show move handle"></button></div>
-          <div class="item cap">The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.</div>
           <div class="item" id="row-screen" hidden><span>Screen</span>
             <select id="screen" aria-label="Screen"></select>
           </div>
@@ -325,8 +323,6 @@ const PT_BR_STATIC = {
   'Main':'Principal',
   'Which screen the notch lives on.':'Em qual tela o notch será exibido.',
   'this screen cannot be remembered by name':'esta tela não pode ser lembrada pelo nome',
-  'Show move handle':'Mostrar alça de movimento',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'O arco acima do notch. Segure-o para levar o notch a outra borda — a opção Borda acima faz o mesmo.',
   'The notch is back in the middle':'O notch voltou para o centro',
   'App':'App',
   'App icon':'Ícone do app',
@@ -406,8 +402,6 @@ const RU_STATIC = {
   'Screen':'Экран', 'Main':'Основной',
   'Which screen the notch lives on.':'На каком экране находится панель.',
   'this screen cannot be remembered by name':'этот экран нельзя запомнить по имени',
-  'Show move handle':'Показывать ручку перемещения',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'Дуга над панелью. Зажмите её, чтобы перенести панель к другому краю, — то же делает настройка «Край» выше.',
   'The notch is back in the middle':'Панель возвращена в центр',
   'App':'Приложение', 'App icon':'Значок приложения', 'System tray':'Системный трей', 'Neither':'Ни то ни другое',
   'The small icon down by the clock. Right-clicking it opens this window, refreshes the readings, or quits Codenotch.':'Небольшой значок рядом с часами. Щелчок правой кнопкой открывает это окно, обновляет данные или завершает работу Codenotch.',
@@ -509,8 +503,6 @@ const ZH_STATIC = {
   'Close':'关闭',
   'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'系统托盘中无图标。请从“开始”菜单再次打开 Codenotch 以恢复这些设置。',
   'Model data':'模型数据',
-  'Show move handle':'显示移动手柄',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'刘海上的弧。按住它可以把刘海拖到另一条边 — 上面的「边缘」也一样。',
   'Edge':'边缘',
   'Left':'左侧',
   'Right':'右侧',
@@ -612,8 +604,6 @@ const ZH_HANT_STATIC = {
   'Close':'關閉',
   'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'系統匣中無圖示。請從「開始」功能表再次開啟 Codenotch 以還原這些設定。',
   'Model data':'模型資料',
-  'Show move handle':'顯示移動手柄',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'瀏海上的弧。按住它可以把瀏海拖到另一條邊 — 上面的「邊緣」也一樣。',
   'Edge':'邊緣',
   'Left':'左側',
   'Right':'右側',
@@ -649,8 +639,6 @@ const JA_STATIC = {
   'Up to date':'最新の状態です',
   'Could not check for updates':'アップデートを確認できませんでした',
   'Codenotch looks for a new version shortly after it starts, and can install it for you. The download comes from GitHub, and its signature is checked before anything is run.':'Codenotch は起動して間もなく新しいバージョンを探し、あなたの代わりにインストールできます。ダウンロードは GitHub から行われ、何かを実行する前に署名が検証されます。',
-  'Show move handle':'移動ハンドルを表示',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'ノッチの上にある弧です。長押しすると、ノッチを別の辺へ運べます。上の「配置する辺」でも同じことができます。',
   'Settings sections':'設定セクション',
   'Accounts':'アカウント',
   'Appearance':'外観',
@@ -819,8 +807,6 @@ const KO_STATIC = {
   'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'시스템 트레이에 아이콘이 없습니다. 이 설정을 다시 가져오려면 시작 메뉴에서 Codenotch를 다시 여십시오.',
   'Model data':'모델 데이터',
   'English':'English',
-  'Show move handle':'이동 핸들 표시',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'노치 위의 호입니다. 길게 누르면 노치를 다른 가장자리로 옮길 수 있습니다. 위의 ‘가장자리’ 설정으로도 같은 작업을 할 수 있습니다.',
   'Русский':'Русский'
 };
 const UK_STATIC = {
@@ -898,8 +884,6 @@ const UK_STATIC = {
   'Lies flat along the bottom edge, with the card opening above it.':'Лежить уздовж нижнього краю, картка відкривається над ним.',
   'Which screen the notch lives on.':'На якому екрані живе виріз.',
   'this screen cannot be remembered by name':'цей екран неможливо запамʼятати за назвою',
-  'Show move handle':'Показувати маркер переміщення',
-  'The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same.':'Дуга над вирізом. Утримуйте її, щоб перенести виріз на інший край — те саме робить «Край» вище.',
   'Hold Alt and drag the notch to slide it along its edge. Each edge remembers where you left it. Recentre puts it back in the middle of the edge it is on, or on the main screen\'s right-hand edge if the screen it was on has been unplugged.':'Утримуйте Alt і перетягніть виріз, щоб посунути його вздовж краю. Кожен край памʼятає останнє положення. Кнопка «Центрувати» повертає його на середину поточного краю або на правий край основного екрана, якщо екран, на якому він був, відʼєднано.',
   'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'Чорна панель біля правого краю екрана, по кільцю на кожен інструмент. Якщо вимкнути, панель зникне — але використання Codenotch рахує в будь-якому разі.',
   'Recentre':'Центрувати',
@@ -1137,8 +1121,6 @@ function drawSwitch(el, s){
 const hooks = remote('get_hooks_installed', 'set_hooks_installed', 'The Claude Code messages', () => renderAccounts());
 const autostart = remote('get_autostart', 'set_autostart', 'Open Codenotch at login', () => drawSwitch(document.getElementById('sw-autostart'), autostart));
 document.getElementById('sw-autostart').addEventListener('click', () => autostart.toggle());
-const moveHandle = remote('get_move_handle', 'set_move_handle', 'Show move handle', () => drawSwitch(document.getElementById('sw-move'), moveHandle));
-document.getElementById('sw-move').addEventListener('click', () => moveHandle.toggle());
 const adaptivePill = remote('get_adaptive_pill', 'set_adaptive_pill', 'Adaptive pill', () => drawSwitch(document.getElementById('sw-adaptive'), adaptivePill));
 document.getElementById('sw-adaptive').addEventListener('click', () => adaptivePill.toggle());
 
@@ -1595,7 +1577,6 @@ function renderAll(){
   renderTheme();
   renderTransition();
   drawSwitch(document.getElementById('sw-autostart'), autostart);
-  drawSwitch(document.getElementById('sw-move'), moveHandle);
   drawSwitch(document.getElementById('sw-adaptive'), adaptivePill);
   if(updState) renderUpdate(updState);
   document.getElementById('title').textContent = ui(TITLES[curTab], TITLES[curTab]);
@@ -1628,7 +1609,6 @@ function boot(){
     setUiLanguage(l === 'auto' && typeof resolved === 'string' ? resolved : l);
   });
   autostart.refresh();
-  moveHandle.refresh();
   adaptivePill.refresh();
   hooks.refresh();
 }

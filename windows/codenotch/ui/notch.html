@@ -12,7 +12,6 @@
     --ample:#00FF88; --watch:#F2FF00; --crit:#FF3F00;
     --ink:#ffffff; --ink-2:#e8e8ea; --ink-3:#c8c8c8; --ink-4:#b0b0b3; --ink-dim:#808080;
     --btn:#252525; --btn-line:#555; --btn-hover:#383838; --btn-line-hover:#aaa;
-    --armed:rgba(0,0,0,.72);
   }
   /* Rust resolves the choice — Light, Dark, or what Windows is set to — and the page is told, rather
      than reading prefers-color-scheme: correcting a live window's theme does not reliably reach
@@ -25,7 +24,6 @@
     --ample:#00A356; --watch:#B08800; --crit:#FF3F00;
     --ink:#1d1d1f; --ink-2:#1d1d1f; --ink-3:#3c3c43; --ink-4:#4a4a4f; --ink-dim:#6b6b6b;
     --btn:#ffffff; --btn-line:#c6c6cc; --btn-hover:#f0f0f2; --btn-line-hover:#8e8e93;
-    --armed:rgba(255,255,255,.78);
   }
   .c-auth{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
   .c-auth button{font:inherit;font-size:11px;color:var(--ink);background:var(--btn);border:1px solid var(--btn-line);border-radius:7px;padding:6px 9px;cursor:pointer}
@@ -228,10 +226,9 @@
   body.folded .handle{opacity:0;pointer-events:none}
   @media (prefers-reduced-motion: reduce){#pill,#rest,body.folded #rest,.cell,.handle{transition:none}}
 
-  /* The two handles, one off each end of the pill, as on the Mac (SettingsOrb and MoveHandle):
-     settings past the far fillet, move past the near one. At rest each is a quarter arc tucked into
-     that fillet's pocket, concentric with it and a gap inside; under the pointer the same circle
-     fills in and takes its glyph. The Mac's measures, unscaled: arc radius 28.5, stroke 6.8, disc
+  /* The settings orb past the far end of the pill, as on the Mac (SettingsOrb). At rest it is a
+     quarter arc tucked into that fillet's pocket, concentric with it and a gap inside; under the
+     pointer the same circle fills in and takes its glyph. The Mac's measures, unscaled: arc radius 28.5, stroke 6.8, disc
      46.6, glyph 21. `placeHandles` puts each box's centre on its fillet's centre. */
   .handle{position:absolute;width:57px;height:57px;display:none;--arc:270deg}
   .handle.placed{display:block}
@@ -246,15 +243,9 @@
   .handle.hover .h-rest{opacity:0;transform:rotate(var(--arc)) scale(.86)}
   .handle.hover .h-disc{opacity:1;transform:scale(1)}
   .handle.hover .h-glyph{opacity:1;transform:rotate(calc(var(--spins,0) * 360deg)) scale(1)}
-  /* Carrying: the disc goes dashed and the hand stops turning — it is being held now, not offered */
-  #move.armed .h-disc{border:2px dashed var(--ink-2);background:var(--armed)}
-  /* The quarter that faces the fillet: up and outward past the far end on the right, and the same two
-     directions mirrored along the stack at the near end */
+  /* The quarter that faces the fillet: up and outward past the far end on the right */
   body[data-edge="left"] #orb,body[data-edge="top"] #orb{--arc:180deg}
   body[data-edge="bottom"] #orb{--arc:90deg}
-  #move{--arc:0deg}
-  body[data-edge="left"] #move{--arc:90deg}
-  body[data-edge="top"] #move{--arc:270deg}
   @media (prefers-reduced-motion: reduce){.handle > *{transition:none}}
 </style>
 </head>
@@ -262,17 +253,6 @@
 <div id="root">
   <div id="card"></div>
   <div id="tail"></div>
-  <div id="move" class="handle">
-    <svg class="h-rest" viewBox="-36 -36 72 72" aria-hidden="true">
-      <circle class="h-ring" r="28.5" fill="none" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
-      <circle class="h-fill" r="28.5" fill="none" stroke-width="6.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
-    </svg>
-    <div class="h-disc"></div>
-    <!-- A hand, as on the Mac: the gesture is a carry, not a nudge, which is what arrows would say -->
-    <svg class="h-glyph" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M8 13V5.6a1.5 1.5 0 0 1 3 0V11h.6V3.5a1.5 1.5 0 0 1 3 0V11h.6V5a1.5 1.5 0 0 1 3 0v8.4c0 4.2-2 7.1-5.6 7.1-2.4 0-3.8-1-5.1-2.7l-3.8-5a1.5 1.5 0 0 1 2.2-2z"/>
-    </svg>
-  </div>
   <div id="orb" class="handle">
     <svg class="h-rest" viewBox="-36 -36 72 72" aria-hidden="true">
       <circle class="h-ring" r="28.5" fill="none" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
@@ -364,7 +344,7 @@ let activity=[]; // working state of the non-Claude providers: {provider,state:'
 /* Which screen edge the notch is pinned to. Rust owns it (it is what placed the window); the page is
    told so it can mirror or rotate itself to match. 'right' is the default and the pre-edge layout. */
 let notchEdge='right';
-// Show on hover — the logic is beside the move handle below; declared here, since reportHot reads `folded` from the first frame
+// Show on hover — the logic is beside the handles below; declared here, since reportHot reads `folded` from the first frame
 let onHover=false, folded=false, pointerIn=false, menuOpen=false, foldTimer=null;
 /* How much of the window the taskbar covers, in CSS px, from Rust: top, right, bottom, left. The pill
    stays against the screen edge; the card is kept out of these. */
@@ -1318,7 +1298,7 @@ function reportHot(){
   if(folded){ callq('set_hot',{rects:[wakeRect()],expanded:false,probe:probeRect()}).catch(()=>{}); return; }
   const open=card.classList.contains('show');
   const rects=open?[rectOf(pill),tailReach(),rectOf(card)]:[rectOf(pill)];
-  if(placeHandles()){ rects.push(rectOf(orb)); if(showMove) rects.push(rectOf(moveHandle)); }
+  if(placeHandles()) rects.push(rectOf(orb));
   callq('set_hot',{rects,expanded:open}).catch(()=>{});
 }
 /* What wakes the folded notch: the resting pill, as long along the edge as the pill and deepened into
@@ -1406,7 +1386,6 @@ document.addEventListener('mousemove',e=>{
   // Folded, the page is sent events only over the pill, so any movement at all is the pointer reaching it
   if(folded){ pointerIn=true; unfold(); }
   if(dragging)return; // no card while dragging
-  if(carrying) return; // the notch is in hand; the card would only be in the way
   setHovered(onHandle(e.clientX,e.clientY));
   if(hovered){ if(card.classList.contains('show')){ clearTimeout(hideTimer); hideCard(); } return; }
   const hot=pointerInHot(e.clientX,e.clientY);
@@ -1510,13 +1489,13 @@ function notice(msg){
 }
 
 /* ---- The handles ----------------------------------------------------------
-   Settings past the far end of the pill, move past the near one. Placed whenever the hot rectangles
-   are reported, since those follow every change to the pill. Hover is a circle round each fillet's
-   centre, as on the Mac, not the whole box; the card gives way while either is under the pointer.
-   A click on the settings orb opens Settings; holding the move handle carries the notch. */
-const orb=document.getElementById('orb'), moveHandle=document.getElementById('move');
+   The settings orb past the far end of the pill, placed whenever the hot rectangles are reported,
+   since those follow every change to the pill. Hover is a circle round the fillet's centre, as on
+   the Mac, not the whole box; the card gives way while it is under the pointer. A click opens
+   Settings. */
+const orb=document.getElementById('orb');
 const HANDLE_REACH=28.5; // the Mac's hot zone, half of 57
-let orbAt=null, moveAt=null, hovered=null, orbSpins=0, moveSpins=0, showMove=true, carrying=false;
+let orbAt=null, hovered=null, orbSpins=0;
 function put(el,x,y,z){
   el.style.left=(x/z-HANDLE_REACH)+'px'; el.style.top=(y/z-HANDLE_REACH)+'px';
   el.classList.add('placed');
@@ -1528,26 +1507,20 @@ function placeHandles(){
   // Measurements come back zoomed when fitZoom has zoomed the page; styles are written unzoomed
   const z=parseFloat(document.documentElement.style.zoom)||1;
   const R=(parseFloat(getComputedStyle(pill).getPropertyValue('--fillet'))||38.7)*z;
-  // Each fillet's centre: the corner of its square diagonally opposite the one on the screen edge
+  // The fillet's centre: the corner of its square diagonally opposite the one on the screen edge
   const far=notchEdge==='left'?[r.left+R,r.bottom+R]:notchEdge==='top'?[r.right+R,r.top+R]
     :notchEdge==='bottom'?[r.right+R,r.bottom-R]:[r.right-R,r.bottom+R];
-  const near=notchEdge==='left'?[r.left+R,r.top-R]:notchEdge==='top'?[r.left-R,r.top+R]
-    :notchEdge==='bottom'?[r.left-R,r.bottom-R]:[r.right-R,r.top-R];
   orbAt=put(orb,far[0],far[1],z);
-  // No point at all when it is switched off, since hover, the press and the hot area all read this
-  moveAt=showMove?put(moveHandle,near[0],near[1],z):null;
-  if(!showMove) moveHandle.classList.remove('placed','hover');
   return true;
 }
 function near(at,x,y){ return !!at&&Math.hypot(x-at.x,y-at.y)<=at.reach; }
-function onHandle(x,y){ return near(orbAt,x,y)?'orb':near(moveAt,x,y)?'move':null; }
+function onHandle(x,y){ return near(orbAt,x,y)?'orb':null; }
 function setHovered(which){
   if(which===hovered) return;
   hovered=which;
   orb.classList.toggle('hover',which==='orb');
-  moveHandle.classList.toggle('hover',which==='move'||carrying);
 }
-document.addEventListener('mouseout',e=>{ if(!e.relatedTarget&&!carrying) setHovered(null); });
+document.addEventListener('mouseout',e=>{ if(!e.relatedTarget&&!dragging) setHovered(null); });
 orb.addEventListener('click',e=>{
   if(!near(orbAt,e.clientX,e.clientY)) return;
   orb.style.setProperty('--spins',++orbSpins);
@@ -1559,38 +1532,12 @@ function pressIn(el){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   el.animate([{transform:'scale(1)',easing:'ease-out'},{transform:'scale(.84)',offset:.21,easing:'cubic-bezier(.34,1.56,.64,1)'},{transform:'scale(1)'}],{duration:430});
 }
-/* Holding the move handle puts the notch in hand: Rust raises the drop zones and follows the pointer
-   until the button comes up. The notch itself does not move — what is being chosen is a place on the
-   screen, not a distance. The pill's own size goes with it, so a zone is the notch, not a guess. */
-/* The shape the zones draw: the pill standing upright, whichever edge it is on now. Worked out from
-   the parts it is made of rather than measured, so a notch lying flat still offers the same
-   silhouette everywhere — the 70 px depth and the 18 px end padding are the pill's own, from the CSS
-   above. The notch really is shallower and shorter lying flat, but drawing that would offer four
-   outlines of two sizes, which reads as four different things instead of one notch offered a place. */
-function pillShapes(){
-  const cells=Math.max(1,pill.querySelectorAll('.cell').length);
-  const ring=(pill.querySelector('.ringwrap')||{}).offsetHeight||44;
-  const label=(pill.querySelector('.pct')||{}).offsetHeight||20;
-  const ends=36, between=14, underRing=6;
-  return { depth:70, length:ends+cells*(ring+underRing+label)+(cells-1)*between };
-}
-moveHandle.addEventListener('mousedown',e=>{
-  if(e.button!==0||!near(moveAt,e.clientX,e.clientY)) return;
-  e.stopPropagation();
-  carrying=true;
-  moveHandle.classList.add('armed','hover');
-  moveHandle.style.setProperty('--spins',++moveSpins);
-  clearTimeout(hideTimer); hideCard();
-  callq('begin_move',pillShapes()).catch(()=>{carrying=false;moveHandle.classList.remove('armed');});
-});
-listen('move_end',()=>{ carrying=false; moveHandle.classList.remove('armed'); setHovered(null); reportHot(); scheduleFold(); }).catch(()=>{});
-
 /* Show on hover, the Mac's .onHover. It opens on contact and folds a moment after the pointer has gone.
    Rust says which (notch_pointer): once click-through is back on, the page is sent nothing at all. It
    never folds mid-carry, mid-drag or under the right-click menu, all of which take the pointer off the
    notch on purpose — folding under them is what #239's reviewers caught, so it is ruled out here. */
 const FOLD_GRACE=450; // NotchWindowController.foldGrace
-function foldAllowed(){ return onHover&&!pointerIn&&!carrying&&!dragging&&!menuOpen; }
+function foldAllowed(){ return onHover&&!pointerIn&&!dragging&&!menuOpen; }
 function setFolded(f){
   if(f===folded) return;
   folded=f;
@@ -1612,8 +1559,6 @@ listen('pill_backdrop',e=>{
   else delete document.body.dataset.behind;
 }).catch(()=>{});
 invoke('get_ui_flags').then(applyUiFlags).catch(()=>{});
-listen('move_handle',e=>{ showMove=e.payload!==false; reportHot(); }).catch(()=>{});
-invoke('get_move_handle').then(v=>{ showMove=v!==false; reportHot(); }).catch(()=>{});
 
 listen('usage',e=>{usage=e.payload||usage;claudeActionMessage='';settle('claude');renderRing();if(card.classList.contains('show'))renderCard();})
   .catch(e=>notice('listen(usage) failed: '+e));
