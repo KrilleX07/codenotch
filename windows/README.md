@@ -162,8 +162,10 @@ offers **Refresh now**, the provider's usage page (**Open claude.ai**, **Open ch
 
 ### Where the notch sits
 
-The notch pins to one edge of one screen. Hold Alt and drag it, and it follows the pointer round
-the screen's border — along an edge, and round each corner — and lands where it is let go.
+The notch pins to one edge of one screen. Six dots come out beside the settings button while the
+pointer is on it: hold them (or hold Alt anywhere on the notch) and drag, and the notch follows the
+pointer round the screen's border — along an edge, and round each corner — and lands where it is
+let go.
 **Appearance → Edge** picks left, right, top or bottom: it stands upright on the left and right
 edges with the hover card opening sideways, and lies flat on the top and bottom ones with the card
 opening below or above. **Appearance → Screen** appears once more than one monitor is attached.

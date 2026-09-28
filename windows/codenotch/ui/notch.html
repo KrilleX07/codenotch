@@ -247,12 +247,38 @@
   body[data-edge="left"] #orb,body[data-edge="top"] #orb{--arc:180deg}
   body[data-edge="bottom"] #orb{--arc:90deg}
   @media (prefers-reduced-motion: reduce){.handle > *{transition:none}}
+  /* Carried, the orb's parts are drawn frame by frame from the carry's times (drawCarriedHandle) */
+  .handle.carried > *{transition:none}
+  /* The six dots beside the orb (MoveGrip), drawn centred on the orb and under it, so they come out
+     of it and go back into it. Liquid while they come and go: the goo is cut back to a shape and
+     drawn in the pill's colour with its edge, as the orb's disc is. */
+  #grip{position:absolute;width:166px;height:166px;margin:-83px 0 0 -83px;overflow:visible;pointer-events:none;display:none}
+  #grip.placed{display:block}
+  body.folded #grip{visibility:hidden}
+  #grip .dot{fill:var(--pill);stroke:var(--edge);stroke-width:1}
+  #grip .liquid .dot,#grip .liquid .core,#grip .liquid .neck{fill:#000;stroke:none}
+  #gripGoo .rim{flood-color:var(--edge)} #gripGoo .fill{flood-color:var(--pill)}
 </style>
 </head>
 <body>
 <div id="root">
   <div id="card"></div>
   <div id="tail"></div>
+  <svg id="grip" viewBox="-83 -83 166 166" aria-hidden="true">
+    <defs>
+      <filter id="gripGoo" x="-83" y="-83" width="166" height="166" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="0" result="blur"/>
+        <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 18 -8.5" result="shape"/>
+        <feMorphology in="shape" operator="erode" radius="1" result="inner"/>
+        <feFlood class="rim" result="rimColour"/>
+        <feComposite in="rimColour" in2="shape" operator="in" result="rim"/>
+        <feFlood class="fill" result="fillColour"/>
+        <feComposite in="fillColour" in2="inner" operator="in" result="body"/>
+        <feMerge><feMergeNode in="rim"/><feMergeNode in="body"/></feMerge>
+      </filter>
+    </defs>
+    <g id="gripDots" style="display:none"><circle class="core"/><path class="neck"/><circle class="dot"/><circle class="dot"/><circle class="dot"/><circle class="dot"/><circle class="dot"/><circle class="dot"/></g>
+  </svg>
   <div id="orb" class="handle">
     <svg class="h-rest" viewBox="-36 -36 72 72" aria-hidden="true">
       <circle class="h-ring" r="28.5" fill="none" stroke-width="8.8" stroke-linecap="round" stroke-dasharray="44.77 179.07"/>
@@ -1298,7 +1324,7 @@ function reportHot(){
   if(folded){ callq('set_hot',{rects:[wakeRect()],expanded:false,probe:probeRect()}).catch(()=>{}); return; }
   const open=card.classList.contains('show');
   const rects=open?[rectOf(pill),tailReach(),rectOf(card)]:[rectOf(pill)];
-  if(placeHandles()) rects.push(rectOf(orb));
+  if(placeHandles()){ rects.push(rectOf(orb)); if(gripOut()||handleCarry) rects.push(gripRect()); }
   callq('set_hot',{rects,expanded:open}).catch(()=>{});
 }
 /* What wakes the folded notch: the resting pill, as long along the edge as the pill and deepened into
@@ -1361,7 +1387,12 @@ listen('notch_landing',()=>{
 }).catch(()=>{});
 listen('notch_reveal',()=>{
   document.documentElement.style.visibility='';
-  if(carried){ carried=false; requestAnimationFrame(()=>requestAnimationFrame(()=>invoke('carry_revealed').catch(()=>{}))); }
+  if(carried){
+    carried=false;
+    // Released a moment ago, as far as the squeeze is concerned: the drawing had it spring back already
+    if(handleCarry&&!handleCarry.landedAt){ handleCarry.releasedAt=Date.now()-400; handleCarry.landedAt=Date.now(); runGrip(); }
+    requestAnimationFrame(()=>requestAnimationFrame(()=>invoke('carry_revealed').catch(()=>{})));
+  }
 }).catch(()=>{});
 
 /* Collapse test: no trust in element-level mouseenter/mouseleave/e.target at all —
@@ -1446,7 +1477,8 @@ document.addEventListener('mousemove',e=>{
   if(!press||dragging||!press.alt)return;
   if(Math.abs(e.clientY-press.y)>4||Math.abs(e.clientX-press.x)>4){
     dragging=true; clearTimeout(hideTimer); hideCard();
-    invoke('begin_carry',{shape:carryShape()}).catch(err=>{notice('begin_carry failed: '+err);dragging=false;});
+    const handle=beginHandleCarry(false);
+    invoke('begin_carry',{shape:{...carryShape(),handle}}).catch(err=>{notice('begin_carry failed: '+err);dragging=false;endHandleCarry();});
   }
 });
 /* This notch as the overlay draws it in the hand, on either kind of edge: a column standing upright,
@@ -1480,7 +1512,11 @@ document.addEventListener('contextmenu',e=>{
   invoke('show_notch_menu',{provider:cellAt(e.clientX,e.clientY)||hoverId}).catch(err=>notice('show_notch_menu failed: '+err))
     .finally(()=>{ menuOpen=false; scheduleFold(); });
 });
-listen('drag_end',()=>{dragging=false;press=null;reportHot();scheduleFold();}).catch(()=>{});
+listen('drag_end',()=>{
+  dragging=false; press=null; document.body.style.cursor=hovered==='grip'?'grab':'';
+  if(handleCarry&&!handleCarry.landedAt){ handleCarry.landedAt=Date.now(); runGrip(); }
+  reportHot(); scheduleFold();
+}).catch(()=>{});
 
 function notice(msg){
   const n=document.getElementById('notice');
@@ -1489,18 +1525,31 @@ function notice(msg){
 }
 
 /* ---- The handles ----------------------------------------------------------
-   The settings orb past the far end of the pill, placed whenever the hot rectangles are reported,
-   since those follow every change to the pill. Hover is a circle round the fillet's centre, as on
-   the Mac, not the whole box; the card gives way while it is under the pointer. A click opens
-   Settings. */
+   The settings orb past the far end of the pill, and beside it, further along, the six dots that
+   carry the notch (the Mac's SettingsOrb and MoveGrip): the dots come out of the orb like goo while
+   it is under the pointer, and stay out while the pointer is on them. Placed whenever the hot
+   rectangles are reported, since those follow every change to the pill. Hover is a circle round
+   each, as on the Mac, not the whole box; the card gives way while either is under the pointer.
+   A click on the orb opens Settings; holding the dots carries the notch, as Alt+drag does. */
 const orb=document.getElementById('orb');
 const HANDLE_REACH=28.5; // the Mac's hot zone, half of 57
 let orbAt=null, hovered=null, orbSpins=0;
+// The grip (NotchLayout's): a dot, dot centre to dot centre, the orb's disc and the gap from it, and
+// the grip's hot zone. Its middle is the disc, the gap and half its own width out. Smaller than the
+// Mac's 7.15 and 11.66 and 7 further from the orb than its 4.89, which crowded the orb here.
+const grip=document.getElementById('grip'), gripDots=document.getElementById('gripDots');
+const gripBlur=grip.querySelector('feGaussianBlur');
+const [gripCore,gripNeck,...gripDot]=gripDots.children;
+const GRIP_DOT=6.1, GRIP_PITCH=9.9, GRIP_GAP=11.9, DISC_R=23.3, GRIP_HOT=26.3;
+const GRIP_WIDTH=GRIP_PITCH+GRIP_DOT, GRIP_REACH=DISC_R+GRIP_GAP+GRIP_WIDTH/2;
+let gripAt=null;
 function put(el,x,y,z){
   el.style.left=(x/z-HANDLE_REACH)+'px'; el.style.top=(y/z-HANDLE_REACH)+'px';
   el.classList.add('placed');
   return {x,y,reach:HANDLE_REACH*z};
 }
+// The orb hangs off the pill's far end on every edge, so away from the notch is on along the edge
+const away=()=>edgeIsVertical()?[0,1]:[1,0];
 function placeHandles(){
   const r=pill.getBoundingClientRect();
   if(!r.width) return false;
@@ -1511,14 +1560,30 @@ function placeHandles(){
   const far=notchEdge==='left'?[r.left+R,r.bottom+R]:notchEdge==='top'?[r.right+R,r.top+R]
     :notchEdge==='bottom'?[r.right+R,r.bottom-R]:[r.right-R,r.bottom+R];
   orbAt=put(orb,far[0],far[1],z);
+  grip.style.left=(far[0]/z)+'px'; grip.style.top=(far[1]/z)+'px';
+  grip.classList.add('placed');
+  const [dx,dy]=away();
+  gripAt={x:far[0]+dx*GRIP_REACH*z,y:far[1]+dy*GRIP_REACH*z,reach:GRIP_HOT*z};
   return true;
 }
 function near(at,x,y){ return !!at&&Math.hypot(x-at.x,y-at.y)<=at.reach; }
-function onHandle(x,y){ return near(orbAt,x,y)?'orb':null; }
+const gripOut=()=>hovered==='orb'||hovered==='grip';
+function gripRect(){
+  const k=window.devicePixelRatio||1, g=gripAt;
+  return [(g.x-g.reach)*k,(g.y-g.reach)*k,2*g.reach*k,2*g.reach*k];
+}
+// The dots can only be taken while they are out, so reaching for them means passing the orb first
+function onHandle(x,y){ return near(orbAt,x,y)?'orb':(gripOut()&&near(gripAt,x,y))?'grip':null; }
 function setHovered(which){
   if(which===hovered) return;
+  const wasOut=gripOut();
   hovered=which;
-  orb.classList.toggle('hover',which==='orb');
+  // Held open while the pointer is on its dots, so the pair stay together
+  orb.classList.toggle('hover',gripOut());
+  document.body.style.cursor=which==='grip'?'grab':'';
+  if(gripOut()!==wasOut){ gripTo(gripOut()); reportHot(); }
+  gripHover.to=which==='grip'?1:0;
+  runGrip();
 }
 document.addEventListener('mouseout',e=>{ if(!e.relatedTarget&&!dragging) setHovered(null); });
 orb.addEventListener('click',e=>{
@@ -1532,6 +1597,168 @@ function pressIn(el){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   el.animate([{transform:'scale(1)',easing:'ease-out'},{transform:'scale(.84)',offset:.21,easing:'cubic-bezier(.34,1.56,.64,1)'},{transform:'scale(1)'}],{duration:430});
 }
+
+/* The dots' own motion (NotchRootView.gripDivide, gripReturn and gripHover): out on a drawn-out ease
+   a beat after the orb, so there is an orb to come out of; back in quicker; swelling to meet the
+   pointer on a quick, springy spring. */
+function bezier(x1,y1,x2,y2){
+  const at=(t,a,b)=>3*a*t*(1-t)*(1-t)+3*b*t*t*(1-t)+t*t*t;
+  return x=>{
+    if(x<=0) return 0; if(x>=1) return 1;
+    let lo=0,hi=1,t=x;
+    for(let i=0;i<24;i++){ t=(lo+hi)/2; if(at(t,x1,x2)<x) lo=t; else hi=t; }
+    return at(t,y1,y2);
+  };
+}
+const GRIP_OUT=bezier(.35,0,.25,1), GRIP_IN=bezier(.42,0,1,1);
+function springStep(gap,velocity,elapsed,response,damping){
+  const omega=2*Math.PI/response; let moved=0;
+  for(let i=0;i<2;i++){ const dt=elapsed/2; velocity+=(omega*omega*(gap-moved)-2*damping*omega*velocity)*dt; moved+=velocity*dt; }
+  return {moved,velocity};
+}
+const still=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+let gripSep=0, gripRun=null, gripFrame=0, gripLast=null;
+const gripHover={v:0,velocity:0,to:0};
+function gripTo(out){
+  gripRun={from:gripSep,to:out?1:0,start:performance.now()+(out?20:0),dur:out?420:200,ease:out?GRIP_OUT:GRIP_IN};
+  runGrip();
+}
+function runGrip(){ if(!gripFrame) gripFrame=requestAnimationFrame(gripTick); }
+function gripTick(t){
+  gripFrame=0;
+  const elapsed=gripLast==null?1/60:Math.min(Math.max((t-gripLast)/1000,0),1/30);
+  gripLast=t;
+  const hidden=carried&&handleCarry&&!handleCarry.landedAt;
+  let busy=!!handleCarry&&!hidden;
+  if(gripRun){
+    const u=still()?1:Math.min(Math.max((t-gripRun.start)/gripRun.dur,0),1);
+    gripSep=gripRun.from+(gripRun.to-gripRun.from)*gripRun.ease(u);
+    if(u<1) busy=true; else gripRun=null;
+  }
+  const gap=gripHover.to-gripHover.v;
+  if(still()||(Math.abs(gap)<.002&&Math.abs(gripHover.velocity)<.02)){ gripHover.v=gripHover.to; gripHover.velocity=0; }
+  else { const s=springStep(gap,gripHover.velocity,elapsed,.22,.55); gripHover.v+=s.moved; gripHover.velocity=s.velocity; busy=true; }
+  if(!hidden) drawGrip();
+  if(handleCarry&&handleCarry.landedAt&&Date.now()-handleCarry.landedAt>HANDLE_SETTLES) endHandleCarry();
+  if(busy) runGrip(); else gripLast=null;
+}
+
+const smooth=x=>{ const t=Math.min(Math.max(x,0),1); return t*t*(3-2*t); };
+function gripOffsets(){
+  // Two lines of three, each running out from the screen's edge
+  const v=edgeIsVertical(), pts=[];
+  for(const line of [-.5,.5]) for(const row of [-1,0,1]){ const a=line*GRIP_PITCH, c=row*GRIP_PITCH; pts.push(v?[c,a]:[a,c]); }
+  return pts;
+}
+function setCircle(el,x,y,r){ el.setAttribute('cx',x.toFixed(2)); el.setAttribute('cy',y.toFixed(2)); el.setAttribute('r',Math.max(r,0).toFixed(2)); }
+
+/* Out of the orb like goo (MoveGrip): one drop pushes out of the orb's edge on a neck, runs out to
+   where the dots go, and divides into the six as the neck lets go; back, the same the other way.
+   Liquid only while they come and go, so the dots arrive crisp and apart. */
+function drawGrip(){
+  if(handleCarry){ drawCarriedHandle(); return; }
+  gripDots.style.opacity='';
+  const t=gripSep, [dx,dy]=away();
+  gripDots.style.display=t>.01?'':'none';
+  if(t<=.01) return;
+  const start=DISC_R*.6, pull=GRIP_REACH*.18*Math.sin(Math.PI*Math.min(t/.8,1));
+  const out=start+(GRIP_REACH-start)*smooth(t/.6)+pull, mx=dx*out, my=dy*out;
+  const goo=3*(1-smooth((t-.42)/.36)), liquid=goo>.3;
+  gripDots.classList.toggle('liquid',liquid);
+  if(liquid){ gripDots.setAttribute('filter','url(#gripGoo)'); gripBlur.setAttribute('stdDeviation',goo.toFixed(2)); }
+  else gripDots.removeAttribute('filter');
+  // A piece of the orb, inside its edge on the dots' side, for the neck to swell out of
+  const core=liquid?DISC_R*.55*smooth(t/.15):0;
+  setCircle(gripCore,dx*(DISC_R-core),dy*(DISC_R-core),core);
+  // Each fat while it is still part of the drop, its own size once divided off, one a beat after another
+  const dot=GRIP_DOT/2*(1+.3*gripHover.v);
+  gripOffsets().forEach(([ox,oy],i)=>{
+    const s=smooth((t-.32-.015*i)/.4);
+    setCircle(gripDot[i],mx+ox*s,my+oy*s,dot*(1+1.9*(1-s))*smooth(t/.12));
+  });
+  const neck=GRIP_WIDTH*.55*(1-smooth((t-.25)/.35));
+  if(!liquid||neck<=.5){ gripNeck.setAttribute('d',''); return; }
+  const fx=dx*(DISC_R-2), fy=dy*(DISC_R-2), cx=(fx+mx)/2, cy=(fy+my)/2, px=-dy, py=dx;
+  const side=(x,y,half,sign)=>`${(x+px*half*sign).toFixed(2)} ${(y+py*half*sign).toFixed(2)}`;
+  const base=GRIP_WIDTH*.8, top=GRIP_WIDTH*.5;
+  gripNeck.setAttribute('d',`M${side(fx,fy,base/2,1)} Q${side(cx,cy,neck/2,1)} ${side(mx,my,top/2,1)} L${side(mx,my,top/2,-1)} Q${side(cx,cy,neck/2,-1)} ${side(fx,fy,base/2,-1)} Z`);
+}
+
+/* ---- The handle's end of a carried notch (CarriedHandle) ---------------------
+   Taken by its dots: the orb into the notch, and the dots, squeezed in the hand, into its place.
+   Taken by Alt+drag: the orb's arc gives way to the dots. Let go, they spring back; put down, the
+   same run backwards. Worked out from the carry's times alone, never from animations started here:
+   carry.html draws this end while the notch is in the hand, and the two hand over at any moment of
+   it, so both have to show the same frame. carry.html holds an identical copy of handleFrame. */
+const HANDLE_SETTLES=500; // Carry.settles
+let handleCarry=null;
+const clamp01=x=>Math.min(Math.max(x,0),1);
+function handleFrame(c,now){
+  const easeOut=x=>{ const u=1-clamp01(x); return 1-u*u*u; };
+  const easeOutBack=x=>{ const t=clamp01(x)-1; return 1+2.5*t*t*t+1.5*t*t; };
+  const t=(now-c.at)/1000;
+  const slide=easeOutBack((t-.12)/.36);
+  let squeeze=easeOut(t/.26);
+  if(c.releasedAt) squeeze*=1-easeOutBack((now-c.releasedAt)/1000/.34);
+  let merged=smooth(t/.3), held=slide, dots=1, arc=0, gear=1-smooth(t/.1), grow=0;
+  if(c.landedAt){
+    const v=(now-c.landedAt)/1000;
+    if(c.fromHover){ merged*=1-smooth(v/.32); held*=1-easeOutBack(v/.36); gear=Math.max(gear,smooth((v-.16)/.16)); grow=smooth(v/.3); }
+    else { dots=1-smooth(v/.24); arc=easeOutBack((v-.06)/.34); }
+  }
+  return {t,slide,squeeze,merged,held,dots,arc,gear,grow};
+}
+function drawCarriedHandle(){
+  const c=handleCarry, f=handleFrame(c,Date.now()), [dx,dy]=away();
+  gripDots.style.display=''; gripDots.classList.remove('liquid'); gripDots.removeAttribute('filter');
+  setCircle(gripCore,0,0,0); gripNeck.setAttribute('d','');
+  const shift=c.fromHover?GRIP_REACH*(1-f.held):0;
+  const scale=c.fromHover?1:.4+.6*f.slide;
+  const r=GRIP_DOT/2*(1-.3*f.squeeze)*(1+.3*f.grow)*scale, pitch=(1-.18*f.squeeze)*scale;
+  gripOffsets().forEach(([ox,oy],i)=>setCircle(gripDot[i],dx*shift+ox*pitch,dy*shift+oy*pitch,r));
+  gripDots.style.opacity=clamp01(c.fromHover?1:f.slide)*f.dots;
+  const [rest,disc,glyph]=['.h-rest','.h-disc','.h-glyph'].map(q=>orb.querySelector(q));
+  orb.classList.add('carried');
+  if(c.fromHover){
+    rest.style.opacity=0;
+    disc.style.opacity=1-f.merged; disc.style.transform=`scale(${1-.4*f.merged})`;
+    glyph.style.opacity=f.gear*(1-f.merged);
+  } else {
+    const arc=c.landedAt?clamp01(f.arc):1-smooth(f.t/.2);
+    const size=c.landedAt?.6+.4*f.arc:1-.4*smooth(f.t/.25);
+    rest.style.opacity=arc; rest.style.transform=`rotate(var(--arc)) scale(${size})`;
+    disc.style.opacity=0; glyph.style.opacity=0;
+  }
+}
+function beginHandleCarry(fromHover){
+  handleCarry={at:Date.now(),fromHover};
+  runGrip();
+  // With the dots' own measures, so the overlay draws the same dots
+  return {at:handleCarry.at,fromHover,dot:GRIP_DOT,pitch:GRIP_PITCH,reach:GRIP_REACH};
+}
+function endHandleCarry(){
+  const fromHover=handleCarry.fromHover;
+  handleCarry=null;
+  orb.classList.remove('carried');
+  for(const el of orb.children){ el.style.opacity=''; el.style.transform=''; }
+  // Put down by its dots, they stay out beside the orb while the pointer rests where it let go
+  gripRun=null; gripSep=fromHover?1:0;
+  hovered=fromHover?'grip':null;
+  gripHover.v=gripHover.to=fromHover?1:0;
+  orb.classList.toggle('hover',fromHover);
+  document.body.style.cursor=fromHover?'grab':'';
+  drawGrip(); reportHot();
+}
+// Held from the press, not the first movement: taking hold of it is itself the carry beginning
+grip.parentElement.addEventListener('mousedown',e=>{
+  if(e.button!==0||hovered!=='grip'||!near(gripAt,e.clientX,e.clientY)||dragging) return;
+  e.stopPropagation(); e.preventDefault();
+  dragging=true; clearTimeout(hideTimer); hideCard();
+  document.body.style.cursor='grabbing';
+  const handle=beginHandleCarry(true);
+  invoke('begin_carry',{shape:{...carryShape(),handle}}).catch(err=>{ notice('begin_carry failed: '+err); dragging=false; endHandleCarry(); });
+},true);
+
 /* Show on hover, the Mac's .onHover. It opens on contact and folds a moment after the pointer has gone.
    Rust says which (notch_pointer): once click-through is back on, the page is sent nothing at all. It
    never folds mid-carry, mid-drag or under the right-click menu, all of which take the pointer off the
