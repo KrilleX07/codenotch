@@ -73,6 +73,43 @@ final class TooltipRenderTests: XCTestCase {
         }
     }
 
+    /// The card with a fixture at 80% of a $1,500 cap — the render behind
+    /// docs/providers/apify.png, attached rather than compared: the point is
+    /// that the money row and the reset draw beside the mark, not their pixels.
+    func testApifyCardRendersWithItsGlyph() throws {
+        XCTAssertNotNil(NSImage(named: ProviderGlyph.apify.assetName))
+        let windows = try ApifyUsage.windows(from: Data(ApifyFixture.limits.utf8))
+        let snapshot = ProviderSnapshot(
+            id: "apify", displayName: "Apify", glyph: .apify, fidelity: .official,
+            status: .ok, windows: windows, headlineID: ApifyUsage.headlineID, plan: "Scale"
+        )
+        let view = HStack(spacing: 20) {
+            VStack {
+                ProviderRing(usedFraction: snapshot.usedFraction, glyph: .apify)
+                Text(snapshot.headlineText).foregroundStyle(.white)
+            }
+            TooltipCard(snapshot: snapshot, now: Date(timeIntervalSince1970: 1_790_000_000), direction: .trailing)
+        }
+        .padding(20)
+        .background(Color.black)
+        .environment(\.colorScheme, .dark)
+        .environment(\.notchSurfaceStyle, .solid)
+        .environment(\.codenotchAccentColor, .blue)
+        .environment(\.codenotchHeadlessGlass, true)
+
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 3
+        let image = try XCTUnwrap(renderer.nsImage)
+        XCTAssertGreaterThan(image.size.width, NotchLayout.cardWidth)
+        XCTAssertGreaterThan(image.size.height, 100)
+        let tiff = try XCTUnwrap(image.tiffRepresentation)
+        let png = try XCTUnwrap(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
+        let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+        attachment.name = "apify-monthly"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     private func session(_ name: String, _ state: AgentSession.State,
                          minutes: Int) -> AgentSession {
         AgentSession(id: name, name: name, detail: "Terminal · usage-notch",

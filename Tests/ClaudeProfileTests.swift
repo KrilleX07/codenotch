@@ -334,6 +334,28 @@ final class ClaudeProfileTests: XCTestCase {
 
     /// A home directory with `.claude/` and a `.claude.json` beside it, as the
     /// default profile expects them.
+    /// A reading from Claude Desktop's cache carries no plan, so the profile's
+    /// own record has to say whose it is. Matched to the profile by the same
+    /// record's organization, so the two cannot disagree.
+    func testTheOrganizationNamesThePlan() throws {
+        let home = try accountHome(address: "one@example.com")
+        let json = #"{"oauthAccount":{"emailAddress":"one@example.com","organizationUuid":"org-one","organizationType":"claude_enterprise"}}"#
+        try Data(json.utf8).write(to: home.appendingPathComponent(".claude.json"))
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_800_000_500)],
+                                              ofItemAtPath: home.appendingPathComponent(".claude.json").path)
+
+        let profile = ClaudeProfile.default(home: home)
+        XCTAssertEqual(profile.organizationPlan(), "enterprise")
+        XCTAssertEqual(ClaudeOAuthProvider.planName(profile.organizationPlan()), "Enterprise")
+    }
+
+    /// An older record names no organization type, and then there is simply
+    /// nothing to say — not a guess.
+    func testNoOrganizationTypeMeansNoPlan() throws {
+        let profile = ClaudeProfile.default(home: try accountHome(address: "one@example.com"))
+        XCTAssertNil(profile.organizationPlan())
+    }
+
     private func accountHome(address: String,
                              organization: String = "org-one") throws -> URL {
         let home = FileManager.default.temporaryDirectory
@@ -535,5 +557,67 @@ final class ClaudeAccountNameTests: XCTestCase {
     private func write(_ address: String, to url: URL) throws {
         let json = #"{"oauthAccount":{"emailAddress":"\#(address)","organizationUuid":"org"}}"#
         try Data(json.utf8).write(to: url)
+    }
+}
+
+/// The plan the way Claude names it, whichever source it came from.
+final class ClaudePlanNameTests: XCTestCase {
+    func testTheCredentialsWordsAreCapitalised() {
+        XCTAssertEqual(ClaudeOAuthProvider.planName("enterprise"), "Enterprise")
+        XCTAssertEqual(ClaudeOAuthProvider.planName("max"), "Max")
+        XCTAssertEqual(ClaudeOAuthProvider.planName("team"), "Team")
+    }
+
+    /// Anything that is not one bare lowercase word is shown as it came.
+    func testAnythingElseIsLeftAlone() {
+        XCTAssertEqual(ClaudeOAuthProvider.planName("extra usage"), "extra usage")
+        XCTAssertEqual(ClaudeOAuthProvider.planName("Team"), "Team")
+        XCTAssertNil(ClaudeOAuthProvider.planName("  "))
+        XCTAssertNil(ClaudeOAuthProvider.planName(nil))
+    }
+}
+
+/// The sign-in command is run, not printed, so its path has to be quoted.
+final class SignInCommandQuotingTests: XCTestCase {
+    /// It was written for a guidance line — "Run this in Terminal" — where an
+    /// unquoted path was cosmetic. #323 put it behind a button that types it
+    /// into the user's shell, and at that point a config directory named
+    /// `a dir; touch x` stops being a display bug: what follows the `;` is a
+    /// second command.
+    func testAClaudeProfilePathIsQuoted() {
+        let profile = ClaudeProfile(
+            slug: "work",
+            configDirectory: URL(fileURLWithPath: "/tmp/a dir; touch /tmp/pwned"))
+        let command = profile.signInCommand
+        XCTAssertTrue(command.contains("'/tmp/a dir; touch /tmp/pwned'"),
+                      "the path is not quoted: \(command)")
+        XCTAssertFalse(command.contains("=/tmp/a dir;"),
+                       "the path reaches the shell unquoted: \(command)")
+    }
+
+    /// An apostrophe in a directory name must not close the quoting.
+    func testAnApostropheCannotCloseTheQuote() {
+        let profile = ClaudeProfile(
+            slug: "work", configDirectory: URL(fileURLWithPath: "/Users/O'Brien/.claude-work"))
+        XCTAssertTrue(profile.signInCommand.contains("'\"'\"'"),
+                      "an apostrophe is not escaped: \(profile.signInCommand)")
+    }
+
+    /// The real path, not the `~` abbreviation: a quoted tilde does not
+    /// expand, and would send the CLI to a directory actually named `~`.
+    func testItUsesTheRealPathRatherThanTheTilde() {
+        let home = NSHomeDirectory()
+        let profile = ClaudeProfile(
+            slug: "work", configDirectory: URL(fileURLWithPath: home + "/.claude-work"))
+        XCTAssertFalse(profile.signInCommand.contains("'~"),
+                       "a quoted tilde will not expand: \(profile.signInCommand)")
+        XCTAssertTrue(profile.signInCommand.contains(home))
+    }
+
+    /// The default login has no path at all, so it stays the bare command.
+    func testTheDefaultLoginIsUnchanged() {
+        let profile = ClaudeProfile(slug: nil,
+                                    configDirectory: URL(fileURLWithPath: "/tmp/.claude"))
+        XCTAssertEqual(profile.signInCommand, "claude")
     }
 }

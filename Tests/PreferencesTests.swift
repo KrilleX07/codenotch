@@ -281,17 +281,6 @@ final class PreferencesMigrationTests: XCTestCase {
         XCTAssertEqual(Preferences(defaults: UserDefaults(suiteName: name)!).weeklyRing, .outside)
     }
 
-    /// On by default — it is how the notch is carried to another edge — and
-    /// once somebody hides it, it has to stay hidden across a relaunch.
-    func testTheMoveHandleShowsUntilHiddenAndStaysHidden() {
-        let (fresh, name) = makeDefaults()
-        XCTAssertTrue(Preferences(defaults: fresh).showsMoveHandle)
-
-        Preferences(defaults: fresh).showsMoveHandle = false
-
-        XCTAssertFalse(Preferences(defaults: UserDefaults(suiteName: name)!).showsMoveHandle)
-    }
-
     /// The size has to outlive the launch that chose it, or it reads as a
     /// setting that did not take.
     func testTheNotchSizeSurvivesARelaunch() {
@@ -499,5 +488,65 @@ final class MenuBarLimitsPreferenceTests: XCTestCase {
         XCTAssertTrue(reopened.isConnected("claude"))
         XCTAssertFalse(reopened.isConnected("codex"))
         XCTAssertEqual(reopened.menuBarProviders, ["codex", "gemini"])
+    }
+}
+
+/// One channel for every notification. The notch is the default because it
+/// is what every earlier version did; the choice has to survive a relaunch.
+@MainActor
+final class NotificationChannelPreferenceTests: XCTestCase {
+    private func makeDefaults() -> UserDefaults {
+        let name = "PreferencesTests.channel.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+
+    func testTheNotchIsTheDefault() {
+        XCTAssertEqual(Preferences(defaults: makeDefaults()).notificationChannel, .notch)
+    }
+
+    func testTheChoiceIsKept() {
+        let defaults = makeDefaults()
+        Preferences(defaults: defaults).notificationChannel = .mac
+        XCTAssertEqual(Preferences(defaults: defaults).notificationChannel, .mac)
+    }
+
+    func testEveryChannelExplainsItself() {
+        for channel in NotificationChannel.allCases {
+            XCTAssertFalse(channel.title.isEmpty)
+            XCTAssertFalse(channel.explanation.isEmpty)
+        }
+    }
+}
+
+/// How small the notch may be made.
+final class NotchScaleRangeTests: XCTestCase {
+    /// The floor was 0.75, set there because the percentage under each ring
+    /// stopped being readable below it. That reading is its own setting now,
+    /// so the floor no longer has to protect type that can be switched off.
+    func testTheSliderReachesHalfSize() {
+        XCTAssertEqual(Preferences.customScaleRange.lowerBound, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(Preferences.customScaleRange.upperBound, 1.5, accuracy: 0.0001)
+    }
+
+    /// The presets stay inside it, or a preset would be unreachable by slider.
+    func testEveryPresetIsInsideTheSliderRange() {
+        for size in NotchSize.allCases {
+            XCTAssertTrue(Preferences.customScaleRange.contains(Double(size.scale)),
+                          "\(size.rawValue) at \(size.scale) is outside the slider's range")
+        }
+    }
+
+    /// And a half-size notch is still a target you can hit: the wake band has
+    /// a floor of its own, so the pill does not shrink out of reach with it.
+    @MainActor
+    func testAHalfSizeNotchIsStillReachable() {
+        let m = NotchViewModel()
+        m.edge = .right
+        m.sizeScale = 0.5
+        XCTAssertGreaterThanOrEqual(m.wakeDepth, NotchLayout.pillHotZone,
+                                    "the hot zone shrank with the notch")
+        XCTAssertGreaterThanOrEqual(m.wakeLength, NotchLayout.pillHotZone)
     }
 }

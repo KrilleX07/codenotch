@@ -91,6 +91,9 @@ pub struct Config {
     /// notch once; an explicit later un-tick is respected and never overridden.
     #[serde(default)]
     pub glm_notch_fixed: bool,
+    /// The same one-shot migration for the OpenCode ring.
+    #[serde(default)]
+    pub opencode_notch_fixed: bool,
     /// false = the pill is kept off the screen edge entirely; the tray icon is then the only way in
     #[serde(default = "yes")]
     pub notch_visible: bool,
@@ -107,6 +110,10 @@ pub struct Config {
     /// false = no arc above the notch to carry it by. Nothing is lost: Appearance → Edge moves it too.
     #[serde(default = "yes")]
     pub show_move_handle: bool,
+    /// true = the folded pill follows what is behind it, which means reading the screen beside it
+    /// (backdrop.rs). Opt-in for that reason; off, the pill takes Theme's colour.
+    #[serde(default)]
+    pub adaptive_pill: bool,
 }
 
 fn default_notch_y() -> f64 {
@@ -255,10 +262,12 @@ impl Default for Config {
             antigravity_limit: default_antigravity_limit(),
             antigravity_model: default_antigravity_model(),
             glm_notch_fixed: true, // a fresh install picks from the full list already
+            opencode_notch_fixed: true,
             notch_visible: true,
             notch_on_hover: true,
             tray_visible: true,
             show_move_handle: true,
+            adaptive_pill: false,
         }
     }
 }
@@ -292,6 +301,8 @@ pub fn load() -> Config {
     carry_shared_position(&mut cfg);
     // A selection saved before GLM existed gets the GLM ring back exactly once.
     migrate_glm_notch(&mut cfg, &raw);
+    // Likewise for OpenCode.
+    migrate_opencode_notch(&mut cfg, &raw);
 
     // Both hidden would leave the app unreachable: no pill, no tray icon, no way to open settings.
     if !cfg.notch_visible && !cfg.tray_visible {
@@ -319,6 +330,21 @@ fn migrate_glm_notch(cfg: &mut Config, raw: &Option<String>) {
         cfg.notch_slots.push(TraySlot { provider: "glm".into() });
     }
     cfg.glm_notch_fixed = true;
+}
+
+fn migrate_opencode_notch(cfg: &mut Config, raw: &Option<String>) {
+    let predates = raw
+        .as_deref()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(t).ok())
+        .map(|v| v.get("opencode_notch_fixed").is_none())
+        .unwrap_or(false);
+    if !predates {
+        return;
+    }
+    if !cfg.notch_slots.is_empty() && !cfg.notch_slots.iter().any(|s| s.provider == "opencode") {
+        cfg.notch_slots.push(TraySlot { provider: "opencode".into() });
+    }
+    cfg.opencode_notch_fixed = true;
 }
 
 pub fn save(cfg: &Config) {

@@ -359,6 +359,9 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// breakdown and daily token/cost series.
     var usageDetail: ProviderUsageDetail? = nil
 
+    /// Locally sampled cumulative token usage for a custom endpoint.
+    var customUsageHistory: [CustomEndpointUsageDay]? = nil
+
     /// The number on the cell: the provider's declared primary window — for
     /// Claude, the current session.
     ///
@@ -492,6 +495,8 @@ struct ProviderSnapshot: Identifiable, Equatable {
         case "commandcode": return L10n.t("Sign in with the Command Code app to read your usage", locale: locale)
         case "kiro":       return L10n.t("Sign in with kiro-cli to read your usage", locale: locale)
         case "amp":        return L10n.t("Run amp login in Terminal to read your usage", locale: locale)
+        case "apify":      return L10n.t("Run apify login in Terminal, or paste an Apify API token in Settings", locale: locale)
+        case "kilo":       return L10n.t("Sign in with the Kilo CLI to read your usage", locale: locale)
         // Two Ollamas, and they are stuck for different reasons: the hosted
         // one wants a key, the local one wants the daemon running.
         case "ollama":       return L10n.t("Enter an Ollama API key in Settings, or export OLLAMA_API_KEY", locale: locale)

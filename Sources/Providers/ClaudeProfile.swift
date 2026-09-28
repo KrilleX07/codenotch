@@ -262,6 +262,9 @@ struct ClaudeProfile: Equatable, Hashable {
             /// to. This is the uuid the Claude desktop app files its own
             /// sessions under — see `ClaudeDesktopSessionIndex`.
             let accountUuid: String?
+            /// `claude_enterprise`, `claude_team` and so on: the kind of
+            /// organization the account belongs to.
+            let organizationType: String?
         }
         let oauthAccount: Account?
     }
@@ -298,6 +301,18 @@ struct ClaudeProfile: Equatable, Hashable {
     func organizationID() -> String? {
         guard let uuid = account()?.organizationUuid, !uuid.isEmpty else { return nil }
         return uuid
+    }
+
+    /// The kind of organization this profile's account belongs to, as Claude
+    /// Code recorded it — `claude_enterprise` comes back as `enterprise`.
+    ///
+    /// For a reading taken from Claude Desktop's cache, which carries no plan
+    /// of its own. That reading is matched to this profile by `organizationID`
+    /// from the same record, so the two cannot describe different accounts.
+    func organizationPlan() -> String? {
+        guard let type = account()?.organizationType?.nonEmptyPlan else { return nil }
+        let prefix = "claude_"
+        return type.hasPrefix(prefix) ? String(type.dropFirst(prefix.count)).nonEmptyPlan : type
     }
 
     /// Which Anthropic *account* this profile is signed in to.
@@ -356,9 +371,23 @@ struct ClaudeProfile: Equatable, Hashable {
         slug == nil ? "Claude Code" : "Claude Code in \(displayPath)"
     }
 
-    /// The command that signs this profile in, for the row that has no button.
+    /// The command that signs this profile in.
+    ///
+    /// Quoted, because this is *run* and not merely printed. It was written
+    /// for a guidance line — "Run this in Terminal" — where an unquoted path
+    /// was only cosmetic. #323 put it behind a button that types it into the
+    /// user's shell, and at that point a config directory with a space or a
+    /// `;` in its name stops being a display bug: whatever follows the `;`
+    /// is a second command. `CodexProfile.signInCommand` already quoted its
+    /// own path for exactly this reason.
+    ///
+    /// The real path rather than `displayPath`, too: a quoted `~` does not
+    /// expand, so the abbreviation that reads well in a label would send the
+    /// CLI to a directory named `~`.
     var signInCommand: String {
-        slug == nil ? "claude" : "CLAUDE_CONFIG_DIR=\(displayPath) claude"
+        guard slug != nil else { return "claude" }
+        let path = "'" + configDirectory.path.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+        return "CLAUDE_CONFIG_DIR=\(path) claude"
     }
 }
 

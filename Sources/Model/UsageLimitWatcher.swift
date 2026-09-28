@@ -26,13 +26,26 @@ final class UsageLimitWatcher {
     private var states: [String: ProviderLimitState] = [:]
     private let isMuted: (String) -> Bool
     private let deliver: (UsageAlertEvent) -> Void
+    private let now: () -> Date
 
     init(
         isMuted: @escaping (String) -> Bool = { _ in false },
-        deliver: @escaping (UsageAlertEvent) -> Void = { _ in }
+        deliver: @escaping (UsageAlertEvent) -> Void = { _ in },
+        now: @escaping () -> Date = Date.init
     ) {
         self.isMuted = isMuted
         self.deliver = deliver
+        self.now = now
+    }
+
+    /// A later reset timestamp alone is not a new window: APIs which report a
+    /// relative countdown move that timestamp by a few seconds on every
+    /// refresh, and re-arming on that announced "limit reached" again on every
+    /// fetch while the limit stayed spent. The tracked window must have
+    /// actually elapsed, the same rule the reset watcher applies.
+    private func rolledOver(from previous: Date?, to current: Date?) -> Bool {
+        guard let previous, let current else { return false }
+        return previous <= now() && current > previous
     }
 
     func observe(_ snapshots: [ProviderSnapshot]) {
@@ -54,10 +67,7 @@ final class UsageLimitWatcher {
         if let headline = snapshot.headline, let fraction = snapshot.usedFraction {
             let isExhausted = fraction >= 1.0 || snapshot.block != nil
 
-            let dateRolledOver = headline.resetsAt != nil
-                && state.session.resetsAt != nil
-                && headline.resetsAt != state.session.resetsAt
-                && headline.resetsAt! > state.session.resetsAt!
+            let dateRolledOver = rolledOver(from: state.session.resetsAt, to: headline.resetsAt)
 
             if dateRolledOver || fraction < 0.95 {
                 state.session.isExhausted = false
@@ -88,10 +98,7 @@ final class UsageLimitWatcher {
         if let weekly = snapshot.weeklyWindow, let weeklyFraction = snapshot.weeklyFraction {
             let isWeeklyExhausted = weeklyFraction >= 1.0
 
-            let dateRolledOver = weekly.resetsAt != nil
-                && state.weekly.resetsAt != nil
-                && weekly.resetsAt != state.weekly.resetsAt
-                && weekly.resetsAt! > state.weekly.resetsAt!
+            let dateRolledOver = rolledOver(from: state.weekly.resetsAt, to: weekly.resetsAt)
 
             if dateRolledOver || weeklyFraction < 0.95 {
                 state.weekly.isExhausted = false

@@ -218,7 +218,7 @@ final class OllamaModelCellTests: XCTestCase {
                 panel.contentView?.layoutSubtreeIfNeeded()
                 let model = controller.model
                 let point = NotchPlacement(edge: edge, panelSize: panel.frame.size).point(
-                    along: model.slack + model.ringCenter(index: 1) * model.sizeScale,
+                    along: model.ringAlong(index: 1, in: model.cellWing),
                     across: model.ringAcross * model.sizeScale)
                 let event = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown,
                     location: CGPoint(x: point.x, y: panel.frame.height - point.y),

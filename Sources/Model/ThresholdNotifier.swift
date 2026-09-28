@@ -8,6 +8,7 @@ struct ThresholdAlert: Equatable {
     let providerID: String
     let providerName: String
     let windowLabel: String
+    let glyph: ProviderGlyph
     let usedPercent: Int
     let resetsAt: Date?
 }
@@ -72,6 +73,7 @@ final class ThresholdNotifier {
                 providerID: snapshot.id,
                 providerName: snapshot.displayName,
                 windowLabel: headline.label,
+                glyph: snapshot.glyph,
                 usedPercent: Int((percent).rounded()),
                 resetsAt: headline.resetsAt
             ))

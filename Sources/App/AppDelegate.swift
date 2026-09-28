@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var phoneLinkPairing: PhoneLinkPairing?
     var phoneLinkRegistry: PhoneLinkRegistry?
     private var activityCoordinator: ActivityCoordinator?
+    private var piResponseMonitor: PiResponseMonitor?
     private var ollamaRelay: OllamaActivityRelay?
     private var lmstudioMetrics: LMStudioMetrics?
     private var preferences: Preferences?
@@ -95,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         guard !isRunningTests else { return }
         Self.retireOlderInstances()
+        ChannelNotifications.installPresenter()
 
         // Before Preferences reads anything, or the first launch flag and
         // every choice would be read from an empty domain.
@@ -168,6 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 + antigravityProfiles.map { AntigravityProvider(profile: $0) }
                 + [GLMProvider(), MiniMaxProvider(web: miniMaxWeb), GrokLocalProvider(), DevinLocalProvider(), OpenCodeProvider(),
                    CommandCodeProvider(), GitHubCopilotProvider(), KimiProvider(), KiroProvider(), AmpProvider(),
+                   ApifyProvider(), KiloProvider(),
                    OllamaLocalProvider(endpoint: URL(string: preferences.ollamaEndpoint)!),
                    LMStudioLocalProvider(endpoint: URL(string: preferences.lmstudioEndpoint)!),
                    OllamaProvider(),
@@ -192,7 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$customEndpoints
                 .map { endpoints in
                     endpoints.filter(\.isEnabled).map {
-                        "\($0.id):\($0.name):\($0.baseURL):\($0.trackingUnit.rawValue):\($0.monthlyBudgetUSD ?? -1):\($0.currentSpendUSD ?? -1):\($0.monthlyBudgetTokensM ?? -1):\($0.currentTokensUsedM ?? -1):\($0.displayRemaining):\($0.showCurrency):\($0.iconPreset ?? ""):\($0.customIconFilename ?? ""):\($0.accentColorHex):\($0.selectedModel)"
+                        "\($0.id):\($0.name):\($0.baseURL):\($0.trackingUnit.rawValue):\($0.monthlyBudgetUSD ?? -1):\($0.currentSpendUSD ?? -1):\($0.monthlyBudgetTokensM ?? -1):\($0.currentTokensUsedM ?? -1):\($0.displayRemaining):\($0.showCurrency):\($0.iconPreset ?? ""):\($0.customIconFilename ?? ""):\($0.accentColorHex):\($0.selectedModel):\($0.usageSource.rawValue):\($0.usagePreset?.rawValue ?? ""):\($0.usageURL ?? ""):\($0.usageRecordsPath ?? ""):\($0.usageModelField ?? ""):\($0.usageTokenField ?? ""):\($0.usageModelFilter ?? ""):\($0.usageAuthentication.rawValue)"
                     }
                 }
                 .removeDuplicates()
@@ -216,6 +219,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let updater = Updater()
             self.updater = updater
+            // An update is offered in the notch, and installed there — see
+            // `UpdateCard`. Checked for as it launches; never under test, where
+            // it would reach for the real feed.
+            updater.$prompt
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(updatePrompt: $0) }
+                .store(in: &cancellables)
+            fleet.onUpdateChoice = { [weak updater] in updater?.respond($0) }
+            // Put off: a red dot on the settings button until it is taken.
+            Publishers.CombineLatest(updater.$pending, updater.$prompt)
+                .map { pending, prompt in pending != nil && prompt == nil }
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(updatePending: $0) }
+                .store(in: &cancellables)
+            if !isRunningTests { updater.start() }
 
             let relay = OllamaActivityRelay()
             self.ollamaRelay = relay
@@ -380,6 +399,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 },
                 previewWeeklyLimitAlert: { [weak self] in
                     self?.previewWeeklyLimitAlert()
+                },
+                sendTestNotification: { [weak self] in
+                    self?.sendTestNotification()
                 },
                 usageStore: store, ollamaRelay: relay, lmstudioMetrics: lmstudio,
                 phoneLinkPairing: phonePairing, phoneLinkRegistry: phoneRegistry, phoneLinkServerStatus: serverStatus
@@ -580,7 +602,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Writing the preference is the whole of it: `notchEdge` is
             // `@Published` and the fleet already follows it, so the notch
             // relocates by the same path the Settings picker uses.
-            fleet.onMoveToEdge = { [weak preferences] edge in
+            fleet.onMoveToEdge = { [weak preferences] edge, offset in
+                // Where along it first, so the edge's sink reads it back and
+                // the notch lands under the pointer that carried it there.
+                if let offset { preferences?.setOffset(offset, for: edge) }
                 preferences?.notchEdge = edge
             }
 
@@ -615,15 +640,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak fleet] in fleet?.apply(weeklyRingDashed: $0) }
                 .store(in: &cancellables)
 
+            preferences.$weeklyReading
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(weeklyReading: $0) }
+                .store(in: &cancellables)
+
             preferences.$weeklyRing
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(weeklyRing: $0) }
                 .store(in: &cancellables)
 
-            preferences.$showsMoveHandle
-                .receive(on: RunLoop.main)
-                .sink { [weak fleet] in fleet?.apply(showsMoveHandle: $0) }
-                .store(in: &cancellables)
                 
             preferences.$notchSurfaceStyle
                 .receive(on: RunLoop.main)
@@ -688,7 +714,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // other.
             let notifier = ThresholdNotifier(
                 isMuted: { [weak preferences] in preferences?.isMutedAlerts(for: $0) ?? false },
-                deliver: { ThresholdAlerts.deliver($0) }
+                deliver: { [weak self] in self?.announceThreshold($0) }
             )
             self.thresholdNotifier = notifier
 
@@ -809,14 +835,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if let account = profile.accountID() { accounts[path] = account }
                 transcripts[path] = ClaudeTranscriptReader(projects: profile.projectsDirectory)
             }
+            let profileIDs = Dictionary(uniqueKeysWithValues: claudeProfiles.map {
+                ($0.sessionsDirectory.path, $0.id)
+            })
             for (profile, monitor) in claudeMonitorsByProfile {
-                monitor.ownership = ClaudeSessionOwnership(
+                var ownership = ClaudeSessionOwnership(
                     own: profile.sessionsDirectory,
                     directories: directories,
                     accounts: accounts,
                     transcripts: transcripts,
                     index: index
                 )
+                ownership.isShown = { [weak preferences] directory in
+                    guard let preferences, let id = profileIDs[directory.path] else { return true }
+                    return preferences.isConnected(id)
+                }
+                monitor.ownership = ownership
             }
             let named = accounts.count, total = claudeProfiles.count
             Log.sessions.info("claude session ownership: \(named, privacy: .public) of \(total, privacy: .public) profiles name an account")
@@ -878,16 +912,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.announceCompletions(sessions: fleet.sessions)
         }
         self.activityCoordinator = activity
-        let monitorIDs = Set(monitors.keys)
-        activity.setEnabled(Set(monitorIDs.filter { preferences.isConnected($0) }))
+        activity.setEnabled(preferences.connectedProviders)
         preferences.$connectedProviders
             .removeDuplicates()
             .receive(on: RunLoop.main)
-            .sink { [weak activity, weak preferences] _ in
-                guard let preferences else { return }
-                activity?.setEnabled(Set(monitorIDs.filter { preferences.isConnected($0) }))
+            .sink { [weak activity] connected in
+                activity?.setEnabled(connected)
             }
             .store(in: &cancellables)
+
+        let piResponseMonitor = PiResponseMonitor(
+            onResponse: { [weak self] providerID in
+                _ = self?.store?.refresh(providerID: providerID)
+            },
+            onActivity: { [weak activity] providerID, snapshots in
+                let sessions = snapshots.map {
+                    AgentSession(
+                        id: $0.id,
+                        name: $0.model,
+                        detail: L10n.t("Working"),
+                        state: .busy,
+                        waitingFor: nil,
+                        since: $0.since
+                    )
+                }
+                activity?.setSupplementalSessions(
+                    providerID: providerID,
+                    source: "pi",
+                    sessions: sessions
+                )
+            }
+        )
+        piResponseMonitor.start()
+        self.piResponseMonitor = piResponseMonitor
+
         store?.isBusy = { [weak self, weak activity] in
             (activity?.isBusy ?? false) || (self?.lmstudioMetrics?.isBusy ?? false)
         }
@@ -906,6 +964,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // repositions an existing controller — it does not re-copy them —
         // so this has to be the very last thing that can create one.
         
+        // Banners need permission; ask the moment banners are chosen, not on
+        // the first event, and never of someone who keeps to the notch.
+        preferences.$notificationChannel
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { channel in
+                if channel == .mac { ChannelNotifications.requestAuthorizationIfNeeded() }
+            }
+            .store(in: &cancellables)
+
         preferences.$phoneLinkEnabled
             .receive(on: RunLoop.main)
             .sink { [weak self] enabled in
@@ -938,7 +1006,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(weeklyRing: preferences.weeklyRing)
         fleet.apply(weeklyRingDashed: preferences.weeklyRingDashed)
         fleet.apply(showsNotchReadings: preferences.showsNotchReadings)
-        fleet.apply(showsMoveHandle: preferences.showsMoveHandle)
+        fleet.apply(weeklyReading: preferences.weeklyReading)
         fleet.apply(foldsForFullScreen: preferences.foldsForFullScreen)
         fleet.apply(surfaceStyle: preferences.notchSurfaceStyle)
         fleet.apply(deepSeekPricingEnabled: preferences.deepSeekPricingEnabled)
@@ -969,8 +1037,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                               : preferences.sessionEndSoundName)
         }
         guard preferences.announceSessionEnd else { return }
+        if preferences.notificationChannel == .mac {
+            ChannelNotifications.sessionEnded(name: event.session.name, blocked: event.reason == .blocked)
+            return
+        }
         fleet.peek(for: preferences.peekDuration.seconds,
                    focusing: event.session.processID)
+    }
+
+    /// A crossing is a banner on the Mac channel, as it always was; on the
+    /// notch channel it is a card beside the notch, so choosing the notch
+    /// really does keep Notification Center empty. The banner remains the
+    /// fallback for a notch that cannot show the card (hidden).
+    @MainActor
+    private func announceThreshold(_ alert: ThresholdAlert) {
+        guard let preferences, let fleet = notchFleet,
+              preferences.notificationChannel == .notch else {
+            ThresholdAlerts.deliver(alert)
+            return
+        }
+        var notice = UsageResetEvent(providerID: alert.providerID, providerName: alert.providerName,
+                                     windowLabel: alert.windowLabel, glyph: alert.glyph,
+                                     previousFraction: 0, currentFraction: Double(alert.usedPercent) / 100,
+                                     resetsAt: alert.resetsAt)
+        notice.noticeTitle = alert.threshold >= 100
+            ? L10n.t("\(alert.providerName) limit reached")
+            : L10n.t("\(alert.providerName) is at \(alert.usedPercent)%")
+        notice.noticeSubtitle = alert.windowLabel
+        notice.noticeStatus = L10n.t("\(alert.usedPercent)% used")
+        if !fleet.showResetAlert(notice, duration: 6.0) {
+            ThresholdAlerts.deliver(alert)
+        }
+    }
+
+    /// The test from Settings, on whichever channel is chosen.
+    @MainActor
+    private func sendTestNotification() {
+        guard let preferences, let fleet = notchFleet else { return }
+        guard preferences.notificationChannel == .notch else {
+            ChannelNotifications.test()
+            return
+        }
+        if preferences.sessionEndSound { SessionChime.play(preferences.sessionEndSoundName) }
+        var notice = UsageResetEvent(providerID: "codenotch", providerName: "Codenotch",
+                                     windowLabel: "", glyph: .claude,
+                                     previousFraction: 0, currentFraction: 0, resetsAt: nil)
+        notice.noticeTitle = L10n.t("Codenotch test")
+        notice.noticeSubtitle = L10n.t("This is what one looks like.")
+        notice.noticeStatus = ""
+        fleet.showResetAlert(notice, duration: 5.0)
     }
 
     /// Open the notch and show a usage reset notification modal when a limit resets.
@@ -983,7 +1098,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             SessionChime.play(preferences.usageResetSoundName)
         }
         guard preferences.announceUsageReset else { return }
-        if !fleet.showResetAlert(event, duration: 5.0) {
+        // The channel decides the form: a banner, or the notch's card with
+        // the banner only where the notch cannot show it.
+        if preferences.notificationChannel == .mac || !fleet.showResetAlert(event, duration: 5.0) {
             UsageAlertNotifications.deliver(event)
         }
     }
@@ -1028,7 +1145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if preferences.limitReachedSound {
             SessionChime.play(preferences.limitReachedSoundName)
         }
-        if !fleet.showResetAlert(event, duration: 6.0) {
+        if preferences.notificationChannel == .mac || !fleet.showResetAlert(event, duration: 6.0) {
             UsageAlertNotifications.deliver(event)
         }
     }
@@ -1103,6 +1220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ollamaRelay?.configure(enabled: false, endpoint: OllamaEndpoint.defaultAddress)
         lmstudioMetrics?.stop()
         tokenRefresher?.stop()
+        piResponseMonitor?.stop()
         store?.stop()
         activityCoordinator?.stop()
         notchFleet?.stop()

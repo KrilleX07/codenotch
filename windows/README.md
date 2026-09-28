@@ -17,7 +17,9 @@ documented behaviour and the wire formats.
 | **Codex** | The local Codex sign-in in `~/.codex/auth.json` (read only, never refreshed), falling back to the newest session snapshot | Live primary/secondary windows (5h + weekly on paid plans, a monthly window on free) while Codex is signed in; Spark and Code review appear on the hover card when Codex reports them; otherwise the last snapshot, marked stale by its own timestamp. |
 | **Cursor** | The editor's own session from `state.vscdb` → `cursor.com/api/usage-summary` | Included usage / API usage / on-demand, reset at billing-cycle end. Nothing to sign into: it borrows the editor's session, so there is only ever one account. |
 | **Grok** | The Grok CLI's own session in `~/.grok/auth.json` (read only, never refreshed) → `cli-chat-proxy.grok.com/v1/billing?format=credits`, the endpoint that CLI's own `/usage` asks | The weekly Grok Build allowance, with the account on the hover card. Only a session minted by `auth.x.ai` is used — the file can also hold a customer IdP token meant for that customer's private proxy. A fresh weekly period reads 0 %, not "unmetered". |
+| **OpenCode** | OpenCode's own sign-in, read only: the `opencode-go` key in `~/.local/share/opencode/auth.json` → `opencode.ai/zen/go/v1/usage`, or — since OpenCode 1.18 — the OAuth sign-in in `opencode.db` (`credential` table) → `opencode.ai/inference/go/v1/usage` | The Go plan's 5-hour, weekly and monthly windows. A sign-in without a Go plan shows "No OpenCode Go subscription" instead of a ring; Zen pay-as-you-go credit has no balance or usage API, so it is not shown. |
 | **Antigravity** | Official `agy` CLI `/usage` print when installed; otherwise the existing local `language_server` bridge, Google Cloud Code API, or transcript model count | Official four quota rows (Gemini & Claude/GPT 5h/weekly) without running the full IDE. When CLI is absent, falls back to legacy local bridge/API. |
+| **OpenCode Go** | `GET https://opencode.ai/zen/go/v1/usage` | Reads the `opencode-go` key in OpenCode's `auth.json`, or `OPENCODE_APIKEY` when set. The environment key takes precedence. Shows rolling 5-hour, weekly and monthly usage. This is a separate subscription from the Z.ai GLM Coding Plan; its key must not be sent to Z.ai's monitor endpoint. |
 
 Providers that are not installed simply do not get a cell.
 
@@ -173,6 +175,14 @@ choice is stored as `notch_edge`, `notch_monitor` (the device name, e.g. `\\.\DI
 `notch_y` (the position along the edge, 0–1) in `config.json`. A monitor that is no longer
 attached falls back to the primary one, so unplugging a screen cannot strand the notch off-screen;
 **Recentre** centres it on the edge it is on, or on the primary screen's right-hand edge when the screen it was on is gone.
+
+Folded (**Appearance → Show → Show on hover**), the notch rests as a small pill at the edge, in
+**Theme**'s colour, with an edge that shows even against a backdrop of that colour.
+**Appearance → Adaptive pill**, off unless switched on, makes it follow what is behind it instead:
+light over a dark backdrop, black over a light one, the way the iPhone's home indicator does. To tell
+which, Codenotch reads a thin strip of the screen beside the pill twice a second while it is folded,
+and keeps only its average brightness, which is never stored or sent. With the switch off, the notch
+open, or Show set to Always show, nothing is read.
 
 ### Icons
 

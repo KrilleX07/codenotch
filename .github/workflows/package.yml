@@ -31,8 +31,8 @@ jobs:
           xcodebuild -version
           xcrun --show-sdk-version
 
-      - name: Install XcodeGen
-        run: brew install xcodegen
+      - name: Install dependencies
+        run: brew install xcodegen create-dmg
 
       # Ad-hoc signed and not notarized — see the `build-ci` comment in the
       # Makefile for what that costs the person who runs it.

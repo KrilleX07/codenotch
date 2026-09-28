@@ -1,6 +1,7 @@
 #![cfg_attr(all(not(debug_assertions), windows), windows_subsystem = "windows")]
 
 mod autostart;
+mod backdrop;
 mod config;
 mod doctor;
 mod focus;
@@ -18,6 +19,7 @@ mod cursor;
 mod grok;
 mod antigravity;
 mod glm;
+mod opencode;
 mod agy_cli;
 mod glyphs;
 mod trayicon;
@@ -57,6 +59,8 @@ pub struct AppState {
     pub antigravity: Mutex<usage::UsageSnapshot>,
     /// GLM Coding Plan snapshot, read from the existing Z.AI tool credentials.
     pub glm: Mutex<usage::UsageSnapshot>,
+    /// OpenCode Go plan snapshot, read with OpenCode's own sign-in (auth.json or opencode.db).
+    pub opencode: Mutex<usage::UsageSnapshot>,
     /// Provider glyph cache, collected at launch and again on a tray refresh
     pub glyphs: Mutex<std::collections::HashMap<String, glyphs::Glyph>>,
     /// Working state of the non-Claude providers (Cursor reports it; Codex and Antigravity are inferred from recent writes)
@@ -684,6 +688,7 @@ pub(crate) fn refresh_provider(app: &AppHandle, provider: &str) -> bool {
         "grok" => grok::request_refresh(),
         "gemini" => antigravity::request_refresh(),
         "glm" => glm::request_refresh(),
+        "opencode" => opencode::request_refresh(),
         _ => return false,
     }
     true
@@ -711,6 +716,11 @@ fn get_antigravity(state: tauri::State<AppState>) -> usage::UsageSnapshot {
 #[tauri::command]
 fn get_glm(state: tauri::State<AppState>) -> usage::UsageSnapshot {
     state.glm.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn get_opencode(state: tauri::State<AppState>) -> usage::UsageSnapshot {
+    state.opencode.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -769,6 +779,7 @@ pub(crate) fn provider_page(provider: &str) -> Option<(&'static str, &'static st
         "grok" => ("https://grok.com/?_s=usage", "grok.com"),
         "gemini" => ("https://antigravity.google", "antigravity.google"),
         "glm" => ("https://z.ai/manage-apikey/apikey-list", "z.ai"),
+        "opencode" => ("https://opencode.ai", "opencode.ai"),
         _ => return None,
     })
 }
@@ -799,8 +810,9 @@ static HOT: Mutex<Vec<[f64; 4]>> = Mutex::new(Vec::new());
 static EXPANDED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[tauri::command]
-fn set_hot(rects: Vec<[f64; 4]>, expanded: bool) {
+fn set_hot(rects: Vec<[f64; 4]>, expanded: bool, probe: Option<[f64; 4]>) {
     *HOT.lock().unwrap() = rects;
+    backdrop::set_probe(probe);
     EXPANDED.store(expanded, std::sync::atomic::Ordering::Relaxed);
     if expanded {
         antigravity::request_hover_refresh();
@@ -1231,6 +1243,8 @@ fn ring_window<'a>(
         // plan falls through to Antigravity's lane picker and the ring shows the
         // tightest window it can find instead of the session.
         "glm" => by_id("session"),
+        // The Mac sets headlineID "rolling", weeklyID "weekly".
+        "opencode" => by_id("rolling"),
         _ => antigravity_lane(windows, antigravity_limit, antigravity_model),
     }
 }
@@ -1287,6 +1301,7 @@ pub(crate) fn snapshot_of(app: &AppHandle, id: &str) -> usage::UsageSnapshot {
         "grok" => st.grok.lock().unwrap().clone(),
         "gemini" => st.antigravity.lock().unwrap().clone(),
         "glm" => st.glm.lock().unwrap().clone(),
+        "opencode" => st.opencode.lock().unwrap().clone(),
         _ => st.usage.lock().unwrap().clone(),
     }
 }
@@ -1588,6 +1603,25 @@ fn set_move_handle(app: AppHandle, on: bool) -> bool {
     on
 }
 
+#[tauri::command]
+fn get_adaptive_pill(app: AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.adaptive_pill
+}
+
+#[tauri::command]
+fn set_adaptive_pill(app: AppHandle, on: bool) -> bool {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.adaptive_pill = on;
+        config::save(&c);
+    }
+    backdrop::set_enabled(&app, on);
+    on
+}
+
 /// One attached monitor, as Settings lists it.
 #[derive(serde::Serialize)]
 pub struct MonitorInfo {
@@ -1654,12 +1688,13 @@ pub fn provider_label(id: &str) -> &'static str {
         "grok" => "Grok",
         "gemini" => "Antigravity",
         "glm" => "z.ai",
+        "opencode" => "OpenCode",
         _ => "Claude",
     }
 }
 
 /// Every provider the tray menu can offer, in the order the notch shows them.
-pub const TRAY_PROVIDER_IDS: [&str; 6] = ["claude", "codex", "glm", "cursor", "grok", "gemini"];
+pub const TRAY_PROVIDER_IDS: [&str; 7] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "gemini"];
 
 /// Keeps the tray menu current. macOS rebuilds its menu as it opens; Tauri has no such hook, so it
 /// is rebuilt whenever a reading changes, and once a minute besides — otherwise "Resets in 12 min"
@@ -1745,7 +1780,51 @@ fn report(r: Result<String, String>) {
 /// The subcommands that print to the parent console; only those may attach to it.
 const CONSOLE_CMDS: [&str; 4] = ["install-hooks", "uninstall-hooks", "autostart", "doctor"];
 
+/// ureq reads a proxy only from the environment. Started from Explorer or the Run key that
+/// variable is usually absent even where a system proxy is configured, and a machine that reaches
+/// api.anthropic.com only through that proxy then reads nothing at all — so the WinINet setting
+/// (Internet Options) is copied into the environment before the first request.
+/// An explicit HTTPS_PROXY/HTTP_PROXY always wins.
+#[cfg(windows)]
+fn adopt_system_proxy() {
+    if let Some(k) = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].iter().find(|k| std::env::var_os(k).is_some()) {
+        applog(&format!("proxy: using {k} from the environment"));
+        return;
+    }
+    let query = |v: &str| -> Option<String> {
+        let mut c = std::process::Command::new("reg");
+        c.args(["query", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings", "/v", v]);
+        use std::os::windows::process::CommandExt;
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: no console flash on the GUI path
+        let out = c.output().ok()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        text.lines().find(|l| l.trim_start().starts_with(v)).and_then(|l| l.split_whitespace().last().map(str::to_string))
+    };
+    let enable = query("ProxyEnable");
+    if enable.as_deref() != Some("0x1") {
+        applog(&format!("proxy: none in the environment, system proxy disabled (ProxyEnable={enable:?})"));
+        return;
+    }
+    let Some(server) = query("ProxyServer") else {
+        applog("proxy: system proxy enabled but ProxyServer is unset");
+        return;
+    };
+    // "host:port", or "http=host:port;https=host:port;..." when it is set per scheme
+    let https = server
+        .split(';')
+        .find_map(|e| e.strip_prefix("https="))
+        .or_else(|| if server.contains('=') { server.split(';').find_map(|e| e.strip_prefix("http=")) } else { Some(server.as_str()) });
+    if let Some(h) = https {
+        let url = if h.contains("://") { h.to_string() } else { format!("http://{h}") };
+        std::env::set_var("HTTPS_PROXY", &url);
+        std::env::set_var("HTTP_PROXY", &url);
+        applog(&format!("proxy: adopted system proxy {url}"));
+    }
+}
+
 fn main() {
+    #[cfg(windows)]
+    adopt_system_proxy();
     let args: Vec<String> = std::env::args().collect();
     if let Some(cmd) = args.get(1) {
         // Attaching on the GUI path too tied the notch to whatever cmd.exe launched it: closing that
@@ -1804,6 +1883,7 @@ fn main() {
             grok: Mutex::new(grok::load_persisted()),
             antigravity: Mutex::new(antigravity::load_persisted()),
             glm: Mutex::new(glm::load_persisted()),
+            opencode: Mutex::new(opencode::load_persisted()),
             glyphs: Mutex::new(Default::default()),
             activity: Mutex::new(Vec::new()),
         })
@@ -1820,6 +1900,7 @@ fn main() {
             get_grok,
             get_antigravity,
             get_glm,
+            get_opencode,
             get_glyphs,
             get_activity,
             open_data_dir,
@@ -1866,6 +1947,8 @@ fn main() {
             begin_move,
             get_move_handle,
             set_move_handle,
+            get_adaptive_pill,
+            set_adaptive_pill,
             dropzones::get_zones,
             settings_window::get_system_look,
             settings_window::quit_app,
@@ -1894,11 +1977,13 @@ fn main() {
             grok::start(handle.clone());
             antigravity::start(handle.clone());
             glm::start(handle.clone());
+            opencode::start(handle.clone());
             activity::start(handle.clone());
             // Collecting glyphs may read icon resources out of a few executables; do it off the main thread and push when done
             let gh = handle.clone();
             std::thread::spawn(move || reload_glyphs(&gh));
             start_pointer_watchdog(handle.clone());
+            backdrop::start(handle.clone());
             start_work_area_watch(handle.clone());
             topmost::start_watchdog(handle.clone());
             // Seen-clears-it scan
