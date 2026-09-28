@@ -549,7 +549,24 @@ actor CustomEndpointProvider: UsageProvider {
                 preset, baseURL: current.baseURL, apiKey: key, headerKey: current.headerKey
             )
             let window: LimitWindow
+            var additionalWindows: [LimitWindow] = []
             switch reading {
+            case .llamaCpp(let metrics):
+                window = LimitWindow(
+                    id: "llamacpp-speed", label: L10n.t("Average generation speed"),
+                    usedText: metrics.speedText, detail: metrics.speedText, prefersUsedText: true
+                )
+                let tokens = metrics.totalTokens
+                let text = tokens > 0 && tokens < 1_000
+                    ? "\(tokens)" : CustomEndpoint.formatTokenMillions(Double(tokens) / 1_000_000)
+                additionalWindows = [
+                    LimitWindow(id: "llamacpp-active", label: L10n.t("Active requests"),
+                        detail: metrics.activeRequests.map { "\($0)" } ?? "—"),
+                    LimitWindow(id: "llamacpp-queued", label: L10n.t("Queued requests"),
+                        detail: metrics.queuedRequests.map { "\($0)" } ?? "—"),
+                    LimitWindow(id: "preset-tokens", label: L10n.t("Tokens Since Server Start"),
+                        usedText: text, detail: String(format: L10n.t("%@ tokens"), text), prefersUsedText: true)
+                ]
             case .tokens(let tokens):
                 let text = tokens > 0 && tokens < 1_000
                     ? "\(tokens)"
@@ -596,7 +613,7 @@ actor CustomEndpointProvider: UsageProvider {
             var snapshot = ProviderSnapshot(
                 id: id, displayName: current.name,
                 glyph: current.iconPreset.flatMap(ProviderGlyph.init(rawValue:)) ?? .openai,
-                fidelity: .official, status: .ok, windows: [window],
+                fidelity: .official, status: .ok, windows: [window] + additionalWindows,
                 headlineID: window.id, weeklyID: nil, block: nil, kind: .usage
             )
             snapshot.customIconFilename = current.customIconFilename

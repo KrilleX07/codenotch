@@ -1028,7 +1028,8 @@ struct CustomEndpointsSettingsView: View {
         switch preset {
         case .litellm, .openRouter: return L10n.t("USD spend")
         case .newAPI: return L10n.t("Quota units")
-        case .vllm, .llamaCpp: return L10n.t("Tokens since server start")
+        case .vllm: return L10n.t("Tokens since server start")
+        case .llamaCpp: return L10n.t("Generation speed, requests and token totals")
         case .abacus: return L10n.t("Subscription credits")
         }
     }

@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import Codenotch
 
 final class CustomEndpointTests: XCTestCase {
@@ -292,7 +293,9 @@ final class CustomEndpointTests: XCTestCase {
         ] {
             XCTAssertNil(parse(.vllm, invalid), invalid)
         }
-        XCTAssertEqual(parse(.llamaCpp, "llamacpp:prompt_tokens_total 8\nllamacpp:tokens_predicted_total 3"), .tokens(11))
+        XCTAssertEqual(parse(.llamaCpp, "llamacpp:prompt_tokens_total 8\nllamacpp:tokens_predicted_total 3"),
+                       .llamaCpp(LlamaCppMetricsReading(totalTokens: 11, generationTokensPerSecond: nil,
+                                                       activeRequests: nil, queuedRequests: nil)))
         XCTAssertEqual(parse(.openRouter, #"{"data":{"usage":90,"usage_monthly":3.5}}"#),
                        .spendUSD(3.5, period: .month))
         XCTAssertNil(parse(.openRouter, #"{"data":{"usage":90}}"#))
@@ -317,6 +320,118 @@ final class CustomEndpointTests: XCTestCase {
                        "https://routellm.abacus.ai/api/v0/_getOrganizationComputePoints")
         XCTAssertNil(CustomEndpointPresetUsage.presetURL(.abacus, baseURL: "https://evil.example/v1"))
         XCTAssertNil(CustomEndpointPresetUsage.presetURL(.abacus, baseURL: "http://routellm.abacus.ai/v1"))
+    }
+
+    func testLlamaCppPerformanceMetricsUseExactNamesAndScientificSamples() throws {
+        let data = Data("""
+            # TYPE llamacpp:predicted_tokens_seconds gauge
+            llamacpp:prompt_tokens_total 1.2e+06
+            llamacpp:tokens_predicted_total 300000
+            llamacpp:predicted_tokens_seconds 42.456 1790000000000
+            llamacpp:requests_processing 1
+            llamacpp:requests_deferred 2e0
+            llamacpp:prompt_tokens_seconds 200
+            """.utf8)
+        XCTAssertEqual(CustomEndpointPresetUsage.parsePreset(.llamaCpp, data: data),
+            .llamaCpp(LlamaCppMetricsReading(totalTokens: 1_500_000, generationTokensPerSecond: 42.456,
+                                            activeRequests: 1, queuedRequests: 2)))
+    }
+
+    func testLlamaCppInvalidOrAmbiguousGaugesDoNotInventZeroOrDiscardTotals() throws {
+        let counters = "llamacpp:prompt_tokens_total 8\nllamacpp:tokens_predicted_total 3\n"
+        for invalid in ["NaN", "+Inf", "-1", "8.5 invalid-timestamp"] {
+            let text = counters + "llamacpp:predicted_tokens_seconds \(invalid)\nllamacpp:requests_processing 1.5"
+            XCTAssertEqual(CustomEndpointPresetUsage.parsePreset(.llamaCpp, data: Data(text.utf8)),
+                .llamaCpp(LlamaCppMetricsReading(totalTokens: 11, generationTokensPerSecond: nil,
+                                                activeRequests: nil, queuedRequests: nil)))
+        }
+        for ambiguous in [
+            "llamacpp:predicted_tokens_seconds 8\nllamacpp:predicted_tokens_seconds 9",
+            "llamacpp:predicted_tokens_seconds{slot=\"a\"} 8\nllamacpp:predicted_tokens_seconds{slot=\"b\"} 9",
+            "llamacpp:predicted_tokens_seconds_sum 8",
+            "llamacpp:predicted_tokens_seconds{bad} 8"
+        ] {
+            XCTAssertEqual(CustomEndpointPresetUsage.parsePreset(.llamaCpp, data: Data((counters + ambiguous).utf8)),
+                .llamaCpp(LlamaCppMetricsReading(totalTokens: 11, generationTokensPerSecond: nil,
+                                                activeRequests: nil, queuedRequests: nil)))
+        }
+    }
+
+    func testLlamaCppZeroCountersAfterRestartReplacePreviousValues() {
+        let data = Data("""
+            llamacpp:prompt_tokens_total 0
+            llamacpp:tokens_predicted_total 0
+            llamacpp:predicted_tokens_seconds 0
+            llamacpp:requests_processing 0
+            llamacpp:requests_deferred 0
+            """.utf8)
+        let reading = LlamaCppMetricsReading(totalTokens: 0, generationTokensPerSecond: 0,
+                                           activeRequests: 0, queuedRequests: 0)
+        XCTAssertEqual(CustomEndpointPresetUsage.parsePreset(.llamaCpp, data: data), .llamaCpp(reading))
+        XCTAssertEqual(reading.speedText, "0 tok/s")
+        XCTAssertNil(CustomEndpointPresetUsage.parsePreset(.llamaCpp,
+            data: Data("llamacpp:predicted_tokens_seconds 8.5".utf8)), "gauges alone must not detect a complete usage source")
+    }
+
+    @MainActor
+    func testLlamaCppSnapshotShowsSpeedAndRequestCountsWithTokenTotalsInTooltip() async throws {
+        let endpoint = CustomEndpoint(name: "llama.cpp", baseURL: "http://127.0.0.1:8080/v1",
+                                      iconPreset: "llamacpp", usageSource: .jsonEndpoint, usagePreset: .llamaCpp)
+        let network = presetNetwork { request in
+            XCTAssertEqual(request.url?.path, "/metrics")
+            return (200, Data("""
+                llamacpp:prompt_tokens_total 12000
+                llamacpp:tokens_predicted_total 3000
+                llamacpp:predicted_tokens_seconds 42.456
+                llamacpp:requests_processing 1
+                llamacpp:requests_deferred 2
+                """.utf8))
+        }
+        let provider = CustomEndpointProvider(endpoint: endpoint, network: network, endpointLoader: { _ in endpoint })
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.headlineID, "llamacpp-speed")
+        XCTAssertEqual(snapshot.headlineText, "\(42.5.formatted()) tok/s")
+        XCTAssertEqual(snapshot.windows.map(\.label), [L10n.t("Average generation speed"), L10n.t("Active requests"),
+            L10n.t("Queued requests"), L10n.t("Tokens Since Server Start")])
+        XCTAssertEqual(snapshot.windows[1].detail, "1")
+        XCTAssertEqual(snapshot.windows[2].detail, "2")
+        XCTAssertEqual(snapshot.windows[3].usedText, "15k")
+        XCTAssertEqual(snapshot.compactRowCount, 4, "tooltip height must reserve all four rows")
+        XCTAssertNil(snapshot.ringFraction, "speed must not invent quota/context occupancy")
+        XCTAssertNil(snapshot.weeklyID)
+
+        let model = NotchViewModel()
+        model.edge = .right
+        model.surfaceStyle = .solid
+        model.showsNotchReadings = true
+        model.snapshots = [snapshot]
+        model.isExpanded = true
+        model.hoveredIndex = 0
+        let renderer = ImageRenderer(content: NotchRootView(model: model)
+            .frame(width: model.panelSize.width, height: model.panelSize.height)
+            .environment(\.colorScheme, .dark)
+            .environment(\.codenotchHeadlessGlass, true))
+        renderer.scale = 2
+        let image = try XCTUnwrap(renderer.cgImage)
+        let png = try XCTUnwrap(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
+        let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+        attachment.name = "llamacpp-performance-metrics"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testLlamaCppSnapshotKeepsMissingGaugesDistinctFromZero() async throws {
+        let endpoint = CustomEndpoint(name: "llama.cpp", baseURL: "http://127.0.0.1:8080/v1",
+                                      usageSource: .jsonEndpoint, usagePreset: .llamaCpp)
+        let network = presetNetwork { _ in
+            (200, Data("llamacpp:prompt_tokens_total 8\nllamacpp:tokens_predicted_total 3".utf8))
+        }
+        let provider = CustomEndpointProvider(endpoint: endpoint, network: network, endpointLoader: { _ in endpoint })
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.headlineText, "— tok/s")
+        XCTAssertEqual(snapshot.windows[1].detail, "—")
+        XCTAssertEqual(snapshot.windows[2].detail, "—")
+        XCTAssertEqual(snapshot.windows[3].usedText, "11")
     }
 
     func testPresetURLCannotLeakCredentialsOrChangeOpenRouterOrigin() {
