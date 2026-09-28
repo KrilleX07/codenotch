@@ -1365,7 +1365,10 @@ listen('notch_landing',()=>{
   document.documentElement.style.visibility='hidden';
   requestAnimationFrame(()=>requestAnimationFrame(()=>invoke('notch_hidden').catch(()=>{})));
 }).catch(()=>{});
-listen('notch_reveal',()=>{ document.documentElement.style.visibility=''; }).catch(()=>{});
+listen('notch_reveal',()=>{
+  document.documentElement.style.visibility='';
+  if(carried){ carried=false; requestAnimationFrame(()=>requestAnimationFrame(()=>invoke('carry_revealed').catch(()=>{}))); }
+}).catch(()=>{});
 
 /* Collapse test: no trust in element-level mouseenter/mouseleave/e.target at all —
    pure geometry: is the cursor (clientX/Y) inside pill rect ∪ card rect ∪ their bounding box?
@@ -1442,16 +1445,34 @@ function settle(id){
   delete refreshing[id];
   renderRing();
 }
-// Alt+drag, the Mac's ⌥-drag. Without Alt a press on the pill is only ever a click — a ring
-// refreshes (#244) — so one that slips can no longer carry the notch off (#251).
+// Alt+drag, the Mac's ⌥-drag: round the screen's border, drawn by carry.html meanwhile. Without Alt
+// a press on the pill is only ever a click — a ring refreshes (#244) — so one that slips can no
+// longer carry the notch off (#251).
 pill.addEventListener('mousedown',e=>{ if(e.button!==0||folded)return; press={x:e.clientX,y:e.clientY,id:cellAt(e.clientX,e.clientY)||hoverId,alt:e.altKey}; });
 document.addEventListener('mousemove',e=>{
   if(!press||dragging||!press.alt)return;
   if(Math.abs(e.clientY-press.y)>4||Math.abs(e.clientX-press.x)>4){
     dragging=true; clearTimeout(hideTimer); hideCard();
-    invoke('drag_begin').catch(err=>{notice('drag_begin failed: '+err);dragging=false;});
+    invoke('begin_carry',{shape:carryShape()}).catch(err=>{notice('begin_carry failed: '+err);dragging=false;});
   }
 });
+/* This notch as the overlay draws it in the hand, on either kind of edge: a column standing upright,
+   a row lying flat, the same cells laid out the two ways the CSS above does — so it is measured
+   from the cells, not from the pill, which is only ever one of the two. Borders included. */
+function carryShape(){
+  const cells=[...pill.querySelectorAll('.cell')], n=Math.max(1,cells.length);
+  const cw=cells[0]?cells[0].offsetWidth:44, ch=cells[0]?cells[0].offsetHeight:70, gap=14, ends=36;
+  return {
+    radius:20, fillet:parseFloat(getComputedStyle(pill).getPropertyValue('--fillet'))||38.7,
+    upright:{depth:70, length:ends+n*ch+(n-1)*gap+2, pitch:ch+gap, inset:34.5},
+    flat:{depth:24+ch+1, length:ends+n*cw+(n-1)*gap+2, pitch:cw+gap, inset:12+ch/2},
+    cells:cells.map(el=>el.outerHTML)
+  };
+}
+// Emptied once the overlay has this notch drawn, and shown again where it was put down, after which
+// the overlay can go — so between them there is never a frame with neither
+let carried=false;
+listen('carry_hold',()=>{ carried=true; document.documentElement.style.visibility='hidden'; }).catch(()=>{});
 document.addEventListener('mouseup',e=>{
   if(e.button!==0)return;
   if(press&&!dragging&&press.id) refreshRing(press.id);

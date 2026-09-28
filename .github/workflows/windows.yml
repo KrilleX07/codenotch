@@ -34,6 +34,9 @@ jobs:
       - name: Test light surface theme
         run: node --test test-light-surface.cjs
 
+      - name: Test the carried notch's spring and border
+        run: node --test test-carry.cjs
+
       - name: Test Claude sign-in controls
         run: node scripts/test-claude-auth-ui.cjs
 
