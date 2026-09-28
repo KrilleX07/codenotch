@@ -448,18 +448,64 @@ final class StatusItemSummaryTests: XCTestCase {
     /// The items to the left of this one shift whenever it changes width, so
     /// it keeps one width through the ordinary run of a window: single-digit
     /// shares, the last hour, the last minute, an unknown reset.
-    func testTheItemKeepsOneWidthAsTheFiguresMove() {
+    /// Replaces `testTheItemKeepsOneWidthAsTheFiguresMove`, deliberately and in
+    /// the other direction. That test guarded padding each figure to the widest
+    /// reading it could take, so the item held one width for a whole window.
+    /// The room that buys is empty whenever the figures are shorter, and there
+    /// is nowhere inside the item to put it that does not read as a hole. The
+    /// item is as wide as what it says instead; how often that moves is
+    /// measured in the test below, not assumed.
+    func testTheItemFollowsTheFiguresItPrints() {
         let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
         func width(_ used: Double, _ resetIn: TimeInterval?) -> CGFloat {
             StatusItemArtwork(summary: summary([claude(used, resetIn: resetIn)]), font: font, height: 22).size.width
         }
-        let reference = width(0.72, 2 * hour + 18 * minute)
-        for (used, resetIn) in [(0.07, 2 * hour + 18 * minute), (0.0, 4 * hour + 59 * minute),
-                                (0.003, 3 * hour), (0.72, 47 * minute), (0.72, 8 * minute),
-                                (0.72, 30), (0.72, nil)] as [(Double, TimeInterval?)] {
-            XCTAssertEqual(width(used, resetIn), reference, "\(used) with \(String(describing: resetIn))s left")
+        // A digit fewer in either figure is a digit narrower in the item.
+        let digit = ("0" as NSString).size(withAttributes: [.font: font]).width
+        let reference = width(0.72, 2 * hour + 18 * minute)   // "72% · 2h 18m"
+        XCTAssertEqual(width(0.07, 2 * hour + 18 * minute),   // "7% · 2h 18m"
+                       reference - digit, accuracy: 1)
+        XCTAssertEqual(width(1.0, 2 * hour + 18 * minute),    // "100% · 2h 18m"
+                       reference + digit, accuracy: 1)
+        // The same figure in the same shape is the same width, whatever it
+        // reads — monospaced digits are the whole reason the width moves as
+        // rarely as it does.
+        for used in [0.07, 0.72, 0.99] {
+            XCTAssertEqual(width(used, 2 * hour + 18 * minute), width(used, 4 * hour + 5 * minute),
+                           "\(used): two countdowns of the same shape")
         }
         XCTAssertLessThan(width(0.72, nil), 150, "one reading should stay compact")
+    }
+
+    /// What following the figures actually costs the items beside it, counted
+    /// rather than guessed: a five-hour window walked minute by minute, filling
+    /// as it goes, and every width the item takes along the way.
+    ///
+    /// Monospaced digits mean the width can only move when a figure gains or
+    /// loses a *character*, not when it changes value. Over 300 minutes the
+    /// shapes a window passes through are 2/6 → 3/6 → 2/6 → 3/6 → 3/3 → 3/2
+    /// (percent characters over countdown characters): five steps, one an
+    /// hour. A second provider on its own schedule brings the pair to eleven,
+    /// about one every twenty-seven minutes.
+    func testTheItemChangesWidthOnlyAsTheFiguresChangeShape() {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        func width(_ snapshots: [ProviderSnapshot]) -> CGFloat {
+            StatusItemArtwork(summary: summary(snapshots), font: font, height: 22).size.width
+        }
+        var alone: [CGFloat] = []
+        var paired: [CGFloat] = []
+        for minutesLeft in stride(from: 300, through: 1, by: -1) {
+            let filling = claude(Double(300 - minutesLeft) / 300,
+                                 resetIn: TimeInterval(minutesLeft) * minute)
+            // Half a window out of step, the way two providers actually are.
+            let other = ((minutesLeft + 150) % 300) + 1
+            alone.append(width([filling]))
+            paired.append(width([filling, codex(Double(300 - other) / 300,
+                                                resetIn: TimeInterval(other) * minute)]))
+        }
+        func steps(_ widths: [CGFloat]) -> Int { zip(widths, widths.dropFirst()).filter { $0 != $1 }.count }
+        XCTAssertEqual(steps(alone), 5, "one provider, across a whole window")
+        XCTAssertEqual(steps(paired), 11, "two providers, across a whole window")
     }
 
     /// A template, as the icon it stands in for is, so macOS tints it for
