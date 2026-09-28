@@ -107,7 +107,7 @@
 
   /* Hover card, shown to the left of the pill */
   #card{
-    position:absolute;left:10px;right:100px;top:50%;transform:translateY(-50%);
+    position:absolute;left:5px;right:108.7px;top:50%;transform:translateY(-50%);
     /* Anchored on both sides = fluid width: whatever the WebView's real logical width, the card cannot
        extend past the window's left edge (a fixed max-width got clipped when the DPI disagreed).
        The 246 cap matches the upstream spec. */
@@ -119,11 +119,12 @@
   #card.show{display:block}
   /* The tail, its point on the hovered ring: the Mac's curved wedge (TooltipTail), whose shoulders
      leave the card tangent to its edge so the two read as one shape. An element of its own rather
-     than ::after, so the card's overflow cannot clip it and it can be reported as hot. It spans the
-     whole gap, its tip tucked 1 px under the pill's edge so the two meet. */
+     than ::after, so the card's overflow cannot clip it and it can be reported as hot. The Mac's
+     size, 28.2 long and 32.7 across (NotchLayout.tailLength, tailHeight), its tip stopping 10.5
+     short of the pill (tailGap): hence the card's 108.7 = the pill's 70 + 10.5 + 28.2. */
   #tail{
-    position:absolute;right:69px;width:32px;height:36px;background:var(--card);display:none;
-    clip-path:path('M0 0C0 9 18.56 13.68 32 18C18.56 22.32 0 27 0 36Z');
+    position:absolute;right:80.5px;width:28.2px;height:32.7px;background:var(--card);display:none;
+    clip-path:path('M0 0C0 8.18 16.36 12.43 28.2 16.36C16.36 20.29 0 24.54 0 32.72Z');
   }
   #card.show + #tail{display:block}
   .c-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -159,8 +160,8 @@
   body[data-edge="left"] #pill::before,body[data-edge="left"] #pill::after{right:auto;left:0}
   body[data-edge="left"] #pill::before{background:radial-gradient(circle at 100% 0, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
   body[data-edge="left"] #pill::after{background:radial-gradient(circle at 100% 100%, transparent calc(var(--fillet) - 1.5px), var(--edge) calc(var(--fillet) - 0.5px), var(--pill) calc(var(--fillet) + 0.5px))}
-  body[data-edge="left"] #card{left:100px;right:10px;margin-left:0;margin-right:auto}
-  body[data-edge="left"] #tail{right:auto;left:69px;clip-path:path('M32 0C32 9 13.44 13.68 0 18C13.44 22.32 32 27 32 36Z')}
+  body[data-edge="left"] #card{left:108.7px;right:5px;margin-left:0;margin-right:auto}
+  body[data-edge="left"] #tail{right:auto;left:80.5px;clip-path:path('M28.2 0C28.2 8.18 11.84 12.43 0 16.36C11.84 20.29 28.2 24.54 28.2 32.72Z')}
 
   /* Top and bottom: the pill lies flat, so it is a row and its thickness comes from the cells rather
      than a fixed 70 px column. The card is centred under (or over) the hovered ring by `placeCard`. */
@@ -182,9 +183,9 @@
     left:8px;right:auto;top:0;transform:none;margin-left:0;
     width:246px;max-height:calc(100% - 150px);
   }
-  body[data-edge="top"] #tail,body[data-edge="bottom"] #tail{right:auto;width:36px;height:32px}
-  body[data-edge="top"] #tail{clip-path:path('M0 32C9 32 13.68 13.44 18 0C22.32 13.44 27 32 36 32Z')}
-  body[data-edge="bottom"] #tail{clip-path:path('M0 0C9 0 13.68 18.56 18 32C22.32 18.56 27 0 36 0Z')}
+  body[data-edge="top"] #tail,body[data-edge="bottom"] #tail{right:auto;width:32.7px;height:28.2px}
+  body[data-edge="top"] #tail{clip-path:path('M0 28.2C8.18 28.2 12.43 11.84 16.36 0C20.29 11.84 24.54 28.2 32.72 28.2Z')}
+  body[data-edge="bottom"] #tail{clip-path:path('M0 0C8.18 0 12.43 16.36 16.36 28.2C20.29 16.36 24.54 0 32.72 0Z')}
 
   /* Show on hover, the Mac's .onHover: folded, the notch rests as a small pill at the edge. Its size is
      the Mac's NotchLayout.pillWidth × pillHeight, 26 × 210 of its design px — 10 × 79 of this page's,
@@ -1246,6 +1247,8 @@ function renderCard(){
 // The card follows the hovered cell: centred on it along the pill (kept inside the window), tail pointing at it.
 // On the upright edges that means matching its vertical centre; on the flat ones, its horizontal centre,
 // and the card is pushed clear of a pill whose thickness follows the cells it holds.
+// The Mac's NotchLayout.tailGap and tailLength: the tail's tip stops short of the notch, as the CSS above has it
+const TAIL_GAP=10.5, TAIL_LENGTH=28.2;
 function placeCard(){
   const cell=pill.querySelector(`.cell[data-p="${hoverId}"]`)||pill;
   const cr=cell.getBoundingClientRect();
@@ -1258,7 +1261,7 @@ function placeCard(){
     let top=Math.round(cy-ch/2); top=Math.max(8+insets[0],Math.min(top,H-insets[2]-ch-8));
     card.style.top=top+'px'; card.style.left='';
     const ry=rr.top+rr.height/2;
-    const th=tail.offsetHeight||36, ty=Math.max(top+16+th/2,Math.min(top+ch-16-th/2,ry));
+    const th=tail.offsetHeight||33, ty=Math.max(top+16+th/2,Math.min(top+ch-16-th/2,ry));
     tail.style.top=Math.round(ty-th/2)+'px'; tail.style.left='';
   }else{
     const pr=pill.getBoundingClientRect();
@@ -1267,11 +1270,11 @@ function placeCard(){
     let left=Math.round(cx-cw/2); left=Math.max(8+insets[3],Math.min(left,W-insets[1]-cw-8));
     card.style.left=left+'px';
     const rx=rr.left+rr.width/2;
-    const tw=tail.offsetWidth||36, tx=Math.max(left+16+tw/2,Math.min(left+cw-16-tw/2,rx));
+    const tw=tail.offsetWidth||33, tx=Math.max(left+16+tw/2,Math.min(left+cw-16-tw/2,rx));
     tail.style.left=Math.round(tx-tw/2)+'px';
-    // 30 px of clear gap, the same the upright edges leave, with the tail spanning it 1 px under the pill
-    if(notchEdge==='top'){ card.style.top=Math.round(pr.bottom+30)+'px'; tail.style.top=Math.round(pr.bottom-1)+'px'; }
-    else{ card.style.top=Math.round(pr.top-30-ch)+'px'; tail.style.top=Math.round(pr.top-31)+'px'; }
+    // The upright edges' gap, turned: the tail's tip TAIL_GAP clear of the pill, the card past the tail
+    if(notchEdge==='top'){ card.style.top=Math.round(pr.bottom+TAIL_GAP+TAIL_LENGTH)+'px'; tail.style.top=Math.round(pr.bottom+TAIL_GAP)+'px'; }
+    else{ card.style.top=Math.round(pr.top-TAIL_GAP-TAIL_LENGTH-ch)+'px'; tail.style.top=Math.round(pr.top-TAIL_GAP-TAIL_LENGTH)+'px'; }
   }
 }
 
@@ -1298,12 +1301,23 @@ function callq(cmd,args){ // invoke with visible failure: any command error is r
 }
 // Hot rectangles are reported in physical pixels (multiplied by this page's real DPR), so the Rust side does no conversion — WebView2's DPR and the window scale can disagree
 function rectOf(el){const r=el.getBoundingClientRect(),k=window.devicePixelRatio||1;return [r.left*k,r.top*k,r.width*k,r.height*k];}
+/* The tail and the gap between its tip and the pill: crossing it is still being on the notch, so it is
+   hot too, or a click there would go through to whatever is behind. */
+function tailReach(){
+  const t=tail.getBoundingClientRect(), p=pill.getBoundingClientRect(), k=window.devicePixelRatio||1;
+  let {left,top,right,bottom}=t;
+  if(notchEdge==='left') left=Math.min(left,p.right);
+  else if(notchEdge==='top') top=Math.min(top,p.bottom);
+  else if(notchEdge==='bottom') bottom=Math.max(bottom,p.top);
+  else right=Math.max(right,p.left);
+  return [left*k,top*k,(right-left)*k,(bottom-top)*k];
+}
 /* Rust gates click-through on these, so they are reported whenever the pill or card moves, not only
    when the card opens: a stale pill rectangle is a pill that cannot be clicked. */
 function reportHot(){
   if(folded){ callq('set_hot',{rects:[wakeRect()],expanded:false,probe:probeRect()}).catch(()=>{}); return; }
   const open=card.classList.contains('show');
-  const rects=open?[rectOf(pill),rectOf(tail),rectOf(card)]:[rectOf(pill)];
+  const rects=open?[rectOf(pill),tailReach(),rectOf(card)]:[rectOf(pill)];
   if(placeHandles()){ rects.push(rectOf(orb)); if(showMove) rects.push(rectOf(moveHandle)); }
   callq('set_hot',{rects,expanded:open}).catch(()=>{});
 }
