@@ -131,17 +131,17 @@ final class NotchViewModel: ObservableObject {
     }
     /// The settings handle is under the cursor.
     @Published var isHoveringSettings = false
-    /// The move handle is under the cursor.
+    /// The six-dot grip beside the settings button is under the cursor.
     @Published var isHoveringMove = false
-    /// Bumped each time the move handle is pressed, on the same counter
-    /// pattern `settingsSpins` uses and for the same reason.
-    @Published var moveSpins = 0
-    /// The notch is in hand: the move handle has been held past its threshold
-    /// and the drop zones are up, waiting for a release.
-    @Published var isMoving = false
-    /// Which edge a release would land on. Nil before the pointer has moved
-    /// far enough for a target to be meaningful.
-    @Published var moveTarget: NotchEdge?
+    /// The notch being carried — by its dots or ⌥-drag — and set down: what
+    /// its settings handle's end shows meanwhile. See `CarriedHandle`.
+    @Published var carry: Carry?
+
+    /// **The handles' arcs going home while the notch is still open** — in
+    /// the moment between the pointer leaving and the notch folding, so they
+    /// go back into it as goo while there is still a notch to go into. See
+    /// `NotchRootView.arcSeparation`.
+    @Published var handlesTuckedAway = false
     /// A move finished on `edge`. The controller owns persisting it, for the
     /// same reason it owns `onReposition`: this type knows the geometry, not
     /// where preferences live.
@@ -154,6 +154,13 @@ final class NotchViewModel: ObservableObject {
     /// the one action people actually get stuck without a second, ordinary
     /// route that only needs SwiftUI's own gesture recognition to work.
     var onOpenSettings: (() -> Void)?
+    /// An update offered in the notch, and how far along taking it is — see
+    /// `UpdateCard`.
+    @Published var updatePrompt: UpdatePrompt?
+    /// The notch's answer to it.
+    var onUpdateChoice: ((UpdateChoice) -> Void)?
+    /// A newer version waiting, put off — the red dot on the settings button.
+    @Published var updatePending = false
     /// A tap on a session row in the tooltip: jump to the terminal tab the
     /// session runs in. Takes the session's pid; wired to `SessionFocus`.
     var onFocusSession: ((pid_t) -> Void)?
@@ -204,9 +211,6 @@ final class NotchViewModel: ObservableObject {
     @Published var criticalLimit: Double = 0.70
     /// Mirrored from Settings like `surfaceStyle`, just below.
     @Published var colorTransitionStyle: ColorTransitionStyle = .hardStep
-    /// Whether the move handle is on the notch at all. Mirrored from Settings
-    /// like `weeklyRing`.
-    @Published var showsMoveHandle = true
     /// Mirrors the persisted Appearance choice so the separate notch window
     /// redraws immediately when Settings changes it.
     @Published var surfaceStyle: NotchSurfaceStyle = .glass
@@ -263,7 +267,14 @@ final class NotchViewModel: ObservableObject {
     }
 
     func tooltipAlong(index: Int, length: CGFloat) -> CGFloat {
-        let centre = ringAlong(index: index, in: cellWing)
+        cardAlong(centredOn: ringAlong(index: index, in: cellWing), length: length)
+    }
+
+    /// The notch's middle, along the panel — what the update card hangs from.
+    var notchMiddleAlong: CGFloat { cellWing.lead + cellWing.length / 2 }
+
+    /// A card `length` long centred on `centre`, kept on the screen.
+    func cardAlong(centredOn centre: CGFloat, length: CGFloat) -> CGFloat {
         guard let range = visibleAlongRange else { return centre }
         let lower = range.lowerBound + length / 2
         let upper = range.upperBound - length / 2
@@ -503,7 +514,10 @@ final class NotchViewModel: ObservableObject {
         // *on*, which keeps it from ever having to cross the hole to get there.
         let otherLeft = !carryingSide
         let otherOverlap = mergesWithCutout ? cutout.overlap : NotchGeometry.cutoutOverlap
-        let widened = mergesWithCutout || revealsTheOtherCopy ? drawn : 0
+        // Carrying only the one ring's percentage, no longer than it needs to
+        // be for it — see `readingAcrossRun`.
+        let widened = mergesWithCutout || revealsTheOtherCopy
+            ? (readsAcrossTheCutout ? min(drawn, readingAcrossLength * sizeScale) : drawn) : 0
         let other = Wing(id: 1,
                          lead: lead(onTheLeft: otherLeft, overlap: otherOverlap, length: widened),
                          onTheLeft: otherLeft, carriesCells: false,
@@ -543,28 +557,53 @@ final class NotchViewModel: ObservableObject {
         let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
         let left = middle - cutout.width / 2, right = middle + cutout.width / 2
         let near = bar.lead, far = bar.lead + bar.length
-        return (near > left && near < right, far > left && far < right)
+        // An end *at* a wall is not in yet: the glide stops there with its end
+        // still curved, and it closes up square only as the join takes it in
+        // past the wall — closing up outside, its corner shrank to a point in
+        // plain view. (Its dip, on the other hand, is already under way.)
+        let e: CGFloat = -0.5
+        return (near > left - e && near < right + e, far > left - e && far < right + e)
     }
 
-    /// **Where the bar in the hand dips to pass through the hole** — see
-    /// `SideNotchShape.Dip`. In the bar's own measure, from its leading tip, and
-    /// only while any of it is over the hole; eased out past a wall only where
-    /// the bar reaches across that wall.
+    /// **Where the bar dips to pass through the hole** — see
+    /// `SideNotchShape.Dip`. In the bar's own measure, from its leading tip,
+    /// eased out past a wall only where the bar reaches across that wall.
+    ///
+    /// There whenever the bar is beside the hole, in the hand or joined, and
+    /// only its `amount` says whether any of the bar is over the hole — so that
+    /// letting go, gliding onto the wall and taking the hole are one animation
+    /// of the same numbers, rather than a dip that appears or vanishes in a
+    /// frame. Joined, the bar is exactly as deep as the hole and the dip
+    /// changes nothing.
     var carryingDip: SideNotchShape.Dip? {
-        guard holdsOffTheCutout, isExpanded, let cutout else { return nil }
+        guard let cutout else { return nil }
         let bar = cellWing
         let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
         let half = cutout.width / 2
         let left = middle - half, right = middle + half
         let near = bar.lead, far = bar.lead + bar.length
-        guard far > left, near < right else { return nil }
+        // An end *at* a wall counts as over the hole and across that wall, so
+        // the glide onto the wall lifts its foot toward the hole's under the
+        // strand, and the join is left only the bar going in.
+        let e: CGFloat = 0.5
+        let over = far > left - e && near < right + e
+        // Clear of the hole, eased on the side it will come in from.
+        let before = near < left - e && far > left - e || !over && far <= left
+        let after = near < right + e && far > right + e || !over && near >= right
+        let from = left - near, to = right - near
         let scale = max(sizeScale, 0.0001)
-        return SideNotchShape.Dip(from: (left - near) / scale,
-                                  to: (right - near) / scale,
+        return SideNotchShape.Dip(from: from / scale,
+                                  to: to / scale,
                                   depth: (cutout.depth + NotchRootView.bezelBleed) / scale,
                                   reach: gooReach / scale,
-                                  easesBefore: near < left && far > left,
-                                  easesAfter: near < right && far > right)
+                                  easesBefore: before,
+                                  easesAfter: after,
+                                  // Measured: a circular arc of 31.2px on a 90px-deep cutout.
+                                  corner: cutout.depth * 31.2 / 90 / scale,
+                                  // Folded, the bar is the notch at rest and
+                                  // nothing of it squeezes anywhere.
+                                  amount: over && isExpanded ? 1 : 0,
+                                  closes: NotchGeometry.cutoutOverlap / scale)
     }
 
     /// **The strand of black between a dragged notch and the hole.**
@@ -603,10 +642,21 @@ final class NotchViewModel: ObservableObject {
         /// How far it has been pulled apart, 0 where the two touch to 1 where
         /// it lets go.
         var apart: CGFloat
+        /// How far the bar's end facing the hole has closed up square, and how
+        /// much of the bar's dip there is — the same two numbers the bar is
+        /// drawn with, easing on the same animation, so the strand always
+        /// meets the bar's end as it actually is. Meeting the end it would
+        /// have had, it left the bar's bottom corner poking out beneath it
+        /// while the bar went in.
+        var barJoin: CGFloat = 0
+        var dipAmount: CGFloat = 0
     }
 
     var neck: Neck? {
-        guard holdsOffTheCutout, isExpanded, let cutout else { return nil }
+        // Joined as well as in the hand: joined, it lies flat along the joined
+        // bar's own foot where nothing of it shows — but it is *there*, so
+        // taking the hole eases it flat rather than dropping it in a frame.
+        guard holdsOffTheCutout || mergesWithCutout, isExpanded, let cutout else { return nil }
         let carrying = cellWing
         let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
         let half = cutout.width / 2
@@ -626,12 +676,15 @@ final class NotchViewModel: ObservableObject {
         let flare = min(self.flare * sizeScale, depth)
         let corner = max(0, min(drawnCornerRadius * sizeScale, depth - flare,
                                 (carrying.length - 2 * flare) / 2))
+        let shape = notchShape(for: carrying)
         return Neck(wall: wall, tip: tip, side: onTheRight ? 1 : -1,
                     holeDepth: cutout.depth,
                     // Measured: a circular arc of 31.2px on a 90px-deep cutout.
                     holeCorner: cutout.depth * 31.2 / 90,
                     barDepth: depth, barFlare: flare, barCorner: corner,
-                    apart: max(0, gap) / stretch)
+                    apart: max(0, gap) / stretch,
+                    barJoin: onTheRight ? shape.leadingJoin : shape.trailingJoin,
+                    dipAmount: shape.dip?.amount ?? 0)
     }
 
     /// **Whether the other copy is coming out of the hole ahead of the join.**
@@ -745,16 +798,25 @@ final class NotchViewModel: ObservableObject {
         // Joined, the side with the readings keeps it, and the other side has
         // exactly the same one, so the pair balances about the hole.
         if wing.carriesCells {
-            shape.leadingJoin = cutout.joined ? 1 : 0
+            // Never reflected: in the hand it is not, and a reflection is not a
+            // number SwiftUI can ease — taking the hole on the left turned the
+            // bar end for end in the first frame of the landing, with its dip
+            // and its ends still easing from the other way round. Joined on the
+            // left, its trailing end is the joined one instead.
+            // The end at the wall closes up square by how far in past the wall
+            // it is — see `SideNotchShape.Dip.closes` — joined or in the hand.
+            shape.reflected = false
             shape.dip = carryingDip
             // In the hand, an end that has gone into the hole closes square at
             // the hole's depth, like a joined end does. Left curved, it covered
             // only the top of the hole's rounded corner and a wedge of wallpaper
             // showed in the rest, sliding with the pointer. It changes over
             // inside the hole, where neither shape of it can be seen.
-            if holdsOffTheCutout, let (nearIn, farIn) = carryingEndsInTheHole {
-                shape.leadingJoin = nearIn ? 1 : 0
-                shape.trailingJoin = farIn ? 1 : 0
+            // With the whole of it in the hole there is no wall it reaches
+            // across, and both ends are simply square.
+            if holdsOffTheCutout, let (nearIn, farIn) = carryingEndsInTheHole, nearIn && farIn {
+                shape.leadingJoin = 1
+                shape.trailingJoin = 1
             }
             return shape
         }
@@ -788,11 +850,72 @@ final class NotchViewModel: ObservableObject {
     /// is a trade to offer rather than to make, and there is no floor under it:
     /// asked for, it is drawn, however small the strip leaves it.
     var showsCellReading: Bool {
-        showsNotchReadings
+        showsNotchReadings && !readsAcrossTheCutout
     }
 
-    /// How much of each end of the bar the flare actually takes.
+    /// **Whether the one ring's percentage is on the other side of the Mac's
+    /// notch.**
+    ///
+    /// Merged, with a single ring, the notch widens the Mac's by the same on
+    /// either side and only one side has anything to carry. So the percentage
+    /// goes on the other, level with the ring and in the middle of that side's
+    /// open run: the ring keeps the whole of the depth, and the pair reads as
+    /// one thing across the Mac's notch. With more rings each keeps its
+    /// percentage under it, since there is only one other side.
+    var readsAcrossTheCutout: Bool {
+        showsNotchReadings && mergesWithCutout && snapshots.count == 1
+    }
+
+    /// **Where the percentage across the Mac's notch is drawn**, in design
+    /// points out from its side's wall end: the ring's own margin out from the
+    /// Mac's notch — the gap the ring keeps from the bar's edges — and as wide
+    /// as the number, or as the side allows when the side cannot be longer.
+    ///
+    /// Held against the Mac's notch so it reads as belonging to it. Centred in
+    /// a side as long as the ring's, a short one like "9%" floated half a side
+    /// from the notch with as much again beyond it.
+    var readingAcrossRun: ClosedRange<CGFloat> {
+        let scale = max(sizeScale, 0.0001)
+        let wall = (cutout?.overlap ?? NotchGeometry.cutoutOverlap) / scale
+        let from = wall + NotchLayout.ringMargin(for: edge)
+        let room = cellWing.length / scale - flare - drawnCornerRadius
+        return from...max(from, min(from + readingAcrossTextWidth, room))
+    }
+
+    /// The width of the percentage across the Mac's notch, in design points.
+    var readingAcrossTextWidth: CGFloat {
+        guard let snapshot = snapshots.first else { return 0 }
+        return ProviderReading(snapshot: snapshot, weeklyRing: weeklyRing,
+                               showsWeeklyReading: weeklyReading).acrossWidth
+    }
+
+    /// **How long the side carrying it needs to be**, in design points: out of
+    /// the Mac's notch, the margin, the number, the same margin again, and the
+    /// side's own flare — so the gap beyond the number, level with it, is the
+    /// gap before it. As long as the ring's side, it left a short number with
+    /// most of a side of black after it.
+    var readingAcrossLength: CGFloat {
+        let scale = max(sizeScale, 0.0001)
+        let wall = (cutout?.overlap ?? NotchGeometry.cutoutOverlap) / scale
+        return wall + 2 * NotchLayout.ringMargin(for: edge) + readingAcrossTextWidth + flare
+    }
+
+    /// How much of each end of the bar the flare is laid out to take.
     var flare: CGFloat { NotchLayout.curlRadius }
+
+    /// **The flare as it is drawn**, in design points: the layout's, except
+    /// merged into the Mac's notch, where the bar is only as deep as the hole
+    /// and the corner and the band hidden past the bezel leave the flare a
+    /// little less — `SideNotchShape` draws it that much smaller, see its
+    /// `bandDepth`. What traces the flare — the settings arc beside it, the
+    /// strand landing on it — follows this one, not the layout's.
+    var drawnFlare: CGFloat {
+        guard mergesWithCutout else { return flare }
+        let depth = notchDepth
+        let corner = min(drawnCornerRadius, depth / 2)
+        let band = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
+        return max(0, min(flare, depth - corner - band))
+    }
 
     /// The corner the shape actually draws at its far end.
     ///
@@ -817,7 +940,7 @@ final class NotchViewModel: ObservableObject {
     var orbArcRadius: CGFloat {
         orbHugsCorner
             ? NotchLayout.orbConvexArcRadius(corner: drawnCornerRadius, scale: orbScale)
-            : NotchLayout.orbArcRadius
+            : drawnFlare - NotchLayout.orbGap
     }
 
     /// Where the settings orb sits.
@@ -857,33 +980,40 @@ final class NotchViewModel: ObservableObject {
     /// Reserve the full hit area even while only the resting arc is visible,
     /// so revealing the settings button cannot put it beyond the screen.
     var trailingExtent: CGFloat {
-        (max(0, orbAlong - shapeLength + orbHotZone / 2) * sizeScale).rounded(.up)
+        (max(0, orbAlong - shapeLength + orbHotZone / 2,
+             gripAlong - shapeLength + NotchLayout.gripHotZone / 2) * sizeScale).rounded(.up)
+    }
+
+    /// The room the settings button and its grip need past the notch's end,
+    /// wherever the notch is clear of the Mac's notch — which is where an
+    /// ⌥-drag lets go of it.
+    var freeTrailingExtent: CGFloat {
+        (max(orbHotZone / 2, gripReach + NotchLayout.gripHotZone / 2) * sizeScale).rounded(.up)
     }
 
     /// The handle's reach, which has to follow the handle's size: a hot zone
     /// wider than the bar is deep sits over the rings and eats their clicks.
     var orbHotZone: CGFloat { NotchLayout.orbHotZone * orbScale }
 
-    /// Where the move handle sits: the settings orb's position mirrored to the
-    /// near end of the stack. Measured back from zero the same distance the
-    /// orb sits past `shapeLength`, so the pair stay symmetric about the notch
-    /// at every size and on every edge.
-    var moveAlong: CGFloat {
-        guard !carriedOnTheLeft else { return shapeLength - cutoutBleed }
-        return cutoutBleed + shapeLength - orbAlong
+    /// Where the six-dot grip sits: beside the settings button, on the side
+    /// away from the notch — further along past the end it hangs off.
+    var gripAlong: CGFloat {
+        let away: CGFloat = orbAlong <= 0 ? -1 : 1
+        return orbAlong + away * gripReach
     }
 
-    /// The mirror of `trailingExtent` at the near end — the room the move
-    /// handle needs before the notch's own start.
-    ///
-    /// Nothing when the handle is switched off, unlike `trailingExtent`: the
-    /// settings orb is always there to be revealed, but a hidden handle is
-    /// hidden for the session. Reserving its room anyway kept the notch from
-    /// sliding to the leading end of its edge, which is a place ⌥-drag is
-    /// meant to reach.
+    /// From the settings button's middle to the grip's.
+    var gripReach: CGFloat {
+        (NotchLayout.orbDiameter / 2 + NotchLayout.gripGap) * orbScale
+            + NotchLayout.gripWidth / 2
+    }
+
+    /// The mirror of `trailingExtent` at the near end — only ever needed
+    /// beside the Mac's notch, where the settings button and its grip hang
+    /// off the notch's leading tip.
     var leadingExtent: CGFloat {
-        guard showsMoveHandle else { return 0 }
-        return (max(0, -moveAlong + orbHotZone / 2) * sizeScale).rounded(.up)
+        (max(0, -orbAlong + orbHotZone / 2,
+             -gripAlong + NotchLayout.gripHotZone / 2) * sizeScale).rounded(.up)
     }
 
     /// Where the bar's far corner actually turns, along the stack.
@@ -898,8 +1028,10 @@ final class NotchViewModel: ObservableObject {
         shapeLength - flare - drawnCornerRadius
     }
 
+    /// One flare in from the bezel, level with the flare's own centre — the
+    /// flare as drawn, see `flare`.
     var orbInset: CGFloat {
-        NotchLayout.orbInsetFromEdge
+        mergesWithCutout ? drawnFlare : NotchLayout.orbInsetFromEdge
     }
 
     /// The arc's radius and offset **as the orb's own view needs them**.
@@ -912,7 +1044,6 @@ final class NotchViewModel: ObservableObject {
     /// corner — which is what "the arc line is way too far" was.
     var orbArcRadiusInOrbSpace: CGFloat { orbArcRadius / max(orbScale, 0.0001) }
     var orbArcOffsetInOrbSpace: CGSize { divided(orbArcOffset) }
-    var moveArcOffsetInOrbSpace: CGSize { divided(moveArcOffset) }
 
     private func divided(_ size: CGSize) -> CGSize {
         let by = max(orbScale, 0.0001)
@@ -925,16 +1056,6 @@ final class NotchViewModel: ObservableObject {
         let back = -NotchLayout.orbCornerOffset(corner: drawnCornerRadius, scale: orbScale)
         return CGSize(width: back * (edge.alongDirection.x + inward.x),
                       height: back * (edge.alongDirection.y + inward.y))
-    }
-
-    /// `orbArcOffset` mirrored: the move handle hangs off the near corner, so
-    /// its arc tucks back *forward* along the stack rather than backward.
-    var moveArcOffset: CGSize {
-        guard orbHugsCorner else { return .zero }
-        let inward = CGPoint(x: -edge.outward.x, y: -edge.outward.y)
-        let forward = NotchLayout.orbCornerOffset(corner: drawnCornerRadius, scale: orbScale)
-        return CGSize(width: forward * (edge.alongDirection.x - inward.x),
-                      height: forward * (edge.alongDirection.y - inward.y))
     }
 
     /// The centre of a ring measured across the notch, in stack space.
@@ -980,33 +1101,13 @@ final class NotchViewModel: ObservableObject {
         }
     }
 
-    /// The move handle's own points, mirroring `orbHandlePoints` at the near
-    /// end of the stack.
-    var moveHandlePoints: [CGPoint] {
-        // No points, not merely no drawing. Every way of reaching the handle —
-        // hover, a press, and the window's own click-through region — is
-        // measured from these, so a hidden handle has to report none or it
-        // leaves an invisible spot that still starts a move.
-        guard showsMoveHandle else { return [] }
-        let button = CGPoint(x: moveAlong, y: orbInset)
-        guard orbHugsCorner else { return [button] }
+    /// Where the grip is, in stack space.
+    var gripPoint: CGPoint { CGPoint(x: gripAlong, y: orbInset) }
 
-        let arcCentre = CGPoint(x: moveAlong + moveArcOffset.width,
-                                y: orbInset + moveArcOffset.height)
-        let reach = hypot(button.x - arcCentre.x, button.y - arcCentre.y)
-        guard reach > 0 else { return [button] }
-        let arcMid = CGPoint(
-            x: arcCentre.x + orbArcRadius * (button.x - arcCentre.x) / reach,
-            y: arcCentre.y + orbArcRadius * (button.y - arcCentre.y) / reach
-        )
-        return [button, arcMid]
-    }
-
-    func isOnMoveHandle(along: CGFloat, across: CGFloat) -> Bool {
-        let radius = orbHotZone / 2
-        return moveHandlePoints.contains {
-            hypot(along - $0.x, across - $0.y) <= radius
-        }
+    /// Whether a point in stack space is on the grip — a capsule's worth of
+    /// ground round it, generous as the settings button's.
+    func isOnGrip(along: CGFloat, across: CGFloat) -> Bool {
+        hypot(along - gripPoint.x, across - gripPoint.y) <= NotchLayout.gripHotZone / 2
     }
 
 
@@ -1047,7 +1148,8 @@ final class NotchViewModel: ObservableObject {
         NotchLayout.cellAlong(for: edge) + cellSpacing
     }
 
-    private func cellSpacing(cellCount: Int) -> CGFloat {
+    private func cellSpacing(cellCount: Int, on edge: NotchEdge? = nil) -> CGFloat {
+        let edge = edge ?? self.edge
         guard edge.isVertical, screenSize.height > 0, cellCount > 1 else {
             return NotchLayout.cellSpacing
         }
@@ -1087,6 +1189,39 @@ final class NotchViewModel: ObservableObject {
     }
 
     var shapeLength: CGFloat { shapeLength(cellCount: snapshots.count) }
+
+    /// **The notch in the hand, as it would be on `edge`**, in screen points:
+    /// how long and how deep, where along it each ring's centre is from its
+    /// leading end, and how far in from the bezel. What it is drawn at as it
+    /// goes round the screen's border in an ⌥-drag, on edges it is not on yet
+    /// — side edges carry it longer and shallower than the top and bottom —
+    /// so going round a corner it can turn from the one to the other.
+    struct TravelSize {
+        var length: CGFloat
+        var depth: CGFloat
+        var ringCenters: [CGFloat]
+        var ringAcross: CGFloat
+        /// How far down the stack a cell's middle is from its ring's: on a
+        /// side edge its reading is under the ring *along* the stack.
+        var cellShift: CGFloat
+    }
+
+    func travelSize(on edge: NotchEdge) -> TravelSize {
+        let scale = requestedScale
+        let count = snapshots.count
+        let spacing = cellSpacing(cellCount: count, on: edge)
+        let depth = NotchLayout.bodyDepth(for: edge)
+        return TravelSize(
+            length: (NotchLayout.bodyLength(cellCount: count, edge: edge, spacing: spacing)
+                     + 2 * flare) * scale,
+            depth: depth * scale,
+            ringCenters: (0..<count).map {
+                NotchLayout.ringCenter(index: $0, edge: edge, flare: flare, spacing: spacing) * scale
+            },
+            ringAcross: depth / 2 * scale,
+            cellShift: edge.isVertical && showsCellReading
+                ? (NotchLayout.cellExtent - NotchLayout.ringDiameter) / 2 * scale : 0)
+    }
 
     var panelSize: CGSize { panelSize(cellCount: snapshots.count) }
 

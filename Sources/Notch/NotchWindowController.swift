@@ -30,9 +30,11 @@ final class NotchWindowController {
     /// controller only holds the live value; persisting it per edge is
     /// Preferences' job, the same division `apply(edge:)` already keeps.
     var onReposition: ((CGFloat) -> Void)?
-    /// A move settled on a new edge. The fleet owns writing that to
-    /// preferences, for the same reason it owns `onReposition`.
-    var onMoveToEdge: ((NotchEdge) -> Void)?
+    /// A move settled on a new edge — and, carried there by an ⌥-drag, where
+    /// along it it was let go, as that edge's offset; nil keeps the offset the
+    /// edge remembers. The fleet owns writing that to preferences, for the
+    /// same reason it owns `onReposition`.
+    var onMoveToEdge: ((NotchEdge, CGFloat?) -> Void)?
 
     private var panel: NotchPanel?
     private var hostingView: NotchHostingView<NotchRootView>?
@@ -58,7 +60,15 @@ final class NotchWindowController {
     /// dismissing a tooltip, and doing it the instant the pointer strays feels
     /// twitchy rather than responsive.
     private let foldGrace: TimeInterval = 0.45
-    private var foldWork: DispatchWorkItem?
+    private var foldWork: DispatchWorkItem? {
+        didSet {
+            // A fold that is not going to happen after all — pinned, peeked,
+            // hovered again, dragged: the arcs that set off home come back out.
+            if foldWork == nil, model.isExpanded, model.handlesTuckedAway {
+                model.handlesTuckedAway = false
+            }
+        }
+    }
     /// Folds the notch again after a peek, when nothing else is holding it open.
     private var peekWork: DispatchWorkItem?
     /// The session a peek is currently offering, and how long the offer lasts.
@@ -81,7 +91,10 @@ final class NotchWindowController {
     /// The standing visibility choice, so a peek never overrides Hidden.
     private var visibility: NotchVisibility = .onHover
     /// Whether we have pushed the pointing hand onto the cursor stack.
-    private var isPointing = false
+    private var shownCursor: NSCursor?
+    /// Where the pointer let go of the notch by its dots, while it has not
+    /// moved since: the dots and the button stay out till it does.
+    private var restingOnGrip: CGPoint?
     /// Option-drag moves the whole notch under the pointer. Hovering rings
     /// while that happens is accidental — the pointer necessarily crosses
     /// them as the panel follows it — so cursor tracking is suspended until
@@ -217,6 +230,12 @@ final class NotchWindowController {
             }
             .store(in: &cancellables)
 
+        model.$updatePrompt
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateInteractiveRects() }
+            }
+            .store(in: &cancellables)
+
         // A model can gain speed rows without changing the cell count. Read
         // after Published's willSet so sizing sees the new card contents too.
         model.$snapshots
@@ -299,8 +318,12 @@ final class NotchWindowController {
         let frame = NotchGeometry.panelFrame(
             for: screen, panelSize: size, edge: model.edge,
             alongOffset: model.alongOffset, slack: model.slack,
-            trailingExtent: model.trailingExtent,
-            leadingExtent: model.leadingExtent,
+            // In the hand, right up to the screen's end: the room kept for the
+            // handles past the notch's ends held it short of each corner, and
+            // the passage round the corner — drawn from the corner — started a
+            // step away from where the notch had stopped.
+            trailingExtent: isOptionDragging ? 0 : model.trailingExtent,
+            leadingExtent: isOptionDragging ? 0 : model.leadingExtent,
             heldBar: model.holdsOffTheCutout ? model.plainBarLength : nil
         )
 
@@ -315,6 +338,12 @@ final class NotchWindowController {
             panel.contextMenuProvider = { [weak self] in self?.contextMenu() }
             panel.onClick = { [weak self] point in self?.handleClick(at: point) }
             panel.onDragStart = { [weak self] in self?.beginOptionDrag() }
+            // The grip carries the notch without ⌥, the same way.
+            panel.startsDrag = { [weak self] point in
+                guard let self, let panel = self.panel else { return false }
+                let local = CGPoint(x: point.x, y: panel.frame.height - point.y)
+                return self.gripRevealed && self.isOverGrip(local)
+            }
             panel.onDrag = { [weak self] dx, dy in self?.dragged(dx: dx, dy: dy) }
             panel.onDragEnd = { [weak self] in
                 // Where it lands is saved by the landing — see `putDown` — not
@@ -377,51 +406,660 @@ final class NotchWindowController {
     /// edge's x — so no sign flip belongs here; adding one would make the
     /// pill run away from the cursor instead of following it.
     private func dragged(dx: CGFloat, dy: CGFloat) {
-        let delta = model.edge.isVertical ? dy : dx
-        guard model.holdsOffTheCutout, let cutout = heldCutout else {
-            model.alongOffset += delta
-            relocate()
-            return
-        }
-        // Where the pointer has really taken it, and where it is drawn for
-        // that: bent by the hole's pull near either wall — see
-        // `NotchGeometry.magnetised`. Kept apart so the pull can hold the notch
-        // back without losing track of the hand.
-        heldPointer += delta
-        model.alongOffset = NotchGeometry.magnetised(heldPointer, width: cutout.width,
-                                                     bar: model.plainBarLength)
-        relocate()
+        // Again on every step: whatever is under the pointer would otherwise
+        // put its own cursor back.
+        NSCursor.closedHand.set()
+        guard let screen = currentScreen() else { return }
+        travel(on: screen)
     }
 
     /// Where the pointer has taken a held notch, before the hole's pull.
     private var heldPointer: CGFloat = 0
 
     private func beginOptionDrag() {
-        guard !isOptionDragging else { return }
+        guard !isOptionDragging, !settling else { return }
         isOptionDragging = true
+        dragStartEdge = model.edge
+        defer {
+            if let screen = currentScreen() {
+                travelSizes = Dictionary(uniqueKeysWithValues:
+                    NotchEdge.allCases.map { ($0, model.travelSize(on: $0)) })
+                grip(on: screen)
+                // Up now, empty, so the first corner has nothing to wait for.
+                let overlay = CornerPassageOverlay(screen: screen)
+                overlay.prepare()
+                passage = overlay
+                // Drawn from the press, not the first movement: taking hold of
+                // it is itself a movement, and the drawing taking over part
+                // way through cut it short.
+                travel(on: screen)
+            }
+        }
         clearHoverWork?.cancel()
         clearHoverWork = nil
         foldWork?.cancel()
         foldWork = nil
         model.hoveredIndex = nil
         pickUp()
+        // Taken by its dots, with the settings button out beside them — or
+        // by ⌥-drag, with nothing out.
+        let fromHover = model.isExpanded && (model.isHoveringSettings || model.isHoveringMove)
         model.isHoveringSettings = false
         model.isHoveringMove = false
-        setPointing(false)
+        // In the hand: the hand closes on it, and its settings end turns into
+        // the dots that hold it — see `CarriedHandle`.
+        setCursor(.closedHand)
+        model.carry = Carry(at: Date(), fromHover: fromHover)
         updateInteractiveRects()
     }
 
     private func endOptionDrag() {
-        guard isOptionDragging else { return }
+        guard isOptionDragging, !settling else { return }
+        model.carry?.releasedAt = Date()
+        // **Let go round a corner, it flows off it.** On along the border, on
+        // the same glide it followed the hand with, to where the whole of it
+        // is on whichever edge more of it was already on — straightening as
+        // it goes — and lands there. Pulled onto the edge in one frame, it
+        // snapped from the bend to its resting shape: the stiffness.
+        //
+        // **And let go anywhere, it comes to rest rather than stopping dead.**
+        // It had been a step behind the hand, gliding, and letting go put it
+        // under the hand in one frame — then, freed of the drag, pulled it
+        // back in from the corner in another, clear of the room its handles
+        // need. Both are now the end of the same glide: on to where it will
+        // stay, and it lands on arriving.
+        guard let screen = currentScreen() else { finishDrag(); return }
+        let frame = screen.frame
+        let track = BorderTrack(width: frame.width, height: frame.height)
+        var target = travelTarget ?? travelShown
+        if let round = passing {
+            let (first, second) = BorderTrack.edges(of: round.corner)
+            let onto = round.before >= round.after ? first : second
+            let half = travelSize(onto).length / 2 + 1
+            let corner = track.position(of: round.corner)
+            target = track.wrapped(onto == first ? corner - half : corner + half)
+        }
+        guard let place = target else { finishDrag(); return }
+        travelTarget = resting(place, on: track)
+        settling = true
+        startFollowing()
+    }
+
+    /// Where the notch comes to rest for a middle at `place`: on its edge, and
+    /// within the room kept either end for its handles. Beside the Mac's notch
+    /// the landing decides instead — see `putDown`.
+    private func resting(_ place: CGFloat, on track: BorderTrack) -> CGFloat {
+        let (edge, along) = track.place(at: place)
+        if let screen = currentScreen(), besideTheHole(place, on: track, screen: screen) { return place }
+        let half = travelSize(edge).length / 2
+        let size = edge.isVertical ? track.height : track.width
+        // The room the handles keep at each end once it is down — worked out
+        // for a notch clear of the hole, which is where this one lands, not
+        // from how the notch is now. Short of it, it came to rest in a corner
+        // and was then pushed out of it by that much in a frame: a landing
+        // and then a jump. On the top edge of a display with a notch it was
+        // not kept at all.
+        let room = model.freeTrailingExtent
+        // The notch's leading end is at the smaller `along` on every edge;
+        // the settings button and its grip are past its trailing one.
+        let low = half, high = size - half - room
+        let held = low <= high ? min(max(along, low), high) : size / 2
+        let point = edge.isVertical ? CGPoint(x: 0, y: held) : CGPoint(x: held, y: 0)
+        return track.position(on: edge, of: point)
+    }
+
+    /// Let go round a corner and flowing off it — see `endOptionDrag`.
+    private var settling = false
+
+    private func finishDrag() {
+        settling = false
+        // Landed: the dots fade and the arc comes back, on the notch itself
+        // from here — the same frame the drawing would have shown.
+        let landed = Date()
+        model.carry?.landedAt = landed
+        DispatchQueue.main.asyncAfter(deadline: .now() + Carry.settles) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.model.carry?.landedAt == landed else { return }
+                self.model.carry = nil
+            }
+        }
+        // Taken by its dots: set down with them out beside the settings
+        // button, as it was taken — and held so while the pointer rests where
+        // it let go, whether or not the landing left it over them.
+        if model.carry?.fromHover == true {
+            restingOnGrip = NSEvent.mouseLocation
+            model.isHoveringMove = true
+        }
+        let landing = stopTravelling()
         isOptionDragging = false
+        // The notch itself again, exactly where the drawing of it came to rest.
+        if let place = landing, let screen = currentScreen() {
+            let frame = screen.frame
+            endOverlay(at: place, on: BorderTrack(width: frame.width, height: frame.height), frame: frame)
+        }
+        // Gone round onto another edge: that is the edge now, and where along
+        // it is saved by the landing below, against it.
+        if let start = dragStartEdge, model.edge != start {
+            onMoveToEdge?(model.edge, model.holdsOffTheCutout ? nil : model.alongOffset)
+        }
+        dragStartEdge = nil
+        passage?.hide()
+        passage = nil
+        // Set down: the hand lets go.
+        setCursor(nil)
+        // Back inside the room kept for the handles, now it is not in the hand.
+        if !model.holdsOffTheCutout { relocate() }
         putDown()
         cursorMoved()
     }
 
-    // MARK: - The notch in the hand
+    // MARK: - Round the screen's edges
 
-    /// The second half of a landing, if it has not happened yet.
-    private var landing: DispatchWorkItem?
+    /// The edge an ⌥-drag started on, so letting go knows whether it went
+    /// round onto another.
+    private var dragStartEdge: NotchEdge?
+
+    /// **How much nearer another edge the pointer has to be before the notch
+    /// goes round onto it** — enough that a pointer near a corner does not
+    /// send it back and forth between the two.
+    static let edgeSwitchMargin: CGFloat = 40
+
+    /// **The ⌥-dragged notch keeps to the screen's frame, and goes round it.**
+    ///
+    /// Where it is is a place on the screen's border — see `BorderTrack` —
+    /// following the pointer's place on it, held at the distance from it that
+    /// it was picked up at. Along an edge it is the notch, sliding: on the top
+    /// edge of a display with a notch, in the hand beside the hole with the
+    /// hole's pull on it. Reaching round a corner, it is drawn wrapping the
+    /// corner instead, on a surface over the whole screen, with the notch
+    /// itself faded out above it; clear of the corner on the next edge, the
+    /// notch is back, there. Going round one frame at a time the wrap is one
+    /// band sliding round the bend — see `CornerPassageView`.
+    private func travel(on screen: NSScreen) {
+        let frame = screen.frame
+        let track = BorderTrack(width: frame.width, height: frame.height)
+        let local = CGPoint(x: NSEvent.mouseLocation.x - frame.minX,
+                            y: frame.maxY - NSEvent.mouseLocation.y)
+        // The pointer's place on the border — from the edge it is nearest, or
+        // near a corner from both edges at once — and when the reading changes,
+        // the grip taken up so the notch does not jump.
+        let appKit = NSEvent.mouseLocation
+        let edge = Self.stickyEdge(current: pointerEdge, pointer: appKit, frame: frame)
+        let reading = Self.reading(of: local, on: track, nearest: edge)
+        if reading != pointerReading {
+            var step = Self.place(of: local, on: track, by: pointerReading)
+                - Self.place(of: local, on: track, by: reading)
+            if step > track.perimeter / 2 { step -= track.perimeter }
+            if step < -track.perimeter / 2 { step += track.perimeter }
+            grip += step
+            pointerReading = reading
+        }
+        pointerEdge = edge
+        // Where the hand has it. The notch follows on the display's own beat —
+        // see `follow`.
+        travelTarget = track.wrapped(Self.place(of: local, on: track, by: pointerReading) + grip)
+        startFollowing()
+    }
+
+    /// **How the pointer's place on the border is read.** Along the edge it is
+    /// nearest; or, within `cornerReach` of both edges at a corner, from both
+    /// at once — how far it is from the edge before the corner, less how far
+    /// from the edge after, so moving along either one, or away from either,
+    /// moves it round. Read from one edge there, the pointer stopped by the
+    /// screen's corner moved nothing until it was well down the next edge, and
+    /// the notch sat pinned in the corner the while.
+    enum Reading: Equatable {
+        case edge(NotchEdge)
+        case corner(BorderTrack.Corner)
+    }
+
+    static let cornerReach: CGFloat = 160
+
+    static func reading(of point: CGPoint, on track: BorderTrack, nearest: NotchEdge) -> Reading {
+        for corner in BorderTrack.Corner.allCases {
+            let (before, after) = BorderTrack.edges(of: corner)
+            if distance(to: before, of: point, on: track) < cornerReach,
+               distance(to: after, of: point, on: track) < cornerReach {
+                return .corner(corner)
+            }
+        }
+        return .edge(nearest)
+    }
+
+    static func place(of point: CGPoint, on track: BorderTrack, by reading: Reading) -> CGFloat {
+        switch reading {
+        case .edge(let edge):
+            return track.position(on: edge, of: point)
+        case .corner(let corner):
+            let (before, after) = BorderTrack.edges(of: corner)
+            return track.wrapped(track.position(of: corner)
+                                 + distance(to: before, of: point, on: track)
+                                 - distance(to: after, of: point, on: track))
+        }
+    }
+
+    /// How far a point in the screen's top-left-origin space is from `edge`.
+    static func distance(to edge: NotchEdge, of point: CGPoint, on track: BorderTrack) -> CGFloat {
+        switch edge {
+        case .top:    return max(0, point.y)
+        case .bottom: return max(0, track.height - point.y)
+        case .left:   return max(0, point.x)
+        case .right:  return max(0, track.width - point.x)
+        }
+    }
+
+    /// How the pointer's place is being read right now.
+    private var pointerReading: Reading = .edge(.top)
+
+    /// **Draws the notch with its middle at `place` on the border.**
+    ///
+    /// In the hand it is drawn on the one surface over the whole screen, along
+    /// the edges and round the corners alike — see `CornerPassageView` — and
+    /// the notch's own window waits, out of sight, where it will land. Handing
+    /// it back and forth at every corner was a jump each way, the two never
+    /// quite the same, and moving a window every frame along the edges was a
+    /// stutter the screen does not keep time with. Only beside the Mac's notch
+    /// is it the notch itself, for the hole's pull and the join.
+    private func show(at place: CGFloat, on screen: NSScreen) {
+        let frame = screen.frame
+        let track = BorderTrack(width: frame.width, height: frame.height)
+        if besideTheHole(place, on: track, screen: screen) {
+            endOverlay(at: place, on: track, frame: frame)
+            put(at: place, on: track, frame: frame)
+            return
+        }
+        let speed = abs(travelVelocity)
+        let stretch = Self.maxStretch * min(1, speed / Self.stretchSpeed)
+        showOverlay(at: place, on: track, screen: screen,
+                    stretch: stretch, heading: travelVelocity >= 0 ? 1 : -1)
+    }
+
+    /// Whether a middle at `place` has the notch within the Mac's notch's reach.
+    private func besideTheHole(_ place: CGFloat, on track: BorderTrack, screen: NSScreen) -> Bool {
+        guard let cutout = screen.hardwareNotch else { return false }
+        let (edge, along) = track.place(at: place)
+        guard edge == .top else { return false }
+        let bar = model.plainBarLength
+        let free = along - track.width / 2 - cutout.width / 2 + NotchGeometry.cutoutOverlap - bar / 2
+        return NotchGeometry.cutoutFreelyNear(alongOffset: free, width: cutout.width, bar: bar)
+    }
+
+    // MARK: - Following the hand
+
+    /// Where the hand has the notch's middle on the border, where it is
+    /// drawn, and how fast that is moving along it.
+    private var travelTarget: CGFloat?
+    private var travelShown: CGFloat?
+    private var travelVelocity: CGFloat = 0
+    private var follower: CADisplayLink?
+    private var ticker: DisplayTick?
+    private var lastTick: CFTimeInterval?
+
+    /// **The notch follows the hand on a spring**, not an ease: it carries its
+    /// speed, catches up, and comes to rest with the smallest give past the
+    /// hand and back, the way something poured does — where an ease just
+    /// slowed to a stop. How quick, and how much give: a hand's pull is
+    /// brisk and all but dead; flowing off a corner on its own it is gentler,
+    /// with a little more.
+    static let followResponse: CGFloat = 0.2
+    static let followDamping: CGFloat = 0.84
+    static let settleResponse: CGFloat = 0.3
+    static let settleDamping: CGFloat = 0.74
+
+    /// **How much it stretches with speed**: dragged fast it draws out along
+    /// the way it is going and thins, its back end trailing, and it takes its
+    /// own shape again as it slows. As much as this share of its length, at
+    /// `stretchSpeed` points a second.
+    static let maxStretch: CGFloat = 0.14
+    static let stretchSpeed: CGFloat = 2600
+
+    /// One frame of the spring: how far it moves toward a target `gap` away,
+    /// and its speed after. Two half steps, which keeps a stiff spring steady
+    /// at a slow frame.
+    static func spring(gap: CGFloat, velocity: CGFloat, elapsed: CGFloat,
+                       response: CGFloat, damping: CGFloat) -> (moved: CGFloat, velocity: CGFloat) {
+        let omega = 2 * .pi / response
+        var moved: CGFloat = 0, velocity = velocity
+        for _ in 0..<2 {
+            let dt = elapsed / 2
+            let acceleration = omega * omega * (gap - moved) - 2 * damping * omega * velocity
+            velocity += acceleration * dt
+            moved += velocity * dt
+        }
+        return (moved, velocity)
+    }
+
+    private func startFollowing() {
+        guard follower == nil, let screen = currentScreen() else { return }
+        // On the display's own beat, once a frame — a timer of its own ran in
+        // and out of step with the screen and moved the notch twice in one
+        // frame and not at all in the next.
+        let tick = DisplayTick { [weak self] link in
+            MainActor.assumeIsolated { self?.follow(link) }
+        }
+        let link = screen.displayLink(target: tick, selector: #selector(DisplayTick.tick(_:)))
+        // Common modes: the drag holds the run loop in event tracking.
+        link.add(to: .main, forMode: .common)
+        follower = link
+        ticker = tick
+        lastTick = nil
+    }
+
+    private func stopFollowing() {
+        follower?.invalidate()
+        follower = nil
+        ticker = nil
+        lastTick = nil
+    }
+
+    /// One frame: the spring's pull toward where the hand has it, and the
+    /// notch drawn where that leaves it — stretched by how fast it is going.
+    private func follow(_ link: CADisplayLink) {
+        guard let target = travelTarget, let screen = currentScreen() else { return }
+        let track = BorderTrack(width: screen.frame.width, height: screen.frame.height)
+        let elapsed = CGFloat(min(max(link.timestamp - (lastTick ?? link.timestamp - link.duration), 0), 1.0 / 30))
+        lastTick = link.timestamp
+        guard let shown = travelShown else {
+            travelShown = target
+            travelVelocity = 0
+            show(at: target, on: screen)
+            return
+        }
+        var gap = target - shown
+        if gap > track.perimeter / 2 { gap -= track.perimeter }
+        if gap < -track.perimeter / 2 { gap += track.perimeter }
+        if abs(gap) < (settling ? 0.3 : 0.05), abs(travelVelocity) < (settling ? 6 : 1) {
+            travelVelocity = 0
+            // Flowed off the corner and come to rest: now it lands.
+            if settling { finishDrag() }
+            return
+        }
+        let (position, velocity) = Self.spring(
+            gap: gap, velocity: travelVelocity, elapsed: elapsed,
+            response: settling ? Self.settleResponse : Self.followResponse,
+            damping: settling ? Self.settleDamping : Self.followDamping)
+        travelVelocity = velocity
+        let next = track.wrapped(shown + position)
+        travelShown = next
+        show(at: next, on: screen)
+    }
+
+    /// Done following: at where it was going, and that place.
+    @discardableResult
+    private func stopTravelling() -> CGFloat? {
+        stopFollowing()
+        let place = travelTarget ?? travelShown
+        if let place, let screen = currentScreen() {
+            travelShown = place
+            show(at: place, on: screen)
+        }
+        travelTarget = nil
+        travelShown = nil
+        travelVelocity = 0
+        return place
+    }
+
+    /// The notch on its edge with its middle at `place` on the border.
+    private func put(at place: CGFloat, on track: BorderTrack, frame: CGRect) {
+        let (edge, along) = track.place(at: place)
+        if edge != model.edge {
+            model.hoveredIndex = nil
+            model.holdsOffTheCutout = false
+            model.edge = edge
+        }
+        let point = edge.isVertical
+            ? CGPoint(x: frame.minX, y: frame.maxY - along)
+            : CGPoint(x: frame.minX + along, y: frame.maxY)
+        let offset = Self.offset(along: edge, at: point, on: frame)
+        if let cutout = heldCutout {
+            // The hand's own measure beside the hole: from its right wall to
+            // the bar's leading tip, so the bar's middle is at `place`; then
+            // the hole's pull on it.
+            let bar = model.plainBarLength
+            heldPointer = offset - cutout.width / 2 + NotchGeometry.cutoutOverlap - bar / 2
+            model.holdsOffTheCutout = true
+            model.alongOffset = NotchGeometry.magnetised(heldPointer, width: cutout.width, bar: bar)
+        } else {
+            model.alongOffset = offset
+        }
+        relocate()
+        updateInteractiveRects()
+    }
+
+    /// Takes hold: how far along the border the notch's middle is from the
+    /// pointer's place, so it keeps that distance as it travels.
+    private func grip(on screen: NSScreen) {
+        let frame = screen.frame
+        let track = BorderTrack(width: frame.width, height: frame.height)
+        pointerEdge = model.edge
+        let local = CGPoint(x: NSEvent.mouseLocation.x - frame.minX,
+                            y: frame.maxY - NSEvent.mouseLocation.y)
+        pointerReading = Self.reading(of: local, on: track, nearest: model.edge)
+        guard let panel else { grip = 0; return }
+        let wing = model.cellWing
+        let middle = model.edge.isVertical
+            ? CGPoint(x: 0, y: frame.maxY - panel.frame.maxY + wing.lead + wing.length / 2)
+            : CGPoint(x: panel.frame.minX - frame.minX + wing.lead + wing.length / 2, y: 0)
+        var distance = track.position(on: model.edge, of: middle)
+            - Self.place(of: local, on: track, by: pointerReading)
+        if distance > track.perimeter / 2 { distance -= track.perimeter }
+        if distance < -track.perimeter / 2 { distance += track.perimeter }
+        grip = distance
+    }
+
+    /// How far along the border the notch's middle is from the pointer's place.
+    private var grip: CGFloat = 0
+    /// The edge the pointer's place on the border is read from.
+    private var pointerEdge: NotchEdge = .top
+
+    // MARK: - Drawn on the screen while in the hand
+
+    private var passage: CornerPassageOverlay?
+    /// Whether the drawing is standing in for the notch right now.
+    private var overlaid = false
+    /// Where the notch was going round when the drag last moved, for a let-go
+    /// mid-corner to flow off from.
+    private var passing: (corner: BorderTrack.Corner, before: CGFloat, after: CGFloat)?
+
+    /// The notch in the hand on each edge — see `NotchViewModel.travelSize` —
+    /// worked out when the drag began.
+    private var travelSizes: [NotchEdge: NotchViewModel.TravelSize] = [:]
+
+    private func travelSize(_ edge: NotchEdge) -> NotchViewModel.TravelSize {
+        travelSizes[edge] ?? model.travelSize(on: edge)
+    }
+
+    /// **The notch at `place` on the border**: the corner it is going round, if
+    /// any, how far round, and how long it is there — turning from the one
+    /// edge's length to the other's as it goes round, so there is no size it
+    /// arrives at in a step.
+    private func shape(at place: CGFloat, on track: BorderTrack, stretch: CGFloat = 0)
+    -> (round: (corner: BorderTrack.Corner, before: CGFloat, after: CGFloat)?, length: CGFloat, turned: CGFloat) {
+        let drawn = 1 + stretch
+        var length = travelSize(track.place(at: place).edge).length * drawn
+        guard var round = track.corner(for: place, length: length) else { return (nil, length, 0) }
+        let (first, second) = BorderTrack.edges(of: round.corner)
+        var turned: CGFloat = 0
+        // Twice: how far round decides the length, and the length how far round.
+        for _ in 0..<2 {
+            let t = min(max(round.after / max(length, 1), 0), 1)
+            turned = t * t * (3 - 2 * t)
+            length = (travelSize(first).length
+                      + (travelSize(second).length - travelSize(first).length) * turned) * drawn
+            guard let again = track.corner(for: place, length: length) else { return (nil, length, turned) }
+            round = again
+        }
+        return (round, length, turned)
+    }
+
+    private func showOverlay(at hand: CGFloat, on track: BorderTrack, screen: NSScreen,
+                             stretch: CGFloat = 0, heading: CGFloat = 1) {
+        let overlay = passage ?? {
+            let made = CornerPassageOverlay(screen: screen)
+            passage = made
+            return made
+        }()
+        if !overlaid { passageEdge = model.edge }
+        let bleed = NotchRootView.bezelBleed
+        let scale = model.sizeScale
+        // Stretched, it draws out behind: its front stays with the hand and
+        // its middle falls back by half what it gained.
+        let resting = travelSize(track.place(at: hand).edge).length
+        let back = heading * resting * stretch / 2
+        let place = track.wrapped(hand - back)
+        let (round, length, turned) = shape(at: place, on: track, stretch: stretch)
+        let thin = 1 - stretch * 0.35
+        let edges = round.map { BorderTrack.edges(of: $0.corner) }
+        let from = travelSize(edges?.before ?? track.place(at: place).edge)
+        let to = travelSize(edges?.after ?? track.place(at: place).edge)
+        func mix(_ a: CGFloat, _ b: CGFloat) -> CGFloat { a + (b - a) * turned }
+        overlay.show(CornerPassageView(
+            track: track, corner: round?.corner ?? .topLeft,
+            before: round?.before ?? length, after: round?.after ?? 0,
+            depth: bleed + (from.depth - bleed) * thin,
+            depthAfter: bleed + (to.depth - bleed) * thin, bleed: bleed,
+            cornerRadius: model.drawnCornerRadius * scale, flare: model.flare * scale,
+            place: place, rings: passageRings(from: from, to: to, turned: turned, carriedBy: back),
+            ringInset: mix(from.ringAcross, to.ringAcross) - bleed,
+            ringScale: scale,
+            straight: round == nil ? track.place(at: place).edge : nil,
+            arcs: passageArcs(at: place, length: length, on: track),
+            carry: model.carry))
+        passing = round.map { ($0.corner, $0.before, $0.after) }
+        guard !overlaid else { return }
+        overlaid = true
+        // Handed over, not faded: the drawing is exactly where the notch is,
+        // so the notch simply goes — a turn later, once the drawing is on
+        // screen under it, so there is no frame with neither.
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.overlaid else { return }
+                self.panel?.alphaValue = 0
+            }
+        }
+    }
+
+    /// The notch itself again, put where the drawing had it first.
+    private func endOverlay(at place: CGFloat, on track: BorderTrack, frame: CGRect) {
+        guard overlaid else { return }
+        overlaid = false
+        passing = nil
+        put(at: place, on: track, frame: frame)
+        panel?.alphaValue = 1
+        let overlay = passage
+        // Emptied a turn later, for the same reason the notch went a turn late.
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard self?.overlaid == false else { return }
+                overlay?.clear()
+            }
+        }
+    }
+
+    /// The edge the notch was on when the drawing took over, whose layout its
+    /// rings keep all the way round.
+    private var passageEdge: NotchEdge = .top
+
+    /// **The handles' resting arcs, at the two ends of the notch** — the
+    /// settings arc at the end that was the trailing one when the drawing took
+    /// over, the move arc (when it is shown) at the other — each in the pocket
+    /// of the flare at the end it hangs off, facing back along the notch, on
+    /// whatever edge that end is on. Left out, they went out at every pick-up
+    /// and came back at every landing.
+    private func passageArcs(at place: CGFloat, length: CGFloat, on track: BorderTrack) -> [PassageArc] {
+        let scale = model.sizeScale
+        let sign: CGFloat = passageEdge == .top || passageEdge == .right ? 1 : -1
+        let flare = model.flare * scale
+        var arcs: [PassageArc] = []
+        // The settings arc alone: the grip that moves the notch comes out with
+        // the settings button, and has no arc of its own.
+        for (id, towardEnd) in [(0, sign)] {
+            let end = track.wrapped(place + towardEnd * length / 2)
+            let (edge, along) = track.place(at: end)
+            // Which way along this edge the rest of the notch is: back toward
+            // the middle, the border's own direction there one way or other.
+            let runs: CGFloat = edge == .top || edge == .right ? 1 : -1
+            let bodyToward = runs * -towardEnd
+            let trim = bodyToward > 0
+                ? MoveHandle.restingTrim(for: edge, convex: false)
+                : SettingsOrb.restingTrim(for: edge, convex: false)
+            let w = track.width, h = track.height
+            let centre: CGPoint
+            switch edge {
+            case .top:    centre = CGPoint(x: along, y: flare)
+            case .bottom: centre = CGPoint(x: along, y: h - flare)
+            case .left:   centre = CGPoint(x: flare, y: along)
+            case .right:  centre = CGPoint(x: w - flare, y: along)
+            }
+            let away = edge.isVertical ? CGPoint(x: 0, y: -bodyToward) : CGPoint(x: -bodyToward, y: 0)
+            arcs.append(PassageArc(id: id, centre: centre, edge: edge, trim: trim,
+                                   radius: (model.flare - NotchLayout.orbClearance) * scale,
+                                   gap: NotchLayout.orbClearance * scale,
+                                   stroke: NotchLayout.orbStroke * scale,
+                                   away: away, reach: model.gripReach))
+        }
+        return arcs
+    }
+
+    /// The rings, as the notch carries them — the very cells, readings and
+    /// all, so the drawing and the notch are the same to the point: each one's
+    /// distance from the notch's middle along the border, turning from where
+    /// it is on the one edge to where it is on the next. Kept in the order the
+    /// notch had them when the drawing took over, so none of them ever swaps
+    /// places mid-drag.
+    private func passageRings(from: NotchViewModel.TravelSize, to: NotchViewModel.TravelSize,
+                              turned: CGFloat, carriedBy back: CGFloat = 0) -> [PassageRing] {
+        // The border runs the same way as the notch's own stack on the top and
+        // right edges, and the other way on the bottom and left.
+        let sign: CGFloat = passageEdge == .top || passageEdge == .right ? 1 : -1
+        return model.snapshots.enumerated().map { index, snapshot in
+            // The cell's middle, which is where it is placed: its ring's, moved
+            // down the stack past a reading under it on a side edge.
+            let a = (from.ringCenters[safe: index] ?? 0) + from.cellShift - from.length / 2
+            let b = (to.ringCenters[safe: index] ?? 0) + to.cellShift - to.length / 2
+            return PassageRing(
+                id: snapshot.id,
+                cell: ProviderCell(snapshot: snapshot,
+                                   activity: model.activity(for: snapshot),
+                                   isRefreshing: model.isRefreshing(snapshot),
+                                   weeklyRing: model.weeklyRing,
+                                   showsWeeklyReading: model.weeklyReading,
+                                   showsReading: model.showsCellReading),
+                // The rings are solid: stretching the notch does not move
+                // them off the hand.
+                offset: sign * (a + (b - a) * turned) + back)
+        }
+    }
+
+    /// The edge the notch belongs on for a pointer at `pointer`: the one it is
+    /// on, unless another is nearer by more than `edgeSwitchMargin`.
+    static func stickyEdge(current: NotchEdge, pointer: CGPoint, frame: CGRect) -> NotchEdge {
+        let nearest = NotchEdge.allCases.min {
+            distance(from: $0, of: pointer, on: frame) < distance(from: $1, of: pointer, on: frame)
+        } ?? current
+        let here = distance(from: current, of: pointer, on: frame)
+        let there = distance(from: nearest, of: pointer, on: frame)
+        return there + edgeSwitchMargin < here ? nearest : current
+    }
+
+    /// How far `point` is from `edge` of `frame`, into the screen.
+    static func distance(from edge: NotchEdge, of point: CGPoint, on frame: CGRect) -> CGFloat {
+        switch edge {
+        case .top:    return frame.maxY - point.y
+        case .bottom: return point.y - frame.minY
+        case .left:   return point.x - frame.minX
+        case .right:  return frame.maxX - point.x
+        }
+    }
+
+    /// The offset along `edge` that centres the notch on `point`, in the
+    /// measure `NotchGeometry.panelFrame` places it by: x to the right of the
+    /// middle on a horizontal edge, y *down* from the middle on a vertical one.
+    static func offset(along edge: NotchEdge, at point: CGPoint, on frame: CGRect) -> CGFloat {
+        edge.isVertical ? frame.midY - point.y : point.x - frame.midX
+    }
+
+    // MARK: - The notch in the hand
 
     /// The hole on the screen the notch is on, if it is on the one edge that
     /// has one.
@@ -439,8 +1077,6 @@ final class NotchWindowController {
     /// pointer — and it lets go of the hole on the fold's spring. The window is
     /// the same before and after, which is the only reason that may be eased.
     private func pickUp() {
-        landing?.cancel()
-        landing = nil
         guard let cutout = heldCutout, !model.holdsOffTheCutout else { return }
         let free = NotchGeometry.freeOffset(fromStanding: model.alongOffset,
                                             width: cutout.width, bar: model.plainBarLength)
@@ -457,13 +1093,10 @@ final class NotchWindowController {
 
     /// **Put down near the hole, it glides onto the nearer wall and joins it.**
     ///
-    /// Two movements, one after the other, because they are two different
-    /// things and doing both at once was the glitch. First the bar travels to
-    /// the wall as the bar it is — the same copy, the same shape, only moving.
-    /// Then, with its end already inside the hole where nothing shows, it
-    /// takes the hole: the size and depth the hardware sets, and the other copy
-    /// drawn out of the far wall. Neither moves the window, because the window
-    /// is the same anywhere near the hole; that is what lets both ease.
+    /// One movement: onto the wall, in past it, and the hole's size taken, with
+    /// the other copy drawn out of the far wall at the same time. It does not
+    /// move the window, because the window is the same anywhere near the hole;
+    /// that is what lets it ease.
     ///
     /// Put down out of reach, it stays exactly where it was put.
     private func putDown() {
@@ -485,54 +1118,23 @@ final class NotchWindowController {
             return
         }
 
-        // Let go with its end already inside the hole: one movement, now. The
-        // pause is only for a notch that still has to reach the hole — waiting
-        // it out anyway is the other copy turning up late for no reason.
-        guard !target.joinsAtOnce else {
-            withAnimation(NotchMotion.unfold) {
-                model.revealsTheOtherCopy = false
-                model.holdsOffTheCutout = false
-                model.alongOffset = target.standing
-                relocate()
-            }
-            updateInteractiveRects()
-            onReposition?(model.alongOffset)
-            return
-        }
-
-        // The other copy starts out of its wall *now*, on the same spring as
-        // this glide, so the pair arrive together rather than one after the
-        // other. It is safe to show before the join: it is only ever welded to
-        // its wall, and its joined end is inside the hole throughout.
+        // **One movement**, wherever it was let go. The bar travels onto the
+        // wall and in past it, takes the hole's size, and the other copy comes
+        // out of the far wall, all on one spring. It used to stop at the wall
+        // and take the hole a beat later — two movements, the first all but
+        // settled before the second set off, which read as landing and then
+        // landing again. The end at the wall closes up by where it is, not on
+        // the clock (see `SideNotchShape.Dip.closes`), so there is nothing
+        // left to wait for.
         withAnimation(NotchMotion.unfold) {
-            model.revealsTheOtherCopy = true
-            model.alongOffset = target.free
+            model.revealsTheOtherCopy = false
+            model.holdsOffTheCutout = false
+            model.alongOffset = target
             relocate()
         }
-        let join = DispatchWorkItem { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self else { return }
-                self.landing = nil
-                withAnimation(NotchMotion.unfold) {
-                    self.model.revealsTheOtherCopy = false
-                    self.model.holdsOffTheCutout = false
-                    self.model.alongOffset = target.standing
-                    self.relocate()
-                }
-                self.updateInteractiveRects()
-                self.onReposition?(self.model.alongOffset)
-            }
-        }
-        landing = join
-        // Most of the glide, not all of it: the spring's tail is a settle a few
-        // hundredths of a point wide, and waiting it out reads as a pause.
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.landingBeat, execute: join)
         updateInteractiveRects()
+        onReposition?(model.alongOffset)
     }
-
-    /// How long the glide onto the wall is given before the notch takes the
-    /// hole.
-    static let landingBeat: TimeInterval = 0.32
 
     // MARK: - Hit regions
 
@@ -573,7 +1175,10 @@ final class NotchWindowController {
     /// than a box can answer — see `isOverHandle`.
     private var handleRect: CGRect {
         let side = model.orbHotZone
-        let boxes = (model.orbHandlePoints + model.moveHandlePoints).map { point -> CGRect in
+        // The grip only once it is out: an invisible spot beside the settings
+        // button that still takes the mouse would be worse than none.
+        let grip = gripRevealed ? [model.gripPoint] : []
+        let boxes = (model.orbHandlePoints + grip).map { point -> CGRect in
             let centre = placement.point(along: model.handleWing.lead + point.x * model.sizeScale,
                                          across: point.y * model.sizeScale)
             return CGRect(x: centre.x - side / 2, y: centre.y - side / 2,
@@ -594,10 +1199,16 @@ final class NotchWindowController {
         )
     }
 
-    /// Whether the pointer is on the move handle, asked in the same notch-own
+    /// Whether the grip is out: it comes with the settings button, and stays
+    /// while the pointer is on it.
+    private var gripRevealed: Bool {
+        model.isExpanded && (model.isHoveringSettings || model.isHoveringMove)
+    }
+
+    /// Whether the pointer is on the grip, asked in the same notch-own
     /// measurements `isOverHandle` uses.
-    private func isOverMoveHandle(_ local: CGPoint) -> Bool {
-        model.isOnMoveHandle(
+    private func isOverGrip(_ local: CGPoint) -> Bool {
+        model.isOnGrip(
             along: (placement.along(of: local) - model.handleWing.lead) / model.sizeScale,
             across: placement.across(of: local) / model.sizeScale
         )
@@ -663,8 +1274,40 @@ final class NotchWindowController {
         )
     }
 
+    /// Where the update card is, on the notch's middle — see `UpdateCard`.
+    private var updateCardRect: CGRect? {
+        guard model.isExpanded, model.updatePrompt != nil else { return nil }
+        let size = UpdateCard.size(for: model.edge.tooltipDirection)
+        let across = model.edge.isVertical ? size.width : size.height
+        let along = model.edge.isVertical ? size.height : size.width
+        let centre = model.cardAlong(centredOn: model.notchMiddleAlong, length: along)
+        return placement.rect(
+            along: centre - along / 2,
+            across: model.notchDrawnDepth,
+            length: along,
+            depth: NotchLayout.tailGap + NotchLayout.tailLength + across
+        )
+    }
+
+    /// **An update offered, or installing**: the notch opens for it and stays
+    /// open until it is answered — see `UpdateCard`.
+    func apply(updatePrompt: UpdatePrompt?) {
+        let arriving = model.updatePrompt == nil && updatePrompt != nil
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+            model.updatePrompt = updatePrompt
+        }
+        if arriving, visibility != .hidden, panel != nil {
+            model.hoveredIndex = nil
+            setExpanded(true)
+        }
+        updateInteractiveRects()
+        // Answered: back to whatever the pointer says.
+        if updatePrompt == nil { cursorMoved() }
+    }
+
     private func updateInteractiveRects() {
         var rects = [liveRect]
+        if let card = updateCardRect { rects.append(card) }
         if model.isExpanded, let event = model.activeResetAlert, let card = resetCardRect(event: event) {
             rects.append(card)
         }
@@ -778,18 +1421,30 @@ final class NotchWindowController {
             target = current
         }
 
-        let overHandle = model.isExpanded && isOverHandle(local)
+        var overHandle = model.isExpanded && isOverHandle(local)
+        // Out already, or coming out with the settings button now.
+        let gripOut = gripRevealed || overHandle
+        var overMove = model.isExpanded && gripOut && !overHandle && isOverGrip(local)
+        // Just set down by its dots: on them until the pointer moves — see
+        // `finishDrag`.
+        if let rest = restingOnGrip {
+            if NSEvent.mouseLocation == rest {
+                overHandle = false
+                overMove = true
+            } else {
+                restingOnGrip = nil
+            }
+        }
         if model.isHoveringSettings != overHandle {
             model.isHoveringSettings = overHandle
         }
-        let overMove = model.isExpanded && isOverMoveHandle(local)
         if model.isHoveringMove != overMove {
             model.isHoveringMove = overMove
         }
-        setPointing(
-            Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target)
-                || overHandle || overMove
-        )
+        // The grip is held, not clicked: an open hand, ready to close on it.
+        let pointing = Self.wantsPointingHand(isExpanded: model.isExpanded, cellIndex: target)
+            || overHandle
+        setCursor(overMove ? .openHand : pointing ? .pointingHand : nil)
 
         if let target {
             clearHoverWork?.cancel()
@@ -824,11 +1479,15 @@ final class NotchWindowController {
         if wanted {
             foldWork?.cancel()
             foldWork = nil
+            // Back before it folded: the arcs come out again.
+            if model.handlesTuckedAway { model.handlesTuckedAway = false }
             guard !model.isExpanded else { return }
             withAnimation(NotchMotion.unfold) { model.isExpanded = true }
             return
         }
 
+        // An update offered holds it open until it is answered.
+        if model.updatePrompt != nil { return }
         // A peek holds the notch open for its own duration; only after that
         // does the pointer get a say again.
         if let peekUntil, peekUntil > Date() { return }
@@ -840,19 +1499,42 @@ final class NotchWindowController {
         let work = DispatchWorkItem { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.foldWork = nil
                 let stillHoldsOpen = self.model.isPinned || (self.model.isAlwaysOn && !ignoresAlwaysOn)
-                guard !stillHoldsOpen else { return }
+                guard !stillHoldsOpen else {
+                    self.foldWork = nil
+                    return
+                }
                 withAnimation(NotchMotion.unfold) {
                     self.model.isExpanded = false
                     self.model.hoveredIndex = nil
                 }
+                // Cleared once folded, so letting go of the pending fold does
+                // not bring the arcs back out on its way shut.
+                self.foldWork = nil
                 self.setPointing(false)
                 self.updateInteractiveRects()
             }
         }
         foldWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + foldGrace, execute: work)
+        // Left from the settings button or its dots: the button turns back
+        // into its arc first — see `DiscToArc` — and only then does the arc
+        // go home and the notch fold. At once, the arc was on its way in
+        // before the button had become it.
+        let fromHandle = model.isHoveringSettings || model.isHoveringMove
+        let turnBack: TimeInterval = fromHandle ? SettingsOrb.turnsBack : 0
+        // The arcs start home, while the notch is still open to go into — it
+        // folds once they are in.
+        if turnBack > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + turnBack) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self, self.foldWork === work else { return }
+                    self.model.handlesTuckedAway = true
+                }
+            }
+        } else {
+            model.handlesTuckedAway = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + foldGrace + turnBack, execute: work)
     }
 
     /// The rings are buttons, so they should say so.
@@ -864,13 +1546,18 @@ final class NotchWindowController {
     /// the app underneath had chosen. Setting `.arrow` on the way out would
     /// stamp an arrow over someone else's text caret.
     private func setPointing(_ wanted: Bool) {
-        guard wanted != isPointing else { return }
-        isPointing = wanted
-        if wanted {
-            NSCursor.pointingHand.push()
-        } else {
-            NSCursor.pop()
-        }
+        setCursor(wanted ? .pointingHand : nil)
+    }
+
+    /// The cursor over the notch: a pointing hand on what clicks, an open hand
+    /// on the grip, a closed one while the notch is carried — or the system's
+    /// own. One pushed at a time, so each change pops the last.
+    private func setCursor(_ wanted: NSCursor?) {
+        BackgroundCursor.enable()
+        guard wanted !== shownCursor else { return }
+        if shownCursor != nil { NSCursor.pop() }
+        wanted?.push()
+        shownCursor = wanted
     }
 
     /// A click on a ring refetches that provider; a click anywhere else on the
@@ -886,14 +1573,6 @@ final class NotchWindowController {
         // The handle sits inside the notch, so it has to be tested before the
         // cells — otherwise the cell band nearest the foot of the stack swallows
         // it and clicking the gear refetches a provider instead.
-        // The move handle is tested before the settings orb and the cells for
-        // the same reason the orb is: it sits over the stack, and whichever
-        // band is nearest would otherwise swallow the press.
-        if model.isExpanded, isOverMoveHandle(local) {
-            model.moveSpins += 1
-            beginMove()
-            return
-        }
         if model.isExpanded, isOverHandle(local) {
             // The same turn the SwiftUI tap gives it, so the gear responds
             // however the click reached it — this path and the tap gesture
@@ -975,15 +1654,6 @@ final class NotchWindowController {
     /// because `@Published` fires in `willSet` — a sink here would recompute
     /// the panel from the size that is being replaced. `apply(edge:)` is the
     /// same shape for the same reason.
-    /// Recomputes the click-through region at once. The handle's hit points
-    /// vanish with it, but the window only learns which of its pixels take the
-    /// mouse when those regions are rebuilt; without this the spot where the
-    /// handle was would keep catching clicks until something else moved.
-    func apply(showsMoveHandle: Bool) {
-        guard model.showsMoveHandle != showsMoveHandle else { return }
-        model.showsMoveHandle = showsMoveHandle
-        updateInteractiveRects()
-    }
 
     func apply(alongOffset: CGFloat) {
         guard model.alongOffset != alongOffset else { return }
@@ -1071,59 +1741,6 @@ final class NotchWindowController {
         pendingRelocate = work
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.relocateInterval,
                                       execute: work)
-    }
-
-    private var dropZones: DropZoneOverlay?
-
-    /// Carries the notch: raises the drop zones, follows the pointer until the
-    /// button lifts, and hands the edge it landed on to `onMoveToEdge`.
-    ///
-    /// Driven from the pointer's own position rather than from drag deltas,
-    /// because what is being chosen is a *place on the screen*, not a distance
-    /// moved — and a press that never moves has to be able to end on the edge
-    /// it started from without having accumulated anything.
-    ///
-    /// Blocks on the panel's event stream until mouse-up, the same AppKit
-    /// pattern `NotchPanel.trackOptionDrag` uses.
-    private func beginMove() {
-        guard let panel, let screen = currentScreen() else { return }
-
-        let overlay = DropZoneOverlay(screen: screen)
-        dropZones = overlay
-        model.isMoving = true
-        // Starts on the edge it is already on, so releasing without moving is
-        // a no-op rather than a jump to whichever edge the maths rounds to.
-        model.moveTarget = model.edge
-        overlay.show(target: model.edge,
-                     restingDepth: model.restingDepth * model.sizeScale,
-                     restingLength: model.shapeLength * model.sizeScale)
-
-        defer {
-            model.isMoving = false
-            model.moveTarget = nil
-            overlay.hide()
-            dropZones = nil
-        }
-
-        while let event = panel.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
-            let local = overlay.localPoint(from: NSEvent.mouseLocation)
-            let target = EdgeDropZones.edge(at: local, in: overlay.screenSize)
-
-            switch event.type {
-            case .leftMouseDragged:
-                if model.moveTarget != target {
-                    model.moveTarget = target
-                }
-                overlay.show(target: target,
-                             restingDepth: model.restingDepth * model.sizeScale,
-                             restingLength: model.shapeLength * model.sizeScale)
-            case .leftMouseUp:
-                if target != model.edge { onMoveToEdge?(target) }
-                return
-            default:
-                return
-            }
-        }
     }
 
     private var lastRelocate = Date.distantPast
@@ -1470,4 +2087,11 @@ extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
     }
+}
+
+/// Receives a display link's ticks for something that is not an `NSObject`.
+final class DisplayTick: NSObject {
+    private let action: (CADisplayLink) -> Void
+    init(_ action: @escaping (CADisplayLink) -> Void) { self.action = action }
+    @objc func tick(_ link: CADisplayLink) { action(link) }
 }

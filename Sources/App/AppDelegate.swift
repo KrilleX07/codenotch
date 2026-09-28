@@ -218,6 +218,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let updater = Updater()
             self.updater = updater
+            // An update is offered in the notch, and installed there — see
+            // `UpdateCard`. Checked for as it launches; never under test, where
+            // it would reach for the real feed.
+            updater.$prompt
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(updatePrompt: $0) }
+                .store(in: &cancellables)
+            fleet.onUpdateChoice = { [weak updater] in updater?.respond($0) }
+            // Put off: a red dot on the settings button until it is taken.
+            Publishers.CombineLatest(updater.$pending, updater.$prompt)
+                .map { pending, prompt in pending != nil && prompt == nil }
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(updatePending: $0) }
+                .store(in: &cancellables)
+            if !isRunningTests { updater.start() }
 
             let relay = OllamaActivityRelay()
             self.ollamaRelay = relay
@@ -564,7 +580,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Writing the preference is the whole of it: `notchEdge` is
             // `@Published` and the fleet already follows it, so the notch
             // relocates by the same path the Settings picker uses.
-            fleet.onMoveToEdge = { [weak preferences] edge in
+            fleet.onMoveToEdge = { [weak preferences] edge, offset in
+                // Where along it first, so the edge's sink reads it back and
+                // the notch lands under the pointer that carried it there.
+                if let offset { preferences?.setOffset(offset, for: edge) }
                 preferences?.notchEdge = edge
             }
 
@@ -609,10 +628,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak fleet] in fleet?.apply(weeklyRing: $0) }
                 .store(in: &cancellables)
 
-            preferences.$showsMoveHandle
-                .receive(on: RunLoop.main)
-                .sink { [weak fleet] in fleet?.apply(showsMoveHandle: $0) }
-                .store(in: &cancellables)
                 
             preferences.$notchSurfaceStyle
                 .receive(on: RunLoop.main)
@@ -970,7 +985,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(weeklyRingDashed: preferences.weeklyRingDashed)
         fleet.apply(showsNotchReadings: preferences.showsNotchReadings)
         fleet.apply(weeklyReading: preferences.weeklyReading)
-        fleet.apply(showsMoveHandle: preferences.showsMoveHandle)
         fleet.apply(foldsForFullScreen: preferences.foldsForFullScreen)
         fleet.apply(surfaceStyle: preferences.notchSurfaceStyle)
         fleet.apply(deepSeekPricingEnabled: preferences.deepSeekPricingEnabled)

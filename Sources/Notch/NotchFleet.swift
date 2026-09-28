@@ -61,7 +61,6 @@ final class NotchFleet {
     private var weeklyRingDashed: Bool = false
     private var showsNotchReadings: Bool = true
     private var weeklyReading: Bool = false
-    private var showsMoveHandle = true
     private var foldsForFullScreen = true
     private var surfaceStyle: NotchSurfaceStyle = .glass
     private var deepSeekPricingEnabled = true
@@ -78,6 +77,28 @@ final class NotchFleet {
     var onRefresh: (() -> Void)?
     var onRefreshProvider: ((String) async -> Void)?
     var onOpenSettings: (() -> Void)?
+    /// The notch's answer to an update it offered.
+    var onUpdateChoice: ((UpdateChoice) -> Void)?
+    private var updatePrompt: UpdatePrompt?
+
+    private var updatePending = false
+
+    /// A newer version waiting — see `NotchViewModel.updatePending`.
+    func apply(updatePending: Bool) {
+        self.updatePending = updatePending
+        for controller in controllers.values {
+            controller.model.updatePending = updatePending
+        }
+    }
+
+    /// An update to offer in the notch, or how its install is going; nil once
+    /// answered or done.
+    func apply(updatePrompt: UpdatePrompt?) {
+        self.updatePrompt = updatePrompt
+        for controller in controllers.values {
+            controller.apply(updatePrompt: updatePrompt)
+        }
+    }
     var onFocusSession: ((pid_t) -> Void)?
     var signInItems: [(title: String, action: () -> Void)] = []
     /// An ⌥-drag on any one panel settled at a new offset. Persisting it is
@@ -85,7 +106,7 @@ final class NotchFleet {
     var onReposition: ((CGFloat) -> Void)?
     /// A move handle carried a notch to another edge. Persisting it is
     /// Preferences' job, the same division `onReposition` keeps.
-    var onMoveToEdge: ((NotchEdge) -> Void)?
+    var onMoveToEdge: ((NotchEdge, CGFloat?) -> Void)?
 
     /// What the fleet settled on, for tests that need to see panels come and
     /// go rather than take our word for it.
@@ -165,13 +186,6 @@ final class NotchFleet {
         self.resetTimeFormat = resetTimeFormat
         for controller in controllers.values {
             controller.model.resetTimeFormat = resetTimeFormat
-        }
-    }
-
-    func apply(showsMoveHandle: Bool) {
-        self.showsMoveHandle = showsMoveHandle
-        for controller in controllers.values {
-            controller.apply(showsMoveHandle: showsMoveHandle)
         }
     }
 
@@ -452,7 +466,6 @@ final class NotchFleet {
         controller.model.weeklyRingDashed = weeklyRingDashed
         controller.model.showsNotchReadings = showsNotchReadings
         controller.model.weeklyReading = weeklyReading
-        controller.model.showsMoveHandle = showsMoveHandle
         controller.model.surfaceStyle = surfaceStyle
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled
         controller.model.deepSeekPricingSchedule = deepSeekPricingSchedule
@@ -462,6 +475,9 @@ final class NotchFleet {
         controller.onOpenSettings = onOpenSettings
         controller.model.onOpenSettings = onOpenSettings
         controller.model.onFocusSession = onFocusSession
+        controller.model.onUpdateChoice = { [weak self] in self?.onUpdateChoice?($0) }
+        controller.apply(updatePrompt: updatePrompt)
+        controller.model.updatePending = updatePending
         controller.onReposition = onReposition
         controller.onMoveToEdge = onMoveToEdge
         controller.signInItems = signInItems

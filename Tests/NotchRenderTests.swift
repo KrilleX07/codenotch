@@ -117,25 +117,6 @@ final class NotchRenderTests: XCTestCase {
         XCTAssertGreaterThan(colour(.outside), off, "outside painted no arc")
     }
 
-    /// Hiding the move handle takes its arc off the notch, and leaves nothing
-    /// behind that can still be hovered or pressed — an invisible control that
-    /// starts a move is worse than a visible one.
-    func testAHiddenMoveHandleIsNeitherDrawnNorPressable() throws {
-        let shown = model(edge: .right)
-        let point = try XCTUnwrap(shown.moveHandlePoints.first)
-        XCTAssertTrue(shown.isOnMoveHandle(along: point.x, across: point.y))
-
-        let hidden = model(edge: .right)
-        hidden.showsMoveHandle = false
-        XCTAssertTrue(hidden.moveHandlePoints.isEmpty)
-        XCTAssertFalse(hidden.isOnMoveHandle(along: point.x, across: point.y),
-                       "a hidden handle still took the press")
-
-        let withHandle = inkedFraction(try XCTUnwrap(render(shown)))
-        let withoutHandle = inkedFraction(try XCTUnwrap(render(hidden)))
-        XCTAssertLessThan(withoutHandle, withHandle, "the handle's arc was still drawn")
-    }
-
     /// A week nobody has spent yet still has to be visible.
     ///
     /// At 0% the arc has no length, so without a track behind it the ring is

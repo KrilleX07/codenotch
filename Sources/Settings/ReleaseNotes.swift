@@ -32,6 +32,36 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.19.0",
+                headline: L10n.t("Carry the notch anywhere round your screen by its six dots — and new versions now ask first, right in the notch."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Six dots to carry the notch"),
+                        detail: L10n.t("Hover the settings button and six dots come out beside it. Hold them and drag: the notch follows along any edge of the screen and round its corners, and lands where you let go. They replace the separate move handle at the other end, and its setting.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Round the corners like liquid"),
+                        detail: L10n.t("Dragged — by the dots or with ⌥ — the notch keeps to the screen's border and flows round each corner instead of jumping between edges, and settles smoothly where it is let go.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Updates ask first, in the notch"),
+                        detail: L10n.t("A new version is offered in the notch with Update and Later, and installs there with its progress. Put off, a red dot on the settings button and on General keeps it in reach.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A notch that pours"),
+                        detail: L10n.t("The settings arc and the dots come out of the notch and go back into it like goo, the settings button turns back into its arc, and joined to your Mac's notch the ends meet the screen's border exactly.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The percentage beside your Mac's notch"),
+                        detail: L10n.t("With one ring and its percentage on, the figure sits on the other side of the camera housing, sized to fit.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Switching a provider on no longer hangs the app"),
+                        detail: L10n.t("Looking for a provider's command-line tool could deadlock the app while Settings redrew.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.18.0",
                 headline: L10n.t("On a MacBook the notch is now your Mac's own — the readings sit either side of the camera housing rather than under it."),
                 changes: [

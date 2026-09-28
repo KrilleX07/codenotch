@@ -176,6 +176,8 @@ private struct SettingsSidebarRow: View {
     let selectionSpace: Namespace.ID
     var indent = false
     var count: Int? = nil
+    /// A red dot — a newer version waiting, on General.
+    var badge: Bool = false
     var disclosure: Binding<Bool>? = nil
     let select: () -> Void
 
@@ -200,6 +202,13 @@ private struct SettingsSidebarRow: View {
                     .foregroundStyle(.white.opacity(isSelected ? 0.95 : isHovered ? 0.92 : 0.78))
                     .lineLimit(1)
                 Spacer(minLength: 4)
+                // A newer version waiting — see `Updater.pending`.
+                if badge {
+                    Circle()
+                        .fill(Color(nsColor: .systemRed))
+                        .frame(width: 7, height: 7)
+                        .transition(.scale.combined(with: .opacity))
+                }
                 if let count {
                     Text("\(count)")
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -590,6 +599,7 @@ struct SettingsView: View {
                             isSelected: selection == section,
                             selectionSpace: selectionSpace,
                             count: section == .accounts ? connectedCount : nil,
+                            badge: section == .general && updater.pending != nil,
                             disclosure: section == .accounts ? $accountsExpanded : nil,
                             select: { selectSection(section) }
                         )
@@ -620,8 +630,8 @@ struct SettingsView: View {
                     // Only once a check has found a newer version. Sparkle
                     // downloads it in the background either way; this is for
                     // someone who would rather have it now than on next launch.
-                    if case .found(let newer) = updater.outcome {
-                        Button(L10n.t("Update")) { updater.checkNow() }
+                    if let newer = updater.pending {
+                        Button(L10n.t("Update")) { updater.reoffer() }
                             .buttonStyle(SettingsButtonStyle(kind: .prominent, compact: true))
                             .help(L10n.t("Version \(newer) is available"))
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -992,14 +1002,6 @@ struct SettingsView: View {
                     .buttonStyle(SettingsButtonStyle(kind: .prominent))
                 }
 
-                // The arc above the notch. Hiding it loses nothing that cannot
-                // be reached another way: Edge, above, moves the notch too.
-                Toggle(L10n.t("Show move handle"), isOn: $preferences.showsMoveHandle)
-                Text(L10n.t("The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
                 Picker(L10n.t("Displays"), selection: $preferences.notchScope) {
                     ForEach(NotchScreenScope.allCases) { Text($0.title).tag($0) }
                 }
@@ -1338,7 +1340,7 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Toggle(L10n.t("Install updates automatically"), isOn: Binding(
+                Toggle(L10n.t("Check for updates automatically"), isOn: Binding(
                     get: { updater.automatic },
                     set: { updater.automatic = $0 }
                 ))
@@ -1350,11 +1352,16 @@ struct SettingsView: View {
                     // a way to switch it off, is the difference between a
                     // background updater and something that looks like it is
                     // hiding.
-                    Text(L10n.t("Version \(updater.currentVersion). Updates install in the background and apply next time Codenotch starts."))
+                    Text(L10n.t("Version \(updater.currentVersion). New versions are offered in the notch, and install when you choose Update."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
+                    // The card a new version brings up in the notch, played
+                    // through for a version that is not there.
+                    Button(L10n.t("Preview")) { updater.preview() }
+                        .controlSize(.small)
+                        .help(L10n.t("Show the update card in the notch, with nothing downloaded"))
                     Button(L10n.t("Check now")) { updater.checkNow() }
                         .controlSize(.small)
                 }
