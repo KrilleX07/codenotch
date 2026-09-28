@@ -359,7 +359,10 @@ are opened at all, matched on the organization Claude Code records for the
 profile, so one account's numbers can never land on another's ring. No token, no
 cookie, no credential and no request to Anthropic are involved. A snapshot older
 than 30 minutes is not shown as live — it drops through to the paths below, and
-the last good reading ages and dims as any other would. Chromium's cache format
+the last good reading ages and dims as any other would. Two minutes, not thirty,
+while a session is running or while you are looking at the ring: that is when
+the figure is moving, and a cache is the one source that cannot tell you it
+has. Chromium's cache format
 is private and may change; if it does, the source goes quiet and the existing
 ones take over. Bodies are `content-encoding: zstd` and macOS ships no decoder,
 so a decode-only build of Zstandard is vendored under
@@ -394,6 +397,21 @@ unhelpful `Retry-After: 0`. The back-off treats that as a floor-raiser only —
 persisted, so relaunching during a penalty waits instead of spending an
 attempt on it. Polling drops to every 5 minutes when nothing is running, and
 right-clicking the notch offers **Refresh now**.
+
+**How current the figures are.** Your usage cannot move while nothing is
+running, so the schedule spends its budget where the number actually changes:
+every 30 seconds while a session is working, every 5 minutes while none is, and
+at once when a limit window rolls over. Three things outside the schedule also
+ask, because each one is a moment the figure is either about to change or about
+to be read: a session *stopping* (one reading, so the total you just earned is
+on the bar within a second or two rather than up to five minutes later),
+opening the menu bar item's menu, and putting the pointer on a ring. The last
+two are spaced — hovering four rings in four seconds is one reading, not four.
+
+The reset countdown is drawn against a clock, not against the last reading, so
+it is right to the second whether or not anything has been fetched: the card
+counts down once a second while it is open, and the menu bar item counts the
+last minute of a window down in seconds.
 
 **Logs:** the app has no window, so anything worth diagnosing goes to the
 unified log.

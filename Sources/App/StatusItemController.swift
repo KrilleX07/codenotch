@@ -22,6 +22,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     var onRefreshProvider: ((String) -> Void)?
     /// Refetch every provider.
     var onRefreshAll: (() -> Void)?
+    /// Somebody has just opened the menu, so the readings in it are about to be
+    /// read. Separate from `onRefreshAll`, which is the **Refresh now** item and
+    /// must always fetch: this one is allowed to decide it has fetched recently
+    /// enough — see `UsageStore.refreshBecauseSomeoneIsLooking`.
+    var onLook: (() -> Void)?
     /// Switch limits in the bar on or off — the same Settings preference,
     /// written back through the same place, never a second one kept here. The
     /// controller stores no answer of its own: it asks `limits.isOn`, which is
@@ -281,10 +286,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             MainActor.assumeIsolated { self?.updateButton() }
         }
         // Late by a second is invisible at a minute's precision, and lets the
-        // system fold this wake-up into others.
-        timer.tolerance = 1
+        // system fold this wake-up into others. Inside the last minute the
+        // change *is* a second, and a second of slack there would let the timer
+        // wake up having skipped the figure it woke up to show — so the
+        // tolerance is a fraction of the step rather than a fixed second.
+        timer.tolerance = Self.tolerance(untilChange: fireDate.timeIntervalSinceNow)
         RunLoop.main.add(timer, forMode: .common)
         countdownTimer = timer
+    }
+
+    /// How much slack the next countdown wake-up may take. Pure, so the rule
+    /// can be tested without a status item.
+    static func tolerance(untilChange wait: TimeInterval) -> TimeInterval {
+        wait > 1.5 ? 1 : 0.15
     }
 
     // MARK: - Menu
@@ -293,6 +307,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// time would freeze "Resets in 51 min" and "20 hr ago" until the next
     /// reading lands.
     func menuWillOpen(_ menu: NSMenu) {
+        // Asked here rather than anywhere else because opening the menu is the
+        // one unambiguous "read these numbers" gesture the item has. The fetch
+        // it may start lands a moment later: the item's own face follows it at
+        // once — see `snapshots` — and the rows below are built from whatever
+        // has landed by the time the menu is next opened.
+        onLook?()
         rebuild(menu: menu, now: Date())
     }
 

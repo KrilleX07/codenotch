@@ -185,9 +185,11 @@ final class ClaudeOAuthProviderTests: XCTestCase {
     private func makeProvider(source: CredentialSource,
                               cli: ClaudeUsageCLI? = nil,
                               cliRefreshInterval: TimeInterval = 5 * 60,
+                              liveCLIRefreshInterval: TimeInterval = 90,
                               profile: ClaudeProfile = .default(),
                               desktopCache: ClaudeDesktopUsageCache? = nil,
                               desktopFreshness: TimeInterval = 30 * 60,
+                              liveDesktopFreshness: TimeInterval = 2 * 60,
                               desktopRescanInterval: TimeInterval = 5 * 60) -> ClaudeOAuthProvider {
         // A private defaults suite per test: the archive persists the 429 back-off
         // deadline, and a leaked one would silently skip fetches in the next test.
@@ -211,8 +213,10 @@ final class ClaudeOAuthProviderTests: XCTestCase {
                                    loadCredentials: { try source.read() },
                                    cli: cli,
                                    cliRefreshInterval: cliRefreshInterval,
+                                   liveCLIRefreshInterval: liveCLIRefreshInterval,
                                    desktopCache: desktopCache,
                                    desktopFreshness: desktopFreshness,
+                                   liveDesktopFreshness: liveDesktopFreshness,
                                    desktopRescanInterval: desktopRescanInterval)
     }
 
@@ -265,8 +269,9 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(StubEndpoint.requestCount, 1)
     }
 
-    /// `UsageStore` polls every 60s while a session is busy, and each ask is a
-    /// subprocess. The windows do not move enough in a minute to be worth one.
+    /// `UsageStore` polls twice a minute while a session is busy, and each ask
+    /// is a subprocess. The windows do not move enough in half a minute to be
+    /// worth one.
     func testTheCLIIsNotSpawnedOnEveryTick() async throws {
         let spawns = Counter()
         let provider = makeProvider(source: CredentialSource(readable: true),
@@ -421,6 +426,75 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(StubEndpoint.requestCount, 1)
     }
 
+    // MARK: - What a live fetch will accept
+
+    /// Ten minutes is comfortably inside the thirty an idle ring may show, and
+    /// comfortably outside the two a watched one may. The same cache, the same
+    /// provider, two answers — which is the whole point of `UsageFreshness`.
+    func testALiveFetchWillNotServeACacheAnIdleOneWould() async throws {
+        StubEndpoint.reset([.init(status: 200, body: Self.usagePayload)])
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source, profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 10 * 60))
+
+        // 30% is Desktop's cached reading; 42% is what the endpoint answers now.
+        let standard = try await provider.fetchSnapshot(freshness: .standard)
+        XCTAssertEqual(standard.usedFraction, 0.30)
+        XCTAssertEqual(StubEndpoint.requestCount, 0)
+
+        let live = try await provider.fetchSnapshot(freshness: .live)
+        XCTAssertEqual(live.usedFraction, 0.42, "a ten-minute-old cache answered a live fetch")
+        XCTAssertEqual(StubEndpoint.requestCount, 1)
+    }
+
+    /// A cache written seconds ago is the best answer there is to either
+    /// question: free, unrefusable, and current. `.live` must not spend a
+    /// request to be told the same number.
+    func testALiveFetchStillTakesACacheThatIsActuallyCurrent() async throws {
+        StubEndpoint.reset([.init(status: 200, body: Self.usagePayload)])
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source, profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 5))
+
+        let snapshot = try await provider.fetchSnapshot(freshness: .live)
+
+        XCTAssertEqual(snapshot.usedFraction, 0.30)
+        XCTAssertEqual(source.reads, 0)
+        XCTAssertEqual(StubEndpoint.requestCount, 0)
+    }
+
+    /// The CLI's own reuse window shortens the same way. Five minutes of one
+    /// answer is right for a ring nobody is watching; it is most of a session
+    /// window's movement for one somebody is.
+    func testALiveFetchAsksTheCLIAgainInsideItsOrdinaryInterval() async throws {
+        let spawns = Counter()
+        let provider = makeProvider(source: CredentialSource(readable: true),
+                                    cli: Self.cli { spawns.increment(); return Self.cliUsage },
+                                    cliRefreshInterval: 5 * 60,
+                                    liveCLIRefreshInterval: 0)
+
+        _ = try await provider.fetchSnapshot(freshness: .standard)
+        _ = try await provider.fetchSnapshot(freshness: .standard)
+        XCTAssertEqual(spawns.value, 1, "the ordinary interval stopped holding its answer")
+
+        _ = try await provider.fetchSnapshot(freshness: .live)
+        XCTAssertEqual(spawns.value, 2, "a live fetch reused an answer from the ordinary interval")
+    }
+
+    /// And a live fetch is still not licence to spawn one per poll: inside its
+    /// own interval it reuses, like everything else here.
+    func testALiveFetchReusesTheCLIInsideItsOwnInterval() async throws {
+        let spawns = Counter()
+        let provider = makeProvider(source: CredentialSource(readable: true),
+                                    cli: Self.cli { spawns.increment(); return Self.cliUsage },
+                                    liveCLIRefreshInterval: 90)
+
+        _ = try await provider.fetchSnapshot(freshness: .live)
+        _ = try await provider.fetchSnapshot(freshness: .live)
+
+        XCTAssertEqual(spawns.value, 1, "a live fetch spawned a subprocess per call")
+    }
+
     /// Claude Desktop is signed into one account; Codenotch draws a ring per
     /// Claude Code profile. A profile whose organization does not match the
     /// cached URL gets nothing from Desktop — the alternative is the personal
@@ -472,8 +546,8 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(StubEndpoint.requestCount, 1)
     }
 
-    /// `UsageStore` polls every 60s while a session is busy, and a miss means a
-    /// scan of a few thousand directory entries. Missing once must not mean
+    /// `UsageStore` polls twice a minute while a session is busy, and a miss
+    /// means a scan of a few thousand directory entries. Missing once must not mean
     /// scanning on every tick afterwards.
     ///
     /// Asserted by behaviour rather than by counting: an entry that appears

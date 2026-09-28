@@ -29,6 +29,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Turns the monitors' running commentary into the one event worth
     /// interrupting for: an agent that has just stopped working.
     private var completions = SessionCompletionWatcher()
+    /// Which providers were working as of the last thing a monitor said, so the
+    /// moment one stops can be told apart from the many moments it is still
+    /// going. Held here rather than asked of `ActivityCoordinator`, which
+    /// reports the state after the change and cannot answer what it was before.
+    private var busyProviderIDs: Set<String> = []
 
     /// The unit bundle is hosted by this app, so `xcodebuild test` launches it
     /// for real. Without this guard every test run put a live request on the
@@ -343,7 +348,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 },
                 refreshAndGetSnapshot: { @Sendable [weak store, weak fleet, weak preferences] in
                     guard let store, let fleet, let preferences else { return nil }
-                    await MainActor.run { store.refreshNow() }
+                    // A phone asking to refresh is the same gesture as opening
+                    // the menu here, and it is about to render these numbers on
+                    // another screen. Nothing cached will do.
+                    await MainActor.run { store.refreshNow(freshness: .live) }
                     for _ in 0..<20 {
                         let isRef = await MainActor.run { !store.refreshing.isEmpty }
                         if !isRef { break }
@@ -439,7 +447,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let statusItem = StatusItemController { [weak settings] in settings?.show() }
             self.statusItem = statusItem
             statusItem.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
-            statusItem.onRefreshAll = { [weak store] in store?.refreshNow() }
+            statusItem.onRefreshAll = { [weak store] in store?.refreshNow(freshness: .live) }
+            statusItem.onLook = { [weak store] in store?.refreshBecauseSomeoneIsLooking() }
             // The menu's tick writes to the same preference Settings writes to,
             // and reads nothing back of its own: the sink below carries the new
             // value to the item, and Settings — a published property away —
@@ -749,7 +758,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
             store.start()
-            fleet.onRefresh = { [weak store] in store?.refreshNow() }
+            fleet.onRefresh = { [weak store] in store?.refreshNow(freshness: .live) }
+            fleet.onLook = { [weak store] in store?.refreshBecauseSomeoneIsLooking() }
             fleet.onRefreshProvider = { [weak store] id in
                 await store?.refresh(providerID: id)?.value
             }
@@ -888,6 +898,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fleet.setSessions(providerID: id, sessions: sessions)
             self?.statusItem?.setActivity(providerID: id, sessions: sessions)
             self?.announceCompletions(sessions: fleet.sessions)
+            self?.noteWorkState(providerID: id, sessions: sessions)
         }
         self.activityCoordinator = activity
         activity.setEnabled(preferences.connectedProviders)
@@ -1021,6 +1032,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         fleet.peek(for: preferences.peekDuration.seconds,
                    focusing: event.session.processID)
+    }
+
+    /// Takes one reading on the falling edge of a provider's work.
+    ///
+    /// The rising edge needs nothing: work that has just started has not spent
+    /// anything yet, and the busy schedule is already polling. The falling edge
+    /// is where the schedule drops to the idle interval and leaves the figure
+    /// somebody actually came to look at — what that run cost — alone for five
+    /// minutes. The store decides whether to spend a fetch on it; see
+    /// `UsageStore.refreshBecauseWorkFinished`.
+    @MainActor
+    private func noteWorkState(providerID: String, sessions: [AgentSession]) {
+        let isBusy = sessions.contains { $0.state == .busy }
+        if busyProviderIDs.contains(providerID), !isBusy {
+            store?.refreshBecauseWorkFinished(providerID: providerID)
+        }
+        if isBusy {
+            busyProviderIDs.insert(providerID)
+        } else {
+            busyProviderIDs.remove(providerID)
+        }
     }
 
     /// A crossing is a banner on the Mac channel, as it always was; on the

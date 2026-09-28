@@ -1726,6 +1726,82 @@ VoiceOver text keep the true number. Pinned by
 `testASmallContextStillReadsAsAnArc` and `testTheMinimumArcIsLongerThanItsCaps`
 in `NotchLayoutTests`.
 
+## How current the numbers are
+
+### A fetch every thirty seconds served from a half-hour-old file
+
+The schedule was not what made a percentage look frozen. `UsageStore` already
+polled every 60s while a session was busy — but `ClaudeOAuthProvider` answers
+from Claude Desktop's HTTP cache first, and would serve an entry up to **30
+minutes** old, or a `claude "/usage"` answer up to **5 minutes** old. So the
+ring could be re-read twice a minute and still show a number from half an hour
+ago. Both allowances are right for a ring nobody is watching: the cache is free
+and unrefusable, and it cannot be wrong about a number that is not changing.
+
+`UsageFreshness` is the caller's half of that sentence. `.standard` is the
+schedule's default and takes whatever a provider has; `.live` says a cached
+reading will not do, and the Claude provider then accepts the Desktop entry only
+inside 2 minutes and reuses a CLI answer only inside 90 seconds — dropping
+through to the endpoint, whose own back-off is untouched, when neither can
+answer for right now. It is a protocol requirement with an extension default
+rather than an extension member alone: the store holds providers as `any
+UsageProvider`, so a statically dispatched call would have reached every
+default and no override. Every other provider fetches on every call and gets
+the default for free.
+
+`.live` is asked for exactly where the number is moving or being read: while
+`isBusy()` is true, on **Refresh now**, on a single ring's refresh, on a phone
+asking for a snapshot, and on a look.
+
+### What the schedule spends, and where
+
+The tick is now 15s and carries a `busyRefreshInterval` of 30s, where it used to
+be a 60s tick that fetched on every one of them while busy. Two things needed
+the finer tick: a busy interval under a minute is not expressible without it,
+and `hasWindowRolledOver` — the reset boundary, which owes an alert — is noticed
+within a tick. `shouldRefresh` gained the interval with a default of 0, which is
+the old "every tick while busy" and keeps the existing assertions honest about
+what they are asserting.
+
+Two events ask outside the schedule, and neither is a timer:
+
+- **A session stopping.** The falling edge of `isBusy` is where the schedule
+  drops to the 5-minute idle interval and leaves the final figure — the one you
+  came to look at — alone. `refreshBecauseWorkFinished` takes one reading there,
+  spaced per provider by the busy interval, because a session's state is read
+  from a transcript and legitimately flickers between busy and waiting through
+  one long run. `AppDelegate` holds `busyProviderIDs` to tell the edge from the
+  middle: `ActivityCoordinator` reports the state after a change and cannot say
+  what it was before.
+- **A look.** Opening the status item's menu, unfolding the notch, or the
+  pointer landing on a ring. `refreshBecauseSomeoneIsLooking` asks live and
+  spaces itself by 15s, so four rings hovered in four seconds is one fetch. The
+  hover hook matters on its own: a notch held permanently open never unfolds,
+  so there would otherwise be no look to notice.
+
+### The countdown is read against a clock
+
+None of the above touches the time remaining, which needs no fetch at all — it
+is arithmetic on a `resetsAt` the last reading already carried. Two things were
+nevertheless stale:
+
+- The notch's clock ticked every 30s, so a card open on "Resets in 12 min" was
+  up to half a minute behind the clock it is read against. It ticks every second
+  now, and `tickClock` only *publishes* a second when something on screen counts
+  in them (`isExpanded || hoveredIndex != nil`) — `model.now` is `@Published`
+  and every card is drawn against it, so publishing is a SwiftUI update of the
+  whole notch. A folded notch keeps the old 30s pace.
+- `ResetCopy` counted the last minute as "<1m" in the bar and "Resets in 1 min"
+  in the card, both of which could mean four seconds. The last minute now counts
+  in seconds — "42s", "Resets in 42 sec" — and `nextCountdownChange` steps by a
+  second inside it and by a minute above it, so the menu bar's own one-shot
+  timer redraws a five-hour window once a minute for 4h59m and once a second for
+  the last sixty. The bar's `countdownRoom` already reserves the width of
+  "4h 59m", so seconds add none: `testSecondsFitTheRoomTheCountdownAlreadyReserves`
+  holds it to that. The wake-up's tolerance also had to stop being a flat
+  second — at a one-second step it let the timer wake having already skipped the
+  figure it woke up to show.
+
 ## Decisions needed
 - [ ] Final app name (`Codenotch` is a placeholder)
 - [x] ~~Which service is the third glyph in the mockup?~~ Perplexity — its mark,
