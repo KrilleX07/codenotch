@@ -478,6 +478,16 @@ struct ProviderSnapshot: Identifiable, Equatable {
                           isWeeklyExhaustion: true)
     }
 
+    /// Nothing left to spend: the headline window or the weekly allowance is
+    /// at 0% remaining, so the account cannot be used until a window resets.
+    /// Stale readings never count — an old number is not proof the account
+    /// is empty now; it may hold tokens the last fetch has not seen yet.
+    var isDepleted: Bool {
+        guard !status.isStale else { return false }
+        return (headline?.usedFraction ?? 0) >= 1
+            || (weeklyLimitWindow?.usedFraction ?? 0) >= 1
+    }
+
     /// The snapshot with a spent week attached as a block, so every surface
     /// that reads `block` — ring, card, menu, phone — treats the headline as
     /// shut. Applied by the store on publication, before any derivation

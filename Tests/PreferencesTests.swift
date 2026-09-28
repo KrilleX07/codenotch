@@ -325,6 +325,18 @@ final class PreferencesMigrationTests: XCTestCase {
         XCTAssertTrue(Preferences(defaults: UserDefaults(suiteName: name)!).autoOrderByRemaining)
     }
 
+    /// Off by default — rings disappearing unasked would strand the manual
+    /// arrangement — and once somebody flips it, it has to stay flipped
+    /// across a relaunch.
+    func testDepletedAccountsStayVisibleUntilAskedToHideAndThenSurvivesARelaunch() {
+        let (fresh, name) = makeDefaults()
+        XCTAssertFalse(Preferences(defaults: fresh).hideDepletedAccounts)
+
+        Preferences(defaults: fresh).hideDepletedAccounts = true
+
+        XCTAssertTrue(Preferences(defaults: UserDefaults(suiteName: name)!).hideDepletedAccounts)
+    }
+
     /// The size has to outlive the launch that chose it, or it reads as a
     /// setting that did not take.
     func testTheNotchSizeSurvivesARelaunch() {

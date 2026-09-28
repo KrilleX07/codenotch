@@ -873,6 +873,13 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Toggle(L10n.t("Hide accounts with nothing left to spend"),
+                       isOn: $preferences.hideDepletedAccounts)
+                Text(L10n.t("When the 5-hour or the weekly window is at 0% remaining, the account leaves the notch until a window resets. Stale readings stay: an old number is not proof the account is empty."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 if preferences.weeklyRing != .off {
                     Toggle(L10n.t("Dashed weekly ring"), isOn: $preferences.weeklyRingDashed)
                     Toggle(L10n.t("Weekly ring % in the reading"), isOn: $preferences.weeklyReading)

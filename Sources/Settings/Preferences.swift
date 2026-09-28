@@ -311,6 +311,16 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(autoOrderByRemaining, forKey: Keys.autoOrderByRemaining) }
     }
 
+    /// Whether accounts with nothing left to spend leave the notch: the
+    /// headline window or the weekly allowance at 0% remaining. Stale
+    /// readings stay — an old number is not proof the account is empty.
+    ///
+    /// Off by default: rings disappearing unasked would strand the manual
+    /// arrangement, and an empty ring is still information about the account.
+    @Published var hideDepletedAccounts: Bool {
+        didSet { defaults.set(hideDepletedAccounts, forKey: Keys.hideDepletedAccounts) }
+    }
+
     @Published var weeklyRingDashed: Bool {
         didSet { defaults.set(weeklyRingDashed, forKey: Keys.weeklyRingDashed) }
     }
@@ -581,6 +591,7 @@ final class Preferences: ObservableObject {
         static let weeklyReading = "weeklyReading"
         static let shutRingsWhenSpent = "shutRingsWhenSpent"
         static let autoOrderByRemaining = "autoOrderByRemaining"
+        static let hideDepletedAccounts = "hideDepletedAccounts"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
         static let weeklyHeadline = "weeklyHeadline"
         static let showsMoveHandle = "showsMoveHandle"
@@ -945,6 +956,7 @@ final class Preferences: ObservableObject {
         self.showsRemainingInNotch = defaults.bool(forKey: Self.showsRemainingInNotchKey)
         self.shutRingsWhenSpent = defaults.object(forKey: Keys.shutRingsWhenSpent) as? Bool ?? true
         self.autoOrderByRemaining = defaults.bool(forKey: Keys.autoOrderByRemaining)
+        self.hideDepletedAccounts = defaults.bool(forKey: Keys.hideDepletedAccounts)
 
         self.weeklyRing = defaults.string(forKey: Keys.weeklyRing)
             .flatMap(WeeklyRing.init(rawValue:)) ?? .off

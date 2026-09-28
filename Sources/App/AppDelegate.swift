@@ -739,12 +739,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // is laid the same way, and for the same reasons — see `drawn`.
             // Auto-order rides along after the derivations, so "most left"
             // means the window actually leading each ring.
+            // The preferences ride as one publisher: `combineLatest` takes four
+            // publishers at most, and the snapshots plus the four display
+            // choices are five.
+            let displayOptions = preferences.$claudeDailyPaceRing.combineLatest(
+                preferences.$weeklyHeadline, preferences.$autoOrderByRemaining,
+                preferences.$hideDepletedAccounts)
             store.$notchSnapshots
-                .combineLatest(preferences.$claudeDailyPaceRing, preferences.$weeklyHeadline,
-                               preferences.$autoOrderByRemaining)
+                .combineLatest(displayOptions)
                 .receive(on: RunLoop.main)
-                .sink { [weak fleet] snapshots, paced, weekly, autoOrder in
-                    var drawn = Self.drawn(snapshots, weekly: weekly, paced: paced)
+                .sink { [weak fleet] snapshots, options in
+                    let (paced, weekly, autoOrder, hideDepleted) = options
+                    // Before the derivations: the daily pace ring is advisory,
+                    // not a spending gate, and judging off it would hide an
+                    // account that overspent today's share while the session
+                    // still has room.
+                    let usable = hideDepleted ? snapshots.filter { !$0.isDepleted } : snapshots
+                    var drawn = Self.drawn(usable, weekly: weekly, paced: paced)
                     if autoOrder { drawn = ProviderOrder.byRemainingUsage(drawn) }
                     fleet?.setSnapshots(drawn)
                 }
