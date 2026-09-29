@@ -477,6 +477,47 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertLessThan(width(0.72, nil), 150, "one reading should stay compact")
     }
 
+    /// What the menu bar is actually given, rather than what the artwork
+    /// measures: the item is its artwork and nothing besides.
+    ///
+    /// An `NSStatusBarButton` left to size itself pads an image by 7pt a side.
+    /// That is what a lone icon wants; either end of a line of figures it is
+    /// dead space, and it lands against the next status item's own padding, so
+    /// a reading ended a clear 14pt before anything else began.
+    func testTheItemIsGivenExactlyItsArtworksWidth() throws {
+        let controller = StatusItemController(onOpenSettings: {})
+        controller.show()
+        defer { controller.hide() }
+        guard let item = controller.item, let button = item.button else {
+            throw XCTSkip("no status item on this host")
+        }
+        // Windows against the wall clock, because setting `snapshots` redraws
+        // the button against `Date()`.
+        let live = Date()
+        func reading(_ id: String, _ glyph: ProviderGlyph, _ used: Double,
+                     _ left: TimeInterval) -> ProviderSnapshot {
+            ProviderSnapshot(id: id, displayName: id, glyph: glyph, fidelity: .official,
+                             status: .ok,
+                             windows: [LimitWindow(id: "session", label: "Current session",
+                                                   usedFraction: used,
+                                                   resetsAt: live.addingTimeInterval(left),
+                                                   duration: 5 * hour)],
+                             headlineID: "session")
+        }
+        func length(_ snapshots: [ProviderSnapshot]) -> (given: CGFloat, drawn: CGFloat) {
+            controller.limits = MenuBarLimits(isOn: true, chosen: Set(snapshots.map(\.id)))
+            controller.snapshots = snapshots
+            return (item.length, button.image?.size.width ?? 0)
+        }
+        let long = length([reading("claude", .claude, 0.72, 2 * hour + 18 * minute),
+                           reading("codex", .openai, 0.41, 4 * hour + 5 * minute)])
+        XCTAssertEqual(long.given, long.drawn, "the item is the artwork, with nothing added")
+        // And it gives the room back as the reading gets shorter.
+        let short = length([reading("claude", .claude, 0.7, 8 * minute)])
+        XCTAssertEqual(short.given, short.drawn)
+        XCTAssertLessThan(short.given, long.given)
+    }
+
     /// What following the figures actually costs the items beside it, counted
     /// rather than guessed: a five-hour window walked minute by minute, filling
     /// as it goes, and every width the item takes along the way.

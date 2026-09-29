@@ -16,7 +16,9 @@ import AppKit
 /// whenever none of them has such a window to show. See `StatusItemSummary`.
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
-    private var item: NSStatusItem?
+    /// Readable so a test can measure what the bar was actually given; only
+    /// `show` and `hide` make or unmake it.
+    private(set) var item: NSStatusItem?
     private let onOpenSettings: () -> Void
     /// Refetch one provider, leaving the others alone.
     var onRefreshProvider: ((String) -> Void)?
@@ -220,8 +222,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             button.setAccessibilityLabel(nil)
             return
         }
-        item.length = NSStatusItem.variableLength
         button.imagePosition = .imageOnly
+        // `redrawArtwork` sets the length from the artwork it draws, so there
+        // is nothing for `variableLength` to work out.
         redrawArtwork()
         let details = next.entries.map(\.detail).joined(separator: "\n")
         button.toolTip = details
@@ -257,6 +260,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             activityBadgeProviderIDs: reducesMotion ? working : []
         )
         button.image = artwork.image()
+        // The item is its artwork and nothing besides. Left to size itself an
+        // NSStatusBarButton pads an image by 7pt a side — what a lone icon
+        // wants, and dead space either end of a line of figures. It lands
+        // against the next item's own padding, so a reading ended a clear 14pt
+        // before anything else began. macOS still keeps the items apart.
+        item.length = artwork.size.width
         let glyphs = Dictionary(uniqueKeysWithValues: summary.entries.compactMap { entry in
             artwork.glyphFrame(for: entry.id).map { (entry.id, $0) }
         })
