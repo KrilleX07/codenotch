@@ -327,7 +327,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             let cells = cells()
             for snapshot in snapshots {
                 menu.addItem(headerItem(for: snapshot, now: now))
-                for line in Self.detailLines(for: snapshot, cells: cells, activity: activity, now: now) {
+                for line in Self.detailLines(for: snapshot, cells: cells, activity: activity,
+                                             now: now, format: resetTimeFormat) {
                     let row = NSMenuItem(title: line, action: nil, keyEquivalent: "")
                     row.isEnabled = false
                     row.indentationLevel = 1
@@ -433,9 +434,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// nothing metered. For a local runtime, one line per loaded model, built
     /// from its decorated cell. Pure, so the wording can be tested without a
     /// menu.
+    ///
+    /// `format` is the user's **Reset time** choice, and it has to be passed in:
+    /// this is static, so it cannot read the controller's own copy, and the
+    /// default is not the shipped behaviour but merely a default. Without it
+    /// the menu wrote "Resets Tue 17:25" under a card and a tooltip that both
+    /// said "Resets in 4h 52m" — the same reset, the same instant, two ways of
+    /// saying it, one of which the user had switched off.
     static func detailLines(for snapshot: ProviderSnapshot, cells: [ProviderSnapshot] = [],
                             activity: (ProviderSnapshot) -> ActivitySummary? = { _ in nil },
-                            now: Date) -> [String] {
+                            now: Date, format: ResetTimeFormat = .automatic) -> [String] {
         let now = now
         if snapshot.kind == .localRuntime {
             let models = cells.filter { $0.providerID == snapshot.id && $0.localModel != nil }
@@ -446,13 +454,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
         if let block = snapshot.block {
             var lines = [block.summary(now: now)]
-            lines += snapshot.windows.map { windowLine(for: $0, now: now) }
+            lines += snapshot.windows.map { windowLine(for: $0, now: now, format: format) }
             return lines
         }
         if let message = snapshot.statusMessage {
             return [message]
         }
-        return snapshot.windows.map { windowLine(for: $0, now: now) }
+        return snapshot.windows.map { windowLine(for: $0, now: now, format: format) }
     }
 
     /// One loaded model on one line: what its cell prints, what it is doing,

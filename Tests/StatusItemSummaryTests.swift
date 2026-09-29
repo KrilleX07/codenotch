@@ -187,6 +187,24 @@ final class StatusItemSummaryTests: XCTestCase {
                                               format: .remaining).entries.first?.detail)
     }
 
+    /// And so do the menu's own rows. They are built by a static function that
+    /// cannot read the controller's copy of the setting, so the setting has to
+    /// be handed to it — and was not: the menu said "Resets Tue 17:25" under a
+    /// card and a tooltip that both said "Resets in 4h 52m".
+    func testTheMenusRowsFollowTheChosenResetWording() throws {
+        let account = claude(0.53, resetIn: 4 * hour + 52 * minute)
+
+        let automatic = StatusItemController.detailLines(for: account, now: now, format: .automatic)
+        let remaining = StatusItemController.detailLines(for: account, now: now, format: .remaining)
+
+        let session = try XCTUnwrap(remaining.first)
+        XCTAssertTrue(session.contains("Resets in 4h 52m"), session)
+        XCTAssertNotEqual(automatic, remaining)
+        // The tooltip beside it is built from the same choice, so the two agree.
+        let detail = try XCTUnwrap(summary([account], format: .remaining).entries.first?.detail)
+        XCTAssertTrue(detail.contains("4h 52m"), detail)
+    }
+
     // MARK: - What Settings chose
 
     /// Off is the icon every earlier version drew, whatever the readings say,
