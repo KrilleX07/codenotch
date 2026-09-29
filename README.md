@@ -413,6 +413,19 @@ it is right to the second whether or not anything has been fetched: the card
 counts down once a second while it is open, and the menu bar item counts the
 last minute of a window down in seconds.
 
+Even at its freshest, a *percentage* is something that was read at some point
+rather than a live wire: a look re-reads it, and what comes back may still be a
+figure the provider itself published moments earlier. **Settings › General ›
+Readings › Ask the provider every time you look** takes that as far as it goes —
+a look then refuses every reading a provider is holding, however new, and asks
+the provider. It is off by default because it is not strictly better: it spends
+a request each time, and a provider that rate-limits answers one request too
+many by refusing the next few minutes of them, which leaves the figure older
+than the cache would have. Worth turning on to check Codenotch against a
+provider's own dashboard, and worth turning off again after. **Refresh now** and
+a click on a ring always ask this way — those are somebody's own clicks, not a
+schedule.
+
 **Logs:** the app has no window, so anything worth diagnosing goes to the
 unified log.
 

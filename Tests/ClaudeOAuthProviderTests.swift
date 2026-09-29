@@ -495,6 +495,75 @@ final class ClaudeOAuthProviderTests: XCTestCase {
         XCTAssertEqual(spawns.value, 1, "a live fetch spawned a subprocess per call")
     }
 
+    // MARK: - Ask the provider every time you look
+
+    /// `.fromSource` skips a cache written seconds ago — the one thing `.live`
+    /// deliberately does not do. That is the setting's whole point: the figure
+    /// comes from the account, not from a file, however current the file is.
+    func testFromSourceSkipsEvenACacheWrittenSecondsAgo() async throws {
+        StubEndpoint.reset([.init(status: 200, body: Self.usagePayload)])
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source, profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 5))
+
+        let snapshot = try await provider.fetchSnapshot(freshness: .fromSource)
+
+        XCTAssertEqual(snapshot.usedFraction, 0.42, "a cached reading answered .fromSource")
+        XCTAssertEqual(StubEndpoint.requestCount, 1)
+    }
+
+    /// And it may not leave the ring emptier than not asking would have. On a
+    /// Mac with Claude Desktop and no usable token — no Claude Code, an expired
+    /// keychain item, or a 429 — the cache is the only source there is, and
+    /// skipping it must not turn a filled ring into a failed refresh.
+    func testFromSourceFallsBackToTheCacheWhenNoLiveSourceCanAnswer() async throws {
+        StubEndpoint.reset([.init(status: 429)])
+        let source = CredentialSource(readable: true)
+        let provider = makeProvider(source: source, profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 60))
+
+        let snapshot = try await provider.fetchSnapshot(freshness: .fromSource)
+
+        XCTAssertEqual(snapshot.usedFraction, 0.30, "the held reading was thrown away with the request")
+        XCTAssertEqual(StubEndpoint.requestCount, 1, "the source was not asked first")
+    }
+
+    /// A cache past the ordinary thirty minutes is not resurrected by the
+    /// fallback: it was not showable before the request and it is not showable
+    /// after it. The store re-shows the last good reading, dimmed and dated.
+    func testTheFallbackDoesNotResurrectACacheTooOldToShow() async {
+        StubEndpoint.reset([.init(status: 429)])
+        let provider = makeProvider(source: CredentialSource(readable: true),
+                                    profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 4 * 3600))
+
+        do {
+            let snapshot = try await provider.fetchSnapshot(freshness: .fromSource)
+            XCTFail("a four-hour-old cache was shown as a reading: \(snapshot.usedFraction ?? -1)")
+        } catch UsageProviderError.rateLimited {
+            // The honest outcome: nothing live answered, and nothing held was
+            // fit to stand in.
+        } catch {
+            XCTFail("unexpected \(error)")
+        }
+    }
+
+    /// Skipping the cache is not the same as missing it. Counting it as a miss
+    /// armed the rescan throttle, which then stopped the cache being read at all
+    /// for five minutes — so one look with the setting on would have taken the
+    /// Desktop source away from every poll after it.
+    func testSkippingTheCacheDoesNotSuppressTheNextScan() async throws {
+        StubEndpoint.reset(Array(repeating: .init(status: 200, body: Self.usagePayload), count: 2))
+        let provider = makeProvider(source: CredentialSource(readable: true),
+                                    profile: desktopProfile(),
+                                    desktopCache: desktopCache(age: 30))
+
+        _ = try await provider.fetchSnapshot(freshness: .fromSource)
+        let next = try await provider.fetchSnapshot(freshness: .standard)
+
+        XCTAssertEqual(next.usedFraction, 0.30, "the cache was no longer being read")
+    }
+
     /// Claude Desktop is signed into one account; Codenotch draws a ring per
     /// Claude Code profile. A profile whose organization does not match the
     /// cached URL gets nothing from Desktop — the alternative is the personal

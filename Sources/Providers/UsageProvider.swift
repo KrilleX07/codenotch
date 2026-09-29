@@ -23,6 +23,20 @@ enum UsageFreshness: Equatable {
     /// this drops a cached reading it would otherwise have served and asks a
     /// source that can answer for right now.
     case live
+    /// Nothing held, at any age. The source itself, and a request spent on it.
+    ///
+    /// What **Refresh now** and a click on a ring ask for, and what a look asks
+    /// for when "Ask the provider every time you look" is on. Strictly more
+    /// expensive than `.live` and not strictly better: a provider that rate
+    /// limits answers a request too many with a 429, and its back-off then holds
+    /// an *older* number than the cache would have. So it is what somebody asks
+    /// for, never what the schedule decides on its own.
+    ///
+    /// It may not leave a ring emptier than `.standard` would have. Where no
+    /// live source can answer, a provider honouring this falls back to the
+    /// reading it was holding rather than failing the refresh — see
+    /// `ClaudeOAuthProvider.fetchSnapshot(freshness:)`.
+    case fromSource
 }
 
 /// One source of usage numbers. Each adapter declares how trustworthy it is,

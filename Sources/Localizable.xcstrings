@@ -24719,6 +24719,314 @@
         }
       }
     },
+    "It spends a request every time. A provider that rate-limits answers one request too many by refusing the next few minutes of them, and the figure then ages further than it would have. Worth turning on to check Codenotch against a provider's own dashboard, and worth turning off again after.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый раз это стоит одного запроса. Провайдер с ограничением частоты отвечает на лишний запрос отказом на следующие несколько минут, и цифра тогда становится ещё старее, чем была бы. Стоит включить, чтобы сверить Codenotch с панелью самого провайдера, и потом выключить обратно."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cela coûte une requête à chaque fois. Un fournisseur qui limite le débit répond à une requête de trop en refusant celles des quelques minutes suivantes, et le chiffre vieillit alors plus qu'il ne l'aurait fait. À activer pour comparer Codenotch au tableau de bord d'un fournisseur, et à désactiver ensuite."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのたびにリクエストを 1 回使います。レート制限のあるサービスは、1 回多いリクエストに対して次の数分ぶんを拒否するため、数値はかえって古くなります。サービス自身のダッシュボードと見比べるときにオンにし、済んだらオフに戻すのがよい設定です。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso gasta uma requisição a cada vez. Um provedor com limite de taxa responde a uma requisição a mais recusando as dos próximos minutos, e o número então envelhece mais do que teria envelhecido. Vale ligar para comparar o Codenotch com o painel do provedor, e desligar depois."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次都会花掉一次请求。有速率限制的服务遇到多出来的那次请求，会拒绝接下来几分钟的请求，数字反而变得更旧。适合在对照服务自己的面板时打开，对完之后再关掉。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次都會花掉一次請求。有速率限制的服務遇到多出來的那次請求，會拒絕接下來幾分鐘的請求，數字反而變得更舊。適合在對照服務自己的面板時開啟，對完之後再關掉。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das kostet jedes Mal eine Anfrage. Ein Anbieter mit Ratenbegrenzung antwortet auf eine Anfrage zu viel, indem er die der nächsten Minuten ablehnt, und der Wert altert dann weiter als sonst. Lohnt sich, um Codenotch mit dem Dashboard eines Anbieters zu vergleichen — und danach wieder auszuschalten."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Щоразу це коштує одного запиту. Провайдер з обмеженням частоти відповідає на зайвий запит відмовою на наступні кілька хвилин, і цифра тоді старіє ще більше, ніж старіла б. Варто ввімкнути, щоб зіставити Codenotch із власною панеллю провайдера, і потім вимкнути назад."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인할 때마다 요청을 하나 사용합니다. 요청 수를 제한하는 제공자는 한 번 초과하면 이후 몇 분간의 요청을 거부하므로, 수치가 오히려 더 오래된 것이 됩니다. 제공자의 대시보드와 맞춰 볼 때 켜고, 확인이 끝나면 다시 끄는 것이 좋습니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu har safar bitta soʻrov sarflaydi. Soʻrovlarni cheklaydigan provayder ortiqcha bitta soʻrovga keyingi bir necha daqiqalik soʻrovlarni rad etib javob beradi va koʻrsatkich shunda avvalgidan ham eskiradi. Codenotch'ni provayderning oʻz paneli bilan solishtirish uchun yoqib, keyin qaytib oʻchirishga arziydi."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setiap kali, ini memakai satu permintaan. Penyedia yang membatasi laju akan menolak permintaan beberapa menit berikutnya begitu ada satu permintaan yang berlebih, dan angkanya justru menjadi lebih tua. Berguna untuk membandingkan Codenotch dengan dasbor penyedia, lalu dimatikan lagi setelahnya."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her seferinde bir istek harcar. İstek sınırı olan bir sağlayıcı, bir fazla isteğe sonraki birkaç dakikanınkini reddederek karşılık verir; sayı o zaman olacağından daha da eskir. Codenotch'u sağlayıcının kendi panosundaki değerle karşılaştırmak için açmaya, sonra yeniden kapatmaya değer."
+          }
+        }
+      }
+    },
+    "Pointing at a ring, or opening the menu bar menu, re-reads the limit from the provider itself rather than from a reading cached moments ago. Off, a look still asks for a live reading and accepts a cached one only while it is newer than a couple of minutes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наведение на кольцо или открытие меню в строке меню перечитывает лимит у самого провайдера, а не из показания, закэшированного мгновения назад. Когда выключено, взгляд всё равно запрашивает свежее показание и принимает закэшированное только пока ему меньше пары минут."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pointer un anneau, ou ouvrir le menu de la barre des menus, relit la limite auprès du fournisseur lui-même plutôt que dans un relevé mis en cache il y a un instant. Désactivé, un coup d'œil demande déjà un relevé en direct et n'accepte un relevé en cache que s'il a moins de deux ou trois minutes."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リングにポインタを合わせるか、メニューバーのメニューを開くと、少し前にキャッシュされた読み取りではなく、サービス自体から上限を読み直します。オフのときも、見たときには最新の読み取りを求め、キャッシュは数分以内のものだけを受け入れます。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apontar para um anel, ou abrir o menu na barra de menus, relê o limite no próprio provedor em vez de usar uma leitura guardada instantes antes. Desligado, uma olhada já pede uma leitura ao vivo e só aceita uma guardada enquanto ela tiver menos de alguns minutos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把指针停在某个圆环上，或打开菜单栏里的菜单，会直接向服务重新读取额度，而不是用刚刚缓存下来的读数。关闭时，一次查看同样会请求最新读数，只有几分钟以内的缓存才会被采用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把指標停在某個圓環上，或開啟選單列裡的選單，會直接向服務重新讀取額度，而不是用剛剛快取下來的讀數。關閉時，一次查看同樣會請求最新讀數，只有幾分鐘以內的快取才會被採用。"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf einen Ring zu zeigen oder das Menü in der Menüleiste zu öffnen liest das Limit beim Anbieter selbst nach, statt aus einem Messwert, der vor wenigen Augenblicken zwischengespeichert wurde. Ausgeschaltet fragt ein Blick weiterhin einen aktuellen Messwert an und nimmt einen zwischengespeicherten nur an, solange er jünger als ein paar Minuten ist."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Наведення на кільце або відкриття меню в смузі меню перечитує ліміт у самого провайдера, а не з показника, закешованого мить тому. Коли вимкнено, погляд усе одно запитує свіжий показник і приймає закешований лише поки йому менше кількох хвилин."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "링에 포인터를 올리거나 메뉴 바 메뉴를 열면, 조금 전에 캐시된 측정값이 아니라 제공자에서 한도를 다시 읽어옵니다. 꺼 두어도 확인하는 순간 최신 측정값을 요청하며, 캐시는 몇 분 이내인 것만 사용합니다."
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ringga koʻrsatgichni olib borish yoki menyu satridagi menyuni ochish limitni bir lahza oldin keshlangan oʻqishdan emas, provayderning oʻzidan qayta oʻqiydi. Oʻchirilganda ham qarash yangi oʻqishni soʻraydi va keshlangan oʻqishni faqat bir necha daqiqadan yangi boʻlsa qabul qiladi."
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mengarahkan penunjuk ke sebuah ring, atau membuka menu di bilah menu, membaca ulang batas langsung dari penyedianya, bukan dari data yang baru saja disimpan sementara. Saat dimatikan, satu tatapan tetap meminta bacaan terbaru dan hanya menerima data tersimpan selama usianya belum lebih dari beberapa menit."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir halkanın üzerine gelmek ya da menü çubuğundaki menüyü açmak, limiti az önce önbelleğe alınmış bir okumadan değil, doğrudan sağlayıcıdan yeniden okur. Kapalıyken de bir bakış canlı bir okuma ister; önbellekteki okumayı yalnızca birkaç dakikadan yeniyse kabul eder."
+          }
+        }
+      }
+    },
+    "Ask the provider every time you look": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запрашивать у провайдера при каждом взгляде"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interroger le fournisseur à chaque coup d'œil"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "見るたびにサービスへ問い合わせる"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consultar o provedor a cada olhada"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次查看时向服务询问"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次查看時向服務詢問"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei jedem Blick beim Anbieter nachfragen"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запитувати провайдера щоразу, коли дивишся"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인할 때마다 제공자에 요청"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Har qaraganingizda provayderdan soʻrash"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tanya penyedia setiap kali Anda melihat"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her baktığında sağlayıcıya sor"
+          }
+        }
+      }
+    },
+    "Readings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показания"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relevés"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み取り"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leituras"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读数"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讀數"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messwerte"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показники"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "측정값"
+          }
+        },
+        "uz": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oʻqishlar"
+          }
+        },
+        "id": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pembacaan"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okumalar"
+          }
+        }
+      }
+    },
     "Compares each timed allowance with the time left until reset, showing quota in deficit or held in reserve.": {
       "extractionState": "manual",
       "localizations": {

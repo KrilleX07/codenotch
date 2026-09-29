@@ -187,17 +187,30 @@ actor ClaudeOAuthProvider: UsageProvider {
         try await fetchSnapshot(freshness: .standard)
     }
 
-    /// `.live` shortens the two allowances below, and only those. The endpoint
-    /// keeps its own back-off untouched: this is about not *serving* a reading
-    /// that was already old, never about asking Anthropic more often than the
-    /// 429 it hands back says we may.
+    /// Freshness reaches the two allowances below, and nothing else. The
+    /// endpoint keeps its own back-off untouched: this is about not *serving* a
+    /// reading that was already old, never about asking Anthropic more often
+    /// than the 429 it hands back says we may.
     func fetchSnapshot(freshness: UsageFreshness) async throws -> ProviderSnapshot {
-        let desktopAllowance = freshness == .live
-            ? min(liveDesktopFreshness, desktopFreshness)
-            : desktopFreshness
-        let cliAllowance = freshness == .live
-            ? min(liveCLIRefreshInterval, cliRefreshInterval)
-            : cliRefreshInterval
+        let desktopAllowance: TimeInterval
+        let cliAllowance: TimeInterval
+        switch freshness {
+        case .standard:
+            desktopAllowance = desktopFreshness
+            cliAllowance = cliRefreshInterval
+        case .live:
+            desktopAllowance = min(liveDesktopFreshness, desktopFreshness)
+            cliAllowance = min(liveCLIRefreshInterval, cliRefreshInterval)
+        case .fromSource:
+            // Zero, which no reading can be inside: whatever is held is skipped,
+            // however new. A cache written two seconds ago *is* the account's
+            // number, so this spends a request to be told what it already knew —
+            // deliberately, because somebody asked for the source itself. The
+            // spacing that keeps that affordable is the caller's; see
+            // `UsageStore.refreshBecauseSomeoneIsLooking`.
+            desktopAllowance = 0
+            cliAllowance = 0
+        }
         // A Deny is honoured by every source, not only the keychain (#98).
         // Claude Desktop's cache and the CLI never needed this app's keychain
         // access, which is exactly why they used to keep the ring filled after
@@ -218,8 +231,16 @@ actor ClaudeOAuthProvider: UsageProvider {
         let desktop = await desktopReading()
         let now = Date()
         let resets = desktop?.resets?.credits(at: now)
-        if let desktop, desktop.isFresh(at: now, within: desktopAllowance),
-           !Self.hasExpiredWindow(desktop.windows, at: now) {
+        // Whether this reading would ever be shown, at any freshness — which is
+        // a different question from whether it may be shown *now*, and the two
+        // must not be conflated. Conflating them made a caller that asked to
+        // skip the cache count as a cache miss, which armed the rescan throttle
+        // and stopped the cache being read at all for the next five minutes.
+        let showable = desktop.map {
+            $0.isFresh(at: now, within: desktopFreshness)
+                && !Self.hasExpiredWindow($0.windows, at: now)
+        } ?? false
+        if let desktop, showable, desktop.isFresh(at: now, within: desktopAllowance) {
             // The cache carries no plan, so the reading would say nothing about
             // whose it is — the one thing worth knowing when two Claude rings
             // sit side by side.
@@ -230,7 +251,7 @@ actor ClaudeOAuthProvider: UsageProvider {
         // already reset, is still a miss for the purpose of rescanning: without
         // this an installed-but-closed Desktop re-walks the cache every poll.
         // The reset block above is kept either way — it outlives the windows.
-        if desktop != nil {
+        if desktop != nil, !showable {
             noteDesktopMiss(at: now)
         }
         // Ahead of the back-off check on purpose. That deadline is the
@@ -247,9 +268,24 @@ actor ClaudeOAuthProvider: UsageProvider {
            let windows = await cliWindows(reusableFor: cliAllowance) {
             return snapshot(windows: windows, plan: lastCLIPlan, resetCredits: resets)
         }
-        var result = try await fetchFromKeychain()
-        if result.resetCredits == nil { result.resetCredits = resets }
-        return result
+        do {
+            var result = try await fetchFromKeychain()
+            if result.resetCredits == nil { result.resetCredits = resets }
+            return result
+        } catch {
+            // Skipping a reading we are holding is only worth it while some live
+            // source can answer instead. Where none can — no Claude Code, no
+            // usable token, a 429 — that reading is still the truth about the
+            // account, and asking for a fresher one must never leave the ring
+            // emptier than not asking would have. Only when something was
+            // actually skipped: at `.standard` the reading was already offered
+            // above, so there is nothing here to reconsider.
+            if let desktop, showable, desktopAllowance < desktopFreshness {
+                return snapshot(windows: desktop.windows, plan: profile.organizationPlan(),
+                                resetCredits: resets)
+            }
+            throw error
+        }
     }
 
     /// The CLI's estimate is "based on local sessions on this machine", all

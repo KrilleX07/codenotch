@@ -351,7 +351,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     // A phone asking to refresh is the same gesture as opening
                     // the menu here, and it is about to render these numbers on
                     // another screen. Nothing cached will do.
-                    await MainActor.run { store.refreshNow(freshness: .live) }
+                    await MainActor.run { store.refreshNow(freshness: .fromSource) }
                     for _ in 0..<20 {
                         let isRef = await MainActor.run { !store.refreshing.isEmpty }
                         if !isRef { break }
@@ -446,8 +446,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let statusItem = StatusItemController { [weak settings] in settings?.show() }
             self.statusItem = statusItem
-            statusItem.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
-            statusItem.onRefreshAll = { [weak store] in store?.refreshNow(freshness: .live) }
+            // Both are somebody's own click, so neither is answered from
+            // anything held: see `UsageFreshness.fromSource`.
+            statusItem.onRefreshProvider = { [weak store] id in
+                store?.refresh(providerID: id, freshness: .fromSource)
+            }
+            statusItem.onRefreshAll = { [weak store] in store?.refreshNow(freshness: .fromSource) }
             statusItem.onLook = { [weak store] in store?.refreshBecauseSomeoneIsLooking() }
             // The menu's tick writes to the same preference Settings writes to,
             // and reads nothing back of its own: the sink below carries the new
@@ -758,10 +762,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
             store.start()
-            fleet.onRefresh = { [weak store] in store?.refreshNow(freshness: .live) }
+            fleet.onRefresh = { [weak store] in store?.refreshNow(freshness: .fromSource) }
             fleet.onLook = { [weak store] in store?.refreshBecauseSomeoneIsLooking() }
             fleet.onRefreshProvider = { [weak store] id in
-                await store?.refresh(providerID: id)?.value
+                await store?.refresh(providerID: id, freshness: .fromSource)?.value
             }
             store.$refreshing
                 .receive(on: RunLoop.main)
@@ -937,6 +941,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store?.isBusy = { [weak self, weak activity] in
             (activity?.isBusy ?? false) || (self?.lmstudioMetrics?.isBusy ?? false)
+        }
+        // Read on every look rather than carried in by a sink, for the reason
+        // `isBusy` is: a stored copy answers with whatever the preference was
+        // when it was last delivered, and this one is a switch somebody flips to
+        // compare two numbers on screen right now.
+        store?.asksProviderOnLook = { [weak self] in
+            self?.preferences?.asksProviderOnLook ?? false
         }
 
         // Applied last, right before the panel goes up: every one of these

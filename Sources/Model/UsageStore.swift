@@ -122,6 +122,17 @@ final class UsageStore: ObservableObject {
     /// spends rate-limit budget to re-read a number that has not changed.
     var isBusy: () -> Bool = { false }
 
+    /// Whether a look should refuse every reading a provider is holding, however
+    /// new, and ask the provider itself — the "Ask the provider every time you
+    /// look" setting.
+    ///
+    /// A closure for the reason `isBusy` is one: the answer lives in
+    /// `Preferences` and changes while the store is running, and reading it as a
+    /// stored value would answer with whatever it was at launch. It reaches only
+    /// the *look*; the schedule asks for what the schedule asks for, so a
+    /// setting nobody is looking at cannot quietly triple the app's requests.
+    var asksProviderOnLook: () -> Bool = { false }
+
     /// How often the schedule *looks*, which is not how often it fetches.
     ///
     /// Four times a minute, so the two things that have to happen promptly can:
@@ -478,7 +489,10 @@ final class UsageStore: ObservableObject {
     func refreshBecauseSomeoneIsLooking() {
         let waited = lastAttempt.map { pollingNow().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
         guard Self.shouldRefreshOnEvent(sinceLastRefresh: waited, spacing: onLookInterval) else { return }
-        refreshNow(freshness: .live)
+        // The spacing is not relaxed for `.fromSource`, and not tightened
+        // either: what the setting changes is what an answer may be served from,
+        // never how often one is asked for.
+        refreshNow(freshness: asksProviderOnLook() ? .fromSource : .live)
     }
 
     /// Stops waiting for a pass that has not come back, so the next tick can
@@ -560,17 +574,19 @@ final class UsageStore: ObservableObject {
     /// Deliberately not routed through `refreshNow`: asking one cell for a fresh
     /// reading should not spend every other provider's rate-limit budget, and
     /// Claude's in particular is easy to exhaust.
+    ///
+    /// `.live` by default, because every caller of this is an event — a response
+    /// that just finished, a provider just signed into, a model just loaded — and
+    /// an event asks about the state it has this second, not about the state a
+    /// cache was left in. A caller that is somebody's own click asks for
+    /// `.fromSource` instead.
     @discardableResult
-    func refresh(providerID: String) -> Task<Void, Never>? {
+    func refresh(providerID: String, freshness: UsageFreshness = .live) -> Task<Void, Never>? {
         guard let provider = providers.first(where: { $0.id == providerID }),
               !disconnected.contains(providerID) else { return nil }
         if let task = fetchTasks[providerID] { return task }
         if provider.kind == .usage { lastAttempt = pollingNow() }
-        // Live, always. Every caller of this is an event — Refresh now, a
-        // response that just finished, a provider just signed into — and an
-        // event asks about the state it has this second, not about the state a
-        // cache was left in.
-        return beginRefresh(provider, freshness: .live, holdIndicator: true)
+        return beginRefresh(provider, freshness: freshness, holdIndicator: true)
     }
 
     func refreshLocalRuntimes() {

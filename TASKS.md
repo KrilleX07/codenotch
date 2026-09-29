@@ -1779,6 +1779,42 @@ Two events ask outside the schedule, and neither is a timer:
   hover hook matters on its own: a notch held permanently open never unfolds,
   so there would otherwise be no look to notice.
 
+### Ask the provider every time you look
+
+Even bounded at two minutes, a percentage is still a figure that was *read*
+rather than a live wire — and somebody comparing Codenotch against a vendor's
+own dashboard figure by figure wants the wire. `UsageFreshness.fromSource` is
+that: zero allowance on both of Claude's held sources, so whatever is held is
+skipped however new it is. A cache written two seconds ago *is* the account's
+number, so this knowingly spends a request to be told what it already knew.
+
+It is a setting (`Preferences.asksProviderOnLook`, **General › Readings**) and
+off by default, because it is not strictly better. A provider that rate-limits
+answers one request too many with a back-off that then holds a number *older*
+than the cache would have been. So it is what somebody asks for and never what
+the schedule decides: the closure reaches `refreshBecauseSomeoneIsLooking` and
+nothing else, and the spacing is unchanged at 15s — the setting changes what an
+answer may be served from, never how often one is asked for. **Refresh now**, a
+ring clicked, the settings row's refresh and a phone's refresh ask for it
+unconditionally: each of those is a human's own click, rate-limited by the human.
+
+Two things had to be right for it not to make freshness *worse*:
+
+- **It may not leave a ring emptier than `.standard` would have.** On a Mac with
+  Claude Desktop and no usable token — no Claude Code, an expired keychain item,
+  a 429 — the cache is the only source there is. Skipping it and then failing
+  would have turned a filled ring into a dimmed one on every hover. The keychain
+  path is now wrapped: where nothing live can answer and something *was* skipped
+  (`desktopAllowance < desktopFreshness`), the held reading is returned rather
+  than the error thrown. A cache past the ordinary thirty minutes is not
+  resurrected by it — it was not showable before the request and is not after.
+- **Skipping a cache is not missing one.** `noteDesktopMiss` arms a five-minute
+  rescan throttle, and it was armed by any reading the caller did not accept. So
+  one look with the setting on would have stopped the Desktop cache being read at
+  all for the next five minutes, taking the source away from every poll after it.
+  `showable` — would this reading be shown at *any* freshness — is now kept apart
+  from "may it be shown now", and only the first arms the throttle.
+
 ### The countdown is read against a clock
 
 None of the above touches the time remaining, which needs no fetch at all — it
