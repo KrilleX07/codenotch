@@ -166,6 +166,9 @@
   body[data-edge="top"] #pill,body[data-edge="bottom"] #pill{
     right:auto;left:50%;top:auto;transform:translateX(-50%);
     flex-direction:row;width:auto;height:auto;padding:12px 18px;
+    /* Both ends have a flare here, and each flare's edge line runs on into the pill's own: without this
+       one, the far flare's line stopped short at the pill and stood out of it as a stub */
+    border-right:1px solid var(--edge);
   }
   body[data-edge="top"] #pill::before,body[data-edge="top"] #pill::after,
   body[data-edge="bottom"] #pill::before,body[data-edge="bottom"] #pill::after{right:auto;top:auto;bottom:auto}
@@ -222,8 +225,9 @@
   body.folded[data-edge="left"] .cell{translate:-10px 0}
   body.folded[data-edge="top"] .cell{translate:0 -10px}
   body.folded[data-edge="bottom"] .cell{translate:0 10px}
-  .handle{transition:opacity .2s ease}
-  body.folded .handle{opacity:0;pointer-events:none}
+  /* Shown as the notch opens, its arc still buried in the notch; gone once the arc is back in */
+  .handle{transition:opacity .01s linear}
+  body.folded .handle{opacity:0;pointer-events:none;transition:opacity .04s linear .23s}
   @media (prefers-reduced-motion: reduce){#pill,#rest,body.folded #rest,.cell,.handle{transition:none}}
 
   /* The settings orb past the far end of the pill, as on the Mac (SettingsOrb). At rest it is a
@@ -251,6 +255,19 @@
   @media (prefers-reduced-motion: reduce){.handle > *{transition:none}}
   /* Carried, the orb's parts are drawn frame by frame from the carry's times (drawCarriedHandle) */
   .handle.carried > *{transition:none}
+  /* The orb's goo (drawOrb) stands in for the arc and the disc while it runs. Over the pill, unlike
+     the orb, so a neck leaving the notch covers the pill's edge line where it crosses it */
+  .handle.drawn > .h-rest,.handle.releasing > .h-rest,.handle.releasing > .h-disc{visibility:hidden}
+  #orbGoo{position:absolute;width:130px;height:130px;margin:-65px 0 0 -65px;overflow:visible;pointer-events:none;display:none}
+  #orbGoo.placed{display:block}
+  #orbGoo{transition:opacity .01s linear}
+  body.folded #orbGoo{opacity:0;transition:opacity .04s linear .23s}
+  #orbGoo .p-ring{fill:none;stroke:var(--edge);stroke-linecap:round}
+  #orbGoo .p-fill{fill:none;stroke:var(--pill);stroke-linecap:round}
+  #orbGoo .p-disc{fill:var(--pill);stroke:var(--edge);stroke-width:1}
+  #orbGoo .liquid path{fill:none;stroke:#000;stroke-linecap:round}
+  #orbGoo .liquid .l-neck,#orbGoo .liquid circle{fill:#000;stroke:none}
+  #orbGooF .rim{flood-color:var(--edge)} #orbGooF .fill{flood-color:var(--pill)}
   /* The six dots beside the orb (MoveGrip), drawn centred on the orb and under it, so they come out
      of it and go back into it. Liquid while they come and go: the goo is cut back to a shape and
      drawn in the pill's colour with its edge, as the orb's disc is. */
@@ -291,6 +308,25 @@
   </div>
   <div id="pill"></div><!-- one .cell per provider, stacked vertically (upstream: data-driven, the same layout for 1–5 cells) -->
   <div id="rest"></div><!-- after the pill, so its outline is drawn over the clipped pill -->
+  <svg id="orbGoo" viewBox="-65 -65 130 130" aria-hidden="true">
+    <defs>
+      <filter id="orbGooF" x="-65" y="-65" width="130" height="130" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="0" result="blur"/>
+        <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 18 -8.5" result="shape"/>
+        <feMorphology in="shape" operator="erode" radius="1" result="inner"/>
+        <feFlood class="rim" result="rimColour"/>
+        <feComposite in="rimColour" in2="shape" operator="in" result="rim"/>
+        <feFlood class="fill" result="fillColour"/>
+        <feComposite in="fillColour" in2="inner" operator="in" result="body"/>
+        <feMerge><feMergeNode in="rim"/><feMergeNode in="body"/></feMerge>
+      </filter>
+      <clipPath id="orbCut"><circle r="39.2"/></clipPath>
+    </defs>
+    <g id="orbInk" clip-path="url(#orbCut)" style="display:none">
+      <g class="plain"><path class="p-ring"/><path class="p-fill"/><circle class="p-disc"/></g>
+      <g class="liquid" filter="url(#orbGooF)"><path class="l-band"/><path class="l-neck"/><path class="l-arc"/><circle class="l-disc"/></g>
+    </g>
+  </svg>
   <div id="notice"></div>
 </div>
 <script>
@@ -1542,6 +1578,9 @@ let orbAt=null, hovered=null, orbSpins=0;
 const grip=document.getElementById('grip'), gripDots=document.getElementById('gripDots');
 const gripBlur=grip.querySelector('feGaussianBlur');
 const [gripCore,gripNeck,...gripDot]=gripDots.children;
+// The orb's goo, placed with the dots (see drawOrb)
+const orbGoo=document.getElementById('orbGoo'), orbCut=orbGoo.querySelector('#orbCut circle');
+let orbFillet=38.7;
 const GRIP_DOT=6.1, GRIP_PITCH=9.9, GRIP_GAP=11.9, DISC_R=23.3, GRIP_HOT=26.3;
 const GRIP_WIDTH=GRIP_PITCH+GRIP_DOT, GRIP_REACH=DISC_R+GRIP_GAP+GRIP_WIDTH/2;
 let gripAt=null;
@@ -1558,12 +1597,17 @@ function placeHandles(){
   // Measurements come back zoomed when fitZoom has zoomed the page; styles are written unzoomed
   const z=parseFloat(document.documentElement.style.zoom)||1;
   const R=(parseFloat(getComputedStyle(pill).getPropertyValue('--fillet'))||38.7)*z;
-  // The fillet's centre: the corner of its square diagonally opposite the one on the screen edge
-  const far=notchEdge==='left'?[r.left+R,r.bottom+R]:notchEdge==='top'?[r.right+R,r.top+R]
-    :notchEdge==='bottom'?[r.right+R,r.bottom-R]:[r.right-R,r.bottom+R];
+  // The fillet's centre: the corner of its square diagonally opposite the one on the screen edge. The
+  // square is placed from the pill's padding box, so the border at that end is not part of it
+  const cs=getComputedStyle(pill), bb=(parseFloat(cs.borderBottomWidth)||0)*z, br=(parseFloat(cs.borderRightWidth)||0)*z;
+  const far=notchEdge==='left'?[r.left+R,r.bottom-bb+R]:notchEdge==='top'?[r.right-br+R,r.top+R]
+    :notchEdge==='bottom'?[r.right-br+R,r.bottom-R]:[r.right-R,r.bottom-bb+R];
   orbAt=put(orb,far[0],far[1],z);
   grip.style.left=(far[0]/z)+'px'; grip.style.top=(far[1]/z)+'px';
   grip.classList.add('placed');
+  orbGoo.style.left=grip.style.left; orbGoo.style.top=grip.style.top;
+  orbGoo.classList.add('placed');
+  orbFillet=R/z; orbCut.setAttribute('r',(orbFillet+.5).toFixed(2));
   const [dx,dy]=away();
   gripAt={x:far[0]+dx*GRIP_REACH*z,y:far[1]+dy*GRIP_REACH*z,reach:GRIP_HOT*z};
   return true;
@@ -1583,7 +1627,7 @@ function setHovered(which){
   // Held open while the pointer is on its dots, so the pair stay together
   orb.classList.toggle('hover',gripOut());
   document.body.style.cursor=which==='grip'?'grab':'';
-  if(gripOut()!==wasOut){ gripTo(gripOut()); reportHot(); }
+  if(gripOut()!==wasOut){ gripTo(gripOut()); reportHot(); if(gripOut()) holdOrb(); else releaseOrb(); }
   gripHover.to=which==='grip'?1:0;
   runGrip();
 }
@@ -1640,7 +1684,13 @@ function gripTick(t){
   const gap=gripHover.to-gripHover.v;
   if(still()||(Math.abs(gap)<.002&&Math.abs(gripHover.velocity)<.02)){ gripHover.v=gripHover.to; gripHover.velocity=0; }
   else { const s=springStep(gap,gripHover.velocity,elapsed,.22,.55); gripHover.v+=s.moved; gripHover.velocity=s.velocity; busy=true; }
-  if(!hidden) drawGrip();
+  if(arcRun){
+    const u=still()?1:clamp01((t-arcRun.start)/arcRun.dur);
+    arcSep=arcRun.from+(arcRun.to-arcRun.from)*arcRun.ease(u);
+    if(u<1) busy=true; else { arcSep=arcRun.to; arcRun=null; }
+  }
+  if(release){ if(still()||t>=release.start+release.dur){ release=null; orb.classList.remove('releasing'); } else busy=true; }
+  if(!hidden){ drawGrip(); drawOrb(t); }
   if(handleCarry&&handleCarry.landedAt&&Date.now()-handleCarry.landedAt>HANDLE_SETTLES) endHandleCarry();
   if(busy) runGrip(); else gripLast=null;
 }
@@ -1723,9 +1773,12 @@ function drawCarriedHandle(){
   orb.classList.add('carried');
   if(c.fromHover){
     rest.style.opacity=0;
-    disc.style.opacity=1-f.merged; disc.style.transform=`scale(${1-.4*f.merged})`;
-    glyph.style.opacity=f.gear*(1-f.merged);
+    const merging=f.merged>.001;
+    disc.style.opacity=merging?0:1;
+    glyph.style.opacity=f.gear;
+    paintOrb(merging?discMerge(f.merged,orbFillet,ORB_STROKE,DISC_R,pocket()):null);
   } else {
+    paintOrb(null);
     const arc=c.landedAt?clamp01(f.arc):1-smooth(f.t/.2);
     const size=c.landedAt?.6+.4*f.arc:1-.4*smooth(f.t/.25);
     rest.style.opacity=arc; rest.style.transform=`rotate(var(--arc)) scale(${size})`;
@@ -1733,16 +1786,20 @@ function drawCarriedHandle(){
   }
 }
 function beginHandleCarry(fromHover){
+  // The notch is open for a carry, so the arc is out; whatever the orb was doing gives way to it
+  release=null; arcRun=null; arcSep=1;
+  orb.classList.remove('drawn','releasing');
   handleCarry={at:Date.now(),fromHover};
   runGrip();
-  // With the dots' own measures, so the overlay draws the same dots
-  return {at:handleCarry.at,fromHover,dot:GRIP_DOT,pitch:GRIP_PITCH,reach:GRIP_REACH};
+  // With the dots' and the disc's own measures, so the overlay draws the same dots and disc
+  return {at:handleCarry.at,fromHover,dot:GRIP_DOT,pitch:GRIP_PITCH,reach:GRIP_REACH,disc:DISC_R,stroke:ORB_STROKE};
 }
 function endHandleCarry(){
   const fromHover=handleCarry.fromHover;
   handleCarry=null;
   orb.classList.remove('carried');
   for(const el of orb.children){ el.style.opacity=''; el.style.transform=''; }
+  paintOrb(null);
   // Put down by its dots, they stay out beside the orb while the pointer rests where it let go
   gripRun=null; gripSep=fromHover?1:0;
   hovered=fromHover?'grip':null;
@@ -1761,6 +1818,143 @@ grip.parentElement.addEventListener('mousedown',e=>{
   invoke('begin_carry',{shape:{...carryShape(),handle}}).catch(err=>{ notice('begin_carry failed: '+err); dragging=false; endHandleCarry(); });
 },true);
 
+/* ---- The orb's goo (the Mac's GooArc, DiscToArc and DiscMerge) ----------------------------------
+   The arc does not fade with the notch: as it opens, a drop pushes out of the flare on a neck, lets
+   go and unrolls into the arc; before it folds, the arc rolls up and a neck draws it back in. Left,
+   the disc waits for the dots to run back into it, then flows out along the arc; taken by its dots,
+   it is drawn into the notch on a neck. The Mac's is black on black; here it is drawn over the pill
+   and cut back to the fillet's circle, so nothing of it shows inside the notch. */
+const orbInk=document.getElementById('orbInk'), orbBlur=orbGoo.querySelector('feGaussianBlur');
+const [plainInk,liquidInk]=orbInk.children, [pRing,pFill,pDisc]=plainInk.children, [lBand,lNeck,lArc,lDisc]=liquidInk.children;
+const ARC_R=28.5, ORB_STROKE=6.8;
+// NotchRootView's arcDivides, arcReturn and arcQuickReturn, and SettingsOrb.turnsBack
+const ARC_DIVIDES=340, ARC_RETURN=400, ARC_QUICK=260, TURNS_BACK=500;
+const ARC_DIVIDE=bezier(.35,0,.25,1), EASE_IN_OUT=bezier(.42,0,.58,1), EASE_OUT=bezier(0,0,.58,1), RELEASE=bezier(.3,0,.2,1);
+let arcSep=1, arcRun=null, arcHome=-Infinity, release=null, tuckTimer=null;
+// Into the notch from the fillet's centre: the middle of the quarter the arc lies in
+function pocket(){ const s=Math.SQRT1_2; return notchEdge==='right'?[s,-s]:notchEdge==='bottom'?[-s,s]:[-s,-s]; }
+
+/* The part `a` to `b` (0 to 1) of the quarter circle facing `m` round the fillet's centre, `r` out
+   and moved by (sx, sy): the Mac's FlareArc, whose flare is a circle here */
+function quarter(m,r,a,b,sx=0,sy=0){
+  const th=Math.atan2(m[1],m[0])-Math.PI/4;
+  const p=s=>`${(sx+r*Math.cos(th+s*Math.PI/2)).toFixed(2)} ${(sy+r*Math.sin(th+s*Math.PI/2)).toFixed(2)}`;
+  return `M${p(a)} A${r.toFixed(2)} ${r.toFixed(2)} 0 0 1 ${p(b)}`;
+}
+/* A neck of goo from `f` to `t`, half `base` wide where it leaves, `pinch` in its middle and `top`
+   where it holds on */
+function strand(f,t,base,pinch,top){
+  const dx=t[0]-f[0], dy=t[1]-f[1], l=Math.max(Math.hypot(dx,dy),.001), px=-dy/l, py=dx/l, mid=[f[0]+dx/2,f[1]+dy/2];
+  const side=(p,h,s)=>`${(p[0]+px*h*s).toFixed(2)} ${(p[1]+py*h*s).toFixed(2)}`;
+  return `M${side(f,base,1)} Q${side(mid,pinch,1)} ${side(t,top,1)} L${side(t,top,-1)} Q${side(mid,pinch,-1)} ${side(f,base,-1)} Z`;
+}
+/* DiscMerge: the disc drawn along a neck into the flare, smaller as it goes. Round the fillet's
+   centre, for a fillet `F`, the arc's stroke `S`, the disc's radius `D` and `m` into the notch. */
+function discMerge(t,F,S,D,m){
+  t=clamp01(t);
+  const goo=5*smooth(t/.2), at=o=>[m[0]*(F-o),m[1]*(F-o)];
+  const inside=at(-D*.75), k=smooth(t), c=[inside[0]*k,inside[1]*k], r=D*(1-.72*smooth((t-.2)/.8));
+  const g={goo,liquid:goo>.3,disc:[c[0],c[1],r]};
+  if(!g.liquid) return g;
+  const band=S*2.4, hold=smooth(t/.22);
+  g.band={d:quarter(m,F+.5+band/2,0,1),width:band};
+  if(hold>.02) g.neck=strand(at(-S),c,D*1.1*hold/2,r*.8*hold/2,r*1.2*hold/2);
+  return g;
+}
+/* GooArc: at 0 buried in the notch, at 1 the resting arc. `returning` is the way back in — rolled
+   up first, then drawn home on a neck — and `quick` that way with the notch already folding, when
+   there is nothing to go into and it only rolls up and dwindles where it is. */
+function gooArc(sep,returning,quick,F,S,m){
+  if(sep<=.001) return null;
+  const rest=F-ARC_R, t=clamp01(sep), rq=returning&&quick, buried=-(rest+S*1.4);
+  const goo=rq?0:returning?S*.45*(1+.8*(1-smooth((sep-.04)/.32)))*smooth((.93-sep)/.15)*smooth(sep/.05)
+    :S*.4*smooth(sep/.15)*(1-smooth((sep-.6)/.35));
+  const slide=rq?0:returning?buried*(1-t)+(t<.85?rest*1.2*Math.sin(Math.PI*t/.85):0)
+    :buried*(1-t)+(t<.8?rest*2.1*Math.sin(Math.PI*t/.8):0);
+  const unrolled=rq?smooth((sep-.05)/.9):returning?smooth((sep-.6)/.35):smooth((sep-.52)/.43);
+  let width=S*2.3+(S-S*2.3)*unrolled;
+  if(rq) width=S*smooth(sep/.7);
+  if(returning&&!quick) width*=smooth(sep/.35);
+  if(width<.4) return null;
+  const half=Math.max(.004,unrolled/2), whole=unrolled>=.999;
+  const g={goo,liquid:goo>.2,arc:{d:quarter(m,ARC_R,whole?0:.5-half,whole?1:.5+half,-m[0]*slide,-m[1]*slide),width}};
+  if(!g.liquid) return g;
+  g.arc.width+=goo*.4;
+  const neck=returning?(quick?0:S*1.1*smooth((.94-sep)/.1)):S*1.1*(1-smooth((sep-.2)/.5));
+  if(neck>S*.18){
+    const reach=returning?smooth((.92-sep)/.32):1, out=rest+slide;
+    const from=[m[0]*(F+S),m[1]*(F+S)], drop=[m[0]*(F-out),m[1]*(F-out)];
+    g.neck=strand(from,[from[0]+(drop[0]-from[0])*reach,from[1]+(drop[1]-from[1])*reach],S*1.3,neck/2,S*.7);
+  }
+  const band=S+goo*1.6;
+  g.band={d:quarter(m,F+.5+band/2,0,1),width:band};
+  return g;
+}
+/* DiscToArc: the disc flowing out along the arc from its middle, thinning as it goes, until it is the
+   arc. From the disc's own size, edge included, so it takes over from it without a step. */
+function discToArc(p,S,D,m){
+  p=clamp01(p);
+  const onto=smooth(p/.55), half=Math.max(.004,.5*smooth((p-.08)/.82)), from=2*D-2;
+  return {goo:0,liquid:false,arc:{d:quarter(m,ARC_R,.5-half,.5+half,-m[0]*ARC_R*(1-onto),-m[1]*ARC_R*(1-onto)),width:from+(S-from)*smooth(p/.8)}};
+}
+function paintOrb(g){
+  if(!g){ orbInk.style.display='none'; return; }
+  orbInk.style.display='';
+  plainInk.style.display=g.liquid?'none':''; liquidInk.style.display=g.liquid?'':'none';
+  const a=g.arc, d=g.disc||[0,0,0];
+  if(!g.liquid){
+    // The resting arc's own drawing: the edge a pixel either side of the fill
+    pRing.setAttribute('d',a?a.d:''); pRing.setAttribute('stroke-width',a?(a.width+2).toFixed(2):'0');
+    pFill.setAttribute('d',a?a.d:''); pFill.setAttribute('stroke-width',a?a.width.toFixed(2):'0');
+    setCircle(pDisc,d[0],d[1],d[2]-.5);
+    return;
+  }
+  orbBlur.setAttribute('stdDeviation',g.goo.toFixed(2));
+  lArc.setAttribute('d',a?a.d:''); lArc.setAttribute('stroke-width',a?(a.width+2).toFixed(2):'0');
+  lBand.setAttribute('d',g.band?g.band.d:''); lBand.setAttribute('stroke-width',g.band?g.band.width.toFixed(2):'0');
+  lNeck.setAttribute('d',g.neck||'');
+  setCircle(lDisc,d[0],d[1],d[2]);
+}
+function drawOrb(now){
+  if(handleCarry) return;
+  let g=null, drawn=false;
+  if(release){
+    const p=RELEASE(clamp01((now-release.start)/release.dur)), m=pocket();
+    g=release.home?discMerge(p,orbFillet,ORB_STROKE,DISC_R,m):discToArc(p,ORB_STROKE,DISC_R,m);
+  } else if(!gripOut()&&(arcRun||arcSep<1)){
+    g=gooArc(arcSep,!!arcRun&&arcRun.returning,!!arcRun&&arcRun.quick,orbFillet,ORB_STROKE,pocket());
+    drawn=true;
+  }
+  orb.classList.toggle('drawn',drawn);
+  paintOrb(g);
+}
+function arcTo(to,run){
+  arcRun={from:arcSep,to,returning:false,quick:false,start:performance.now(),...run};
+  runGrip();
+}
+// Out as the notch opens; caught on its way back in, straight back out the way it was going
+function arcOut(){
+  if(arcRun?arcRun.to===1:arcSep>=1) return;
+  if(performance.now()-arcHome<ARC_RETURN) arcTo(1,{returning:true,dur:350,ease:EASE_OUT});
+  else { arcSep=0; arcTo(1,{start:performance.now()+ARC_DIVIDES,dur:950,ease:ARC_DIVIDE}); }
+}
+// Home before the notch folds; `quick` when it is folding already
+function arcIn(quick){
+  if(arcRun?arcRun.to===0:arcSep<=0) return;
+  arcHome=performance.now();
+  arcTo(0,{returning:true,quick,dur:quick?ARC_QUICK:ARC_RETURN,ease:EASE_IN_OUT});
+}
+/* Left, the disc turns back into its arc a beat late, so the dots have run back into it while it is
+   still the disc there to take them; with the arc already going home, it goes into the notch instead */
+function releaseOrb(){
+  if(handleCarry||still()) return;
+  const home=(arcRun?arcRun.to:arcSep)<.5;
+  release={start:performance.now()+(home?0:100),dur:home?340:400,home};
+  orb.classList.add('releasing');
+  runGrip();
+}
+function holdOrb(){ release=null; orb.classList.remove('releasing'); runGrip(); }
+
 /* Show on hover, the Mac's .onHover. It opens on contact and folds a moment after the pointer has gone.
    Rust says which (notch_pointer): once click-through is back on, the page is sent nothing at all. It
    never folds mid-carry, mid-drag or under the right-click menu, all of which take the pointer off the
@@ -1770,18 +1964,27 @@ function foldAllowed(){ return onHover&&!pointerIn&&!dragging&&!menuOpen; }
 function setFolded(f){
   if(f===folded) return;
   folded=f;
-  if(f){ clearTimeout(hideTimer); hideCard(); setHovered(null); }
+  if(f){ clearTimeout(hideTimer); hideCard(); arcIn(true); setHovered(null); } else arcOut();
   document.body.classList.toggle('folded',f);
   reportHot();
 }
-function unfold(){ clearTimeout(foldTimer); setFolded(false); }
+function unfold(){ clearTimeout(foldTimer); clearTimeout(tuckTimer); setFolded(false); arcOut(); }
+/* The Mac's order: left from the orb or its dots, the disc turns back into its arc first; then the arc
+   goes home, while there is still a notch to go into; and only then does the notch fold */
 function scheduleFold(){
-  clearTimeout(foldTimer);
-  if(!onHover){ setFolded(false); return; }
-  if(foldAllowed()) foldTimer=setTimeout(()=>{ if(foldAllowed()) setFolded(true); },FOLD_GRACE);
+  clearTimeout(foldTimer); clearTimeout(tuckTimer);
+  if(!onHover){ setFolded(false); arcOut(); return; }
+  if(!foldAllowed()){ if(!folded) arcOut(); return; }
+  const turnBack=gripOut()?TURNS_BACK:release?Math.max(0,release.start+release.dur-performance.now()):0;
+  tuckTimer=setTimeout(()=>{ if(foldAllowed()) arcIn(false); },turnBack);
+  foldTimer=setTimeout(()=>{ if(foldAllowed()) setFolded(true); },FOLD_GRACE+turnBack);
 }
 function applyUiFlags(f){ onHover=!!(f&&f.notch_on_hover); scheduleFold(); }
-listen('notch_pointer',e=>{ pointerIn=e.payload===true; if(pointerIn) unfold(); else scheduleFold(); }).catch(()=>{});
+// Off the notch is off the orb too: once the window is click-through the page may never see it leave
+listen('notch_pointer',e=>{
+  pointerIn=e.payload===true;
+  if(pointerIn) unfold(); else { if(!dragging) setHovered(null); scheduleFold(); }
+}).catch(()=>{});
 listen('ui_flags',e=>applyUiFlags(e.payload)).catch(()=>{});
 listen('pill_backdrop',e=>{
   if(e.payload==='dark'||e.payload==='light') document.body.dataset.behind=e.payload;

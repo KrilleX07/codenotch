@@ -28,6 +28,9 @@
   #parts path{fill:#000}
   .rim{flood-color:var(--edge)} .fill{flood-color:var(--pill)}
   #handle .dot{fill:var(--pill);stroke:var(--edge);stroke-width:1}
+  #orbPlainDisc{fill:var(--pill);stroke:var(--edge);stroke-width:1}
+  #orbLiquid path{fill:none;stroke:#000;stroke-linecap:round}
+  #orbLiquid #orbNeck,#orbLiquid circle{fill:#000;stroke:none}
   .slot{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
 
   /* notch.html's cells */
@@ -70,9 +73,25 @@
       <feComposite in="fillColour" in2="inner" operator="in" result="body"/>
       <feMerge><feMergeNode in="rim"/><feMergeNode in="body"/></feMerge>
     </filter>
+    <!-- The settings disc's goo, as notch.html's orbGoo -->
+    <filter id="orbGooF" x="-100" y="-100" width="200" height="200" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur id="orbBlur" in="SourceAlpha" stdDeviation="0" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 18 -8.5" result="shape"/>
+      <feMorphology in="shape" operator="erode" radius="1" result="inner"/>
+      <feFlood class="rim" result="rimColour"/>
+      <feComposite in="rimColour" in2="shape" operator="in" result="rim"/>
+      <feFlood class="fill" result="fillColour"/>
+      <feComposite in="fillColour" in2="inner" operator="in" result="body"/>
+      <feMerge><feMergeNode in="rim"/><feMergeNode in="body"/></feMerge>
+    </filter>
+    <clipPath id="orbCut"><circle id="orbCutCircle" r="39.2"/></clipPath>
   </defs>
   <path id="notch"/>
   <g id="parts" filter="url(#goo)"><path id="first"/><path id="second"/></g>
+  <g id="orbInk" clip-path="url(#orbCut)" style="display:none">
+    <g id="orbPlain"><circle id="orbPlainDisc"/></g>
+    <g id="orbLiquid" filter="url(#orbGooF)"><path id="orbBand"/><path id="orbNeck"/><circle id="orbDisc"/></g>
+  </g>
   <g id="handle" style="display:none"><circle class="dot"/><circle class="dot"/><circle class="dot"/><circle class="dot"/><circle class="dot"/><circle class="dot"/></g>
 </svg>
 <div id="cells"></div>
@@ -314,11 +333,66 @@ function handleFrame(c,now){
   }
   return {t,slide,squeeze,merged,held,dots,arc,gear,grow};
 }
+/* The part `a` to `b` (0 to 1) of the quarter circle facing `m` round the fillet's centre, `r` out
+   and moved by (sx, sy): the Mac's FlareArc, whose flare is a circle here */
+function quarter(m,r,a,b,sx=0,sy=0){
+  const th=Math.atan2(m[1],m[0])-Math.PI/4;
+  const p=s=>`${(sx+r*Math.cos(th+s*Math.PI/2)).toFixed(2)} ${(sy+r*Math.sin(th+s*Math.PI/2)).toFixed(2)}`;
+  return `M${p(a)} A${r.toFixed(2)} ${r.toFixed(2)} 0 0 1 ${p(b)}`;
+}
+
+/* A neck of goo from `f` to `t`, half `base` wide where it leaves, `pinch` in its middle and `top`
+   where it holds on */
+function strand(f,t,base,pinch,top){
+  const dx=t[0]-f[0], dy=t[1]-f[1], l=Math.max(Math.hypot(dx,dy),.001), px=-dy/l, py=dx/l, mid=[f[0]+dx/2,f[1]+dy/2];
+  const side=(p,h,s)=>`${(p[0]+px*h*s).toFixed(2)} ${(p[1]+py*h*s).toFixed(2)}`;
+  return `M${side(f,base,1)} Q${side(mid,pinch,1)} ${side(t,top,1)} L${side(t,top,-1)} Q${side(mid,pinch,-1)} ${side(f,base,-1)} Z`;
+}
+
+/* DiscMerge: the disc drawn along a neck into the flare, smaller as it goes. Round the fillet's
+   centre, for a fillet `F`, the arc's stroke `S`, the disc's radius `D` and `m` into the notch. */
+function discMerge(t,F,S,D,m){
+  t=clamp01(t);
+  const goo=5*smooth(t/.2), at=o=>[m[0]*(F-o),m[1]*(F-o)];
+  const inside=at(-D*.75), k=smooth(t), c=[inside[0]*k,inside[1]*k], r=D*(1-.72*smooth((t-.2)/.8));
+  const g={goo,liquid:goo>.3,disc:[c[0],c[1],r]};
+  if(!g.liquid) return g;
+  const band=S*2.4, hold=smooth(t/.22);
+  g.band={d:quarter(m,F+.5+band/2,0,1),width:band};
+  if(hold>.02) g.neck=strand(at(-S),c,D*1.1*hold/2,r*.8*hold/2,r*1.2*hold/2);
+  return g;
+}
 const handleG = document.getElementById('handle'), handleDots = [...handleG.children];
+const orbInk = document.getElementById('orbInk'), orbPlain = document.getElementById('orbPlain'), orbLiquid = document.getElementById('orbLiquid');
+const orbCutCircle = document.getElementById('orbCutCircle'), orbBlur = document.getElementById('orbBlur');
+const OUTWARD = { top: [0, -1], right: [1, 0], bottom: [0, 1], left: [-1, 0] };
+function circle(el, x, y, r){ el.setAttribute('cx', x.toFixed(2)); el.setAttribute('cy', y.toFixed(2)); el.setAttribute('r', Math.max(r, 0).toFixed(2)); }
+/* Taken by its dots, the disc goes into the notch like goo (DiscMerge), round the fillet's centre it
+   hangs in, cut back to that fillet's circle as notch.html cuts it */
+function drawDisc(p, length, f, sign){
+  const h = st.shape.handle, k = st.size, fillet = st.shape.fillet * k;
+  if(!h.fromHover || !h.disc || f.merged <= .001 || f.merged >= .999){ orbInk.style.display = 'none'; return; }
+  const at = wrap(p + sign * (length / 2 + fillet)), [cx, cy] = ringPoint(at, fillet), edge = placeAt(at)[0];
+  const out = OUTWARD[edge], head = HEADING[edge];
+  const m = [(out[0] - sign * head[0]) * Math.SQRT1_2, (out[1] - sign * head[1]) * Math.SQRT1_2];
+  const g = discMerge(f.merged, fillet, h.stroke * k, h.disc * k, m);
+  orbInk.setAttribute('transform', `translate(${cx.toFixed(2)} ${cy.toFixed(2)})`);
+  orbCutCircle.setAttribute('r', (fillet + .5).toFixed(2));
+  orbPlain.style.display = g.liquid ? 'none' : ''; orbLiquid.style.display = g.liquid ? '' : 'none';
+  const [x, y, r] = g.disc;
+  if(g.liquid){
+    orbBlur.setAttribute('stdDeviation', (g.goo * k).toFixed(2));
+    const band = document.getElementById('orbBand');
+    band.setAttribute('d', g.band.d); band.setAttribute('stroke-width', g.band.width.toFixed(2));
+    document.getElementById('orbNeck').setAttribute('d', g.neck || '');
+    circle(document.getElementById('orbDisc'), x, y, r);
+  } else circle(document.getElementById('orbPlainDisc'), x, y, r - .5);
+  orbInk.style.display = '';
+}
 let releasedAt = null;
 function drawHandle(p, length){
   const h = st.shape.handle;
-  if(!h){ handleG.style.display = 'none'; return; }
+  if(!h){ handleG.style.display = 'none'; orbInk.style.display = 'none'; return; }
   const f = handleFrame({ ...h, releasedAt }, Date.now()), k = st.size, fillet = st.shape.fillet * k;
   // The orb hangs off the end it hung off when picked up, in that flare's pocket
   const sign = st.edge === 'top' || st.edge === 'right' ? 1 : -1;
@@ -333,6 +407,7 @@ function drawHandle(p, length){
   }
   handleG.style.display = '';
   handleG.style.opacity = clamp01(h.fromHover ? 1 : f.slide) * f.dots;
+  drawDisc(p, length, f, sign);
 }
 const handleMoving = () => !!st.shape.handle && (Date.now() - st.shape.handle.at < 700 || (releasedAt != null && Date.now() - releasedAt < 450));
 

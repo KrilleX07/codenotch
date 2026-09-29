@@ -144,7 +144,8 @@ test('the notch and the drawing of it show the same settings end, frame for fram
     assert.ok(a >= 0, `missing ${start}`);
     return source.slice(a, source.indexOf(end, a) + end.length);
   };
-  for (const [start, end] of [['const smooth=x=>', '};\n'], ['const clamp01=x=>', ';\n'], ['function handleFrame(c,now){', '\n}\n']]) {
+  for (const [start, end] of [['const smooth=x=>', '};\n'], ['const clamp01=x=>', ';\n'], ['function handleFrame(c,now){', '\n}\n'],
+    ['function quarter(', '\n}\n'], ['function strand(', '\n}\n'], ['function discMerge(', '\n}\n']]) {
     assert.equal(pick(html, start, end), pick(notch, start, end), start);
   }
 });
@@ -160,4 +161,15 @@ test('held by its dots, they squeeze in the hand, spring back when let go, and g
   assert.ok(down.merged < .01 && down.held < .01 && down.gear > .99, 'put down: the orb out again and the dots beside it');
   const alt = at('handleFrame({ at: 0, fromHover: false, landedAt: 1000 }, 1600)');
   assert.ok(alt.dots < .01 && alt.arc > .99, 'put down after Alt+drag: the dots gone and the arc back');
+});
+
+test('taken by its dots, the disc goes into the notch on a neck, from exactly where it was', () => {
+  const run = page();
+  const at = (t) => JSON.parse(run(`JSON.stringify(discMerge(${t}, 38.7, 6.8, 23.3, [Math.SQRT1_2, -Math.SQRT1_2]))`));
+  const start = at(0);
+  assert.deepEqual(start.disc.map(Math.abs), [0, 0, 23.3]);
+  assert.equal(start.liquid, false, 'the first frame is the disc itself');
+  assert.ok(at(.5).liquid && at(.5).neck, 'held on a neck on its way');
+  const [x, y, r] = at(1).disc;
+  assert.ok(Math.hypot(x, y) - r > 38.7 + .5, 'in the end wholly inside the notch, past where it is cut back');
 });
