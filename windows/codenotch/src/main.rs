@@ -17,6 +17,7 @@ mod claude_auth;
 mod codex;
 mod cursor;
 mod grok;
+mod copilot;
 mod antigravity;
 mod glm;
 mod opencode;
@@ -56,6 +57,8 @@ pub struct AppState {
     pub cursor: Mutex<usage::UsageSnapshot>,
     /// Grok Build credits, read from the Grok CLI's own session
     pub grok: Mutex<usage::UsageSnapshot>,
+    /// GitHub Copilot quotas, read with the GitHub CLI's own session
+    pub copilot: Mutex<usage::UsageSnapshot>,
     pub antigravity: Mutex<usage::UsageSnapshot>,
     /// GLM Coding Plan snapshot, read from the existing Z.AI tool credentials.
     pub glm: Mutex<usage::UsageSnapshot>,
@@ -686,6 +689,7 @@ pub(crate) fn refresh_provider(app: &AppHandle, provider: &str) -> bool {
         "codex" => codex::request_refresh(),
         "cursor" => cursor::request_refresh(),
         "grok" => grok::request_refresh(),
+        "copilot" => copilot::request_refresh(),
         "gemini" => antigravity::request_refresh(),
         "glm" => glm::request_refresh(),
         "opencode" => opencode::request_refresh(),
@@ -761,6 +765,11 @@ fn get_grok(state: tauri::State<AppState>) -> usage::UsageSnapshot {
 }
 
 #[tauri::command]
+fn get_copilot(state: tauri::State<AppState>) -> usage::UsageSnapshot {
+    state.copilot.lock().unwrap().clone()
+}
+
+#[tauri::command]
 fn get_cursor(state: tauri::State<AppState>) -> usage::UsageSnapshot {
     state.cursor.lock().unwrap().clone()
 }
@@ -777,6 +786,7 @@ pub(crate) fn provider_page(provider: &str) -> Option<(&'static str, &'static st
         "codex" => ("https://chatgpt.com/#settings/Account", "chatgpt.com"),
         "cursor" => ("https://cursor.com/dashboard", "cursor.com"),
         "grok" => ("https://grok.com/?_s=usage", "grok.com"),
+        "copilot" => ("https://github.com/settings/copilot", "github.com"),
         "gemini" => ("https://antigravity.google", "antigravity.google"),
         "glm" => ("https://z.ai/manage-apikey/apikey-list", "z.ai"),
         "opencode" => ("https://opencode.ai", "opencode.ai"),
@@ -1239,6 +1249,8 @@ fn ring_window<'a>(
         "codex" => by_id("primary"),
         "cursor" => by_id("included").or_else(|| by_id("api")),
         "grok" => by_id("credits").or_else(|| windows.first()),
+        // The Mac's headlineID: premium requests when metered, else the first quota
+        "copilot" => by_id("premium_interactions").or_else(|| windows.first()),
         // The Mac sets headlineID "session", weeklyID "weekly". Without this the
         // plan falls through to Antigravity's lane picker and the ring shows the
         // tightest window it can find instead of the session.
@@ -1299,6 +1311,7 @@ pub(crate) fn snapshot_of(app: &AppHandle, id: &str) -> usage::UsageSnapshot {
         "codex" => st.codex.lock().unwrap().clone(),
         "cursor" => st.cursor.lock().unwrap().clone(),
         "grok" => st.grok.lock().unwrap().clone(),
+        "copilot" => st.copilot.lock().unwrap().clone(),
         "gemini" => st.antigravity.lock().unwrap().clone(),
         "glm" => st.glm.lock().unwrap().clone(),
         "opencode" => st.opencode.lock().unwrap().clone(),
@@ -1686,6 +1699,7 @@ pub fn provider_label(id: &str) -> &'static str {
         "codex" => "Codex",
         "cursor" => "Cursor",
         "grok" => "Grok",
+        "copilot" => "GitHub Copilot",
         "gemini" => "Antigravity",
         "glm" => "z.ai",
         "opencode" => "OpenCode",
@@ -1694,7 +1708,7 @@ pub fn provider_label(id: &str) -> &'static str {
 }
 
 /// Every provider the tray menu can offer, in the order the notch shows them.
-pub const TRAY_PROVIDER_IDS: [&str; 7] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "gemini"];
+pub const TRAY_PROVIDER_IDS: [&str; 8] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "copilot", "gemini"];
 
 /// Keeps the tray menu current. macOS rebuilds its menu as it opens; Tauri has no such hook, so it
 /// is rebuilt whenever a reading changes, and once a minute besides — otherwise "Resets in 12 min"
@@ -1881,6 +1895,7 @@ fn main() {
             codex: Mutex::new(codex::load_persisted()),
             cursor: Mutex::new(cursor::load_persisted()),
             grok: Mutex::new(grok::load_persisted()),
+            copilot: Mutex::new(copilot::load_persisted()),
             antigravity: Mutex::new(antigravity::load_persisted()),
             glm: Mutex::new(glm::load_persisted()),
             opencode: Mutex::new(opencode::load_persisted()),
@@ -1898,6 +1913,7 @@ fn main() {
             get_codex,
             get_cursor,
             get_grok,
+            get_copilot,
             get_antigravity,
             get_glm,
             get_opencode,
@@ -1975,6 +1991,7 @@ fn main() {
             codex::start(handle.clone());
             cursor::start(handle.clone());
             grok::start(handle.clone());
+            copilot::start(handle.clone());
             antigravity::start(handle.clone());
             glm::start(handle.clone());
             opencode::start(handle.clone());
