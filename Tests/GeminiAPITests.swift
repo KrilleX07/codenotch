@@ -190,6 +190,102 @@ final class GeminiCLIUsageTests: XCTestCase {
 
 /// Fixtures carry OpenCode's real `message` shape, because the reader asks
 /// SQLite to reach into the JSON and a wrong nesting would silently read zero.
+/// OpenCode 2.x renamed the tables this reads, so the reader has to know which
+/// shape it is looking at — a query for one does not run on the other, and a
+/// failed prepare reads as "spent nothing" rather than as "cannot read".
+final class OpenCodeSchemaTests: XCTestCase {
+    private var databases: [URL] = []
+
+    override func tearDownWithError() throws {
+        for url in databases { try? FileManager.default.removeItem(at: url) }
+        databases = []
+    }
+
+    private func database(_ ddl: String) throws -> URL {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("oc-schema-\(UUID().uuidString).db")
+        databases.append(url)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &db), SQLITE_OK)
+        sqlite3_exec(db, ddl, nil, nil, nil)
+        sqlite3_close(db)
+        return url
+    }
+
+    private let v1 = """
+    CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER,
+                          time_updated INTEGER, data TEXT);
+    CREATE TABLE session (id TEXT, parent_id TEXT, title TEXT, directory TEXT,
+                          time_updated INTEGER);
+    """
+    private let v2 = """
+    CREATE TABLE session_message (id TEXT, session_id TEXT, type TEXT, seq INTEGER,
+                                  time_created INTEGER, time_updated INTEGER, data TEXT);
+    CREATE TABLE session_v2 (id TEXT, parent_id TEXT, title TEXT, directory TEXT,
+                             time_updated INTEGER);
+    """
+
+    private func schema(of ddl: String) throws -> OpenCodeSchema? {
+        let url = try database(ddl)
+        guard let db = SQLiteStore.open(url) else { return nil }
+        defer { sqlite3_close(db) }
+        return OpenCodeSchema.of(db)
+    }
+
+    func testEachShapeIsRecognisedFromItsOwnTable() throws {
+        XCTAssertEqual(try schema(of: v1), .v1)
+        XCTAssertEqual(try schema(of: v2), .v2)
+    }
+
+    /// A database that is neither is "no database", which is a different answer
+    /// from "spent nothing" — the reader drops the row rather than showing zero.
+    func testAnUnfamiliarDatabaseIsNeither() throws {
+        XCTAssertNil(try schema(of: "CREATE TABLE unrelated (a TEXT);"))
+    }
+
+    /// The point of the whole exercise: each shape's SQL must actually prepare
+    /// against its own store. A string comparison would pass while the query
+    /// still failed to run, which is the bug that started this.
+    func testEachShapesSQLRunsAgainstItsOwnStore() throws {
+        for ddl in [v1, v2] {
+            let url = try database(ddl)
+            guard let db = SQLiteStore.open(url), let s = OpenCodeSchema.of(db) else {
+                return XCTFail("schema not detected")
+            }
+            for sql in [s.geminiUsageSQL(startOfMonth: 0), s.activitySQL(cutoffMillis: 0)] {
+                var statement: OpaquePointer?
+                XCTAssertEqual(sqlite3_prepare_v2(db, sql, -1, &statement, nil), SQLITE_OK,
+                               "failed to prepare: \(sql)")
+                sqlite3_finalize(statement)
+            }
+            sqlite3_close(db)
+        }
+    }
+
+    /// The role moved: a column in 2.x, a JSON key in 1.x. Naming the wrong one
+    /// fails to prepare, so each branch must carry the other's shape out.
+    func testTheRoleIsReadFromWhereverItLives() {
+        XCTAssertEqual(OpenCodeSchema.assistantPredicate(for: .v2), "type = 'assistant'")
+        XCTAssertEqual(OpenCodeSchema.assistantPredicate(for: .v1),
+                       "json_extract(data, '$.role') = 'assistant'")
+    }
+
+    /// The provider id moved under the model object, but matching both places
+    /// costs nothing and survives a row that has either.
+    func testTheProviderIsMatchedInBothPlaces() {
+        XCTAssertTrue(OpenCodeSchema.providerPredicate.contains("$.model.providerID"))
+        XCTAssertTrue(OpenCodeSchema.providerPredicate.contains("$.providerID"))
+    }
+
+    /// Both selects are the same width, so the row layout does not depend on
+    /// which schema answered.
+    func testBothActivityQueriesAreTheSameWidth() throws {
+        let v1SQL = OpenCodeSchema.v1.activitySQL(cutoffMillis: 0)
+        let v2SQL = OpenCodeSchema.v2.activitySQL(cutoffMillis: 0)
+        XCTAssertEqual(v1SQL.split(separator: ",").count, v2SQL.split(separator: ",").count)
+    }
+}
+
 final class OpenCodeGeminiUsageTests: XCTestCase {
     private let now = localDate(2026, 9, 15)
     private var databases: [URL] = []
