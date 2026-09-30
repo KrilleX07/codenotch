@@ -359,10 +359,9 @@ function applyTheme(name){
 invoke('get_theme_resolved').then(applyTheme).catch(()=>{});
 listen('theme_resolved',e=>applyTheme(e.payload)).catch(()=>{});
 let colorTransition='hard_step';
-const stepTone=f=> f>=0.7?CRIT : f>=0.5?WATCH : AMPLE;
-// A continuous sRGB ramp across the whole range: the Windows watch cut has always been 50%, so
-// this is a named equivalence rather than a magic number. Windows has no watch-limit slider.
-const WATCH_AT=0.5;
+// Settings' own sliders; a page opened before either invoke resolves draws with the Mac's defaults.
+let watchLimit=0.5, criticalLimit=0.7;
+const stepTone=f=> f>=criticalLimit?CRIT : f>=watchLimit?WATCH : AMPLE;
 function hex3(c){ const n=parseInt(c.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
 function lerpHex(a,b,t){
   const A=hex3(a), B=hex3(b);
@@ -371,8 +370,8 @@ function lerpHex(a,b,t){
 }
 const rampTone=f=>{
   f=Math.max(0,Math.min(1,f));
-  if(f<WATCH_AT) return lerpHex(AMPLE,WATCH,f/WATCH_AT);
-  return lerpHex(WATCH,CRIT,(f-WATCH_AT)/(1-WATCH_AT));
+  if(f<watchLimit) return lerpHex(AMPLE,WATCH,f/watchLimit);
+  return lerpHex(WATCH,CRIT,(f-watchLimit)/(1-watchLimit));
 };
 const tone=f=> colorTransition==='ramp'?rampTone(f):stepTone(f);
 // Whole percents, except where rounding would read as nothing used or nothing left, as the Mac's Percent does
@@ -399,6 +398,8 @@ let codexSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let cursorSnap={status:'absent',windows:[],fetched_at:0,note:''};
 // Grok Build credits, from the Grok CLI's own session; absent until that CLI is signed in
 let grokSnap={status:'absent',windows:[],fetched_at:0,note:''};
+// GitHub Copilot quotas, from the GitHub CLI's own session; absent until gh is installed or a token is set
+let copilotSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let glmSnap={status:'absent',windows:[],fetched_at:0,note:''};
 // OpenCode Go plan, read with OpenCode's own sign-in; absent until OpenCode is installed
 let opencodeSnap={status:'absent',windows:[],fetched_at:0,note:''};
@@ -494,6 +495,10 @@ const TEXT={
     'Unable to open Claude sign-in window.':'Claude 로그인 창을 열 수 없습니다.',
     'Claude HTTP 403: access denied. Check network or account access; sign-in may still be valid.':'Claude HTTP 403: 접근이 거부되었습니다. 네트워크나 계정의 접근 권한을 확인하십시오. 로그인은 여전히 유효할 수 있습니다.',
     'Run grok login to see usage.':'사용량을 확인하려면 grok login을 실행하십시오.',
+    'Run gh auth login to see usage.':'사용량을 확인하려면 gh auth login을 실행하십시오.',
+    'Premium requests':'프리미엄 요청',
+    'Chat requests':'채팅 요청',
+    'Completions':'코드 완성',
   },
   'pt-BR':{
     'Included usage':'Uso incluído',
@@ -545,6 +550,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'Entre no Codex para ver o uso.',
     'Sign in to Antigravity to see usage.':'Entre no Antigravity para ver o uso.',
     'Run grok login to see usage.':'Execute grok login para ver o uso.',
+    'Run gh auth login to see usage.':'Execute gh auth login para ver o uso.',
+    'Premium requests':'Solicitações premium',
+    'Chat requests':'Solicitações de chat',
+    'Completions':'Conclusões de código',
     'Run opencode auth login to see usage.':'Execute opencode auth login para ver o uso.',
     'No OpenCode Go subscription on this account':'Nenhuma assinatura do OpenCode Go nesta conta',
     'needs your input':'precisa da sua resposta',
@@ -634,6 +643,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'Войдите в Codex, чтобы увидеть использование.',
     'Sign in to Antigravity to see usage.':'Войдите в Antigravity, чтобы увидеть использование.',
     'Run grok login to see usage.':'Выполните grok login, чтобы увидеть использование.',
+    'Run gh auth login to see usage.':'Выполните gh auth login, чтобы увидеть использование.',
+    'Premium requests':'Премиум-запросы',
+    'Chat requests':'Запросы чата',
+    'Completions':'Автодополнения',
     'needs your input':'требуется ваш ответ',
     'Working in':'Работает в'
   },
@@ -673,6 +686,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'请登录 Codex 以查看用量。',
     'Sign in to Antigravity to see usage.':'请登录 Antigravity 以查看用量。',
     'Run grok login to see usage.':'请运行 grok login 以查看用量。',
+    'Run gh auth login to see usage.':'请运行 gh auth login 以查看用量。',
+    'Premium requests':'高级请求',
+    'Chat requests':'聊天请求',
+    'Completions':'代码补全',
     'needs your input':'等待你的输入',
     'Working in':'工作于',
   },
@@ -712,6 +729,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'請登入 Codex 以查看用量。',
     'Sign in to Antigravity to see usage.':'請登入 Antigravity 以查看用量。',
     'Run grok login to see usage.':'請執行 grok login 以查看用量。',
+    'Run gh auth login to see usage.':'請執行 gh auth login 以查看用量。',
+    'Premium requests':'進階請求',
+    'Chat requests':'聊天請求',
+    'Completions':'程式碼補全',
     'needs your input':'等待你的輸入',
     'Working in':'工作於',
   },
@@ -1054,6 +1075,7 @@ function providers(){
   if(opencodeSnap.status!=='absent') list.push({id:'opencode',base:'opencode',name:'OpenCode',glyph:'OC',snap:opencodeSnap});
   if(cursorSnap.status!=='absent') list.push({id:'cursor',base:'cursor',name:'Cursor',glyph:'Cu',snap:cursorSnap});
   if(grokSnap.status!=='absent') list.push({id:'grok',base:'grok',name:'Grok',glyph:'Gk',snap:grokSnap});
+  if(copilotSnap.status!=='absent') list.push({id:'copilot',base:'copilot',name:'GitHub Copilot',glyph:'Cp',snap:copilotSnap});
   if(agSnap.status!=='absent') list.push({id:'gemini',base:'gemini',name:'Antigravity',glyph:'Ag',snap:agSnap});
   if(Array.isArray(notchSlots)&&notchSlots.length){
     const picked=list.filter(p=>!!slotFor(p.base));
@@ -1067,6 +1089,7 @@ function providers(){
 let agPrefs={limit:'automatic',model:'gemini'};
 // Where the weekly limit's own ring goes, from settings: 'off', 'inside' or 'outside'
 let weeklyRing='off';
+let weeklyRingDashed=false;
 // The tightest metered window, ties going to the lower id so the choice never flickers
 function tightestOf(ws){
   return ws.filter(w=>w.count==null).reduce((a,b)=>!a||b.used>a.used||(b.used===a.used&&b.id<a.id)?b:a,null);
@@ -1085,6 +1108,7 @@ function headlineOf(snap,id){
   if(id==='codex') return byId('primary');
   if(id==='cursor') return byId('included')||byId('api');
   if(id==='grok') return byId('credits')||ws[0];
+  if(id==='copilot') return byId('premium_interactions')||ws[0];
   if(id==='glm') return byId('session');
   if(id==='opencode') return byId('rolling');
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
@@ -1102,6 +1126,7 @@ function weeklyOf(snap,id){
   if(id==='codex') return byId('secondary');
   if(id==='cursor') return null;
   if(id==='grok') return null; // the credits window is already the weekly one
+  if(id==='copilot') return null; // monthly quotas only; nothing weekly to draw
   if(id==='glm') return byId('weekly');
   if(id==='opencode') return byId('weekly');
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
@@ -1123,6 +1148,23 @@ function svgArc(r,frac,color,width,extra=''){
   const C=2*Math.PI*r;
   return `<circle cx="28" cy="28" r="${r}" fill="none" stroke="${color}" stroke-width="${width}"
     stroke-dasharray="${(C*frac).toFixed(2)} ${C.toFixed(2)}" stroke-linecap="round"
+    transform="rotate(-90 28 28)" ${extra}/>`;
+}
+
+// svgArc's sweep drawn as the Mac's dashed weekly ring: 4-on 2-off butt-capped ticks. A circle has
+// one dasharray, and svgArc spends it on cropping to `frac`, so the ticks are spelled out up to the
+// sweep's end (the last one cut short) and a closing gap takes up the rest of the circumference.
+function dashedArc(r,frac,color,width,extra=''){
+  if(!(frac>0)) return '';
+  const C=2*Math.PI*r, len=C*Math.min(frac,1), seg=4, gap=2, parts=[];
+  let pos=0;
+  for(;;){
+    const d=Math.min(seg,len-pos); pos+=d;
+    if(pos+gap>=len){ parts.push(d,C-pos); break; }
+    parts.push(d,gap); pos+=gap;
+  }
+  return `<circle cx="28" cy="28" r="${r}" fill="none" stroke="${color}" stroke-width="${width}"
+    stroke-dasharray="${parts.map(n=>n.toFixed(2)).join(' ')}" stroke-linecap="butt"
     transform="rotate(-90 28 28)" ${extra}/>`;
 }
 
@@ -1149,8 +1191,13 @@ function renderRing(){
       const taken=weeklyRing==='inside'&&workState(p.base)!=='idle';
       if(wk&&(!h||wk.id!==h.id)&&!taken){
         const r=weeklyRing==='inside'?16:31;
-        inner+=`<circle cx="28" cy="28" r="${r}" fill="none" stroke="${TRACK}" stroke-width="2.4" opacity="0.7"/>`
-          +svgArc(r,Math.min(wk.used,1),tone(wk.used),2.4,'opacity="0.85"');
+        const track=weeklyRingDashed
+          ?`<circle cx="28" cy="28" r="${r}" fill="none" stroke="${TRACK}" stroke-width="2.4" stroke-dasharray="4 2" opacity="0.7"/>`
+          :`<circle cx="28" cy="28" r="${r}" fill="none" stroke="${TRACK}" stroke-width="2.4" opacity="0.7"/>`;
+        const arc=weeklyRingDashed
+          ?dashedArc(r,Math.min(wk.used,1),tone(wk.used),2.4,'opacity="0.85"')
+          :svgArc(r,Math.min(wk.used,1),tone(wk.used),2.4,'opacity="0.85"');
+        inner+=track+arc;
       }
     }
     svg.innerHTML=inner;
@@ -1234,7 +1281,7 @@ function renderCard(){
   let html=`<div class="c-head">${headIcon}<span class="c-title">${esc(ui().title(p.name))}</span></div>`;
   if(staleOf(snap)&&snap.fetched_at) html+=`<div class="c-sub">${ui().updated(ago(snap.fetched_at))}</div>`;
   if(snap.status==='needsAuth'){
-    const who={claude:'Sign in to Claude Code to see usage.',cursor:'Sign in to Cursor to see usage.',codex:'Sign in to Codex to see usage.',grok:'Run grok login to see usage.',opencode:'Run opencode auth login to see usage.',gemini:'Sign in to Antigravity to see usage.'}[p.base]||'';
+    const who={claude:'Sign in to Claude Code to see usage.',cursor:'Sign in to Cursor to see usage.',codex:'Sign in to Codex to see usage.',grok:'Run grok login to see usage.',copilot:'Run gh auth login to see usage.',opencode:'Run opencode auth login to see usage.',gemini:'Sign in to Antigravity to see usage.'}[p.base]||'';
     html+=`<div class="c-note">${textCopy(who)}<br>${esc(textCopy(snap.note||''))}</div>`;
   }else if(!snap.windows.length){
     html+=`<div class="c-note">${esc(textCopy(snap.note||'Waiting for first reading…'))}</div>`;
@@ -2002,6 +2049,8 @@ listen('cursor',e=>{cursorSnap=e.payload||cursorSnap;settle('cursor');renderRing
 invoke('get_cursor').then(u=>{cursorSnap=u||cursorSnap;renderRing();}).catch(()=>{});
 listen('grok',e=>{grokSnap=e.payload||grokSnap;settle('grok');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 invoke('get_grok').then(u=>{grokSnap=u||grokSnap;renderRing();}).catch(()=>{});
+listen('copilot',e=>{copilotSnap=e.payload||copilotSnap;settle('copilot');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_copilot').then(u=>{copilotSnap=u||copilotSnap;renderRing();}).catch(()=>{});
 
 listen('antigravity',e=>{agSnap=e.payload||agSnap;settle('gemini');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 invoke('get_antigravity').then(u=>{agSnap=u||agSnap;renderRing();}).catch(()=>{});
@@ -2020,6 +2069,12 @@ invoke('get_weekly_ring').then(v=>{if(typeof v==='string'){weeklyRing=v;renderRi
 listen('weekly_ring',e=>{if(typeof e.payload==='string'){weeklyRing=e.payload;renderRing();}}).catch(()=>{});
 invoke('get_color_transition').then(v=>{if(typeof v==='string'){colorTransition=v;renderRing();}}).catch(()=>{});
 listen('color_transition',e=>{if(typeof e.payload==='string'){colorTransition=e.payload;renderRing();}}).catch(()=>{});
+invoke('get_weekly_ring_dashed').then(v=>{if(typeof v==='boolean'){weeklyRingDashed=v;renderRing();}}).catch(()=>{});
+listen('weekly_ring_dashed',e=>{if(typeof e.payload==='boolean'){weeklyRingDashed=e.payload;renderRing();}}).catch(()=>{});
+invoke('get_watch_limit').then(v=>{if(typeof v==='number'){watchLimit=v;renderRing();}}).catch(()=>{});
+listen('watch_limit',e=>{if(typeof e.payload==='number'){watchLimit=e.payload;renderRing();}}).catch(()=>{});
+invoke('get_critical_limit').then(v=>{if(typeof v==='number'){criticalLimit=v;renderRing();}}).catch(()=>{});
+listen('critical_limit',e=>{if(typeof e.payload==='number'){criticalLimit=e.payload;renderRing();}}).catch(()=>{});
 listen('antigravity_prefs',e=>{if(e.payload){agPrefs=e.payload;renderRing();}}).catch(()=>{});
 listen('glyphs',e=>{glyphs=e.payload||glyphs;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 listen('activity',e=>{activity=e.payload||activity;renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});

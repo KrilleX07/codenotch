@@ -17,6 +17,7 @@ mod claude_auth;
 mod codex;
 mod cursor;
 mod grok;
+mod copilot;
 mod antigravity;
 mod glm;
 mod opencode;
@@ -56,6 +57,8 @@ pub struct AppState {
     pub cursor: Mutex<usage::UsageSnapshot>,
     /// Grok Build credits, read from the Grok CLI's own session
     pub grok: Mutex<usage::UsageSnapshot>,
+    /// GitHub Copilot quotas, read with the GitHub CLI's own session
+    pub copilot: Mutex<usage::UsageSnapshot>,
     pub antigravity: Mutex<usage::UsageSnapshot>,
     /// GLM Coding Plan snapshot, read from the existing Z.AI tool credentials.
     pub glm: Mutex<usage::UsageSnapshot>,
@@ -494,6 +497,7 @@ pub(crate) fn refresh_provider(app: &AppHandle, provider: &str) -> bool {
         "codex" => codex::request_refresh(),
         "cursor" => cursor::request_refresh(),
         "grok" => grok::request_refresh(),
+        "copilot" => copilot::request_refresh(),
         "gemini" => antigravity::request_refresh(),
         "glm" => glm::request_refresh(),
         "opencode" => opencode::request_refresh(),
@@ -553,7 +557,10 @@ pub fn reload_glyphs(app: &AppHandle) {
 fn open_data_dir() {
     let dir = config::config_path().parent().map(|p| p.to_path_buf()).unwrap_or_default();
     let _ = std::fs::create_dir_all(glyphs::user_dir());
+    #[cfg(windows)]
     let mut cmd = std::process::Command::new("explorer");
+    #[cfg(not(windows))]
+    let mut cmd = std::process::Command::new("xdg-open");
     cmd.arg(dir.as_os_str());
     #[cfg(windows)]
     {
@@ -566,6 +573,11 @@ fn open_data_dir() {
 #[tauri::command]
 fn get_grok(state: tauri::State<AppState>) -> usage::UsageSnapshot {
     state.grok.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn get_copilot(state: tauri::State<AppState>) -> usage::UsageSnapshot {
+    state.copilot.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -585,6 +597,7 @@ pub(crate) fn provider_page(provider: &str) -> Option<(&'static str, &'static st
         "codex" => ("https://chatgpt.com/#settings/Account", "chatgpt.com"),
         "cursor" => ("https://cursor.com/dashboard", "cursor.com"),
         "grok" => ("https://grok.com/?_s=usage", "grok.com"),
+        "copilot" => ("https://github.com/settings/copilot", "github.com"),
         "gemini" => ("https://antigravity.google", "antigravity.google"),
         "glm" => ("https://z.ai/manage-apikey/apikey-list", "z.ai"),
         "opencode" => ("https://opencode.ai", "opencode.ai"),
@@ -594,8 +607,18 @@ pub(crate) fn provider_page(provider: &str) -> Option<(&'static str, &'static st
 
 pub(crate) fn open_provider_page(provider: &str) {
     let Some((url, _)) = provider_page(provider) else { return };
-    let mut cmd = std::process::Command::new("cmd");
-    cmd.args(["/C", "start", "", url]);
+    #[cfg(windows)]
+    let mut cmd = {
+        let mut c = std::process::Command::new("cmd");
+        c.args(["/C", "start", "", url]);
+        c
+    };
+    #[cfg(not(windows))]
+    let mut cmd = {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(url);
+        c
+    };
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -998,6 +1021,89 @@ fn set_weekly_ring(app: AppHandle, placement: String) -> String {
     value
 }
 
+/// Whether the weekly ring's track and its own arc are drawn dashed. Only means anything while
+/// `weekly_ring` is not "off".
+#[tauri::command]
+fn get_weekly_ring_dashed(app: AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.weekly_ring_dashed
+}
+
+#[tauri::command]
+fn set_weekly_ring_dashed(app: AppHandle, on: bool) -> bool {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.weekly_ring_dashed = on;
+        config::save(&c);
+    }
+    let _ = app.emit("weekly_ring_dashed", on);
+    on
+}
+
+/// Where a ring turns from Ample to Watch, as a fraction of the limit.
+#[tauri::command]
+fn get_watch_limit(app: AppHandle) -> f64 {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.watch_limit
+}
+
+/// Clamped below `critical_limit`, so the two sliders can never cross.
+#[tauri::command]
+fn set_watch_limit(app: AppHandle, value: f64) -> f64 {
+    let value = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.watch_limit = config::clamp_watch_limit(value, c.critical_limit);
+        config::save(&c);
+        c.watch_limit
+    };
+    let _ = app.emit("watch_limit", value);
+    value
+}
+
+/// Where a ring turns from Watch to Critical, as a fraction of the limit.
+#[tauri::command]
+fn get_critical_limit(app: AppHandle) -> f64 {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.critical_limit
+}
+
+/// Clamped above `watch_limit`, so the two sliders can never cross.
+#[tauri::command]
+fn set_critical_limit(app: AppHandle, value: f64) -> f64 {
+    let value = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.critical_limit = config::clamp_critical_limit(value, c.watch_limit);
+        config::save(&c);
+        c.critical_limit
+    };
+    let _ = app.emit("critical_limit", value);
+    value
+}
+
+/// Critical first, then watch, the same order the Mac's own reset button uses: resetting watch
+/// against a low stored critical would otherwise pin it there and the reset would look like it
+/// did nothing.
+#[tauri::command]
+fn reset_usage_limits(app: AppHandle) -> (f64, f64) {
+    let (watch, critical) = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.critical_limit = config::default_critical_limit();
+        c.watch_limit = config::default_watch_limit();
+        config::save(&c);
+        (c.watch_limit, c.critical_limit)
+    };
+    let _ = app.emit("critical_limit", critical);
+    let _ = app.emit("watch_limit", watch);
+    (watch, critical)
+}
+
 /// How the usage rings change colour as the allowance is used.
 #[tauri::command]
 fn get_color_transition(app: AppHandle) -> String {
@@ -1047,6 +1153,8 @@ fn ring_window<'a>(
         "codex" => by_id("primary"),
         "cursor" => by_id("included").or_else(|| by_id("api")),
         "grok" => by_id("credits").or_else(|| windows.first()),
+        // The Mac's headlineID: premium requests when metered, else the first quota
+        "copilot" => by_id("premium_interactions").or_else(|| windows.first()),
         // The Mac sets headlineID "session", weeklyID "weekly". Without this the
         // plan falls through to Antigravity's lane picker and the ring shows the
         // tightest window it can find instead of the session.
@@ -1107,6 +1215,7 @@ pub(crate) fn snapshot_of(app: &AppHandle, id: &str) -> usage::UsageSnapshot {
         "codex" => st.codex.lock().unwrap().clone(),
         "cursor" => st.cursor.lock().unwrap().clone(),
         "grok" => st.grok.lock().unwrap().clone(),
+        "copilot" => st.copilot.lock().unwrap().clone(),
         "gemini" => st.antigravity.lock().unwrap().clone(),
         "glm" => st.glm.lock().unwrap().clone(),
         "opencode" => st.opencode.lock().unwrap().clone(),
@@ -1475,6 +1584,7 @@ pub fn provider_label(id: &str) -> &'static str {
         "codex" => "Codex",
         "cursor" => "Cursor",
         "grok" => "Grok",
+        "copilot" => "GitHub Copilot",
         "gemini" => "Antigravity",
         "glm" => "z.ai",
         "opencode" => "OpenCode",
@@ -1483,7 +1593,7 @@ pub fn provider_label(id: &str) -> &'static str {
 }
 
 /// Every provider the tray menu can offer, in the order the notch shows them.
-pub const TRAY_PROVIDER_IDS: [&str; 7] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "gemini"];
+pub const TRAY_PROVIDER_IDS: [&str; 8] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "copilot", "gemini"];
 
 /// Keeps the tray menu current. macOS rebuilds its menu as it opens; Tauri has no such hook, so it
 /// is rebuilt whenever a reading changes, and once a minute besides — otherwise "Resets in 12 min"
@@ -1670,6 +1780,7 @@ fn main() {
             codex: Mutex::new(codex::load_persisted()),
             cursor: Mutex::new(cursor::load_persisted()),
             grok: Mutex::new(grok::load_persisted()),
+            copilot: Mutex::new(copilot::load_persisted()),
             antigravity: Mutex::new(antigravity::load_persisted()),
             glm: Mutex::new(glm::load_persisted()),
             opencode: Mutex::new(opencode::load_persisted()),
@@ -1684,9 +1795,11 @@ fn main() {
             updater::get_update_state,
             updater::check_for_update,
             updater::install_update,
+            updater::open_update_installer,
             get_codex,
             get_cursor,
             get_grok,
+            get_copilot,
             get_antigravity,
             get_glm,
             get_opencode,
@@ -1711,8 +1824,15 @@ fn main() {
             set_scale,
             get_weekly_ring,
             set_weekly_ring,
+            get_weekly_ring_dashed,
+            set_weekly_ring_dashed,
             get_color_transition,
             set_color_transition,
+            get_watch_limit,
+            set_watch_limit,
+            get_critical_limit,
+            set_critical_limit,
+            reset_usage_limits,
             get_theme,
             set_theme,
             get_theme_resolved,
@@ -1741,6 +1861,7 @@ fn main() {
             set_adaptive_pill,
             settings_window::get_system_look,
             settings_window::quit_app,
+            settings_window::settings_ready,
             settings_window::open_author_page
         ])
         .setup(move |app| {
@@ -1764,6 +1885,7 @@ fn main() {
             codex::start(handle.clone());
             cursor::start(handle.clone());
             grok::start(handle.clone());
+            copilot::start(handle.clone());
             antigravity::start(handle.clone());
             glm::start(handle.clone());
             opencode::start(handle.clone());
