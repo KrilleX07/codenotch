@@ -340,14 +340,17 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(summary([claude(0.93, resetIn: 42)]).entries.first).countdown, "42s")
     }
 
-    /// The item reserves room for the widest ordinary countdown, so a figure
-    /// that grew wider would push every status item to its left along with it.
-    /// Seconds in the last minute must fit inside the room minutes already take.
-    func testSecondsFitTheRoomTheCountdownAlreadyReserves() throws {
-        let artwork = StatusItemArtwork(summary: summary([claude(0.5, resetIn: 4 * hour + 59 * minute)]))
-        let lastMinute = StatusItemArtwork(summary: summary([claude(0.5, resetIn: 42)]))
-        XCTAssertEqual(artwork.size.width, lastMinute.size.width,
-                       "the item changes width as the last minute counts down")
+    /// The last minute ticks every second, and a figure that changed width as
+    /// it fell would push every status item to its left along with it, once a
+    /// second. The item is as wide as what it says — see `StatusItemArtwork.size`
+    /// — so it may step once as "1m" becomes "59s", as it does whenever a
+    /// figure changes shape; through the seconds themselves it holds still.
+    func testTheItemHoldsOneWidthThroughTheLastMinute() throws {
+        let widths = [59, 42, 10, 9, 1].map { seconds in
+            StatusItemArtwork(summary: summary([claude(0.5, resetIn: TimeInterval(seconds))])).size.width
+        }
+        XCTAssertEqual(Set(widths).count, 1,
+                       "the item changes width as the last minute counts down: \(widths)")
     }
 
     /// A remembered reading is dimmed, as the notch dims its ring, and says
