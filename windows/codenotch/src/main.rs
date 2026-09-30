@@ -1930,6 +1930,7 @@ fn main() {
             updater::get_update_state,
             updater::check_for_update,
             updater::install_update,
+            updater::open_update_installer,
             get_codex,
             get_cursor,
             get_grok,
