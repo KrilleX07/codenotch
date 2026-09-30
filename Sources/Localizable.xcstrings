@@ -21637,7 +21637,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O limite de %@ dele está esgotado."
+            "value": "O limite de %@ foi esgotado."
           }
         },
         "zh-Hans": {
@@ -21714,7 +21714,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O limite de %@ dele está esgotado — renova %@"
+            "value": "O limite de %@ foi esgotado — renova %@"
           }
         },
         "zh-Hans": {
@@ -21797,7 +21797,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld%% do limite de %@ dele usado."
+            "value": "%lld%% do limite de %@ usado."
           }
         },
         "zh-Hans": {
@@ -21868,7 +21868,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vai para a tela que contém a janela que está recebendo a digitação."
+            "value": "Move-se para a tela que contém a janela que está recebendo o teclado."
           }
         },
         "zh-Hans": {
@@ -22407,7 +22407,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preenche o anel em relação a um teto que você escolhe; o Google não publica nenhum para uma chave de API."
+            "value": "Preenche o anel até o limite que você escolher; o Google não publica um limite para uma chave de API."
           }
         },
         "zh-Hans": {
@@ -22484,7 +22484,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Codenotch lê o uso de ferramentas já conectadas neste Mac — ele nunca pede sua senha. Instale e entre em qualquer um destes: Claude Code (a ferramenta de terminal, não o app Claude), Cursor (o editor ou o cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, GitHub Copilot ou uma chave de API do Gemini (via CLI do Gemini, OpenCode ou Hermes), e o anel correspondente aparece no notch."
+            "value": "O Codenotch lê o uso de ferramentas que já têm sessão iniciada neste Mac — ele nunca pede sua senha. Instale e faça login em uma destas opções: Claude Code (a ferramenta de terminal, não o app Claude), Cursor (o editor ou o cursor-agent), Codex, Antigravity, GLM, Grok, OpenCode, GitHub Copilot ou uma chave de API do Gemini (via Gemini CLI, OpenCode ou Hermes). O anel correspondente aparecerá no notch."
           }
         },
         "zh-Hans": {
@@ -22768,7 +22768,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Os Ajustes se dividem em Conectado e Não conectado; arraste uma linha conectada pela alça para mudar a ordem em que o notch os desenha."
+            "value": "Os Ajustes são divididos em Conectados e Não conectados; arraste uma linha conectada pela alça para mudar a ordem dos anéis no notch."
           }
         },
         "zh-Hans": {
@@ -22963,7 +22963,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Um anel avisa quando ultrapassa 80% e 100%"
+            "value": "Um anel avisa quando o uso ultrapassa 80% e 100%."
           }
         },
         "zh-Hans": {
@@ -24009,7 +24009,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Um uso abaixo de 1% não aparece mais como 0%"
+            "value": "Um uso abaixo de 1% aparece em décimos (\"<0,1%\") em vez de ser arredondado para zero."
           }
         },
         "zh-Hans": {
@@ -24660,7 +24660,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compara cada cota cronometrada com o tempo restante até a renovação, mostrando a cota em déficit ou guardada em reserva."
+            "value": "Compara cada cota com o tempo restante até a renovação e mostra quando o uso está em déficit ou em reserva."
           }
         },
         "zh-Hans": {
@@ -25661,7 +25661,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entre no Codex em ~/.codex-%@ para ler seu uso"
+            "value": "Faça login no Codex em ~/.codex-%@ para ler seu uso"
           }
         },
         "zh-Hans": {
@@ -25738,7 +25738,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entre com o app Command Code para ler seu uso"
+            "value": "Faça login pelo app Command Code para ler seu uso"
           }
         },
         "zh-Hans": {
@@ -25815,7 +25815,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Insira uma chave de API do Ollama nos Ajustes, ou exporte OLLAMA_API_KEY"
+            "value": "Insira uma chave de API do Ollama nos Ajustes ou exporte OLLAMA_API_KEY"
           }
         },
         "zh-Hans": {
@@ -25969,7 +25969,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Insira uma chave de API do Ollama abaixo, ou exporte OLLAMA_API_KEY no seu shell."
+            "value": "Insira uma chave de API do Ollama abaixo ou exporte OLLAMA_API_KEY no shell."
           }
         },
         "zh-Hans": {
@@ -26046,7 +26046,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entre com o app Command Code — ele escreve ~/.commandcode/auth.json e o notch o lê."
+            "value": "Faça login pelo app Command Code — ele grava ~/.commandcode/auth.json, que o notch lê."
           }
         },
         "zh-Hans": {
@@ -26123,7 +26123,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Command Code ainda não tem nada medido nesta conta"
+            "value": "Ainda não há uso medido do Command Code nesta conta"
           }
         },
         "zh-Hans": {
@@ -40747,7 +40747,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O anel fica numa cor fixa em cada faixa de uso e salta para a próxima nos limites abaixo."
+            "value": "O anel mantém uma cor em cada faixa de uso e muda para a próxima nos limites abaixo."
           }
         }
       }
@@ -40758,7 +40758,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A cor do anel muda de forma contínua ao longo de todo o uso, passando pelo amarelo no limite de atenção abaixo."
+            "value": "A cor do anel muda continuamente ao longo de todo o intervalo de uso e fica amarela no limite de atenção abaixo."
           }
         }
       }
@@ -40769,7 +40769,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Com a rampa de cor ativada, este limite continua valendo para o resto do app, mas o vermelho do anel só aparece em 100%."
+            "value": "Com a rampa de cores ativada, este limite continua valendo para o restante do app, mas o anel só fica vermelho ao atingir 100%."
           }
         }
       }
@@ -41111,7 +41111,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Claude respondeu, mas não informou limites de uso para esta conta. Alguns planos Enterprise e Team não os informam."
+            "value": "O Claude respondeu, mas não informou limites de uso para esta conta. Alguns planos Enterprise e Team não informam esses limites."
           }
         },
         "ru": {
@@ -42916,7 +42916,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Com mais de dois, cada um mostra só a sua parte e as contagens regressivas vão para a dica. Com mais de quatro, os demais ficam no menu."
+            "value": "Com mais de dois, cada um mostra apenas seu percentual, e as contagens regressivas aparecem na dica. Com mais de quatro, os restantes ficam no menu."
           }
         },
         "zh-Hans": {
@@ -48488,7 +48488,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Como o notch, a barra de menu e as notificações chamam esta conta. Vazio volta para %@."
+            "value": "Nome usado para esta conta no notch, na barra de menus e nas notificações. Se ficar vazio, volta a ser %@."
           }
         },
         "id": {
@@ -48760,7 +48760,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Em todo provedor que tem um limite semanal ao lado de um mais curto, o anel principal mostra a semana. A janela mais curta vai para o anel fino e para o cartão. Alertas, barra de menus e provedores sem limite semanal não mudam, e o anel de ritmo diário do Claude continua na frente quando estiver ligado."
+            "value": "Para provedores com um limite semanal e outro mais curto, o anel principal mostra a semana. A janela mais curta vai para o anel fino e para o cartão. Alertas, a barra de menus e provedores sem limite semanal permanecem iguais, e o anel de ritmo diário do Claude continua prioritário quando ativado."
           }
         }
       }
