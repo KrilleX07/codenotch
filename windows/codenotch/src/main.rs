@@ -26,6 +26,7 @@ mod trayicon;
 mod activity;
 mod diag;
 mod dropzones;
+mod carry;
 mod watcher;
 mod settings_window;
 mod topmost;
@@ -213,6 +214,12 @@ fn land_on_another_screen(app: &AppHandle, from_scale: f64, to_scale: f64) {
     if (from_scale - to_scale).abs() < 0.01 {
         return place_notch(app);
     }
+    land_quietly(app);
+}
+
+/// `land_on_another_screen`'s landing, for any placement that resizes the window: at another scale,
+/// or carried round onto an edge where the window is another shape.
+fn land_quietly(app: &AppHandle) {
     use std::sync::atomic::Ordering::SeqCst;
     let gen = LANDING_SEQ.fetch_add(1, SeqCst) + 1;
     LANDING.store(gen, SeqCst);
@@ -428,11 +435,8 @@ pub fn reset_bar(app: &AppHandle) {
     place_notch(app);
 }
 
-/// Drag. The page calls this once after an Alt-press on the pill moves more than 4 px; from then on
-/// a Rust thread follows the system cursor (WebView mousemove is unreliable once the window itself
-/// starts moving). Only the axis along the notch's edge follows it: this slides the notch along the
-/// edge it is on and never takes it to another, which is the move handle's job — the Mac's ⌥-drag
-/// (`NotchWindowController.dragged`). Releasing it saves that place for that edge alone.
+/// The notch is in the hand — carried round the border (`carry.rs`) or by its move handle — and
+/// placing it again would fight that.
 pub(crate) static DRAGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[cfg(windows)]
@@ -567,71 +571,6 @@ fn begin_move(app: AppHandle, depth: f64, length: f64) {
     });
 }
 
-#[tauri::command]
-fn drag_begin(app: AppHandle) {
-    if DRAGGING.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        return;
-    }
-    std::thread::spawn(move || {
-        let Some(w) = app.get_webview_window("notch") else {
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            return;
-        };
-        let (Ok(start_cur), Ok(start_pos), Ok(size)) = (app.cursor_position(), w.outer_position(), w.outer_size()) else {
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            return;
-        };
-        let Some(mon) = target_screen(&app) else {
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            return;
-        };
-        let edge = {
-            let st = app.state::<AppState>();
-            let c = st.cfg.lock().unwrap();
-            config::edge_or_right(&c.notch_edge)
-        };
-        let vertical = config::edge_is_vertical(&edge);
-        let (ww, wh) = (size.width as i32, size.height as i32);
-        // The span `edge_origin` places against, so it cannot be slid under the taskbar
-        let (ax, ay, aw, ah) = mon.area();
-        let (mut last_x, mut last_y) = (start_pos.x, start_pos.y);
-        let mut moved = false;
-        loop {
-            if !left_button_down() {
-                break;
-            }
-            if let Ok(cur) = app.cursor_position() {
-                let (nx, ny) = if vertical {
-                    let y = (start_pos.y as f64 + (cur.y - start_cur.y)).round() as i32;
-                    (start_pos.x, y.clamp(ay, (ay + ah - wh).max(ay)))
-                } else {
-                    let x = (start_pos.x as f64 + (cur.x - start_cur.x)).round() as i32;
-                    (x.clamp(ax, (ax + aw - ww).max(ax)), start_pos.y)
-                };
-                if nx != last_x || ny != last_y {
-                    last_x = nx;
-                    last_y = ny;
-                    moved = true;
-                    let _ = w.set_position(tauri::PhysicalPosition::new(nx, ny));
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(8));
-        }
-        if moved {
-            let along = if vertical { along_at(last_y, wh, ay, ah) } else { along_at(last_x, ww, ax, aw) };
-            {
-                let st = app.state::<AppState>();
-                let mut c = st.cfg.lock().unwrap();
-                c.set_along(&edge, along);
-                config::save(&c);
-            }
-            applog(&format!("notch slid along {edge} to {along:.3}"));
-            place_notch(&app);
-        }
-        DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-        let _ = app.emit("drag_end", moved);
-    });
-}
 pub fn place_bar(app: &AppHandle) {
     place_notch(app);
 }
@@ -2000,7 +1939,11 @@ fn main() {
             get_glyphs,
             get_activity,
             open_data_dir,
-            drag_begin,
+            carry::begin_carry,
+            carry::get_carry,
+            carry::carry_shown,
+            carry::carry_landed,
+            carry::carry_revealed,
             refresh_ring,
             notchmenu::show_notch_menu,
             set_hot,
