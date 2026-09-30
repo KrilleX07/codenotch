@@ -187,6 +187,24 @@ final class StatusItemSummaryTests: XCTestCase {
                                               format: .remaining).entries.first?.detail)
     }
 
+    /// And so do the menu's own rows. They are built by a static function that
+    /// cannot read the controller's copy of the setting, so the setting has to
+    /// be handed to it — and was not: the menu said "Resets Tue 17:25" under a
+    /// card and a tooltip that both said "Resets in 4h 52m".
+    func testTheMenusRowsFollowTheChosenResetWording() throws {
+        let account = claude(0.53, resetIn: 4 * hour + 52 * minute)
+
+        let automatic = StatusItemController.detailLines(for: account, now: now, format: .automatic)
+        let remaining = StatusItemController.detailLines(for: account, now: now, format: .remaining)
+
+        let session = try XCTUnwrap(remaining.first)
+        XCTAssertTrue(session.contains("Resets in 4h 52m"), session)
+        XCTAssertNotEqual(automatic, remaining)
+        // The tooltip beside it is built from the same choice, so the two agree.
+        let detail = try XCTUnwrap(summary([account], format: .remaining).entries.first?.detail)
+        XCTAssertTrue(detail.contains("4h 52m"), detail)
+    }
+
     // MARK: - What Settings chose
 
     /// Off is the icon every earlier version drew, whatever the readings say,
@@ -317,9 +335,19 @@ final class StatusItemSummaryTests: XCTestCase {
         XCTAssertNil(result.nextChange)
     }
 
-    func testTheCountdownRunsDownToUnderAMinute() throws {
+    func testTheCountdownRunsDownThroughTheLastMinuteInSeconds() throws {
         XCTAssertEqual(try XCTUnwrap(summary([claude(0.66, resetIn: 47 * minute + 50)]).entries.first).countdown, "47m")
-        XCTAssertEqual(try XCTUnwrap(summary([claude(0.93, resetIn: 42)]).entries.first).countdown, "<1m")
+        XCTAssertEqual(try XCTUnwrap(summary([claude(0.93, resetIn: 42)]).entries.first).countdown, "42s")
+    }
+
+    /// The item reserves room for the widest ordinary countdown, so a figure
+    /// that grew wider would push every status item to its left along with it.
+    /// Seconds in the last minute must fit inside the room minutes already take.
+    func testSecondsFitTheRoomTheCountdownAlreadyReserves() throws {
+        let artwork = StatusItemArtwork(summary: summary([claude(0.5, resetIn: 4 * hour + 59 * minute)]))
+        let lastMinute = StatusItemArtwork(summary: summary([claude(0.5, resetIn: 42)]))
+        XCTAssertEqual(artwork.size.width, lastMinute.size.width,
+                       "the item changes width as the last minute counts down")
     }
 
     /// A remembered reading is dimmed, as the notch dims its ring, and says
@@ -337,6 +365,17 @@ final class StatusItemSummaryTests: XCTestCase {
         let result = summary([claude(0.72, resetIn: 2 * hour + 18 * minute + 20),
                               codex(0.41, resetIn: 4 * hour + 5 * minute + 30)])
         XCTAssertEqual(result.nextChange, now.addingTimeInterval(20))
+    }
+
+    /// A wake-up scheduled a minute out may be a second late; the whole point of
+    /// one scheduled a second out is that it is not. A second of slack there let
+    /// the timer wake having already skipped the figure it woke up to show.
+    @MainActor
+    func testTheWakeUpTakesLessSlackWhenItIsCountingSeconds() {
+        XCTAssertEqual(StatusItemController.tolerance(untilChange: 60), 1)
+        XCTAssertEqual(StatusItemController.tolerance(untilChange: 20), 1)
+        XCTAssertLessThan(StatusItemController.tolerance(untilChange: 1), 1)
+        XCTAssertLessThan(StatusItemController.tolerance(untilChange: 0.2), 1)
     }
 
     // MARK: - Weekly ring
