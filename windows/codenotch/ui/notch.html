@@ -354,6 +354,8 @@ let codexSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let cursorSnap={status:'absent',windows:[],fetched_at:0,note:''};
 // Grok Build credits, from the Grok CLI's own session; absent until that CLI is signed in
 let grokSnap={status:'absent',windows:[],fetched_at:0,note:''};
+// GitHub Copilot quotas, from the GitHub CLI's own session; absent until gh is installed or a token is set
+let copilotSnap={status:'absent',windows:[],fetched_at:0,note:''};
 let glmSnap={status:'absent',windows:[],fetched_at:0,note:''};
 // OpenCode Go plan, read with OpenCode's own sign-in; absent until OpenCode is installed
 let opencodeSnap={status:'absent',windows:[],fetched_at:0,note:''};
@@ -449,6 +451,10 @@ const TEXT={
     'Unable to open Claude sign-in window.':'Claude 로그인 창을 열 수 없습니다.',
     'Claude HTTP 403: access denied. Check network or account access; sign-in may still be valid.':'Claude HTTP 403: 접근이 거부되었습니다. 네트워크나 계정의 접근 권한을 확인하십시오. 로그인은 여전히 유효할 수 있습니다.',
     'Run grok login to see usage.':'사용량을 확인하려면 grok login을 실행하십시오.',
+    'Run gh auth login to see usage.':'사용량을 확인하려면 gh auth login을 실행하십시오.',
+    'Premium requests':'프리미엄 요청',
+    'Chat requests':'채팅 요청',
+    'Completions':'코드 완성',
   },
   'pt-BR':{
     'Included usage':'Uso incluído',
@@ -500,6 +506,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'Entre no Codex para ver o uso.',
     'Sign in to Antigravity to see usage.':'Entre no Antigravity para ver o uso.',
     'Run grok login to see usage.':'Execute grok login para ver o uso.',
+    'Run gh auth login to see usage.':'Execute gh auth login para ver o uso.',
+    'Premium requests':'Solicitações premium',
+    'Chat requests':'Solicitações de chat',
+    'Completions':'Conclusões de código',
     'Run opencode auth login to see usage.':'Execute opencode auth login para ver o uso.',
     'No OpenCode Go subscription on this account':'Nenhuma assinatura do OpenCode Go nesta conta',
     'needs your input':'precisa da sua resposta',
@@ -589,6 +599,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'Войдите в Codex, чтобы увидеть использование.',
     'Sign in to Antigravity to see usage.':'Войдите в Antigravity, чтобы увидеть использование.',
     'Run grok login to see usage.':'Выполните grok login, чтобы увидеть использование.',
+    'Run gh auth login to see usage.':'Выполните gh auth login, чтобы увидеть использование.',
+    'Premium requests':'Премиум-запросы',
+    'Chat requests':'Запросы чата',
+    'Completions':'Автодополнения',
     'needs your input':'требуется ваш ответ',
     'Working in':'Работает в'
   },
@@ -628,6 +642,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'请登录 Codex 以查看用量。',
     'Sign in to Antigravity to see usage.':'请登录 Antigravity 以查看用量。',
     'Run grok login to see usage.':'请运行 grok login 以查看用量。',
+    'Run gh auth login to see usage.':'请运行 gh auth login 以查看用量。',
+    'Premium requests':'高级请求',
+    'Chat requests':'聊天请求',
+    'Completions':'代码补全',
     'needs your input':'等待你的输入',
     'Working in':'工作于',
   },
@@ -667,6 +685,10 @@ const TEXT={
     'Sign in to Codex to see usage.':'請登入 Codex 以查看用量。',
     'Sign in to Antigravity to see usage.':'請登入 Antigravity 以查看用量。',
     'Run grok login to see usage.':'請執行 grok login 以查看用量。',
+    'Run gh auth login to see usage.':'請執行 gh auth login 以查看用量。',
+    'Premium requests':'進階請求',
+    'Chat requests':'聊天請求',
+    'Completions':'程式碼補全',
     'needs your input':'等待你的輸入',
     'Working in':'工作於',
   },
@@ -1009,6 +1031,7 @@ function providers(){
   if(opencodeSnap.status!=='absent') list.push({id:'opencode',base:'opencode',name:'OpenCode',glyph:'OC',snap:opencodeSnap});
   if(cursorSnap.status!=='absent') list.push({id:'cursor',base:'cursor',name:'Cursor',glyph:'Cu',snap:cursorSnap});
   if(grokSnap.status!=='absent') list.push({id:'grok',base:'grok',name:'Grok',glyph:'Gk',snap:grokSnap});
+  if(copilotSnap.status!=='absent') list.push({id:'copilot',base:'copilot',name:'GitHub Copilot',glyph:'Cp',snap:copilotSnap});
   if(agSnap.status!=='absent') list.push({id:'gemini',base:'gemini',name:'Antigravity',glyph:'Ag',snap:agSnap});
   if(Array.isArray(notchSlots)&&notchSlots.length){
     const picked=list.filter(p=>!!slotFor(p.base));
@@ -1041,6 +1064,7 @@ function headlineOf(snap,id){
   if(id==='codex') return byId('primary');
   if(id==='cursor') return byId('included')||byId('api');
   if(id==='grok') return byId('credits')||ws[0];
+  if(id==='copilot') return byId('premium_interactions')||ws[0];
   if(id==='glm') return byId('session');
   if(id==='opencode') return byId('rolling');
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
@@ -1058,6 +1082,7 @@ function weeklyOf(snap,id){
   if(id==='codex') return byId('secondary');
   if(id==='cursor') return null;
   if(id==='grok') return null; // the credits window is already the weekly one
+  if(id==='copilot') return null; // monthly quotas only; nothing weekly to draw
   if(id==='glm') return byId('weekly');
   if(id==='opencode') return byId('weekly');
   const fam=ws.filter(w=>laneFamily(w)===agPrefs.model), lanes=fam.length?fam:ws;
@@ -1212,7 +1237,7 @@ function renderCard(){
   let html=`<div class="c-head">${headIcon}<span class="c-title">${esc(ui().title(p.name))}</span></div>`;
   if(staleOf(snap)&&snap.fetched_at) html+=`<div class="c-sub">${ui().updated(ago(snap.fetched_at))}</div>`;
   if(snap.status==='needsAuth'){
-    const who={claude:'Sign in to Claude Code to see usage.',cursor:'Sign in to Cursor to see usage.',codex:'Sign in to Codex to see usage.',grok:'Run grok login to see usage.',opencode:'Run opencode auth login to see usage.',gemini:'Sign in to Antigravity to see usage.'}[p.base]||'';
+    const who={claude:'Sign in to Claude Code to see usage.',cursor:'Sign in to Cursor to see usage.',codex:'Sign in to Codex to see usage.',grok:'Run grok login to see usage.',copilot:'Run gh auth login to see usage.',opencode:'Run opencode auth login to see usage.',gemini:'Sign in to Antigravity to see usage.'}[p.base]||'';
     html+=`<div class="c-note">${textCopy(who)}<br>${esc(textCopy(snap.note||''))}</div>`;
   }else if(!snap.windows.length){
     html+=`<div class="c-note">${esc(textCopy(snap.note||'Waiting for first reading…'))}</div>`;
@@ -1647,6 +1672,8 @@ listen('cursor',e=>{cursorSnap=e.payload||cursorSnap;settle('cursor');renderRing
 invoke('get_cursor').then(u=>{cursorSnap=u||cursorSnap;renderRing();}).catch(()=>{});
 listen('grok',e=>{grokSnap=e.payload||grokSnap;settle('grok');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 invoke('get_grok').then(u=>{grokSnap=u||grokSnap;renderRing();}).catch(()=>{});
+listen('copilot',e=>{copilotSnap=e.payload||copilotSnap;settle('copilot');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
+invoke('get_copilot').then(u=>{copilotSnap=u||copilotSnap;renderRing();}).catch(()=>{});
 
 listen('antigravity',e=>{agSnap=e.payload||agSnap;settle('gemini');renderRing();if(card.classList.contains('show'))renderCard();}).catch(()=>{});
 invoke('get_antigravity').then(u=>{agSnap=u||agSnap;renderRing();}).catch(()=>{});
