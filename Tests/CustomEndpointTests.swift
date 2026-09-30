@@ -10,6 +10,7 @@ final class CustomEndpointTests: XCTestCase {
 
         XCTAssertEqual(endpoint.name, "Test vLLM")
         XCTAssertEqual(endpoint.baseURL, "http://localhost:8000/v1")
+        XCTAssertEqual(endpoint.apiType, .openAICompatible)
         XCTAssertEqual(endpoint.headerKey, "Authorization")
         XCTAssertEqual(endpoint.accentColorHex, "#6366F1")
         XCTAssertEqual(endpoint.iconPreset, "openai")
@@ -101,6 +102,7 @@ final class CustomEndpointTests: XCTestCase {
             name: "Together AI",
             baseURL: "https://api.together.xyz/v1",
             headerKey: "Authorization",
+            apiType: .anthropic,
             selectedModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
             availableModels: ["meta-llama/Llama-3.3-70B-Instruct-Turbo"],
             isEnabled: true,
@@ -127,6 +129,7 @@ final class CustomEndpointTests: XCTestCase {
         XCTAssertEqual(decoded.availableModels.count, 1)
         XCTAssertEqual(decoded.computedSpendUSD, 3.50)
         XCTAssertEqual(decoded.monthlyBudgetUSD, 15.0)
+        XCTAssertEqual(decoded.apiType, .anthropic)
         XCTAssertEqual(decoded.lastLatencyMs, 48)
         XCTAssertEqual(decoded.lastHealthStatus, .online)
     }
@@ -240,6 +243,7 @@ final class CustomEndpointTests: XCTestCase {
 
         let decodedLegacy = try JSONDecoder().decode(CustomEndpoint.self, from: legacyJSON)
         XCTAssertEqual(decodedLegacy.trackingUnit, .currency)
+        XCTAssertEqual(decodedLegacy.apiType, .openAICompatible)
         XCTAssertEqual(decodedLegacy.monthlyBudgetUSD, 20.0)
         XCTAssertEqual(decodedLegacy.currentSpendUSD, 5.0)
         XCTAssertNil(decodedLegacy.monthlyBudgetTokensM)
@@ -717,6 +721,95 @@ final class CustomEndpointTests: XCTestCase {
         XCTAssertEqual(updated?.usageURL, "http://127.0.0.1:8000/new-usage")
         XCTAssertEqual(updated?.currentTokensUsedM, 0.0)
         XCTAssertEqual(updated?.usageHistory.count, 0)
+    }
+
+    @MainActor
+    func testConfiguredEndpointRemainsInNotchWhenModelProbeTemporarilyFails() async throws {
+        let endpoint = CustomEndpoint(
+            id: "endpoint-unstable",
+            name: "Custom API",
+            baseURL: "http://127.0.0.1:8000/v1"
+        )
+        let network = presetNetwork { request in
+            XCTAssertEqual(request.url?.path, "/v1/models")
+            return (503, Data())
+        }
+        let provider = CustomEndpointProvider(
+            endpoint: endpoint,
+            network: network,
+            endpointLoader: { _ in endpoint }
+        )
+        let defaults = UserDefaults(suiteName: "CustomEndpointVisibility.\(UUID().uuidString)")!
+        let store = UsageStore(
+            providers: [provider],
+            archive: UsageArchive(defaults: defaults)
+        )
+
+        await store.refresh()
+
+        let visible = try XCTUnwrap(store.snapshots.first { $0.id == endpoint.providerID })
+        XCTAssertEqual(visible.status, .error("HTTP 503"))
+        XCTAssertFalse(visible.hasReading)
+    }
+
+    func testModelDiscoveryUsesSelectedAPITypeAndAuthentication() async {
+        let cases: [(CustomEndpointAPIType, String, String, String, Data, String, String)] = [
+            (.openAICompatible, "https://api.example.test/v1", "/v1/models",
+             "Authorization", Data(#"{"data":[{"id":"gpt-4o"}]}"#.utf8), "Bearer secret", "gpt-4o"),
+            (.anthropic, "https://api.example.test", "/v1/models",
+             "x-api-key", Data(#"{"data":[{"id":"claude-sonnet-4-5"}]}"#.utf8), "secret", "claude-sonnet-4-5"),
+            (.google, "https://api.example.test", "/v1beta/models",
+             "x-goog-api-key", Data(#"{"models":[{"name":"models/gemini-2.5-pro"}]}"#.utf8), "secret", "gemini-2.5-pro")
+        ]
+        for (apiType, baseURL, path, authHeader, body, authValue, expectedModel) in cases {
+            let network = presetNetwork { request in
+                XCTAssertEqual(request.url?.path, path)
+                XCTAssertEqual(request.value(forHTTPHeaderField: authHeader), authValue)
+                if apiType == .anthropic {
+                    XCTAssertEqual(request.value(forHTTPHeaderField: "anthropic-version"), "2023-06-01")
+                }
+                return (200, body)
+            }
+
+            let result = await network.testEndpoint(
+                baseURL: baseURL,
+                apiKey: "secret",
+                apiType: apiType
+            )
+
+            XCTAssertEqual(result.health, .online)
+            XCTAssertEqual(result.models, [expectedModel])
+        }
+    }
+
+    func testJSONUsageUsesSelectedAPIAuthentication() async throws {
+        for apiType in [CustomEndpointAPIType.anthropic, .google] {
+            let network = presetNetwork { request in
+                switch apiType {
+                case .anthropic:
+                    XCTAssertEqual(request.value(forHTTPHeaderField: "x-api-key"), "secret")
+                    XCTAssertEqual(request.value(forHTTPHeaderField: "anthropic-version"), "2023-06-01")
+                case .google:
+                    XCTAssertEqual(request.value(forHTTPHeaderField: "x-goog-api-key"), "secret")
+                case .openAICompatible:
+                    XCTFail("This test only covers native API key formats")
+                }
+                return (200, Data(#"{"records":[{"model":"m","total_tokens":1234}]}"#.utf8))
+            }
+
+            let millions = try await network.fetchJSONUsage(
+                usageURL: "https://api.example.test/usage",
+                apiKey: "secret",
+                headerKey: "Authorization",
+                apiType: apiType,
+                recordsPath: "records",
+                modelField: "model",
+                tokenField: "total_tokens",
+                modelFilter: "m"
+            )
+
+            XCTAssertEqual(millions, 0.001234, accuracy: 0.000000001)
+        }
     }
 
     private func presetNetwork(_ handler: @escaping (URLRequest) -> (Int, Data)) -> CustomEndpointNetwork {
