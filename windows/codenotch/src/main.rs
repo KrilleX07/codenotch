@@ -1203,6 +1203,27 @@ fn set_weekly_ring(app: AppHandle, placement: String) -> String {
     value
 }
 
+/// Whether the weekly ring's track and its own arc are drawn dashed. Only means anything while
+/// `weekly_ring` is not "off".
+#[tauri::command]
+fn get_weekly_ring_dashed(app: AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.weekly_ring_dashed
+}
+
+#[tauri::command]
+fn set_weekly_ring_dashed(app: AppHandle, on: bool) -> bool {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.weekly_ring_dashed = on;
+        config::save(&c);
+    }
+    let _ = app.emit("weekly_ring_dashed", on);
+    on
+}
+
 /// How the usage rings change colour as the allowance is used.
 #[tauri::command]
 fn get_color_transition(app: AppHandle) -> String {
@@ -1931,6 +1952,8 @@ fn main() {
             set_scale,
             get_weekly_ring,
             set_weekly_ring,
+            get_weekly_ring_dashed,
+            set_weekly_ring_dashed,
             get_color_transition,
             set_color_transition,
             get_theme,
