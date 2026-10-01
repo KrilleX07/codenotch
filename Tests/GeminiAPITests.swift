@@ -190,10 +190,15 @@ final class GeminiCLIUsageTests: XCTestCase {
 
 /// Fixtures carry OpenCode's real `message` shape, because the reader asks
 /// SQLite to reach into the JSON and a wrong nesting would silently read zero.
-/// OpenCode 2.x renamed the tables this reads, so the reader has to know which
-/// shape it is looking at — a query for one does not run on the other, and a
-/// failed prepare reads as "spent nothing" rather than as "cannot read".
-final class OpenCodeSchemaTests: XCTestCase {
+/// OpenCode 2.x's own store, exercised end to end through the reader.
+///
+/// The suite above is built entirely from 1.x fixtures, which is how the first
+/// version of this reader passed CI while breaking every 2.x install: the 2.x
+/// query returned nothing against a 1.x-shaped table and the fixture had no way
+/// to say so. So the shape that actually broke gets its own rows here, with
+/// token figures chosen so the arithmetic cannot pass by accident.
+final class OpenCode2xGeminiUsageTests: XCTestCase {
+    private let now = localDate(2026, 9, 15)
     private var databases: [URL] = []
 
     override func tearDownWithError() throws {
@@ -201,88 +206,138 @@ final class OpenCodeSchemaTests: XCTestCase {
         databases = []
     }
 
-    private func database(_ ddl: String) throws -> URL {
+    private struct Row {
+        let created: Date
+        let type: String
+        let data: String
+    }
+
+    /// `session_message` as 2.x writes it: the role is the row's own `type`
+    /// column, the provider sits inside the model object, and there is no
+    /// `tokens.total`.
+    private func makeDatabase(_ rows: [Row]) throws -> URL {
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("oc-schema-\(UUID().uuidString).db")
+            .appendingPathComponent("opencode-2x-\(UUID().uuidString).db")
         databases.append(url)
+
         var db: OpaquePointer?
         XCTAssertEqual(sqlite3_open(url.path, &db), SQLITE_OK)
-        sqlite3_exec(db, ddl, nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil)
+        sqlite3_exec(db, """
+        CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                                      type TEXT NOT NULL, seq INTEGER NOT NULL,
+                                      time_created INTEGER NOT NULL,
+                                      time_updated INTEGER NOT NULL, data TEXT NOT NULL);
+        """, nil, nil, nil)
+        for (index, row) in rows.enumerated() {
+            let millis = Int(row.created.timeIntervalSince1970 * 1000)
+            let escaped = row.data.replacingOccurrences(of: "'", with: "''")
+            sqlite3_exec(db, """
+            INSERT INTO session_message VALUES ('m\(index)', 's1', '\(row.type)', \(index),
+                                                \(millis), \(millis), '\(escaped)');
+            """, nil, nil, nil)
+        }
         sqlite3_close(db)
         return url
     }
 
-    private let v1 = """
-    CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER,
-                          time_updated INTEGER, data TEXT);
-    CREATE TABLE session (id TEXT, parent_id TEXT, title TEXT, directory TEXT,
-                          time_updated INTEGER);
-    """
-    private let v2 = """
-    CREATE TABLE session_message (id TEXT, session_id TEXT, type TEXT, seq INTEGER,
-                                  time_created INTEGER, time_updated INTEGER, data TEXT);
-    CREATE TABLE session_v2 (id TEXT, parent_id TEXT, title TEXT, directory TEXT,
-                             time_updated INTEGER);
-    """
-
-    private func schema(of ddl: String) throws -> OpenCodeSchema? {
-        let url = try database(ddl)
-        guard let db = SQLiteStore.open(url) else { return nil }
-        defer { sqlite3_close(db) }
-        return OpenCodeSchema.of(db)
+    private func assistant(provider: String = "google",
+                           input: Int = 0, output: Int = 0, reasoning: Int = 0,
+                           read: Int = 0, write: Int = 0) -> String {
+        #"{"time":{"created":"2026-09-15T12:00:00.000Z"},"model":{"#
+            + #""id":"gemini-2.5-pro","providerID":"\#(provider)","variant":"default"},"#
+            + #""tokens":{"input":\#(input),"output":\#(output),"reasoning":\#(reasoning),"#
+            + #""cache":{"read":\#(read),"write":\#(write)}},"cost":0.0}"#
     }
 
-    func testEachShapeIsRecognisedFromItsOwnTable() throws {
-        XCTAssertEqual(try schema(of: v1), .v1)
-        XCTAssertEqual(try schema(of: v2), .v2)
+    /// The five components are the whole figure in 2.x, and the one that is easy
+    /// to get wrong is `cache.read`: 2.x's `input` excludes it, so a sum that
+    /// dropped it would report 1250 here instead of 6350.
+    func testTheSumIncludesTheCacheThatInputExcludes() throws {
+        let url = try makeDatabase([Row(
+            created: now, type: "assistant",
+            data: assistant(input: 1000, output: 200, reasoning: 50, read: 5000, write: 100))])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage(
+            tokensThisMonth: 6350, tokensToday: 6350, callsThisMonth: 1))
     }
 
-    /// A database that is neither is "no database", which is a different answer
-    /// from "spent nothing" — the reader drops the row rather than showing zero.
-    func testAnUnfamiliarDatabaseIsNeither() throws {
-        XCTAssertNil(try schema(of: "CREATE TABLE unrelated (a TEXT);"))
+    /// Two rows, different figures, so the month total proves addition rather
+    /// than a repeated copy: one today, one earlier in the month.
+    func testTwoRowsAddUpAndOnlyTodaysRowCountsAsToday() throws {
+        let url = try makeDatabase([
+            Row(created: now, type: "assistant",
+                data: assistant(input: 1000, output: 200, reasoning: 50, read: 5000, write: 100)),
+            Row(created: localDate(2026, 9, 3), type: "assistant",
+                data: assistant(input: 200, output: 50, reasoning: 25, read: 1000, write: 0)),
+        ])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage(
+            tokensThisMonth: 7625, tokensToday: 6350, callsThisMonth: 2))
     }
 
-    /// The point of the whole exercise: each shape's SQL must actually prepare
-    /// against its own store. A string comparison would pass while the query
-    /// still failed to run, which is the bug that started this.
-    func testEachShapesSQLRunsAgainstItsOwnStore() throws {
-        for ddl in [v1, v2] {
-            let url = try database(ddl)
-            guard let db = SQLiteStore.open(url), let s = OpenCodeSchema.of(db) else {
-                return XCTFail("schema not detected")
-            }
-            for sql in [s.geminiUsageSQL(startOfMonth: 0), s.activitySQL(cutoffMillis: 0)] {
-                var statement: OpaquePointer?
-                XCTAssertEqual(sqlite3_prepare_v2(db, sql, -1, &statement, nil), SQLITE_OK,
-                               "failed to prepare: \(sql)")
-                sqlite3_finalize(statement)
-            }
-            sqlite3_close(db)
-        }
+    /// `providerID` moved inside the model object. Matching the old top-level
+    /// key finds nothing, which is what makes this worth a test.
+    func testTheProviderIsReadFromInsideTheModel() throws {
+        let url = try makeDatabase([Row(
+            created: now, type: "assistant", data: assistant(provider: "google", input: 42))])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now)?.callsThisMonth, 1)
+
+        let other = try makeDatabase([Row(
+            created: now, type: "assistant", data: assistant(provider: "opencode", input: 42))])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: other, now: now), GeminiTokenUsage.zero)
     }
 
-    /// The role moved: a column in 2.x, a JSON key in 1.x. Naming the wrong one
-    /// fails to prepare, so each branch must carry the other's shape out.
-    func testTheRoleIsReadFromWhereverItLives() {
-        XCTAssertEqual(OpenCodeSchema.assistantPredicate(for: .v2), "type = 'assistant'")
-        XCTAssertEqual(OpenCodeSchema.assistantPredicate(for: .v1),
-                       "json_extract(data, '$.role') = 'assistant'")
+    /// The role moved from `$.role` into the `type` column, so a user turn is
+    /// not an assistant turn however its JSON looks.
+    func testOnlyTheTypeColumnSaysWhichTurnThisIs() throws {
+        let url = try makeDatabase([
+            Row(created: now, type: "user", data: assistant(input: 9999)),
+            Row(created: now, type: "assistant", data: assistant(input: 7)),
+        ])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage(
+            tokensThisMonth: 7, tokensToday: 7, callsThisMonth: 1))
     }
 
-    /// The provider id moved under the model object, but matching both places
-    /// costs nothing and survives a row that has either.
-    func testTheProviderIsMatchedInBothPlaces() {
-        XCTAssertTrue(OpenCodeSchema.providerPredicate.contains("$.model.providerID"))
-        XCTAssertTrue(OpenCodeSchema.providerPredicate.contains("$.providerID"))
+    /// An aborted message is stored with every counter at zero. It is a call
+    /// that spent nothing, not a call that did not happen, and it must not be
+    /// counted as either.
+    func testAnAbortedTurnWithNoTokensIsNotACall() throws {
+        let url = try makeDatabase([Row(created: now, type: "assistant", data: assistant())])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage.zero)
     }
 
-    /// Both selects are the same width, so the row layout does not depend on
-    /// which schema answered.
-    func testBothActivityQueriesAreTheSameWidth() throws {
-        let v1SQL = OpenCodeSchema.v1.activitySQL(cutoffMillis: 0)
-        let v2SQL = OpenCodeSchema.v2.activitySQL(cutoffMillis: 0)
-        XCTAssertEqual(v1SQL.split(separator: ",").count, v2SQL.split(separator: ",").count)
+    /// The month filter runs in SQL, so last month has to be gone before the
+    /// JSON is ever extracted.
+    func testLastMonthIsNotCounted() throws {
+        let url = try makeDatabase([Row(
+            created: localDate(2026, 8, 28), type: "assistant", data: assistant(input: 5000))])
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage.zero)
+    }
+
+    /// A 1.x store keeps working: the reader probes the shape rather than
+    /// assuming one. This is the case that would regress if the probe were
+    /// dropped.
+    func testA1xStoreStillReads() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("opencode-1x-\(UUID().uuidString).db")
+        databases.append(url)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &db), SQLITE_OK)
+        sqlite3_exec(db, """
+        CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER,
+                              time_updated INTEGER, data TEXT);
+        """, nil, nil, nil)
+        let millis = Int(now.timeIntervalSince1970 * 1000)
+        sqlite3_exec(db, """
+        INSERT INTO message VALUES ('m1','s1',\(millis),\(millis),
+          '{"role":"assistant","providerID":"google","modelID":"gemini-2.5-pro",
+            "tokens":{"total":96008,"input":2834,"output":51,"reasoning":17,
+                      "cache":{"read":93106,"write":0}},"cost":0.0}');
+        """, nil, nil, nil)
+        sqlite3_close(db)
+
+        // The stored total wins over the components, as it always has.
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage(
+            tokensThisMonth: 96008, tokensToday: 96008, callsThisMonth: 1))
     }
 }
 
