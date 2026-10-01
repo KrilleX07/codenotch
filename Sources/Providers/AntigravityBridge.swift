@@ -207,7 +207,11 @@ enum AntigravityBridge {
         /// Starts one if none is running, and returns where it landed. The
         /// ports arrive empty and are filled by `resolvePorts(_:)` once the
         /// server has bound them.
-        func endpointOrStart(binary: URL, launch: (Process) -> Void = { _ in }) -> Endpoint? {
+        ///
+        /// `start` replaces `Process.run()` so a test can drive this without
+        /// launching anything; the default is the real thing.
+        func endpointOrStart(binary: URL,
+                             start: (Process) -> Bool = { (try? $0.run()) != nil }) -> Endpoint? {
             if let current { return current }
             lock.lock(); defer { lock.unlock() }
             // Re-checked under the lock: two polls can overlap, and a second
@@ -223,8 +227,7 @@ enum AntigravityBridge {
             // whatever the app redirected there.
             process.standardOutput = FileHandle.nullDevice
             process.standardError = FileHandle.nullDevice
-            launch(process)
-            guard (try? process.run()) != nil else { return nil }
+            guard start(process) else { return nil }
 
             self.process = process
             // The port is left at 0 so the server picks one and `lsof` finds
@@ -243,7 +246,10 @@ enum AntigravityBridge {
 
         func stop() {
             lock.lock(); defer { lock.unlock() }
-            process?.terminate()
+            // `terminate()` raises if the task was never launched, or has already
+            // finished — both reachable: a server that crashed on start-up is
+            // gone, and the app can quit before the first poll ever ran one.
+            if process?.isRunning == true { process?.terminate() }
             process = nil
             endpoint = nil
         }

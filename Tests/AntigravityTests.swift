@@ -758,6 +758,64 @@ final class AntigravityBridgeTests: XCTestCase {
             AntigravityBridge.value(of: "--app_data_dir", in: joined), "antigravity")
     }
 
+    /// The spawn itself, driven through the seam that replaces `run()` so a test
+    /// launches nothing. What matters is the Process we would have started: the
+    /// flags, and stdout not inherited — the server logs there, and the app's
+    /// stdout is not somewhere it should write.
+    func testStartingOneBuildsTheServerAndDoesNotInheritStdout() throws {
+        let owned = AntigravityBridge.Owned()
+        defer { owned.stop() }
+
+        var built: Process?
+        let endpoint = try XCTUnwrap(owned.endpointOrStart(
+            binary: URL(fileURLWithPath: "/Applications/Antigravity.app/Contents/Resources/bin/language_server"),
+            start: { built = $0; return true }))
+
+        let process = try XCTUnwrap(built)
+        XCTAssertTrue(process.arguments?.contains("--standalone") == true)
+        XCTAssertTrue((process.standardOutput as AnyObject) === FileHandle.nullDevice)
+        XCTAssertTrue((process.standardError as AnyObject) === FileHandle.nullDevice)
+        // Ports arrive empty: the server has not bound yet, and asking it here
+        // would be asking before it has listened.
+        XCTAssertTrue(endpoint.ports.isEmpty)
+        XCTAssertNotNil(endpoint.csrfToken)
+    }
+
+    /// A second poll must not start a second server. Two would bind their own
+    /// ports and one would be dialled for nothing.
+    func testStartingTwiceKeepsTheFirstServer() throws {
+        let owned = AntigravityBridge.Owned()
+        defer { owned.stop() }
+
+        var starts = 0
+        let binary = URL(fileURLWithPath: "/tmp/language_server")
+        let first = try XCTUnwrap(owned.endpointOrStart(binary: binary, start: { _ in starts += 1; return true }))
+        let second = try XCTUnwrap(owned.endpointOrStart(binary: binary, start: { _ in starts += 1; return true }))
+        XCTAssertEqual(starts, 1, "started a second server")
+        XCTAssertEqual(first.csrfToken, second.csrfToken)
+    }
+
+    /// A server that will not start leaves nothing behind to be dialled later.
+    func testAServerThatFailsToStartIsNotRemembered() {
+        let owned = AntigravityBridge.Owned()
+        XCTAssertNil(owned.endpointOrStart(binary: URL(fileURLWithPath: "/tmp/x"), start: { _ in false }))
+        XCTAssertNil(owned.current)
+    }
+
+    /// Ports are filled in once, and only once there are some — an empty set
+    /// means "not bound yet", not "bound on no ports".
+    func testPortsAreRecordedOnlyOnceTheServerHasBound() throws {
+        let owned = AntigravityBridge.Owned()
+        defer { owned.stop() }
+        _ = owned.endpointOrStart(binary: URL(fileURLWithPath: "/tmp/x"), start: { _ in true })
+
+        owned.resolvePorts([])
+        XCTAssertTrue(try XCTUnwrap(owned.current).ports.isEmpty)
+
+        owned.resolvePorts([57312])
+        XCTAssertEqual(owned.current?.ports, [57312])
+    }
+
     /// No Antigravity installed is the honest answer — there is nothing to
     /// start — and must not be papered over with some other path.
     func testNoBinaryWithoutAnInstalledIDE() {
