@@ -339,6 +339,61 @@ final class OpenCode2xGeminiUsageTests: XCTestCase {
         XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage(
             tokensThisMonth: 96008, tokensToday: 96008, callsThisMonth: 1))
     }
+
+    /// **1.18 has both tables.** It ships `session_message` beside the `message`
+    /// and `session` it still keeps its messages in, and no `session_v2`
+    /// (upstream `packages/core/schema.json`, v1.18.0 to v1.18.34). A probe that
+    /// asked for `session_message` first read such a store as 2.x: usage from
+    /// the wrong table, and activity from a `session_v2` that is not there.
+    func testA118StoreWithBothTablesIsStillReadAs1x() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("opencode-118-\(UUID().uuidString).db")
+        databases.append(url)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &db), SQLITE_OK)
+        sqlite3_exec(db, """
+        CREATE TABLE session (id TEXT, parent_id TEXT, title TEXT, directory TEXT,
+                              time_created INTEGER, time_updated INTEGER);
+        CREATE TABLE message (id TEXT, session_id TEXT, time_created INTEGER,
+                              time_updated INTEGER, data TEXT);
+        CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                                      type TEXT NOT NULL, seq INTEGER NOT NULL,
+                                      time_created INTEGER NOT NULL,
+                                      time_updated INTEGER NOT NULL, data TEXT NOT NULL);
+        """, nil, nil, nil)
+        let millis = Int(now.timeIntervalSince1970 * 1000)
+        sqlite3_exec(db, """
+        INSERT INTO message VALUES ('m1','s1',\(millis),\(millis),
+          '{"role":"assistant","providerID":"google","modelID":"gemini-2.5-pro",
+            "tokens":{"total":4200,"input":4000,"output":200,"reasoning":0,
+                      "cache":{"read":0,"write":0}},"cost":0.0}');
+        """, nil, nil, nil)
+        XCTAssertEqual(OpenCodeSchema.of(db), .v1)
+        sqlite3_close(db)
+
+        XCTAssertEqual(OpenCodeGeminiUsage.read(database: url, now: now), GeminiTokenUsage(
+            tokensThisMonth: 4200, tokensToday: 4200, callsThisMonth: 1))
+    }
+
+    /// And a 2.x store, which has `session_v2` and no `message`, is 2.x whether
+    /// or not anything else is there.
+    func testAStoreWithSessionV2Is2x() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("opencode-2x-shape-\(UUID().uuidString).db")
+        databases.append(url)
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(url.path, &db), SQLITE_OK)
+        sqlite3_exec(db, """
+        CREATE TABLE session_v2 (id TEXT, parent_id TEXT, title TEXT, directory TEXT,
+                                 time_created INTEGER, time_updated INTEGER);
+        CREATE TABLE session_message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL,
+                                      type TEXT NOT NULL, seq INTEGER NOT NULL,
+                                      time_created INTEGER NOT NULL,
+                                      time_updated INTEGER NOT NULL, data TEXT NOT NULL);
+        """, nil, nil, nil)
+        XCTAssertEqual(OpenCodeSchema.of(db), .v2)
+        sqlite3_close(db)
+    }
 }
 
 final class OpenCodeGeminiUsageTests: XCTestCase {

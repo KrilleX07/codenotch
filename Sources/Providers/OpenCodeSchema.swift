@@ -16,11 +16,21 @@ import SQLite3
 enum OpenCodeSchema {
     case v1, v2
 
-    /// The table that holds one session's messages, or nil for a database that
-    /// is neither shape.
+    /// Which shape the database is, or nil for one that is neither.
+    ///
+    /// **`session_message` alone does not say 2.x.** 1.18 already ships that
+    /// table, beside `message` and `session`, which it still reads and writes
+    /// (upstream `packages/core/schema.json` at v1.18.0 and v1.18.34: all three,
+    /// and no `session_v2`). Asked for first, it sent every current 1.x store
+    /// down the 2.x path: usage read from a table 1.x does not keep its
+    /// messages in, and the activity query failed to prepare on `session_v2`
+    /// and answered nothing. What only 2.x has is `session_v2`, and what every
+    /// 1.x has is `message`; `session_message` on its own is a 2.x store seen
+    /// through one table.
     static func of(_ db: OpaquePointer?) -> OpenCodeSchema? {
-        if hasTable("session_message", in: db) { return .v2 }
+        if hasTable("session_v2", in: db) { return .v2 }
         if hasTable("message", in: db) { return .v1 }
+        if hasTable("session_message", in: db) { return .v2 }
         return nil
     }
 
