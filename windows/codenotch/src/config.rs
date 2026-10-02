@@ -123,9 +123,6 @@ pub struct Config {
     /// leave the app running with no way to reach it.
     #[serde(default = "yes")]
     pub tray_visible: bool,
-    /// false = no arc above the notch to carry it by. Nothing is lost: Appearance → Edge moves it too.
-    #[serde(default = "yes")]
-    pub show_move_handle: bool,
     /// Show a temporary card when any provider (Claude, Codex, Cursor, …) renews a used quota window.
     #[serde(default = "yes")]
     pub reset_notifications: bool,
@@ -309,7 +306,6 @@ impl Default for Config {
             notch_visible: true,
             notch_on_hover: true,
             tray_visible: true,
-            show_move_handle: true,
             reset_notifications: true,
             reset_notification_sound: true,
             adaptive_pill: false,
