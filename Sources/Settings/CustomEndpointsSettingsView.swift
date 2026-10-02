@@ -43,6 +43,7 @@ struct CustomEndpointsSettingsView: View {
         "mistral",
         "ollama",
         "lmstudio",
+        "llamacpp",
         "qwen",
         "gemini-spark"
     ]
