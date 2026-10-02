@@ -1246,6 +1246,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store?.stop()
         activityCoordinator?.stop()
         notchFleet?.stop()
+        // A language server this app started, if any. Left running it would
+        // outlive the reason it exists and keep answering on loopback to
+        // nothing.
+        AntigravityBridge.owned.stop()
         Task { await phoneLinkServer?.stop() }
     }
 }
