@@ -56940,6 +56940,21 @@
           }
         }
       }
+    },
+    "API type": {
+      "extractionState": "manual"
+    },
+    "OpenAI-compatible": {
+      "extractionState": "manual"
+    },
+    "Anthropic Messages": {
+      "extractionState": "manual"
+    },
+    "Google Gemini": {
+      "extractionState": "manual"
+    },
+    "Could not build the model-list URL": {
+      "extractionState": "manual"
     }
   },
   "version": "1.0"
