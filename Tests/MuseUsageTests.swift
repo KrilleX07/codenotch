@@ -570,7 +570,7 @@ final class MuseIdleRefreshTests: XCTestCase {
     func testIdleTickSkipsManualProviders() async throws {
         let auto = Stub(id: "auto", skipsIdleRefresh: false)
         let manual = Stub(id: "manual", skipsIdleRefresh: true)
-        await makeStore(auto: auto, manual: manual).refresh(includeIdleSkipped: false)
+        await makeStore(auto: auto, manual: manual).refresh(freshness: .standard, includeIdleSkipped: false)
         let autoFetches = await auto.fetches
         let manualFetches = await manual.fetches
         XCTAssertEqual(autoFetches, 1)

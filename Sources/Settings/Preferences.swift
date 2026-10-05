@@ -219,6 +219,21 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(showUsagePace, forKey: Self.showUsagePaceKey) }
     }
 
+    /// Whether pointing at a ring, or opening the menu bar's menu, refuses every
+    /// reading a provider is holding and asks the provider itself.
+    ///
+    /// Off by default, and it has to be: it is not strictly better. A look
+    /// already asks for a live reading, which is served from a cache only while
+    /// that cache is newer than a couple of minutes. This spends a request even
+    /// when the cache was written seconds ago — and on a provider that rate
+    /// limits, one request too many is answered with a back-off that then holds
+    /// a number older than the cache would have been. Worth having for somebody
+    /// comparing Codenotch against a vendor's own dashboard figure by figure;
+    /// not worth making everybody pay for.
+    @Published var asksProviderOnLook: Bool {
+        didSet { defaults.set(asksProviderOnLook, forKey: Keys.asksProviderOnLook) }
+    }
+
     /// Whether Claude's big ring shows the day's share of the weekly limit
     /// instead of the session. See `DailyPace`.
     @Published var claudeDailyPaceRing: Bool {
@@ -335,10 +350,6 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(weeklyRing.rawValue, forKey: Keys.weeklyRing) }
     }
 
-    /// Whether the move handle's arc is drawn above the notch.
-    @Published var showsMoveHandle: Bool {
-        didSet { defaults.set(showsMoveHandle, forKey: Keys.showsMoveHandle) }
-    }
 
     /// The colour used for positive usage and active-work indicators.
     @Published var accentColor: AccentColorChoice {
@@ -582,6 +593,7 @@ final class Preferences: ObservableObject {
         static let customSize = "customNotchScale"
         static let display = "notchDisplay"
         static let resetTimeFormat = "resetTimeFormat"
+        static let asksProviderOnLook = "asksProviderOnLook"
         static let scope = "notchScope"
         static let accentColor = "accentColor"
         // A new key, so there is nothing under the old app name to migrate.
@@ -594,7 +606,6 @@ final class Preferences: ObservableObject {
         static let hideDepletedAccounts = "hideDepletedAccounts"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
         static let weeklyHeadline = "weeklyHeadline"
-        static let showsMoveHandle = "showsMoveHandle"
         static let notchSurfaceStyle = "notchSurfaceStyle"
         static let watchLimit = "watchLimit"
         static let criticalLimit = "criticalLimit"
@@ -923,6 +934,10 @@ final class Preferences: ObservableObject {
         self.resetTimeFormat = defaults.string(forKey: Keys.resetTimeFormat)
             .flatMap(ResetTimeFormat.init(rawValue:)) ?? .automatic
         self.showUsagePace = defaults.bool(forKey: Self.showUsagePaceKey)
+        // Off by default: see the property. A request spent on every look is a
+        // choice, and on a rate-limited provider it can cost freshness rather
+        // than buy it.
+        self.asksProviderOnLook = defaults.bool(forKey: Keys.asksProviderOnLook)
         // Off by default: it swaps what Claude's ring means, and that is a
         // choice for whoever budgets their week that way.
         self.claudeDailyPaceRing = defaults.bool(forKey: Keys.claudeDailyPaceRing)
@@ -962,7 +977,6 @@ final class Preferences: ObservableObject {
             .flatMap(WeeklyRing.init(rawValue:)) ?? .off
         // On unless turned off: it is how the notch is carried to another edge,
         // and a control that is missing by default is one nobody finds.
-        self.showsMoveHandle = defaults.object(forKey: Keys.showsMoveHandle) as? Bool ?? true
         self.accentColor = defaults.string(forKey: Keys.accentColor)
             .flatMap(AccentColorChoice.init(rawValue:)) ?? .system
         self.notchSurfaceStyle = defaults.string(forKey: Keys.notchSurfaceStyle)

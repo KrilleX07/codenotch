@@ -122,6 +122,15 @@ enum NotchLayout {
     static let orbStroke   = Design.px(18)
     /// Distance from the flare's curve in to the resting arc.
     static let orbGap      = Design.px(27)
+    /// **How far the resting arc runs out from the flare**, all the way along.
+    ///
+    /// The arc was a quarter circle one `orbGap` inside the flare's, and the
+    /// flare is not a circle: it bows out past one by a ninth of its radius in
+    /// the middle of the turn, so the gap there was near 39px. Drawn parallel
+    /// to the flare instead, at `orbGap`, it sat closer all the way round than
+    /// it ever had in the middle — which is where the eye measures it. This is
+    /// that middle gap, kept the whole way.
+    static let orbClearance = Design.px(39)
     /// Radius of the resting arc: the flare's radius, less the gap.
     static var orbArcRadius: CGFloat { curlRadius - orbGap }
     /// The resting arc's circle when it traces a *convex* corner: outside the
@@ -162,8 +171,18 @@ enum NotchLayout {
     /// Generous, like the pill's — it is a small target on a screen edge.
     static let orbHotZone  = Design.px(152)
 
+    // The six dots beside the settings button, that move the notch
+    static let gripDot     = Design.px(19)
+    static let gripPitch   = Design.px(31)    // dot centre to dot centre
+    static let gripWidth   = gripPitch + gripDot        // across its two lines
+    static let gripLength  = 2 * gripPitch + gripDot    // along its three
+    static let gripGap     = Design.px(13)    // from the settings disc
+    static let gripHotZone = Design.px(140)
+
     // The hover tooltip
     static let cardWidth     = Design.px(600)
+    /// The update card's, wider for its three buttons — see `UpdateCard`.
+    static let updateCardWidth = Design.px(820)
     static let cardCorner    = Design.px(49.5)
     static let cardPadding   = Design.px(32)
     static let tailLength    = Design.px(75)
@@ -375,7 +394,8 @@ enum NotchLayout {
                            localModelName: String? = nil, showsLocalPerformance: Bool = false,
                            localLedgerRows: Int = 0,
                            compactRowCount: Int = 0,
-                           showsDeepSeekPricing: Bool = true) -> CGFloat {
+                           showsDeepSeekPricing: Bool = true,
+                           costRows: Int = 0) -> CGFloat {
         let header = max(glyphSize, cardTitleLineHeight)
             + (hasPlan ? cardBodyLineHeight : 0)
         var height = 2 * cardPadding + header
@@ -427,6 +447,12 @@ enum NotchLayout {
 
         if hasResetCredits {
             height += codexUsageTop + hairline + codexResetCreditsHeight
+        }
+
+        // "What used it": a line of range tabs, then one line per project.
+        if costRows > 0 {
+            height += blockSpacing + cardBodyLineHeight
+                + CGFloat(costRows) * (cardBodyLineHeight + sessionRowGap)
         }
 
         height += usageDetailHeight(usageDetailGroupCount,
@@ -563,6 +589,9 @@ enum NotchLayout {
     /// below or above it on a horizontal one.
     static func tooltipDepth(for edge: NotchEdge,
                              maxCardHeight: CGFloat = defaultMaxCardHeight) -> CGFloat {
-        (edge.isVertical ? cardWidth : maxCardHeight) + tailLength + tailGap
+        // Beside a side edge's notch the update card has to fit too, and it is
+        // wider than a tooltip: held to the tooltip's width, the window cut
+        // its far side off.
+        (edge.isVertical ? max(cardWidth, updateCardWidth) : maxCardHeight) + tailLength + tailGap
     }
 }

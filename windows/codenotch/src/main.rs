@@ -17,6 +17,7 @@ mod claude_auth;
 mod codex;
 mod cursor;
 mod grok;
+mod copilot;
 mod antigravity;
 mod glm;
 mod opencode;
@@ -25,7 +26,7 @@ mod glyphs;
 mod trayicon;
 mod activity;
 mod diag;
-mod dropzones;
+mod carry;
 mod watcher;
 mod settings_window;
 mod topmost;
@@ -56,6 +57,8 @@ pub struct AppState {
     pub cursor: Mutex<usage::UsageSnapshot>,
     /// Grok Build credits, read from the Grok CLI's own session
     pub grok: Mutex<usage::UsageSnapshot>,
+    /// GitHub Copilot quotas, read with the GitHub CLI's own session
+    pub copilot: Mutex<usage::UsageSnapshot>,
     pub antigravity: Mutex<usage::UsageSnapshot>,
     /// GLM Coding Plan snapshot, read from the existing Z.AI tool credentials.
     pub glm: Mutex<usage::UsageSnapshot>,
@@ -197,9 +200,10 @@ static LANDING_HIDDEN: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU
 /// Longest a landing stays out of sight if the page never reports a settled layout.
 const LANDING_FALLBACK_MS: u64 = 700;
 
-/// Places the notch on a screen at another scale without the change of scale showing.
+/// Puts the notch down where the window changes size — on a screen at another scale, or carried
+/// round onto an edge where the window is another shape — without the change showing.
 ///
-/// Arriving there, Windows resizes the window by the ratio of the two scales before `place_notch`
+/// Arriving at another scale, Windows resizes the window by the ratio of the two scales before `place_notch`
 /// puts it right, and the page then re-zooms itself for the new pixel ratio a debounce later, which
 /// can bring one more zoom correction from `report_dpr`. All of that played out on screen as the
 /// notch jumping sizes as it landed. Hiding the window did not help: a hidden WebView2 stops painting
@@ -208,11 +212,8 @@ const LANDING_FALLBACK_MS: u64 = 700;
 /// So the window stays up and the page empties itself instead — the window is transparent, so an
 /// empty page is an invisible notch — while the WebView keeps doing its layout. It is revealed when
 /// the page reports a layout that has stopped changing (`report_dpr` with `settled`), not after a
-/// guessed delay. At the same scale nothing is resized on arrival, so there is nothing to hide.
-fn land_on_another_screen(app: &AppHandle, from_scale: f64, to_scale: f64) {
-    if (from_scale - to_scale).abs() < 0.01 {
-        return place_notch(app);
-    }
+/// guessed delay.
+fn land_quietly(app: &AppHandle) {
     use std::sync::atomic::Ordering::SeqCst;
     let gen = LANDING_SEQ.fetch_add(1, SeqCst) + 1;
     LANDING.store(gen, SeqCst);
@@ -428,11 +429,8 @@ pub fn reset_bar(app: &AppHandle) {
     place_notch(app);
 }
 
-/// Drag. The page calls this once after an Alt-press on the pill moves more than 4 px; from then on
-/// a Rust thread follows the system cursor (WebView mousemove is unreliable once the window itself
-/// starts moving). Only the axis along the notch's edge follows it: this slides the notch along the
-/// edge it is on and never takes it to another, which is the move handle's job — the Mac's ⌥-drag
-/// (`NotchWindowController.dragged`). Releasing it saves that place for that edge alone.
+/// The notch is in the hand, carried round the border (`carry.rs`), and placing it again would
+/// fight that.
 pub(crate) static DRAGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[cfg(windows)]
@@ -445,193 +443,6 @@ fn left_button_down() -> bool {
     false
 }
 
-/// Which edge a point belongs to: the screen split into four triangles about its centre, as on the
-/// Mac. Nearest-edge rather than hit testing the zones, which are thin — landing inside a 70 px strip
-/// would be threading a needle.
-pub(crate) fn edge_at(x: f64, y: f64, w: f64, h: f64) -> &'static str {
-    let (left, right, top, bottom) = (x, w - x, y, h - y);
-    let nearest = left.min(right).min(top).min(bottom);
-    if nearest == right {
-        "right"
-    } else if nearest == left {
-        "left"
-    } else if nearest == top {
-        "top"
-    } else {
-        "bottom"
-    }
-}
-
-/// Carrying the notch by its move handle: the zones go up, the pointer picks one, and releasing
-/// hands it over. The notch itself stays where it is until then — what is being chosen is a place on
-/// the screen, not a distance moved, so nothing follows the pointer.
-///
-/// `depth` and `length` are the pill's own measurements standing upright, in the notch page's CSS px.
-#[tauri::command]
-fn begin_move(app: AppHandle, depth: f64, length: f64) {
-    if DRAGGING.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        return;
-    }
-    std::thread::spawn(move || {
-        let done = |app: &AppHandle| {
-            dropzones::hide(app);
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            let _ = app.emit("move_end", ());
-        };
-        let Some(start) = target_screen(&app) else {
-            done(&app);
-            return;
-        };
-        let from = {
-            let st = app.state::<AppState>();
-            let c = st.cfg.lock().unwrap();
-            config::edge_or_right(&c.notch_edge)
-        };
-        // The overlay is at the monitor's own scale; the notch page is that scale times its size
-        let size = ui_scale(&app);
-        // Every figure here is the work area's, to match the overlay window and the notch itself:
-        // the zone drawn on the taskbar's edge has to sit where the notch will, and the edge the
-        // pointer picks has to be read against the same rectangle the zones are drawn in.
-        let zones_on = |s: &Screen, target: &str| {
-            let (_, _, aw, ah) = s.area();
-            dropzones::Zones {
-                w: aw as f64 / s.scale,
-                h: ah as f64 / s.scale,
-                depth: depth * size,
-                length: length * size,
-                target: target.to_string(),
-            }
-        };
-        let all = screens(&app);
-        let mut mon = start.clone();
-        let mut zones = zones_on(&mon, &from);
-        dropzones::show(&app, &mon, &zones);
-        let mut target = from.clone();
-        while left_button_down() {
-            if let Ok(cur) = app.cursor_position() {
-                // Crossing onto another screen takes the zones with it. The silhouette is in logical
-                // px, so it keeps its size on a screen at another scale, exactly as the notch will.
-                if let Some(s) = screen_at(&all, cur.x, cur.y) {
-                    if !same_screen(s, &mon) {
-                        mon = s.clone();
-                        zones = zones_on(&mon, &target);
-                        dropzones::relocate(&app, &mon, &zones);
-                    }
-                }
-                let (ax, ay, aw, ah) = mon.area();
-                let next = edge_at(cur.x - ax as f64, cur.y - ay as f64, aw as f64, ah as f64);
-                if next != target {
-                    target = next.to_string();
-                    zones.target = target.clone();
-                    dropzones::retarget(&app, &zones);
-                    let _ = app.emit("move_target", &target);
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(16));
-        }
-        // The right edge of another screen is a move too, though the edge has the same name
-        let mut crossed = !same_screen(&mon, &start);
-        // A screen Windows will not name has nothing stable to remember it by, which is why the
-        // picker in Settings lists those disabled. Saving `None` would not mean "this screen", it
-        // means "the primary", so the notch would jump off it at the next placement. Take the edge
-        // the carry chose and leave it on the screen it came from rather than record a move that
-        // will not survive.
-        let unnameable = crossed && mon.name.is_none();
-        if unnameable {
-            crossed = false;
-        }
-        applog(&format!(
-            "notch carry: {from} -> {target} on {:?}{}",
-            mon.name,
-            if unnameable { " (unnamed screen, staying put)" } else { "" }
-        ));
-        if target != from || crossed || unnameable {
-            {
-                let st = app.state::<AppState>();
-                let mut c = st.cfg.lock().unwrap();
-                // It lands where it was last left on that edge — centred, like the zone it was
-                // offered, on an edge it has never been slid along
-                c.notch_edge = target.clone();
-                if !unnameable {
-                    c.notch_monitor = mon.name.clone();
-                }
-                config::save(&c);
-            }
-            if crossed {
-                land_on_another_screen(&app, start.scale, mon.scale);
-            } else {
-                place_notch(&app);
-            }
-        }
-        done(&app);
-    });
-}
-
-#[tauri::command]
-fn drag_begin(app: AppHandle) {
-    if DRAGGING.swap(true, std::sync::atomic::Ordering::SeqCst) {
-        return;
-    }
-    std::thread::spawn(move || {
-        let Some(w) = app.get_webview_window("notch") else {
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            return;
-        };
-        let (Ok(start_cur), Ok(start_pos), Ok(size)) = (app.cursor_position(), w.outer_position(), w.outer_size()) else {
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            return;
-        };
-        let Some(mon) = target_screen(&app) else {
-            DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-            return;
-        };
-        let edge = {
-            let st = app.state::<AppState>();
-            let c = st.cfg.lock().unwrap();
-            config::edge_or_right(&c.notch_edge)
-        };
-        let vertical = config::edge_is_vertical(&edge);
-        let (ww, wh) = (size.width as i32, size.height as i32);
-        // The span `edge_origin` places against, so it cannot be slid under the taskbar
-        let (ax, ay, aw, ah) = mon.area();
-        let (mut last_x, mut last_y) = (start_pos.x, start_pos.y);
-        let mut moved = false;
-        loop {
-            if !left_button_down() {
-                break;
-            }
-            if let Ok(cur) = app.cursor_position() {
-                let (nx, ny) = if vertical {
-                    let y = (start_pos.y as f64 + (cur.y - start_cur.y)).round() as i32;
-                    (start_pos.x, y.clamp(ay, (ay + ah - wh).max(ay)))
-                } else {
-                    let x = (start_pos.x as f64 + (cur.x - start_cur.x)).round() as i32;
-                    (x.clamp(ax, (ax + aw - ww).max(ax)), start_pos.y)
-                };
-                if nx != last_x || ny != last_y {
-                    last_x = nx;
-                    last_y = ny;
-                    moved = true;
-                    let _ = w.set_position(tauri::PhysicalPosition::new(nx, ny));
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(8));
-        }
-        if moved {
-            let along = if vertical { along_at(last_y, wh, ay, ah) } else { along_at(last_x, ww, ax, aw) };
-            {
-                let st = app.state::<AppState>();
-                let mut c = st.cfg.lock().unwrap();
-                c.set_along(&edge, along);
-                config::save(&c);
-            }
-            applog(&format!("notch slid along {edge} to {along:.3}"));
-            place_notch(&app);
-        }
-        DRAGGING.store(false, std::sync::atomic::Ordering::SeqCst);
-        let _ = app.emit("drag_end", moved);
-    });
-}
 pub fn place_bar(app: &AppHandle) {
     place_notch(app);
 }
@@ -686,6 +497,7 @@ pub(crate) fn refresh_provider(app: &AppHandle, provider: &str) -> bool {
         "codex" => codex::request_refresh(),
         "cursor" => cursor::request_refresh(),
         "grok" => grok::request_refresh(),
+        "copilot" => copilot::request_refresh(),
         "gemini" => antigravity::request_refresh(),
         "glm" => glm::request_refresh(),
         "opencode" => opencode::request_refresh(),
@@ -745,7 +557,10 @@ pub fn reload_glyphs(app: &AppHandle) {
 fn open_data_dir() {
     let dir = config::config_path().parent().map(|p| p.to_path_buf()).unwrap_or_default();
     let _ = std::fs::create_dir_all(glyphs::user_dir());
+    #[cfg(windows)]
     let mut cmd = std::process::Command::new("explorer");
+    #[cfg(not(windows))]
+    let mut cmd = std::process::Command::new("xdg-open");
     cmd.arg(dir.as_os_str());
     #[cfg(windows)]
     {
@@ -758,6 +573,11 @@ fn open_data_dir() {
 #[tauri::command]
 fn get_grok(state: tauri::State<AppState>) -> usage::UsageSnapshot {
     state.grok.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn get_copilot(state: tauri::State<AppState>) -> usage::UsageSnapshot {
+    state.copilot.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -777,6 +597,7 @@ pub(crate) fn provider_page(provider: &str) -> Option<(&'static str, &'static st
         "codex" => ("https://chatgpt.com/#settings/Account", "chatgpt.com"),
         "cursor" => ("https://cursor.com/dashboard", "cursor.com"),
         "grok" => ("https://grok.com/?_s=usage", "grok.com"),
+        "copilot" => ("https://github.com/settings/copilot", "github.com"),
         "gemini" => ("https://antigravity.google", "antigravity.google"),
         "glm" => ("https://z.ai/manage-apikey/apikey-list", "z.ai"),
         "opencode" => ("https://opencode.ai", "opencode.ai"),
@@ -786,8 +607,18 @@ pub(crate) fn provider_page(provider: &str) -> Option<(&'static str, &'static st
 
 pub(crate) fn open_provider_page(provider: &str) {
     let Some((url, _)) = provider_page(provider) else { return };
-    let mut cmd = std::process::Command::new("cmd");
-    cmd.args(["/C", "start", "", url]);
+    #[cfg(windows)]
+    let mut cmd = {
+        let mut c = std::process::Command::new("cmd");
+        c.args(["/C", "start", "", url]);
+        c
+    };
+    #[cfg(not(windows))]
+    let mut cmd = {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(url);
+        c
+    };
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -1132,7 +963,7 @@ fn get_theme_resolved(app: AppHandle) -> String {
 /// rather than left dark under a light page.
 pub fn apply_theme(app: &AppHandle) {
     let theme = theme_choice(app);
-    for label in ["notch", "settings", dropzones::LABEL] {
+    for label in ["notch", "settings"] {
         if let Some(w) = app.get_webview_window(label) {
             let _ = w.set_theme(theme);
         }
@@ -1190,6 +1021,89 @@ fn set_weekly_ring(app: AppHandle, placement: String) -> String {
     value
 }
 
+/// Whether the weekly ring's track and its own arc are drawn dashed. Only means anything while
+/// `weekly_ring` is not "off".
+#[tauri::command]
+fn get_weekly_ring_dashed(app: AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.weekly_ring_dashed
+}
+
+#[tauri::command]
+fn set_weekly_ring_dashed(app: AppHandle, on: bool) -> bool {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.weekly_ring_dashed = on;
+        config::save(&c);
+    }
+    let _ = app.emit("weekly_ring_dashed", on);
+    on
+}
+
+/// Where a ring turns from Ample to Watch, as a fraction of the limit.
+#[tauri::command]
+fn get_watch_limit(app: AppHandle) -> f64 {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.watch_limit
+}
+
+/// Clamped below `critical_limit`, so the two sliders can never cross.
+#[tauri::command]
+fn set_watch_limit(app: AppHandle, value: f64) -> f64 {
+    let value = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.watch_limit = config::clamp_watch_limit(value, c.critical_limit);
+        config::save(&c);
+        c.watch_limit
+    };
+    let _ = app.emit("watch_limit", value);
+    value
+}
+
+/// Where a ring turns from Watch to Critical, as a fraction of the limit.
+#[tauri::command]
+fn get_critical_limit(app: AppHandle) -> f64 {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.critical_limit
+}
+
+/// Clamped above `watch_limit`, so the two sliders can never cross.
+#[tauri::command]
+fn set_critical_limit(app: AppHandle, value: f64) -> f64 {
+    let value = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.critical_limit = config::clamp_critical_limit(value, c.watch_limit);
+        config::save(&c);
+        c.critical_limit
+    };
+    let _ = app.emit("critical_limit", value);
+    value
+}
+
+/// Critical first, then watch, the same order the Mac's own reset button uses: resetting watch
+/// against a low stored critical would otherwise pin it there and the reset would look like it
+/// did nothing.
+#[tauri::command]
+fn reset_usage_limits(app: AppHandle) -> (f64, f64) {
+    let (watch, critical) = {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.critical_limit = config::default_critical_limit();
+        c.watch_limit = config::default_watch_limit();
+        config::save(&c);
+        (c.watch_limit, c.critical_limit)
+    };
+    let _ = app.emit("critical_limit", critical);
+    let _ = app.emit("watch_limit", watch);
+    (watch, critical)
+}
+
 /// How the usage rings change colour as the allowance is used.
 #[tauri::command]
 fn get_color_transition(app: AppHandle) -> String {
@@ -1239,6 +1153,8 @@ fn ring_window<'a>(
         "codex" => by_id("primary"),
         "cursor" => by_id("included").or_else(|| by_id("api")),
         "grok" => by_id("credits").or_else(|| windows.first()),
+        // The Mac's headlineID: premium requests when metered, else the first quota
+        "copilot" => by_id("premium_interactions").or_else(|| windows.first()),
         // The Mac sets headlineID "session", weeklyID "weekly". Without this the
         // plan falls through to Antigravity's lane picker and the ring shows the
         // tightest window it can find instead of the session.
@@ -1299,6 +1215,7 @@ pub(crate) fn snapshot_of(app: &AppHandle, id: &str) -> usage::UsageSnapshot {
         "codex" => st.codex.lock().unwrap().clone(),
         "cursor" => st.cursor.lock().unwrap().clone(),
         "grok" => st.grok.lock().unwrap().clone(),
+        "copilot" => st.copilot.lock().unwrap().clone(),
         "gemini" => st.antigravity.lock().unwrap().clone(),
         "glm" => st.glm.lock().unwrap().clone(),
         "opencode" => st.opencode.lock().unwrap().clone(),
@@ -1585,25 +1502,6 @@ fn set_notch_edge(app: AppHandle, edge: String) -> String {
 }
 
 #[tauri::command]
-fn get_move_handle(app: AppHandle) -> bool {
-    let st = app.state::<AppState>();
-    let c = st.cfg.lock().unwrap();
-    c.show_move_handle
-}
-
-#[tauri::command]
-fn set_move_handle(app: AppHandle, on: bool) -> bool {
-    {
-        let st = app.state::<AppState>();
-        let mut c = st.cfg.lock().unwrap();
-        c.show_move_handle = on;
-        config::save(&c);
-    }
-    let _ = app.emit("move_handle", on);
-    on
-}
-
-#[tauri::command]
 fn get_adaptive_pill(app: AppHandle) -> bool {
     let st = app.state::<AppState>();
     let c = st.cfg.lock().unwrap();
@@ -1705,6 +1603,7 @@ pub fn provider_label(id: &str) -> &'static str {
         "codex" => "Codex",
         "cursor" => "Cursor",
         "grok" => "Grok",
+        "copilot" => "GitHub Copilot",
         "gemini" => "Antigravity",
         "glm" => "z.ai",
         "opencode" => "OpenCode",
@@ -1713,7 +1612,7 @@ pub fn provider_label(id: &str) -> &'static str {
 }
 
 /// Every provider the tray menu can offer, in the order the notch shows them.
-pub const TRAY_PROVIDER_IDS: [&str; 7] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "gemini"];
+pub const TRAY_PROVIDER_IDS: [&str; 8] = ["claude", "codex", "glm", "opencode", "cursor", "grok", "copilot", "gemini"];
 
 /// Keeps the tray menu current. macOS rebuilds its menu as it opens; Tauri has no such hook, so it
 /// is rebuilt whenever a reading changes, and once a minute besides — otherwise "Resets in 12 min"
@@ -1900,6 +1799,7 @@ fn main() {
             codex: Mutex::new(codex::load_persisted()),
             cursor: Mutex::new(cursor::load_persisted()),
             grok: Mutex::new(grok::load_persisted()),
+            copilot: Mutex::new(copilot::load_persisted()),
             antigravity: Mutex::new(antigravity::load_persisted()),
             glm: Mutex::new(glm::load_persisted()),
             opencode: Mutex::new(opencode::load_persisted()),
@@ -1914,16 +1814,22 @@ fn main() {
             updater::get_update_state,
             updater::check_for_update,
             updater::install_update,
+            updater::open_update_installer,
             get_codex,
             get_cursor,
             get_grok,
+            get_copilot,
             get_antigravity,
             get_glm,
             get_opencode,
             get_glyphs,
             get_activity,
             open_data_dir,
-            drag_begin,
+            carry::begin_carry,
+            carry::get_carry,
+            carry::carry_shown,
+            carry::carry_landed,
+            carry::carry_revealed,
             refresh_ring,
             notchmenu::show_notch_menu,
             set_hot,
@@ -1937,8 +1843,15 @@ fn main() {
             set_scale,
             get_weekly_ring,
             set_weekly_ring,
+            get_weekly_ring_dashed,
+            set_weekly_ring_dashed,
             get_color_transition,
             set_color_transition,
+            get_watch_limit,
+            set_watch_limit,
+            get_critical_limit,
+            set_critical_limit,
+            reset_usage_limits,
             get_theme,
             set_theme,
             get_theme_resolved,
@@ -1963,16 +1876,13 @@ fn main() {
             get_monitors,
             set_notch_monitor,
             open_settings,
-            begin_move,
-            get_move_handle,
-            set_move_handle,
             get_adaptive_pill,
             set_adaptive_pill,
             get_notch_shows_remaining,
             set_notch_shows_remaining,
-            dropzones::get_zones,
             settings_window::get_system_look,
             settings_window::quit_app,
+            settings_window::settings_ready,
             settings_window::open_author_page
         ])
         .setup(move |app| {
@@ -1996,6 +1906,7 @@ fn main() {
             codex::start(handle.clone());
             cursor::start(handle.clone());
             grok::start(handle.clone());
+            copilot::start(handle.clone());
             antigravity::start(handle.clone());
             glm::start(handle.clone());
             opencode::start(handle.clone());
@@ -2198,21 +2109,6 @@ mod tests {
         assert_eq!(palettes.len(), 2, "one palette per appearance, dark and light");
         assert_eq!(palettes[0], palettes[1], "the two palettes declare different names");
         assert!(palettes[0].len() >= 15, "{:?} is too short to be the palette", palettes[0]);
-    }
-
-    /// Four triangles about the centre, so every point on the screen belongs to exactly one edge.
-    #[test]
-    fn a_carried_notch_lands_on_the_nearest_edge() {
-        let (w, h) = (2560.0, 1440.0);
-        assert_eq!(super::edge_at(2500.0, 700.0, w, h), "right");
-        assert_eq!(super::edge_at(20.0, 700.0, w, h), "left");
-        assert_eq!(super::edge_at(1280.0, 30.0, w, h), "top");
-        assert_eq!(super::edge_at(1280.0, 1400.0, w, h), "bottom");
-        // The corner diagonals are the boundaries: a step either side of one changes the answer
-        assert_eq!(super::edge_at(690.0, 700.0, w, h), "left");
-        assert_eq!(super::edge_at(700.0, 690.0, w, h), "top");
-        // A pointer off the screen — in the gap a smaller one leaves — still answers the nearest edge
-        assert_eq!(super::edge_at(-200.0, 700.0, w, h), "left");
     }
 
     /// A carry follows the pointer from one screen to the next, and holds on to the last one while

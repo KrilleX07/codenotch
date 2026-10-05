@@ -32,6 +32,96 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.21.0",
+                headline: L10n.t("Custom endpoints speak Anthropic and Gemini, llama.cpp shows its speed, and Antigravity reads without the IDE open."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Anthropic and Gemini custom endpoints"),
+                        detail: L10n.t("A custom endpoint can now be an Anthropic or a Gemini API as well as an OpenAI-compatible one, with its models found for you.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("llama.cpp, with its own mark and its speed"),
+                        detail: L10n.t("A llama.cpp endpoint wears the official icon, and shows its generation speed and how many requests are running and waiting.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Antigravity without the IDE running"),
+                        detail: L10n.t("With the IDE closed, Codenotch starts Antigravity's own language server to read your quota rather than showing nothing.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("OpenCode, whichever version"),
+                        detail: L10n.t("Usage and activity are read from both the 1.x and the 2.x database, so neither reads as nothing spent.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Endpoints over Tailscale"),
+                        detail: L10n.t("A plain http endpoint at a 100.64.x.x address — a machine on your tailnet — is now reachable.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("简体中文 and 繁體中文, filled in"),
+                        detail: L10n.t("The strings that still showed in English are translated.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
+                version: "1.20.0",
+                headline: L10n.t("See what each project spent of your allowance, and figures that keep up while you work."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Cost per project"),
+                        detail: L10n.t("A new Costs section reads the transcripts Claude Code and Codex already keep, and shows what each project spent of each login's allowance — by day, week and month, priced from your plan. Usage from before Codenotch was running is shown as other, never guessed.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Figures that keep up"),
+                        detail: L10n.t("While a session is working, the percentage is read fresh rather than from a cache up to half an hour old, and the countdown follows the clock to the second.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A menu bar item as wide as what it says"),
+                        detail: L10n.t("No more empty room kept for figures that are shorter than their longest; the width changes only when a figure gains or loses a character.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Abacus.AI credits"),
+                        detail: L10n.t("A preset for custom endpoints shows a RouteLLM account's monthly credits and any bought on top.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("OpenCode and Grok stay signed in"),
+                        detail: L10n.t("OpenCode's sign-in is read from where recent versions keep it, and an expired Grok session is renewed rather than left at zero until the next login.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Polished Português do Brasil"),
+                        detail: L10n.t("Clearer wording throughout.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
+                version: "1.19.0",
+                headline: L10n.t("Carry the notch anywhere round your screen by its six dots — and new versions now ask first, right in the notch."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Six dots to carry the notch"),
+                        detail: L10n.t("Hover the settings button and six dots come out beside it. Hold them and drag: the notch follows along any edge of the screen and round its corners, and lands where you let go. They replace the separate move handle at the other end, and its setting.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Round the corners like liquid"),
+                        detail: L10n.t("Dragged — by the dots or with ⌥ — the notch keeps to the screen's border and flows round each corner instead of jumping between edges, and settles smoothly where it is let go.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Updates ask first, in the notch"),
+                        detail: L10n.t("A new version is offered in the notch with Update and Later, and installs there with its progress. Put off, a red dot on the settings button and on General keeps it in reach.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A notch that pours"),
+                        detail: L10n.t("The settings arc and the dots come out of the notch and go back into it like goo, the settings button turns back into its arc, and joined to your Mac's notch the ends meet the screen's border exactly.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The percentage beside your Mac's notch"),
+                        detail: L10n.t("With one ring and its percentage on, the figure sits on the other side of the camera housing, sized to fit.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Switching a provider on no longer hangs the app"),
+                        detail: L10n.t("Looking for a provider's command-line tool could deadlock the app while Settings redrew.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.18.0",
                 headline: L10n.t("On a MacBook the notch is now your Mac's own — the readings sit either side of the camera housing rather than under it."),
                 changes: [

@@ -341,45 +341,19 @@ struct ProviderCell: View {
     /// than their own window's colour. Mirrors the Appearance setting.
     var shutRingsWhenSpent: Bool = true
 
-    /// A dash, not "0%": nothing read is not the same as nothing used.
-    private var readingText: String {
-        guard snapshot.hasReading else { return "—" }
-        guard let weekly = weeklyReading else { return snapshot.headlineText(showingRemaining: showsRemaining) }
-        // The second number flips with the first: in remaining mode both ends
-        // read what is left, each from the tooltip's own left half.
-        let second = showsRemaining ? Percent.halves(for: weekly).left : Percent.text(for: weekly)
-        return "\(snapshot.headlineText(showingRemaining: showsRemaining))/\(second)%"
+    private var reading: ProviderReading {
+        ProviderReading(snapshot: snapshot, weeklyRing: weeklyRing,
+                        showsWeeklyReading: showsWeeklyReading,
+                        showsRemaining: showsRemaining)
     }
 
-    /// What the weekly ring draws, when it and its reading are on. The pair
-    /// mirrors the two rings, so with the weekly limit as the main ring or the
-    /// daily pace ring the second number is the session, as the thin ring is.
-    ///
-    /// Only after a percentage: a count or a cost with a percentage after it
-    /// would read as one quantity, and it is not.
-    private var weeklyReading: Double? {
-        guard showsWeeklyReading, weeklyRing != .off, snapshot.localModel == nil,
-              snapshot.usedFraction != nil, snapshot.headline?.prefersUsedText != true
-        else { return nil }
-        return snapshot.weeklyFraction
-    }
+    private var readingText: String { reading.text }
 
     /// The week is spent, shutting the headline with it even where it shows
     /// room. The ring reads this off the block the store attached — a pause
     /// the provider reported itself is not this.
     var isWeeklyExhausted: Bool {
         snapshot.block?.isWeeklyExhaustion == true
-    }
-
-    /// Grey only when a window is actually spent — the headline or the
-    /// weekly — and only where the figure reads what is left. Grey means
-    /// "nothing usable": a stale number is merely old, a dash is merely
-    /// missing, and in used mode a spent window is 100% like anything else
-    /// spent — red, not grey — so all of those stay white.
-    var readingIsDimmed: Bool {
-        guard showsRemaining else { return false }
-        return (snapshot.headline?.usedFraction ?? 0) >= 1
-            || (snapshot.weeklyFraction ?? 0) >= 1
     }
 
     var body: some View {
@@ -401,20 +375,7 @@ struct ProviderCell: View {
                 weeklyRing: weeklyRing,
                 bandOverride: snapshot.bandOverride
             )
-            if showsReading {
-            Text(readingText)
-                .font(snapshot.hasReading && weeklyReading != nil ? Typography.percentPair : Typography.percent)
-                .foregroundStyle(readingIsDimmed ? Palette.textSecondary : Palette.textPrimary)
-                // Keep local speeds inside the ring's column so longer units
-                // cannot consume the notch's existing side margins.
-                .lineLimit(1)
-                .minimumScaleFactor(snapshot.localModel == nil ? 1 : 0.5)
-                .fixedSize(horizontal: snapshot.localModel == nil, vertical: false)
-                .frame(width: snapshot.localModel == nil ? nil : NotchLayout.ringDiameter,
-                       height: NotchLayout.percentLineHeight)
-                .contentTransition(.numericText())
-                .animation(NotchMotion.reading, value: readingText)
-            }
+            if showsReading { reading }
         }
         .frame(height: NotchLayout.cellExtent)
         .accessibilityElement(children: .ignore)
@@ -562,5 +523,105 @@ final class SpinningArcView: NSView {
         turn.repeatCount = .infinity
         turn.isRemovedOnCompletion = false
         arc.add(turn, forKey: Self.animationKey)
+    }
+}
+
+/// **A cell's percentage**, on its own: under its ring, or — merged into the
+/// Mac's notch with a single ring — on the other side of the Mac's notch,
+/// where the notch widens with nothing else to carry.
+struct ProviderReading: View {
+    let snapshot: ProviderSnapshot
+    var weeklyRing: WeeklyRing = .off
+    /// Whether the reading adds the weekly ring's percentage, as "30%/70%".
+    var showsWeeklyReading: Bool = false
+    /// Whether the reading says what is left rather than what is spent.
+    var showsRemaining: Bool = false
+    /// Drawn on its own across the Mac's notch rather than under the ring: the
+    /// larger size, and no more room along the bar than `width`.
+    var across: CGFloat? = nil
+    /// Which end of that room it sits at — the Mac's notch's.
+    var acrossAlignment: Alignment = .leading
+
+    /// A dash, not "0%": nothing read is not the same as nothing used.
+    var text: String {
+        guard snapshot.hasReading else { return "—" }
+        guard let weekly = weeklyReading else { return snapshot.headlineText(showingRemaining: showsRemaining) }
+        // The second number flips with the first: in remaining mode both ends
+        // read what is left, each from the tooltip's own left half.
+        let second = showsRemaining ? Percent.halves(for: weekly).left : Percent.text(for: weekly)
+        return "\(snapshot.headlineText(showingRemaining: showsRemaining))/\(second)%"
+    }
+
+    /// Grey only when a window is actually spent — the headline or the
+    /// weekly — and only where the figure reads what is left. Grey means
+    /// "nothing usable": a stale number is merely old, a dash is merely
+    /// missing, and in used mode a spent window is 100% like anything else
+    /// spent — red, not grey — so all of those stay white.
+    var isDimmed: Bool {
+        guard showsRemaining else { return false }
+        return (snapshot.headline?.usedFraction ?? 0) >= 1
+            || (snapshot.weeklyFraction ?? 0) >= 1
+    }
+
+    /// Secondary while dimmed or while a local speed is still unmeasured.
+    private var foreground: Color {
+        isDimmed || (snapshot.showsLocalPerformance && snapshot.localPerformance == nil)
+            ? Palette.textSecondary : Palette.textPrimary
+    }
+
+    /// What the weekly ring draws, when it and its reading are on. The pair
+    /// mirrors the two rings, so with the weekly limit as the main ring or the
+    /// daily pace ring the second number is the session, as the thin ring is.
+    ///
+    /// Only after a percentage: a count or a cost with a percentage after it
+    /// would read as one quantity, and it is not.
+    private var weeklyReading: Double? {
+        guard showsWeeklyReading, weeklyRing != .off, snapshot.localModel == nil,
+              snapshot.usedFraction != nil, snapshot.headline?.prefersUsedText != true
+        else { return nil }
+        return snapshot.weeklyFraction
+    }
+
+    /// Whether it reads as the pair, "30%/70%".
+    var isPair: Bool { snapshot.hasReading && weeklyReading != nil }
+
+    /// How wide it is drawn across the Mac's notch, in design points — what
+    /// the side carrying it is sized to.
+    var acrossWidth: CGFloat {
+        let size = isPair ? Typography.percentPairAcrossSize : Typography.percentAcrossSize
+        let font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .semibold)
+        return ceil((text as NSString).size(withAttributes: [.font: font]).width)
+    }
+
+    var body: some View {
+        if let width = across {
+            Text(text)
+                .font(isPair ? Typography.percentPairAcross : Typography.percentAcross)
+                .monospacedDigit()
+                .foregroundStyle(foreground)
+                .lineLimit(1)
+                // Never into the side's own curved end: smaller before that.
+                .minimumScaleFactor(0.4)
+                .frame(width: width, alignment: acrossAlignment)
+                .contentTransition(.numericText())
+                .animation(NotchMotion.reading, value: text)
+        } else {
+            underTheRing
+        }
+    }
+
+    private var underTheRing: some View {
+        Text(text)
+            .font(snapshot.hasReading && weeklyReading != nil ? Typography.percentPair : Typography.percent)
+            .foregroundStyle(foreground)
+            // Keep local speeds inside the ring's column so longer units
+            // cannot consume the notch's existing side margins.
+            .lineLimit(1)
+            .minimumScaleFactor(snapshot.localModel == nil ? 1 : 0.5)
+            .fixedSize(horizontal: snapshot.localModel == nil, vertical: false)
+            .frame(width: snapshot.localModel == nil ? nil : NotchLayout.ringDiameter,
+                   height: NotchLayout.percentLineHeight)
+            .contentTransition(.numericText())
+            .animation(NotchMotion.reading, value: text)
     }
 }

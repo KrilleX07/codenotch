@@ -29,6 +29,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Turns the monitors' running commentary into the one event worth
     /// interrupting for: an agent that has just stopped working.
     private var completions = SessionCompletionWatcher()
+    /// Which providers were working as of the last thing a monitor said, so the
+    /// moment one stops can be told apart from the many moments it is still
+    /// going. Held here rather than asked of `ActivityCoordinator`, which
+    /// reports the state after the change and cannot answer what it was before.
+    private var busyProviderIDs: Set<String> = []
 
     /// The unit bundle is hosted by this app, so `xcodebuild test` launches it
     /// for real. Without this guard every test run put a live request on the
@@ -199,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$customEndpoints
                 .map { endpoints in
                     endpoints.filter(\.isEnabled).map {
-                        "\($0.id):\($0.name):\($0.baseURL):\($0.trackingUnit.rawValue):\($0.monthlyBudgetUSD ?? -1):\($0.currentSpendUSD ?? -1):\($0.monthlyBudgetTokensM ?? -1):\($0.currentTokensUsedM ?? -1):\($0.displayRemaining):\($0.showCurrency):\($0.iconPreset ?? ""):\($0.customIconFilename ?? ""):\($0.accentColorHex):\($0.selectedModel):\($0.usageSource.rawValue):\($0.usagePreset?.rawValue ?? ""):\($0.usageURL ?? ""):\($0.usageRecordsPath ?? ""):\($0.usageModelField ?? ""):\($0.usageTokenField ?? ""):\($0.usageModelFilter ?? ""):\($0.usageAuthentication.rawValue)"
+                        "\($0.id):\($0.name):\($0.baseURL):\($0.apiType.rawValue):\($0.trackingUnit.rawValue):\($0.monthlyBudgetUSD ?? -1):\($0.currentSpendUSD ?? -1):\($0.monthlyBudgetTokensM ?? -1):\($0.currentTokensUsedM ?? -1):\($0.displayRemaining):\($0.showCurrency):\($0.iconPreset ?? ""):\($0.customIconFilename ?? ""):\($0.accentColorHex):\($0.selectedModel):\($0.usageSource.rawValue):\($0.usagePreset?.rawValue ?? ""):\($0.usageURL ?? ""):\($0.usageRecordsPath ?? ""):\($0.usageModelField ?? ""):\($0.usageTokenField ?? ""):\($0.usageModelFilter ?? ""):\($0.usageAuthentication.rawValue)"
                     }
                 }
                 .removeDuplicates()
@@ -226,6 +231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     store?.registerRemoteProviders(providers)
                 }
                 .store(in: &cancellables)
+            Costs.attach(to: store)
             deepSeek.onAuthenticated = { [weak store] in
                 store?.providerAuthenticationChanged(providerID: "deepseek")
             }
@@ -238,6 +244,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let updater = Updater()
             self.updater = updater
+            // An update is offered in the notch, and installed there — see
+            // `UpdateCard`. Checked for as it launches; never under test, where
+            // it would reach for the real feed.
+            updater.$prompt
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(updatePrompt: $0) }
+                .store(in: &cancellables)
+            fleet.onUpdateChoice = { [weak updater] in updater?.respond($0) }
+            // Put off: a red dot on the settings button until it is taken.
+            Publishers.CombineLatest(updater.$pending, updater.$prompt)
+                .map { pending, prompt in pending != nil && prompt == nil }
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(updatePending: $0) }
+                .store(in: &cancellables)
+            if !isRunningTests { updater.start() }
 
             let relay = OllamaActivityRelay()
             self.ollamaRelay = relay
@@ -347,7 +369,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 },
                 refreshAndGetSnapshot: { @Sendable [weak store, weak fleet, weak preferences] in
                     guard let store, let fleet, let preferences else { return nil }
-                    await MainActor.run { store.refreshNow() }
+                    // A phone asking to refresh is the same gesture as opening
+                    // the menu here, and it is about to render these numbers on
+                    // another screen. Nothing cached will do.
+                    await MainActor.run { store.refreshNow(freshness: .fromSource) }
                     for _ in 0..<20 {
                         let isRef = await MainActor.run { !store.refreshing.isEmpty }
                         if !isRef { break }
@@ -442,8 +467,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let statusItem = StatusItemController { [weak settings] in settings?.show() }
             self.statusItem = statusItem
-            statusItem.onRefreshProvider = { [weak store] id in store?.refresh(providerID: id) }
-            statusItem.onRefreshAll = { [weak store] in store?.refreshNow() }
+            // Both are somebody's own click, so neither is answered from
+            // anything held: see `UsageFreshness.fromSource`.
+            statusItem.onRefreshProvider = { [weak store] id in
+                store?.refresh(providerID: id, freshness: .fromSource)
+            }
+            statusItem.onRefreshAll = { [weak store] in store?.refreshNow(freshness: .fromSource) }
+            statusItem.onLook = { [weak store] in store?.refreshBecauseSomeoneIsLooking() }
             // The menu's tick writes to the same preference Settings writes to,
             // and reads nothing back of its own: the sink below carries the new
             // value to the item, and Settings — a published property away —
@@ -584,7 +614,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Writing the preference is the whole of it: `notchEdge` is
             // `@Published` and the fleet already follows it, so the notch
             // relocates by the same path the Settings picker uses.
-            fleet.onMoveToEdge = { [weak preferences] edge in
+            fleet.onMoveToEdge = { [weak preferences] edge, offset in
+                // Where along it first, so the edge's sink reads it back and
+                // the notch lands under the pointer that carried it there.
+                if let offset { preferences?.setOffset(offset, for: edge) }
                 preferences?.notchEdge = edge
             }
 
@@ -639,10 +672,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak fleet] in fleet?.apply(weeklyRing: $0) }
                 .store(in: &cancellables)
 
-            preferences.$showsMoveHandle
-                .receive(on: RunLoop.main)
-                .sink { [weak fleet] in fleet?.apply(showsMoveHandle: $0) }
-                .store(in: &cancellables)
                 
             preferences.$notchSurfaceStyle
                 .receive(on: RunLoop.main)
@@ -780,9 +809,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 .store(in: &cancellables)
             store.start()
-            fleet.onRefresh = { [weak store] in store?.refreshNow() }
+            fleet.onRefresh = { [weak store] in store?.refreshNow(freshness: .fromSource) }
+            fleet.onLook = { [weak store] in store?.refreshBecauseSomeoneIsLooking() }
             fleet.onRefreshProvider = { [weak store] id in
-                await store?.refresh(providerID: id)?.value
+                await store?.refresh(providerID: id, freshness: .fromSource)?.value
             }
             store.$refreshing
                 .receive(on: RunLoop.main)
@@ -919,6 +949,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fleet.setSessions(providerID: id, sessions: sessions)
             self?.statusItem?.setActivity(providerID: id, sessions: sessions)
             self?.announceCompletions(sessions: fleet.sessions)
+            self?.noteWorkState(providerID: id, sessions: sessions)
         }
         self.activityCoordinator = activity
         activity.setEnabled(preferences.connectedProviders)
@@ -957,6 +988,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         store?.isBusy = { [weak self, weak activity] in
             (activity?.isBusy ?? false) || (self?.lmstudioMetrics?.isBusy ?? false)
+        }
+        // Read on every look rather than carried in by a sink, for the reason
+        // `isBusy` is: a stored copy answers with whatever the preference was
+        // when it was last delivered, and this one is a switch somebody flips to
+        // compare two numbers on screen right now.
+        store?.asksProviderOnLook = { [weak self] in
+            self?.preferences?.asksProviderOnLook ?? false
         }
 
         // Applied last, right before the panel goes up: every one of these
@@ -1018,7 +1056,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(weeklyReading: preferences.weeklyReading)
         fleet.apply(showsRemainingInNotch: preferences.showsRemainingInNotch)
         fleet.apply(shutRingsWhenSpent: preferences.shutRingsWhenSpent)
-        fleet.apply(showsMoveHandle: preferences.showsMoveHandle)
         fleet.apply(foldsForFullScreen: preferences.foldsForFullScreen)
         fleet.apply(surfaceStyle: preferences.notchSurfaceStyle)
         fleet.apply(deepSeekPricingEnabled: preferences.deepSeekPricingEnabled)
@@ -1055,6 +1092,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         fleet.peek(for: preferences.peekDuration.seconds,
                    focusing: event.session.processID)
+    }
+
+    /// Takes one reading on the falling edge of a provider's work.
+    ///
+    /// The rising edge needs nothing: work that has just started has not spent
+    /// anything yet, and the busy schedule is already polling. The falling edge
+    /// is where the schedule drops to the idle interval and leaves the figure
+    /// somebody actually came to look at — what that run cost — alone for five
+    /// minutes. The store decides whether to spend a fetch on it; see
+    /// `UsageStore.refreshBecauseWorkFinished`.
+    @MainActor
+    private func noteWorkState(providerID: String, sessions: [AgentSession]) {
+        let isBusy = sessions.contains { $0.state == .busy }
+        if busyProviderIDs.contains(providerID), !isBusy {
+            store?.refreshBecauseWorkFinished(providerID: providerID)
+        }
+        if isBusy {
+            busyProviderIDs.insert(providerID)
+        } else {
+            busyProviderIDs.remove(providerID)
+        }
     }
 
     /// A crossing is a banner on the Mac channel, as it always was; on the
@@ -1236,6 +1294,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store?.stop()
         activityCoordinator?.stop()
         notchFleet?.stop()
+        // A language server this app started, if any. Left running it would
+        // outlive the reason it exists and keep answering on loopback to
+        // nothing.
+        AntigravityBridge.owned.stop()
         Task { await phoneLinkServer?.stop() }
     }
 }

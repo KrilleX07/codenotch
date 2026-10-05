@@ -281,17 +281,6 @@ final class PreferencesMigrationTests: XCTestCase {
         XCTAssertEqual(Preferences(defaults: UserDefaults(suiteName: name)!).weeklyRing, .outside)
     }
 
-    /// On by default — it is how the notch is carried to another edge — and
-    /// once somebody hides it, it has to stay hidden across a relaunch.
-    func testTheMoveHandleShowsUntilHiddenAndStaysHidden() {
-        let (fresh, name) = makeDefaults()
-        XCTAssertTrue(Preferences(defaults: fresh).showsMoveHandle)
-
-        Preferences(defaults: fresh).showsMoveHandle = false
-
-        XCTAssertFalse(Preferences(defaults: UserDefaults(suiteName: name)!).showsMoveHandle)
-    }
-
     /// Off by default — used is what the notch has always drawn — and once
     /// somebody flips it, it has to stay flipped across a relaunch.
     func testRemainingStaysUsedUntilAskedForAndThenSurvivesARelaunch() {

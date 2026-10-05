@@ -26,8 +26,12 @@ enum TerminalCommand {
     static func isInstalled(command: String) -> Bool {
         let words = command.split(separator: " ").map(String.init)
         guard let binary = words.first(where: { !$0.contains("=") }) else { return false }
-        cacheLock.lock(); defer { cacheLock.unlock() }
-        if let hit = installedCache[binary], Date().timeIntervalSince(hit.at) < 60 { return hit.ok }
+        // The lock guards the cache and nothing else. Held across the shell
+        // below, it hung the app: see `loginShellFinds`.
+        cacheLock.lock()
+        let cached = installedCache[binary]
+        cacheLock.unlock()
+        if let cached, Date().timeIntervalSince(cached.at) < 60 { return cached.ok }
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         var dirs = ["/opt/homebrew/bin", "/usr/local/bin", "\(home)/.local/bin", "\(home)/.npm-global/bin",
                     "\(home)/.bun/bin", "\(home)/.cargo/bin", "\(home)/.grok/bin", "/usr/bin"]
@@ -36,15 +40,35 @@ enum TerminalCommand {
         // The login shell knows about version managers (nvm, mise) that the
         // list above does not. Not under test: the suite must not depend on
         // what the host Mac has installed.
-        if !ok, !Runtime.isUnderTest {
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            p.arguments = ["-lc", "command -v \(binary) >/dev/null 2>&1"]
-            p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
-            if (try? p.run()) != nil { p.waitUntilExit(); ok = p.terminationStatus == 0 }
-        }
+        if !ok, !Runtime.isUnderTest { ok = loginShellFinds(binary) }
+        cacheLock.lock()
         installedCache[binary] = (Date(), ok)
+        cacheLock.unlock()
         return ok
+    }
+
+    /// Whether the login shell finds `binary`, given a few seconds to say.
+    ///
+    /// **Waited on without turning the run loop.** `waitUntilExit` runs the
+    /// current run loop while it waits, and on the main thread that let
+    /// SwiftUI redraw in the middle of the wait — a settings row asking this
+    /// again from inside its own question, on a lock it already held. The app
+    /// hung for good the moment a provider was switched on whose tool is not
+    /// in one of the usual places.
+    private static func loginShellFinds(_ binary: String) -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        p.arguments = ["-lc", "command -v \(binary) >/dev/null 2>&1"]
+        p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+        let done = DispatchSemaphore(value: 0)
+        p.terminationHandler = { _ in done.signal() }
+        guard (try? p.run()) != nil else { return false }
+        // A shell stuck on its own startup is not a reason to stop the app.
+        guard done.wait(timeout: .now() + 3) == .success else {
+            p.terminate()
+            return false
+        }
+        return p.terminationStatus == 0
     }
 
     /// Run a command in a new window of the first installed terminal.

@@ -25,7 +25,7 @@ final class ProviderCellTests: XCTestCase {
     }
 
     func testFreshReadingIsWhite() {
-        XCTAssertFalse(ProviderCell(snapshot: snapshot()).readingIsDimmed)
+        XCTAssertFalse(ProviderReading(snapshot: snapshot()).isDimmed)
     }
 
     func testStaleReadingWithRoomStaysWhite() {
@@ -34,18 +34,18 @@ final class ProviderCellTests: XCTestCase {
         let stale = snapshot(status: .stale(since: Date()), windows: [
             LimitWindow(id: "session", label: "Session", usedFraction: 0.5),
         ])
-        XCTAssertFalse(ProviderCell(snapshot: stale, showsRemaining: true).readingIsDimmed)
+        XCTAssertFalse(ProviderReading(snapshot: stale, showsRemaining: true).isDimmed)
     }
 
     func testNoReadingStaysWhite() {
-        XCTAssertFalse(ProviderCell(snapshot: snapshot(windows: []), showsRemaining: true).readingIsDimmed)
+        XCTAssertFalse(ProviderReading(snapshot: snapshot(windows: []), showsRemaining: true).isDimmed)
     }
 
     func testLocalSpeedWithNothingMeasuredStaysWhite() {
         var local = snapshot(windows: [])
         local.showsLocalPerformance = true
         local.localPerformance = nil
-        XCTAssertFalse(ProviderCell(snapshot: local, showsRemaining: true).readingIsDimmed)
+        XCTAssertFalse(ProviderReading(snapshot: local, showsRemaining: true).isDimmed)
     }
 
     func testWeekShutCellIsGreyEvenWithHeadlineRoom() {
@@ -53,16 +53,16 @@ final class ProviderCellTests: XCTestCase {
         // is unusable, so in remaining mode the figure reads grey. Judged off
         // the fractions, not the block the store attached.
         let shut = snapshot(windows: spentWeek, weeklyID: "weekly_all")
-        let cell = ProviderCell(snapshot: shut, showsRemaining: true)
-        XCTAssertTrue(cell.readingIsDimmed)
+        let reading = ProviderReading(snapshot: shut, showsRemaining: true)
+        XCTAssertTrue(reading.isDimmed)
     }
 
     func testHeadlineSpentCellIsGreyInRemainingMode() {
         // The other half of the rule: a spent 5-hour with a healthy week —
         // Codex at 0% left — greys the figure too.
         let shut = snapshot(windows: spentSession, weeklyID: "weekly_all")
-        let cell = ProviderCell(snapshot: shut, showsRemaining: true)
-        XCTAssertTrue(cell.readingIsDimmed)
+        let reading = ProviderReading(snapshot: shut, showsRemaining: true)
+        XCTAssertTrue(reading.isDimmed)
     }
 
     func testSpentWindowsKeepColoursInUsedMode() {
@@ -73,8 +73,8 @@ final class ProviderCellTests: XCTestCase {
             LimitWindow(id: "session", label: "Session", usedFraction: 1.0),
             LimitWindow(id: "weekly_all", label: "Weekly", usedFraction: 1.0),
         ], weeklyID: "weekly_all")
-        let cell = ProviderCell(snapshot: shut)
-        XCTAssertFalse(cell.readingIsDimmed)
+        let reading = ProviderReading(snapshot: shut)
+        XCTAssertFalse(reading.isDimmed)
     }
 
     func testProviderPauseKeepsItsColours() {
@@ -84,7 +84,7 @@ final class ProviderCellTests: XCTestCase {
         paused.block = UsageBlock(reason: "Rate limited", resetsAt: nil)
         let cell = ProviderCell(snapshot: paused)
         XCTAssertFalse(cell.isWeeklyExhausted)
-        XCTAssertFalse(cell.readingIsDimmed)
+        XCTAssertFalse(ProviderReading(snapshot: paused).isDimmed)
     }
 
     func testShutRingsNeedTheSettingAndASpentWindow() {

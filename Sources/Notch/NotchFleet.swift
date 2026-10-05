@@ -63,7 +63,6 @@ final class NotchFleet {
     private var weeklyReading: Bool = false
     private var showsRemainingInNotch: Bool = false
     private var shutRingsWhenSpent: Bool = true
-    private var showsMoveHandle = true
     private var foldsForFullScreen = true
     private var surfaceStyle: NotchSurfaceStyle = .glass
     private var deepSeekPricingEnabled = true
@@ -78,8 +77,33 @@ final class NotchFleet {
 
     /// Hooked up by the app delegate; driven by the notch's own chrome.
     var onRefresh: (() -> Void)?
+    /// Every notch reports a look through the same closure: the store spaces
+    /// them, so two screens' notches opening together are one fetch.
+    var onLook: (() -> Void)?
     var onRefreshProvider: ((String) async -> Void)?
     var onOpenSettings: (() -> Void)?
+    /// The notch's answer to an update it offered.
+    var onUpdateChoice: ((UpdateChoice) -> Void)?
+    private var updatePrompt: UpdatePrompt?
+
+    private var updatePending = false
+
+    /// A newer version waiting — see `NotchViewModel.updatePending`.
+    func apply(updatePending: Bool) {
+        self.updatePending = updatePending
+        for controller in controllers.values {
+            controller.model.updatePending = updatePending
+        }
+    }
+
+    /// An update to offer in the notch, or how its install is going; nil once
+    /// answered or done.
+    func apply(updatePrompt: UpdatePrompt?) {
+        self.updatePrompt = updatePrompt
+        for controller in controllers.values {
+            controller.apply(updatePrompt: updatePrompt)
+        }
+    }
     var onFocusSession: ((pid_t) -> Void)?
     var signInItems: [(title: String, action: () -> Void)] = []
     /// An ⌥-drag on any one panel settled at a new offset. Persisting it is
@@ -87,7 +111,7 @@ final class NotchFleet {
     var onReposition: ((CGFloat) -> Void)?
     /// A move handle carried a notch to another edge. Persisting it is
     /// Preferences' job, the same division `onReposition` keeps.
-    var onMoveToEdge: ((NotchEdge) -> Void)?
+    var onMoveToEdge: ((NotchEdge, CGFloat?) -> Void)?
 
     /// What the fleet settled on, for tests that need to see panels come and
     /// go rather than take our word for it.
@@ -167,13 +191,6 @@ final class NotchFleet {
         self.resetTimeFormat = resetTimeFormat
         for controller in controllers.values {
             controller.model.resetTimeFormat = resetTimeFormat
-        }
-    }
-
-    func apply(showsMoveHandle: Bool) {
-        self.showsMoveHandle = showsMoveHandle
-        for controller in controllers.values {
-            controller.apply(showsMoveHandle: showsMoveHandle)
         }
     }
 
@@ -474,16 +491,19 @@ final class NotchFleet {
         controller.model.weeklyReading = weeklyReading
         controller.model.showsRemainingInNotch = showsRemainingInNotch
         controller.model.shutRingsWhenSpent = shutRingsWhenSpent
-        controller.model.showsMoveHandle = showsMoveHandle
         controller.model.surfaceStyle = surfaceStyle
         controller.model.deepSeekPricingEnabled = deepSeekPricingEnabled
         controller.model.deepSeekPricingSchedule = deepSeekPricingSchedule
 
         controller.onRefresh = onRefresh
+        controller.onLook = { [weak self] in self?.onLook?() }
         controller.onRefreshProvider = onRefreshProvider
         controller.onOpenSettings = onOpenSettings
         controller.model.onOpenSettings = onOpenSettings
         controller.model.onFocusSession = onFocusSession
+        controller.model.onUpdateChoice = { [weak self] in self?.onUpdateChoice?($0) }
+        controller.apply(updatePrompt: updatePrompt)
+        controller.model.updatePending = updatePending
         controller.onReposition = onReposition
         controller.onMoveToEdge = onMoveToEdge
         controller.signInItems = signInItems

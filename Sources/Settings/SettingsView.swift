@@ -26,7 +26,7 @@ extension View {
 /// crossing-and-notification machinery it switches is Notifications' to
 /// explain.
 private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
-    case accounts, phone, deepseek, ollama, lmstudio, customEndpoints, remoteHosts, appearance, notifications, general
+    case accounts, phone, deepseek, ollama, lmstudio, customEndpoints, remoteHosts, appearance, notifications, costs, general
 
     /// The sections the sidebar lists; Phone only once pairing is offered.
     static var visible: [SettingsSection] {
@@ -56,6 +56,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .remoteHosts:    return L10n.t("Remote Hosts")
         case .appearance:    return L10n.t("Appearance")
         case .notifications: return L10n.t("Notifications")
+        case .costs:         return L10n.t("Costs")
         case .general:       return L10n.t("General")
         }
     }
@@ -83,6 +84,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .remoteHosts:    return L10n.t("Claude and Codex accounts on servers you reach over SSH.")
         case .appearance:    return L10n.t("How the notch looks and where it sits.")
         case .notifications: return L10n.t("What Codenotch tells you, and when.")
+        case .costs:         return L10n.t("What each project spent of each login's allowance.")
         case .general:       return L10n.t("Startup, updates and everything else.")
         }
     }
@@ -98,6 +100,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .remoteHosts:    return "server.rack"
         case .appearance:    return "paintbrush.fill"
         case .notifications: return "bell.badge.fill"
+        case .costs:         return "banknote.fill"
         case .general:       return "gearshape.fill"
         }
     }
@@ -116,6 +119,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .remoteHosts:    return .orange
         case .appearance:    return .indigo
         case .notifications: return .red
+        case .costs:         return .mint
         case .general:       return .gray
         }
     }
@@ -180,6 +184,8 @@ private struct SettingsSidebarRow: View {
     let selectionSpace: Namespace.ID
     var indent = false
     var count: Int? = nil
+    /// A red dot — a newer version waiting, on General.
+    var badge: Bool = false
     var disclosure: Binding<Bool>? = nil
     let select: () -> Void
 
@@ -204,6 +210,13 @@ private struct SettingsSidebarRow: View {
                     .foregroundStyle(.white.opacity(isSelected ? 0.95 : isHovered ? 0.92 : 0.78))
                     .lineLimit(1)
                 Spacer(minLength: 4)
+                // A newer version waiting — see `Updater.pending`.
+                if badge {
+                    Circle()
+                        .fill(Color(nsColor: .systemRed))
+                        .frame(width: 7, height: 7)
+                        .transition(.scale.combined(with: .opacity))
+                }
                 if let count {
                     Text("\(count)")
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
@@ -597,6 +610,7 @@ struct SettingsView: View {
                             isSelected: selection == section,
                             selectionSpace: selectionSpace,
                             count: section == .accounts ? connectedCount : nil,
+                            badge: section == .general && updater.pending != nil,
                             disclosure: section == .accounts ? $accountsExpanded : nil,
                             select: { selectSection(section) }
                         )
@@ -627,8 +641,8 @@ struct SettingsView: View {
                     // Only once a check has found a newer version. Sparkle
                     // downloads it in the background either way; this is for
                     // someone who would rather have it now than on next launch.
-                    if case .found(let newer) = updater.outcome {
-                        Button(L10n.t("Update")) { updater.checkNow() }
+                    if let newer = updater.pending {
+                        Button(L10n.t("Update")) { updater.reoffer() }
                             .buttonStyle(SettingsButtonStyle(kind: .prominent, compact: true))
                             .help(L10n.t("Version \(newer) is available"))
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -700,6 +714,7 @@ struct SettingsView: View {
         switch section {
         case .accounts:      accountsPane
         case .phone:         phonePane
+        case .costs:         CostSettingsPane()
         case .deepseek:      DeepSeekPricingSettingsView(preferences: preferences)
         case .ollama:
             if let usageStore {
@@ -832,7 +847,7 @@ struct SettingsView: View {
                 Toggle(L10n.t("Show Spark and code review"), isOn: $preferences.showCodexExtraLimits)
                     .onChange(of: preferences.showCodexExtraLimits) { _ in
                         for account in providers() where CodexProfile.isCodex(providerID: account.id) {
-                            usageStore?.refresh(providerID: account.id)
+                            usageStore?.refresh(providerID: account.id, freshness: .fromSource)
                         }
                     }
                 Text(L10n.t("The ring still follows the main Codex window. Spark and code review stay in the hover card."))
@@ -1028,14 +1043,6 @@ struct SettingsView: View {
                     }
                     .buttonStyle(SettingsButtonStyle(kind: .prominent))
                 }
-
-                // The arc above the notch. Hiding it loses nothing that cannot
-                // be reached another way: Edge, above, moves the notch too.
-                Toggle(L10n.t("Show move handle"), isOn: $preferences.showsMoveHandle)
-                Text(L10n.t("The arc above the notch. Hold it to carry the notch to another edge — Edge above does the same."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 Picker(L10n.t("Displays"), selection: $preferences.notchScope) {
                     ForEach(NotchScreenScope.allCases) { Text($0.title).tag($0) }
@@ -1375,7 +1382,7 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Toggle(L10n.t("Install updates automatically"), isOn: Binding(
+                Toggle(L10n.t("Check for updates automatically"), isOn: Binding(
                     get: { updater.automatic },
                     set: { updater.automatic = $0 }
                 ))
@@ -1387,11 +1394,16 @@ struct SettingsView: View {
                     // a way to switch it off, is the difference between a
                     // background updater and something that looks like it is
                     // hiding.
-                    Text(L10n.t("Version \(updater.currentVersion). Updates install in the background and apply next time Codenotch starts."))
+                    Text(L10n.t("Version \(updater.currentVersion). New versions are offered in the notch, and install when you choose Update."))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
+                    // The card a new version brings up in the notch, played
+                    // through for a version that is not there.
+                    Button(L10n.t("Preview")) { updater.preview() }
+                        .controlSize(.small)
+                        .help(L10n.t("Show the update card in the notch, with nothing downloaded"))
                     Button(L10n.t("Check now")) { updater.checkNow() }
                         .controlSize(.small)
                 }
@@ -1408,6 +1420,19 @@ struct SettingsView: View {
                         )
                         .fixedSize(horizontal: false, vertical: true)
                 }
+            }
+
+            Section(L10n.t("Readings")) {
+                Toggle(L10n.t("Ask the provider every time you look"),
+                       isOn: $preferences.asksProviderOnLook)
+                Text(L10n.t("Pointing at a ring, or opening the menu bar menu, re-reads the limit from the provider itself rather than from a reading cached moments ago. Off, a look still asks for a live reading and accepts a cached one only while it is newer than a couple of minutes."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(L10n.t("It spends a request every time. A provider that rate-limits answers one request too many by refusing the next few minutes of them, and the figure then ages further than it would have. Worth turning on to check Codenotch against a provider's own dashboard, and worth turning off again after."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             // An ordinary row here, not a bar pinned across every pane —
