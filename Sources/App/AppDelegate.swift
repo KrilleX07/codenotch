@@ -85,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let claudeProfiles = ClaudeProfile.discover()
     private let codexProfiles = CodexProfile.discover()
     private let antigravityProfiles = AntigravityProfile.discover()
+    private let commandCodeProfiles = CommandCodeProfile.discover()
     /// Held as concrete providers, not just handed to the store: the token
     /// refresher needs to ask one of them how long its token has left, and the
     /// protocol has no business carrying that.
@@ -173,8 +174,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 + [CursorLocalProvider()]
                 + codexProfiles.map { CodexLocalProvider(profile: $0) }
                 + antigravityProfiles.map { AntigravityProvider(profile: $0) }
-                + [GLMProvider(), MiniMaxProvider(web: miniMaxWeb), GrokLocalProvider(), DevinLocalProvider(), OpenCodeProvider(),
-                   CommandCodeProvider(), GitHubCopilotProvider(), KimiProvider(), KiroProvider(), AmpProvider(),
+                + [GLMProvider(), MiniMaxProvider(web: miniMaxWeb), GrokLocalProvider(), DevinLocalProvider(), OpenCodeProvider()]
+                + commandCodeProfiles.map { CommandCodeProvider(profile: $0) }
+                + [GitHubCopilotProvider(), KimiProvider(), KiroProvider(), AmpProvider(),
                    ApifyProvider(), KiloProvider(),
                    OllamaLocalProvider(endpoint: URL(string: preferences.ollamaEndpoint)!),
                    LMStudioLocalProvider(endpoint: URL(string: preferences.lmstudioEndpoint)!),
