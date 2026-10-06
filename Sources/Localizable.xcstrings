@@ -1,6 +1,50 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Qoder reported no credit allowance": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qoder 未报告可用积分额度"
+          }
+        }
+      }
+    },
+    "Sign in to Qoder to read your credit usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录 Qoder 以读取积分用量"
+          }
+        }
+      }
+    },
+    "Qoder refused the browser request. Open Sign in to check your session or complete website verification.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qoder 拒绝了浏览器请求。请打开登录窗口检查会话或完成网站验证。"
+          }
+        }
+      }
+    },
+    "Sign in to Qoder in Codenotch. Each region has a separate account and session. Website verification may be required.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Codenotch 中登录 Qoder。各区域使用独立账号与会话，可能需要完成网站验证。"
+          }
+        }
+      }
+    },
     "Average generation speed": {
       "extractionState": "manual",
       "localizations": {

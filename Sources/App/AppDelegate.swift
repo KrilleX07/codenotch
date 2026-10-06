@@ -131,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // this app's own WKWebView. Unlike MiniMax's sheet below, its ring
             // *is* this adapter, so it belongs in `webProviders` — exactly once.
             let qianwen = WebSessionProvider(site: Sites.qianwen)
+            let qoder = WebSessionProvider(site: Sites.qoder(region: preferences.qoderRegion))
             // MiniMax's ring is MiniMaxProvider. The sheet is the same kind of
             // WebView DeepSeek uses, but it must not join `webProviders`:
             // those are appended to `allProviders`, and two adapters with
@@ -139,8 +140,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Settings changes it, because the fetch URLs live on the site.
             let miniMaxWeb = WebSessionProvider(site: Sites.minimax(region: preferences.minimaxRegion))
             self.miniMaxWeb = miniMaxWeb
-            let webProviders: [WebSessionProvider] = [deepSeek, qianwen]
-            fleet.signInItems = [deepSeek, miniMaxWeb, qianwen].map { provider in
+            let webProviders: [WebSessionProvider] = [deepSeek, qianwen, qoder]
+            fleet.signInItems = [deepSeek, miniMaxWeb, qianwen, qoder].map { provider in
                 let name = provider.displayName
                 return (title: L10n.t("Sign in to \(name)…"),
                         action: { [weak provider] in provider?.presentSignIn() })
@@ -217,6 +218,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             qianwen.onAuthenticated = { [weak store] in
                 store?.providerAuthenticationChanged(providerID: "qianwenai")
+            }
+            qoder.onAuthenticated = { [weak store] in
+                store?.providerAuthenticationChanged(providerID: "qoder")
             }
             miniMaxWeb.onAuthenticated = { [weak store] in
                 store?.providerAuthenticationChanged(providerID: "minimax")
@@ -517,6 +521,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$deepSeekPricingSchedule
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(deepSeekPricingSchedule: $0) }
+                .store(in: &cancellables)
+
+            preferences.$qoderRegion
+                .dropFirst()
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak qoder, weak store] region in
+                    guard let qoder else { return }
+                    store?.providerContextChanged(providerID: "qoder") {
+                        qoder.apply(site: Sites.qoder(region: region))
+                    }
+                }
                 .store(in: &cancellables)
 
             preferences.$minimaxRegion
