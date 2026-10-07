@@ -297,8 +297,6 @@ struct UsageBlock: Equatable {
     func summary(now: Date = Date(), calendar: Calendar = .current,
                  locale: Locale = L10n.locale) -> String {
         guard let resetsAt, resetsAt > now else { return reason }
-        let formatter = ResetCopy.formatter(for: calendar)
-        formatter.locale = locale
         // The same clock the vendor's own banner uses — "4:13 PM" — rather
         // than a countdown, because that is what you are waiting for. `j`
         // rather than `h` so the hour cycle is the region's, as in
@@ -306,8 +304,9 @@ struct UsageBlock: Equatable {
         let template = ResetCopy.daysApart(from: now, to: resetsAt,
                                            calendar: calendar) >= 1
             ? "E j:mm" : "j:mm"
-        formatter.setLocalizedDateFormatFromTemplate(template)
-        return L10n.t("\(reason) until \(formatter.string(from: resetsAt))", locale: locale)
+        let stamp = ResetCopy.formatter(template: template, calendar: calendar,
+                                        locale: locale).string(from: resetsAt)
+        return L10n.t("\(reason) until \(stamp)", locale: locale)
     }
 }
 

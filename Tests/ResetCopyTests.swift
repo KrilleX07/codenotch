@@ -84,6 +84,24 @@ final class ResetCopyTests: XCTestCase {
         }
     }
 
+    /// The hover path formats the same templates on every mouse event, so the
+    /// formatter behind each template is built once and then reused — while
+    /// two templates, or two locales, must never share one.
+    func testFormattersAreReusedPerTemplateAndLocale() {
+        let calendar = Calendar(identifier: .gregorian)
+        let us = Locale(identifier: "en_US")
+        let first = ResetCopy.formatter(template: "E j:mm", calendar: calendar, locale: us)
+        let second = ResetCopy.formatter(template: "E j:mm", calendar: calendar, locale: us)
+        XCTAssertIdentical(first, second)
+        XCTAssertNotIdentical(
+            first,
+            ResetCopy.formatter(template: "MMM d", calendar: calendar, locale: us))
+        XCTAssertNotIdentical(
+            first,
+            ResetCopy.formatter(template: "E j:mm", calendar: calendar,
+                                locale: Locale(identifier: "fr_FR")))
+    }
+
     func testPastResetsReadAsResetting() {
         XCTAssertEqual(ResetCopy.text(for: now.addingTimeInterval(-5), now: now), "Resetting…")
     }

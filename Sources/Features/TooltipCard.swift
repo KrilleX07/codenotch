@@ -922,14 +922,10 @@ private struct UsageResetCreditsSection: View {
     /// Same date templates `ResetCopy` uses past the hour, so this line and
     /// the quota rows agree on what "soon" looks like.
     private static func stamp(for date: Date, now: Date, calendar: Calendar = .current) -> String {
-        let formatter = ResetCopy.formatter(for: calendar)
-        formatter.locale = L10n.locale
-        if ResetCopy.daysApart(from: now, to: date, calendar: calendar) >= 7 {
-            formatter.setLocalizedDateFormatFromTemplate("MMM d")
-        } else {
-            formatter.setLocalizedDateFormatFromTemplate("E j:mm")
-        }
-        return formatter.string(from: date)
+        let template = ResetCopy.daysApart(from: now, to: date, calendar: calendar) >= 7
+            ? "MMM d" : "E j:mm"
+        return ResetCopy.formatter(template: template, calendar: calendar,
+                                   locale: L10n.locale).string(from: date)
     }
 }
 
