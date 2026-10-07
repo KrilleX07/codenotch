@@ -106,7 +106,8 @@ struct StatusItemSummary: Equatable {
         let label = sharesMark
             ? (RemoteHost.isRemote(providerID: snapshot.id)
                 ? snapshot.displayName
-                : ClaudeProfile.slug(fromProviderID: snapshot.id) ?? CodexProfile.slug(fromProviderID: snapshot.id))
+                : ClaudeProfile.slug(fromProviderID: snapshot.id) ?? CodexProfile.slug(fromProviderID: snapshot.id)
+                ?? CommandCodeProfile.slug(fromProviderID: snapshot.id))
             : nil
         let weeklyWindow = showingWeeklyLimit ? snapshot.weeklyLimitWindow : nil
         let weeklyIsOver = weeklyWindow?.resetsAt.map { $0 <= now } ?? false
