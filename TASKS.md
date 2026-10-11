@@ -1843,9 +1843,14 @@ nevertheless stale:
 - [x] ~~Which service is the third glyph in the mockup?~~ Perplexity — its mark,
       traced off the frame, matches. Wired up as `ProviderGlyph.third`.
 - [ ] Plan ceilings: configured by hand, or inferred from observed peak usage?
-- [ ] Are web-session adapters (ChatGPT et al.) in scope for v1, accepting the fragility?
-      Claude now answers this for itself: the OAuth endpoint is in, so the same
-      question is live for OpenAI and Perplexity.
+- [x] ~~Are web-session adapters (ChatGPT et al.) in scope for v1, accepting the fragility?~~
+      Decided: **Out of scope.** Scraping ChatGPT web sessions or building a WKWebView
+      adapter is rejected due to Cloudflare/Turnstile bot defenses, rapid token churn,
+      and ToS risks. OpenAI/ChatGPT usage is officially covered via `CodexLocalProvider`
+      (reading the local Codex CLI / app session against `/wham/usage`) and Custom
+      Endpoints for API billing. `WebSessionProvider` remains reserved strictly for
+      explicit in-app WKWebView logins where no CLI exists and platforms permit it
+      (DeepSeek, Qianwen, MiniMax, Qoder). See `docs/plans/2026-10-12-web-session-adapters-roadmap-decision.md`.
 - [ ] `Design.scale` — the frame fixes only proportions, so the absolute size is
       a free parameter. It is anchored on the spec's 44pt ring, which puts the
       notch at 70 x 401pt. One constant changes it.
