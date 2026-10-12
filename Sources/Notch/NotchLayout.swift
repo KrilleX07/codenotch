@@ -383,7 +383,9 @@ enum NotchLayout {
     }
 
     static func cardHeight(windowCount: Int, groupCount: Int = 0,
-                           moneyWindowCount: Int = 0, usageDetailGroupCount: Int = 0,
+                           moneyWindowCount: Int = 0, moneyResetCount: Int = 0,
+                           moneyProjectionCount: Int = 0,
+                           usageDetailGroupCount: Int = 0,
                            sessionCount: Int = 0,
                            sessionCap: Int = defaultSessionCap,
                            statusMessage: String? = nil,
@@ -425,6 +427,10 @@ enum NotchLayout {
             height += headerToBlock
                 + CGFloat(fullCount) * fullBlock
                 + CGFloat(moneyCount) * moneyBlock
+                // A balance with a period adds its reset line under the stats,
+                // and its forecast once there is one.
+                + CGFloat(min(max(0, moneyResetCount), moneyCount)
+                          + min(max(0, moneyProjectionCount), moneyCount)) * (moneyStatGap + cardBodyLineHeight)
                 + CGFloat(compactRowCount) * compactBlock
                 + CGFloat(windowCount - 1) * blockSpacing
             if groupCount > 0 {

@@ -152,8 +152,10 @@ final class TooltipRenderTests: XCTestCase {
         try png.write(to: URL(fileURLWithPath: path))
     }
 
-    private func renderClaudeResets(_ snapshot: ProviderSnapshot, now: Date) throws -> NSImage {
-        let view = TooltipCard(snapshot: snapshot, now: now, direction: .trailing)
+    private func renderClaudeResets(_ snapshot: ProviderSnapshot, now: Date,
+                                    resetTimeFormat: ResetTimeFormat = .automatic) throws -> NSImage {
+        let view = TooltipCard(snapshot: snapshot, now: now, direction: .trailing,
+                               resetTimeFormat: resetTimeFormat)
             .padding(20)
             .background(Color.black)
             .environment(\.colorScheme, .dark)
@@ -175,6 +177,63 @@ final class TooltipRenderTests: XCTestCase {
         let font = NSFont.systemFont(ofSize: Design.fontSize(capPixels: 18))
         let width = (summary as NSString).size(withAttributes: [.font: font]).width
         XCTAssertLessThanOrEqual(width * 0.85, NotchLayout.cardTextWidth)
+    }
+
+    /// The forecast has a line of its own, and its longest form — German, the
+    /// widest catalog language for it — has to fit that line unscaled.
+    func testTheSpendProjectionFitsItsLine() {
+        let font = NSFont.systemFont(ofSize: Design.fontSize(capPixels: 18))
+        for line in ["On pace to run out Oct 26", "Aufgebraucht voraussichtlich 25. Okt."] {
+            let width = (line as NSString).size(withAttributes: [.font: font]).width
+            XCTAssertLessThanOrEqual(width, NotchLayout.cardTextWidth, line)
+        }
+    }
+
+    /// A monthly balance gains a line for its reset and projection, and the
+    /// card's budgeted height grows with it. Attached, and written to
+    /// `CLAUDE_SPEND_RENDER_PATH` when set, for a look at the copy and colour.
+    func testAMonthlyBalanceRendersItsProjection() throws {
+        let now = Date(timeIntervalSince1970: 1_791_790_196)
+        let month: TimeInterval = 31 * 86400
+        func card(used: Double, resets: Bool) -> ProviderSnapshot {
+            ProviderSnapshot(
+                id: "claude", displayName: "Claude", glyph: .claude, fidelity: .official, status: .ok,
+                windows: [LimitWindow(id: "spend", label: "Spend limit", usedFraction: used,
+                                      money: UsageMoneyBreakdown(currency: "USD", spent: 800 * used,
+                                                                 remaining: 800 * (1 - used)),
+                                      resetsAt: resets ? now.addingTimeInterval(20 * 86400) : nil,
+                                      duration: resets ? month : nil)],
+                headlineID: "spend"
+            )
+        }
+        let heavy = try renderClaudeResets(card(used: 0.45, resets: true), now: now)
+        let quiet = try renderClaudeResets(card(used: 0.038, resets: true), now: now)
+        let noPeriod = try renderClaudeResets(card(used: 0.45, resets: false), now: now)
+        // A day into the month: a reset to show, no forecast yet.
+        let early = try renderClaudeResets(card(used: 0.45, resets: true),
+                                           now: now.addingTimeInterval(-10 * 86400))
+        XCTAssertEqual(heavy.size.height, quiet.size.height)
+        XCTAssertGreaterThan(heavy.size.height, early.size.height)
+        XCTAssertGreaterThan(early.size.height, noPeriod.size.height)
+
+        // German with the countdown: the widest the two lines get.
+        L10n.testLocale = Locale(identifier: "de")
+        defer { L10n.testLocale = nil }
+        let german = try renderClaudeResets(card(used: 0.45, resets: true), now: now,
+                                            resetTimeFormat: .remaining)
+        XCTAssertEqual(german.size.height, heavy.size.height)
+
+        for (name, image) in [("heavy", heavy), ("quiet", quiet), ("german", german)] {
+            let tiff = try XCTUnwrap(image.tiffRepresentation)
+            let png = try XCTUnwrap(NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]))
+            let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+            attachment.name = "claude-spend-\(name)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            if let dir = ProcessInfo.processInfo.environment["CLAUDE_SPEND_RENDER_PATH"] {
+                try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("claude-spend-\(name).png"))
+            }
+        }
     }
 
     func testTheCardLaysOutEverySessionState() throws {

@@ -471,7 +471,9 @@ private struct LimitWindowRow: View {
 
     var body: some View {
         if let money = window.money {
-            MoneyBreakdownView(title: window.label, money: money, fidelity: fidelity)
+            MoneyBreakdownView(title: window.label, money: money, fidelity: fidelity,
+                               resetText: window.resetsAt == nil ? nil : resetText,
+                               projection: window.usageProjection(now: now))
         } else if isCountRow {
             SplitRow(leading: window.label, trailing: window.detail ?? window.usedText ?? "\(window.used ?? 0)")
         } else {
@@ -504,12 +506,22 @@ private struct MoneyBreakdownView: View {
     let title: String
     let money: UsageMoneyBreakdown
     let fidelity: Fidelity
+    /// Nil for a balance with no period, which gets no line for it.
+    var resetText: String? = nil
+    var projection: UsageProjection? = nil
     @Environment(\.codenotchAccentColor) private var accentColor
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
     @Environment(\.colorTransitionStyle) private var colorTransitionStyle
+    @Environment(\.tooltipSecondaryInk) private var secondaryInk
 
     private var barColor: Color {
+        // Amber while the balance is still low but the pace says it will not
+        // last the month — the point at which slowing down still helps.
+        if projection?.runsOut == true,
+           UsageBand.band(for: money.spentFraction, watchLimit: watchLimit, criticalLimit: criticalLimit) == .ample {
+            return UsageBand.watch.color(accent: accentColor)
+        }
         guard colorTransitionStyle == .ramp else {
             return UsageBand.band(for: money.spentFraction, watchLimit: watchLimit, criticalLimit: criticalLimit)
                 .color(accent: accentColor)
@@ -553,7 +565,36 @@ private struct MoneyBreakdownView: View {
             }
             .frame(width: NotchLayout.cardTextWidth)
             .padding(.top, NotchLayout.moneyBarToStats)
+
+            // A line each rather than one shared: in German the countdown alone
+            // takes most of the card's width.
+            if let resetText {
+                moneyLine(resetText, color: secondaryInk)
+            }
+            if let projection {
+                moneyLine(projectionText(projection),
+                          color: projection.runsOut ? .orange : secondaryInk)
+            }
         }
+    }
+
+    private func moneyLine(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(Typography.cardBody)
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .frame(width: NotchLayout.cardTextWidth, alignment: .leading)
+            .padding(.top, NotchLayout.moneyStatGap)
+    }
+
+    private func projectionText(_ projection: UsageProjection) -> String {
+        if let reachedAt = projection.limitReachedAt {
+            let formatter = DateFormatter()
+            formatter.locale = L10n.locale
+            formatter.setLocalizedDateFormatFromTemplate("MMMd")
+            return L10n.t("On pace to run out \(formatter.string(from: reachedAt))")
+        }
+        return L10n.t("On pace for \(amount(money.funded * projection.fractionAtReset))")
     }
 }
 
@@ -1118,6 +1159,8 @@ struct TooltipCard: View {
             windowCount: snapshot.windows.count,
             groupCount: snapshot.windowGroupCount,
             moneyWindowCount: snapshot.windows.filter { $0.money != nil }.count,
+            moneyResetCount: snapshot.windows.filter { $0.money != nil && $0.resetsAt != nil }.count,
+            moneyProjectionCount: snapshot.windows.filter { $0.money != nil && $0.usageProjection(now: now) != nil }.count,
             usageDetailGroupCount: snapshot.usageDetail?.visibleGroups.count ?? 0,
             sessionCount: snapshot.localModel == nil ? (activity?.sessions.count ?? 0) : 0,
             sessionCap: sessionCap,

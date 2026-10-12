@@ -163,7 +163,45 @@ final class UsageResponseTests: XCTestCase {
         XCTAssertEqual(money.currency, "USD")
         // 297/20000, not the `percent: 1` the response rounds it to.
         XCTAssertEqual(balance.usedFraction ?? -1, 0.01485, accuracy: 0.00001)
-        XCTAssertNil(balance.resetsAt, "the block carries no reset time")
+        XCTAssertNotNil(balance.resetsAt, "`monthly_limit` gives the balance a month")
+    }
+
+    private func utc(_ text: String) -> Date { ISO8601DateFormatter().date(from: text)! }
+
+    /// `spend` names no period, `extra_usage.monthly_limit` does: the balance
+    /// runs to midnight UTC on the 1st, over the whole calendar month.
+    func testAMonthlyBalanceRunsToTheFirstOfNextMonthInUTC() throws {
+        let windows = try decode(enterprise).limitWindows(readAt: utc("2026-10-12T07:29:56Z"))
+        let balance = try XCTUnwrap(windows.first)
+        XCTAssertEqual(balance.resetsAt, utc("2026-11-01T00:00:00Z"))
+        XCTAssertEqual(balance.duration, 31 * 86400)
+
+        let february = try XCTUnwrap(try decode(enterprise)
+            .limitWindows(readAt: utc("2027-02-10T12:00:00Z")).first)
+        XCTAssertEqual(february.resetsAt, utc("2027-03-01T00:00:00Z"))
+        XCTAssertEqual(february.duration, 28 * 86400)
+    }
+
+    /// The month is the one the reading was written in, not the one it is
+    /// decoded in: a reading from late on the 30th still ends on the 1st, so
+    /// read the next day it is recognisably over rather than passing for new.
+    func testTheMonthIsTheReadingsOwn() throws {
+        let windows = try decode(enterprise).limitWindows(readAt: utc("2026-09-30T23:59:00Z"))
+        XCTAssertEqual(windows.first?.resetsAt, utc("2026-10-01T00:00:00Z"))
+        XCTAssertTrue(ClaudeOAuthProvider.hasExpiredWindow(windows, at: utc("2026-10-01T00:00:01Z")))
+    }
+
+    /// Without `monthly_limit` nothing says the balance has a period, and none
+    /// is assumed for it.
+    func testABalanceWithoutAMonthlyLimitHasNoReset() throws {
+        let json = """
+        { "limits": [], "spend": { "enabled": true,
+            "limit": { "amount_minor": 20000, "currency": "USD", "exponent": 2 },
+            "used": { "amount_minor": 297, "currency": "USD", "exponent": 2 } } }
+        """
+        let balance = try XCTUnwrap(try decode(json).limitWindows().first)
+        XCTAssertNil(balance.resetsAt)
+        XCTAssertNil(balance.duration)
     }
 
     /// The ring has to *mean* the balance on a seat that reports only that.

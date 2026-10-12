@@ -715,15 +715,23 @@ struct UsageResponse: Decodable {
         let limit: Amount?
     }
 
+    /// Read for one thing only: whether the cap is a *monthly* one. `spend`
+    /// carries no period and no reset time, but this block names its cap
+    /// `monthly_limit`, and that is the only place the response says so.
+    struct ExtraUsage: Decodable {
+        let monthlyLimit: Double?
+    }
+
     let limits: [Limit]?
     let fiveHour: Window?
     let sevenDay: Window?
     let cedarEmber: ClaudeResetCredits?
     let reportsResetCredits: Bool
     let spend: Spend?
+    let extraUsage: ExtraUsage?
 
     private enum CodingKeys: String, CodingKey {
-        case limits, fiveHour, sevenDay, cedarEmber, spend
+        case limits, fiveHour, sevenDay, cedarEmber, spend, extraUsage
     }
 
     init(from decoder: Decoder) throws {
@@ -739,6 +747,7 @@ struct UsageResponse: Decodable {
         // Tolerated for the same reason: on a plan seat the balance is an
         // extra, and a shape change in it must not cost the plan's windows.
         spend = try? container.decodeIfPresent(Spend.self, forKey: .spend)
+        extraUsage = try? container.decodeIfPresent(ExtraUsage.self, forKey: .extraUsage)
     }
 
     /// How this response is read, wherever it is read from.
@@ -768,7 +777,10 @@ struct UsageResponse: Decodable {
     /// `limits` is the forward-compatible shape — it grows new kinds as
     /// Anthropic adds them — so it is preferred, with the two named windows as
     /// a fallback for older responses.
-    func limitWindows() -> [LimitWindow] {
+    /// `readAt` is when the response was written, not when it is decoded: the
+    /// balance's month is worked out from it, and a reading from the 30th
+    /// decoded on the 1st belongs to the month that has just ended.
+    func limitWindows(readAt: Date = Date()) -> [LimitWindow] {
         var windows = (limits ?? []).compactMap { limit -> LimitWindow? in
             guard let resetsAt = limit.resetsAt else { return nil }
             return LimitWindow(
@@ -808,7 +820,7 @@ struct UsageResponse: Decodable {
         // they are internal codenames whose meaning is not published and can
         // change without notice. A ring drawn from one would be a number
         // presented as a limit without anybody knowing which limit.
-        if let balance = spendWindow() { windows.append(balance) }
+        if let balance = spendWindow(readAt: readAt) { windows.append(balance) }
 
         return windows.sorted(by: UsageResponse.displayOrder)
     }
@@ -837,12 +849,19 @@ struct UsageResponse: Decodable {
     /// is rounded to whole percent: at $2.97 of $200 that field says `1` while
     /// the true figure is 1.485%, and the bar under the tooltip would sit
     /// visibly left of where the numbers beside it say it should.
-    func spendWindow() -> LimitWindow? {
+    ///
+    /// The month is the calendar month in UTC. The response says the cap is
+    /// monthly but not when the month turns, so that much is an assumption —
+    /// one zone for everybody, rather than a boundary that moves with the
+    /// Mac's clock. Without `monthly_limit` there is no period at all, and the
+    /// window stays without a reset rather than having one assumed for it.
+    func spendWindow(readAt: Date = Date()) -> LimitWindow? {
         guard let spend, spend.enabled != false,
               let used = spend.used?.value,
               let limit = spend.limit?.value, limit > 0
         else { return nil }
 
+        let month = extraUsage?.monthlyLimit != nil ? Self.utcMonth(containing: readAt) : nil
         return LimitWindow(
             id: "spend",
             label: L10n.t("Spend limit"),
@@ -851,10 +870,19 @@ struct UsageResponse: Decodable {
                 currency: spend.limit?.currency ?? spend.used?.currency ?? "USD",
                 spent: used,
                 remaining: max(limit - used, 0)
-            )
-            // No reset time: the response does not carry one for this block,
-            // and a balance still says what it says without one.
+            ),
+            resetsAt: month?.end,
+            duration: month.map { $0.end.timeIntervalSince($0.start) }
         )
+    }
+
+    static func utcMonth(containing date: Date) -> (start: Date, end: Date)? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        guard let start = calendar.dateInterval(of: .month, for: date)?.start,
+              let end = calendar.date(byAdding: .month, value: 1, to: start)
+        else { return nil }
+        return (start, end)
     }
 
     static func duration(forKind kind: String) -> TimeInterval? {
