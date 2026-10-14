@@ -597,9 +597,16 @@ private struct ProviderTooltip: View {
         var windows: [LimitWindow]
     }
 
+    private var visibleWindows: [LimitWindow] {
+        if AntigravityProfile.isAntigravity(providerID: snapshot.id) {
+            return AntigravityProvider.filterWindows(snapshot.windows)
+        }
+        return snapshot.windows
+    }
+
     private var groupedWindows: [WindowGroup] {
         var result: [WindowGroup] = []
-        for window in snapshot.windows {
+        for window in visibleWindows {
             if let last = result.last, last.title == window.group {
                 result[result.count - 1].windows.append(window)
             } else {
@@ -1111,13 +1118,27 @@ struct TooltipCard: View {
         return activity.note ?? activity.sessions.first?.name ?? L10n.t("Thinking")
     }
 
+    private var visibleWindows: [LimitWindow] {
+        if AntigravityProfile.isAntigravity(providerID: snapshot.id) {
+            return AntigravityProvider.filterWindows(snapshot.windows)
+        }
+        return snapshot.windows
+    }
+
+    private var visibleGroupCount: Int {
+        if AntigravityProfile.isAntigravity(providerID: snapshot.id) {
+            return Set(visibleWindows.compactMap(\.group)).count
+        }
+        return snapshot.windowGroupCount
+    }
+
     /// The same figure the hover region uses, so what is drawn and what is
     /// reachable can never drift apart.
     private var height: CGFloat {
         NotchLayout.cardHeight(
-            windowCount: snapshot.windows.count,
-            groupCount: snapshot.windowGroupCount,
-            moneyWindowCount: snapshot.windows.filter { $0.money != nil }.count,
+            windowCount: visibleWindows.count,
+            groupCount: visibleGroupCount,
+            moneyWindowCount: visibleWindows.filter { $0.money != nil }.count,
             usageDetailGroupCount: snapshot.usageDetail?.visibleGroups.count ?? 0,
             sessionCount: snapshot.localModel == nil ? (activity?.sessions.count ?? 0) : 0,
             sessionCap: sessionCap,
@@ -1128,7 +1149,7 @@ struct TooltipCard: View {
             hasResetCredits: snapshot.availableResetCredits(at: now) != nil,
             localModelName: snapshot.localModel?.name,
             showsLocalPerformance: snapshot.showsLocalPerformance,
-                localLedgerRows: snapshot.localLedgerRowCount,
+            localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount,
             showsDeepSeekPricing: deepSeekPricingEnabled,
             costRows: costRows

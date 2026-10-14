@@ -94,12 +94,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var miniMaxWeb: WebSessionProvider?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Set here, not in the Info.plist: this call is applied at launch and
-        // overrides `LSUIElement` either way. Removing the plist key alone left
-        // the app registered as a UIElement with no Dock tile, which looked
-        // exactly like the icon having failed to install. The user's choice
-        // replaces this a moment later, once preferences exist.
-        NSApp.setActivationPolicy(.regular)
         guard !isRunningTests else { return }
         Self.retireOlderInstances()
         ChannelNotifications.installPresenter()
@@ -109,6 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Preferences.migrateFromPreviousName()
         let preferences = Preferences()
         self.preferences = preferences
+        NSApp.setActivationPolicy(preferences.appPresence.activationPolicy)
 
         // One notch per display: the fleet owns a controller for each screen
         // the scope asks for and fans every reading out to all of them. The
@@ -477,8 +472,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             preferences.$appPresence
                 .receive(on: RunLoop.main)
-                .sink { presence in
-                    NSApp.setActivationPolicy(presence.activationPolicy)
+                .sink { [weak self] presence in
+                    if self?.settings?.isWindowVisible != true {
+                        NSApp.setActivationPolicy(presence.activationPolicy)
+                    }
                     if presence.wantsStatusItem { statusItem.show() } else { statusItem.hide() }
                 }
                 .store(in: &cancellables)
@@ -1051,11 +1048,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.usage.info("session \(event.session.name, privacy: .public) \(String(describing: event.reason), privacy: .public)")
 
         if preferences.sessionEndSound {
-            SessionChime.play(event.reason == .blocked
-                              ? preferences.sessionBlockedSoundName
-                              : preferences.sessionEndSoundName)
+            if event.reason == .blocked, !preferences.announceSessionWaiting {
+                // Muted waiting notification
+            } else {
+                SessionChime.play(event.reason == .blocked
+                                  ? preferences.sessionBlockedSoundName
+                                  : preferences.sessionEndSoundName)
+            }
         }
-        guard preferences.announceSessionEnd else { return }
+        if event.reason == .blocked {
+            guard preferences.announceSessionWaiting else { return }
+        } else {
+            guard preferences.announceSessionEnd else { return }
+        }
         if preferences.notificationChannel == .mac {
             ChannelNotifications.sessionEnded(name: event.session.name, blocked: event.reason == .blocked)
             return

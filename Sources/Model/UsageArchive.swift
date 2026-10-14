@@ -86,6 +86,9 @@ struct UsageArchive {
             if CodexProfile.isCodex(providerID: entry.id) {
                 windows = entry.windows.filter { Self.isLiveCodexWindow($0.id) }
                 if windows.isEmpty { continue }
+            } else if AntigravityProfile.isAntigravity(providerID: entry.id) {
+                windows = AntigravityProvider.filterWindows(entry.windows)
+                if windows.isEmpty { continue }
             } else {
                 windows = entry.windows
             }

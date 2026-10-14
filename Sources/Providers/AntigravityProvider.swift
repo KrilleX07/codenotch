@@ -109,10 +109,10 @@ actor AntigravityProvider: UsageProvider {
         // and an empty ring, while the server that would have answered sat
         // running on the same machine, never asked.
         if profile.slug == nil {
-            if let windows = await localQuota(), !windows.isEmpty {
+            if let rawWindows = await localQuota(), !rawWindows.isEmpty {
                 everBridged = true
                 UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
-                
+                let windows = Self.filterWindows(rawWindows)
                 return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
                                         fidelity: .official, status: .ok, windows: windows,
                                         headlineID: resolveHeadlineID(for: windows),
@@ -127,8 +127,9 @@ actor AntigravityProvider: UsageProvider {
         // 1. Try reading credentials and asking Google Cloud Code PA directly
         let credentials = try? AntigravityCredentials.load(for: profile)
         if let credentials,
-           let windows = try? await quota(token: credentials.accessToken, project: credentials.projectId),
-           !windows.isEmpty {
+           let rawWindows = try? await quota(token: credentials.accessToken, project: credentials.projectId),
+           !rawWindows.isEmpty {
+            let windows = Self.filterWindows(rawWindows)
             return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
                                     fidelity: .official, status: .ok, windows: windows,
                                     headlineID: resolveHeadlineID(for: windows),
@@ -137,12 +138,13 @@ actor AntigravityProvider: UsageProvider {
 
         // 2. Fallback to OMP SQLite store if offline or direct call fails
         if profile.slug == nil {
-            let ompWindows = Self.ompUsageWindows(forEmail: credentials?.email)
-            if !ompWindows.isEmpty {
+            let rawOmpWindows = Self.ompUsageWindows(forEmail: credentials?.email)
+            if !rawOmpWindows.isEmpty {
+                let windows = Self.filterWindows(rawOmpWindows)
                 return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
-                                        fidelity: .official, status: .ok, windows: ompWindows,
-                                        headlineID: resolveHeadlineID(for: ompWindows),
-                                        weeklyID: resolveWeeklyID(for: ompWindows))
+                                        fidelity: .official, status: .ok, windows: windows,
+                                        headlineID: resolveHeadlineID(for: windows),
+                                        weeklyID: resolveWeeklyID(for: windows))
             }
         }
 
@@ -173,10 +175,41 @@ actor AntigravityProvider: UsageProvider {
         )
     }
 
+    nonisolated static func filterWindows(_ windows: [LimitWindow], preferredModel: AntigravityHeadlineModel = Preferences.storedAntigravityHeadlineModel()) -> [LimitWindow] {
+        switch preferredModel {
+        case .all:
+            return windows
+        case .gemini:
+            let filtered = windows.filter { matches(window: $0, model: .gemini) }
+            return filtered.isEmpty ? windows : filtered
+        case .thirdParty:
+            let filtered = windows.filter { matches(window: $0, model: .thirdParty) }
+            return filtered.isEmpty ? windows : filtered
+        }
+    }
+
+    private nonisolated static func matches(window: LimitWindow, model: AntigravityHeadlineModel) -> Bool {
+        let idLower = window.id.lowercased()
+        let groupLower = window.group?.lowercased() ?? ""
+        switch model {
+        case .all:
+            return true
+        case .gemini:
+            return idLower.hasPrefix("gemini") || groupLower.contains("gemini")
+        case .thirdParty:
+            return idLower.hasPrefix("3p") || groupLower.contains("claude") || groupLower.contains("gpt")
+        }
+    }
+
     nonisolated func resolveHeadlineID(for windows: [LimitWindow]) -> String {
         let preferredLimit = Preferences.storedAntigravityHeadlineLimit()
         let preferredModel = Preferences.storedAntigravityHeadlineModel()
-        let modelCandidates = windows.filter { $0.id.hasPrefix(preferredModel.rawValue) }
+        let modelCandidates: [LimitWindow]
+        if preferredModel == .all {
+            modelCandidates = windows
+        } else {
+            modelCandidates = windows.filter { Self.matches(window: $0, model: preferredModel) }
+        }
         let candidates = modelCandidates.isEmpty ? windows : modelCandidates
 
         if preferredLimit != .automatic {
@@ -192,7 +225,7 @@ actor AntigravityProvider: UsageProvider {
         let usable = fractional.filter { ($0.usedFraction ?? 0) < 1 }
         return (usable.isEmpty ? fractional : usable).max(by: constrainedBefore)?.id
             ?? candidates.first?.id
-            ?? "\(preferredModel.rawValue)-hourly"
+            ?? (preferredModel == .all ? "gemini-hourly" : "\(preferredModel.rawValue)-hourly")
     }
 
     private nonisolated func matches(_ window: LimitWindow, cadence: AntigravityHeadlineLimit) -> Bool {
@@ -218,7 +251,12 @@ actor AntigravityProvider: UsageProvider {
 
     nonisolated func resolveWeeklyID(for windows: [LimitWindow]) -> String? {
         let preferredModel = Preferences.storedAntigravityHeadlineModel()
-        let modelCandidates = windows.filter { $0.id.hasPrefix(preferredModel.rawValue) }
+        let modelCandidates: [LimitWindow]
+        if preferredModel == .all {
+            modelCandidates = windows
+        } else {
+            modelCandidates = windows.filter { Self.matches(window: $0, model: preferredModel) }
+        }
         let candidates = modelCandidates.isEmpty ? windows : modelCandidates
         let weekly = candidates.filter { window in
             window.duration == 7 * 86400 ||
