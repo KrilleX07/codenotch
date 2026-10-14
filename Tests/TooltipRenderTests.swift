@@ -487,11 +487,13 @@ final class PaceMarkerRenderTests: XCTestCase {
             && color.blueComponent < 0.2
     }
 
-    /// The bare track: white at 17.6% over the black card.
+    /// The bare track: white at 17.6% over the card — a neutral grey, about
+    /// 0.23 over a clear card and 0.35 over the solid one, which is what the
+    /// card draws once a notch has been shown in the same test run.
     private func isBarTrack(_ color: NSColor) -> Bool {
         guard color.alphaComponent > 0.5 else { return false }
         let channels = [color.redComponent, color.greenComponent, color.blueComponent]
-        return channels.allSatisfy { $0 > 0.08 && $0 < 0.32 }
+        return channels.allSatisfy { $0 > 0.08 && $0 < 0.45 }
             && channels.max()! - channels.min()! < 0.06
     }
 

@@ -39,7 +39,7 @@ Object.assign(ctx,{providers:()=>[p],glyphs:{},pill:{dataset:{cells:'claude:-'},
   headlineOf:s=>s.windows[0],weeklyOf:()=>({...w,id:'weekly',resets_at:now+86400000}),
   HOLE:'#000',TRACK:'#222',INK:'#fff',WATCH:'#ff0',AMBER:'#ff0',RUNGREEN:'#0f0',
   refreshing:{},weeklyRing:'outside',workState:()=> 'idle',reportHot(){},
-  svgArc:()=>'<quota-arc/>',dashedArc:()=>'<quota-arc/>',weeklyRingDashed:false,tone:()=>'#0f0',pctText:x=>String(Math.round(x*100)),
+  svgArc:()=>'<quota-arc/>',dashedArc:()=>'<quota-arc/>',weeklyRingDashed:false,meteredFraction:(used,remaining)=>remaining?1-used:used,showRemaining:false,tone:()=>'#0f0',pctText:x=>String(Math.round(x*100)),
   quotaFraction:(_,x)=>1-x,quotaPercent:(_,x)=>100-Math.round(x*100),showsRemaining:()=>true,uiLang:'en',
 });
 vm.runInContext(block('// QUOTA_RING_RENDER_START','// QUOTA_RING_RENDER_END'),ctx);
