@@ -32,6 +32,40 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.23.0",
+                headline: L10n.t("Show what is left instead of what is used, a Dock style, oMLX, and Claude and Codex on your own servers."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Show remaining instead of used"),
+                        detail: L10n.t("The rings and figures count down what is left. Rings can shut when a window is spent, and order themselves by what remains.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Remote hosts and Muse"),
+                        detail: L10n.t("Claude and Codex accounts on servers you reach over SSH, and Muse, each with a ring of its own.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A Dock style"),
+                        detail: L10n.t("The notch floats just clear of the screen's edge as a slab of glass.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("oMLX"),
+                        detail: L10n.t("The models oMLX has loaded, what they are doing, their speed, how full the context is, and a daily token count.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Breathing working indicator"),
+                        detail: L10n.t("Optional: a disc in the provider's colour breathes while a session works, in place of the spinning arc.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Enterprise spend forecast"),
+                        detail: L10n.t("The spend card says whether the monthly limit lasts until it resets.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("More"),
+                        detail: L10n.t("OpenCode activity on Custom Endpoints, Grok Bot's weekly usage, DeepSeek off-peak all day on Chinese public holidays, gentler Claude retries when rate limited, notches back on external displays after sleep, and Claude sessions nobody has open left out.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.22.0",
                 headline: L10n.t("Qoder's credits, more than one Command Code account, and DeepSeek's balance from the wallet that has one."),
                 changes: [
