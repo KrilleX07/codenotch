@@ -1177,6 +1177,35 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         XCTAssertEqual(sessions.first?.detail, "Question")
     }
 
+    func testAskPermissionReadsAsWaiting() throws {
+        let permissionJSON = "{\"type\": \"PLANNER_RESPONSE\", \"tool_calls\": [{\"name\": \"ask_permission\"}]}"
+        try transcript("waiting-permission", modified: Date().addingTimeInterval(-600), content: permissionJSON)
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 45)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.state, .waiting)
+        XCTAssertEqual(sessions.first?.detail, "Permission")
+    }
+
+    func testNormalToolCallReadsAsBusyNotWaiting() throws {
+        let toolJSON = "{\"type\": \"PLANNER_RESPONSE\", \"tool_calls\": [{\"name\": \"run_command\"}]}"
+        try transcript("running-tool", modified: Date(), content: toolJSON)
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 45)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.state, .busy)
+        XCTAssertEqual(sessions.first?.detail, "Working")
+    }
+
+    func testTurnEndedAfterPermissionIsIdleNotWaiting() throws {
+        let lines = [
+            "{\"type\": \"PLANNER_RESPONSE\", \"tool_calls\": [{\"name\": \"ask_permission\"}]}",
+            "{\"type\": \"GENERIC\", \"content\": \"Granted\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"content\": \"All done!\"}"
+        ]
+        try transcript("completed-permission", modified: Date().addingTimeInterval(-10), content: lines.joined(separator: "\n"))
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 45)
+        XCTAssertTrue(sessions.isEmpty, "A finished turn should be cleaned up (idle), not held as waiting")
+    }
+
     func testNoTranscriptsIsQuietRatherThanAnError() {
         let absent = root.appendingPathComponent("nowhere")
         XCTAssertTrue(AntigravityActivityMonitor.read(root: absent, staleAfter: 45).isEmpty)
@@ -1323,11 +1352,11 @@ final class AppPresenceTests: XCTestCase {
     }
 
     @MainActor
-    func testItDefaultsToTheDockRatherThanNowhere() {
+    func testItDefaultsToMenuBarRatherThanNowhere() {
         let name = "AppPresenceTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
         defaults.removePersistentDomain(forName: name)
-        XCTAssertEqual(Preferences(defaults: defaults).appPresence, .dock)
+        XCTAssertEqual(Preferences(defaults: defaults).appPresence, .menuBar)
     }
 
     /// A value written by a future version must not make the app vanish.
@@ -1337,7 +1366,7 @@ final class AppPresenceTests: XCTestCase {
         let defaults = UserDefaults(suiteName: name)!
         defaults.removePersistentDomain(forName: name)
         defaults.set("skywriting", forKey: "appPresence")
-        XCTAssertEqual(Preferences(defaults: defaults).appPresence, .dock)
+        XCTAssertEqual(Preferences(defaults: defaults).appPresence, .menuBar)
     }
 
     @MainActor
@@ -1877,4 +1906,48 @@ private final class GoogleStub: URLProtocol {
     }
 
     override func stopLoading() {}
+}
+
+final class AntigravityModelFilterTests: XCTestCase {
+    private let windows: [LimitWindow] = [
+        LimitWindow(id: "gemini-5h", group: "Gemini Models", label: "5-hour Limit", usedFraction: 0.4),
+        LimitWindow(id: "gemini-weekly", group: "Gemini Models", label: "Weekly Limit", usedFraction: 0.7),
+        LimitWindow(id: "3p-5h", group: "Claude and GPT models", label: "5-hour Limit", usedFraction: 0.1),
+        LimitWindow(id: "3p-weekly", group: "Claude and GPT models", label: "Weekly Limit", usedFraction: 0.2)
+    ]
+
+    func testFilterWindowsGemini() {
+        let result = AntigravityProvider.filterWindows(windows, preferredModel: .gemini)
+        XCTAssertEqual(result.count, 2)
+        XCTAssertTrue(result.allSatisfy { $0.id.hasPrefix("gemini") })
+    }
+
+    func testFilterWindowsThirdParty() {
+        let result = AntigravityProvider.filterWindows(windows, preferredModel: .thirdParty)
+        XCTAssertEqual(result.count, 2)
+        XCTAssertTrue(result.allSatisfy { $0.id.hasPrefix("3p") })
+    }
+
+    func testFilterWindowsAll() {
+        let result = AntigravityProvider.filterWindows(windows, preferredModel: .all)
+        XCTAssertEqual(result.count, 4)
+    }
+
+    func testResolveHeadlineIDWithAll() {
+        let provider = AntigravityProvider()
+        let defaults = UserDefaults.standard
+        defaults.set(AntigravityHeadlineModel.all.rawValue, forKey: "antigravityHeadlineModel")
+        defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
+        let headline = provider.resolveHeadlineID(for: windows)
+        XCTAssertEqual(headline, "gemini-weekly")
+    }
+
+    func testResolveHeadlineIDWithThirdParty() {
+        let provider = AntigravityProvider()
+        let defaults = UserDefaults.standard
+        defaults.set(AntigravityHeadlineModel.thirdParty.rawValue, forKey: "antigravityHeadlineModel")
+        defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
+        let headline = provider.resolveHeadlineID(for: windows)
+        XCTAssertEqual(headline, "3p-weekly")
+    }
 }

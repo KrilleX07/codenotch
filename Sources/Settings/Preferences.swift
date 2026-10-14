@@ -392,6 +392,11 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(announceSessionEnd, forKey: Keys.announceSessionEnd) }
     }
 
+    /// Open the notch or send a notification when an agent is waiting for an answer or permission.
+    @Published var announceSessionWaiting: Bool {
+        didSet { defaults.set(announceSessionWaiting, forKey: Keys.announceSessionWaiting) }
+    }
+
     /// How long that peek lasts.
     @Published var peekDuration: PeekDuration {
         didSet { defaults.set(peekDuration.rawValue, forKey: Keys.peekDuration) }
@@ -556,6 +561,7 @@ final class Preferences: ObservableObject {
         static let lastSeenVersion = "lastSeenVersion"
         static let order = "providerOrder"
         static let announceSessionEnd = "announceSessionEnd"
+        static let announceSessionWaiting = "announceSessionWaiting"
         static let sessionEndSound = "sessionEndSound"
         static let peekDuration = "peekDuration"
         static let sessionEndSoundName = "sessionEndSoundName"
@@ -818,11 +824,10 @@ final class Preferences: ObservableObject {
         // Absent means the fold that has shipped since full-screen detection
         // exists — the setting silences it, it does not introduce it.
         self.foldsForFullScreen = defaults.object(forKey: Keys.foldsForFullScreen) as? Bool ?? true
-        // Absent means never chosen. The Dock is the default because it is the
-        // findable one — a new user who cannot see the app anywhere has no way
-        // to learn it is running.
+        // Absent means never chosen. The menu bar is the default so the app is
+        // easily accessible without permanently cluttering the macOS Dock.
         self.appPresence = defaults.string(forKey: Keys.presence)
-            .flatMap(AppPresence.init(rawValue:)) ?? .dock
+            .flatMap(AppPresence.init(rawValue:)) ?? .menuBar
         // The notch, because that is what every earlier version did; a banner
         // is the choice of someone who found the notch too quiet.
         self.notificationChannel = defaults.string(forKey: Keys.notificationChannel)
@@ -917,6 +922,7 @@ final class Preferences: ObservableObject {
         // Both default to on, so `bool(forKey:)` — which answers false for a
         // key that was never written — cannot stand in for the default.
         self.announceSessionEnd = defaults.object(forKey: Keys.announceSessionEnd) as? Bool ?? true
+        self.announceSessionWaiting = defaults.object(forKey: Keys.announceSessionWaiting) as? Bool ?? true
         self.sessionEndSound = defaults.object(forKey: Keys.sessionEndSound) as? Bool ?? true
         self.peekDuration = defaults.string(forKey: Keys.peekDuration)
             .flatMap(PeekDuration.init(rawValue:)) ?? .standard

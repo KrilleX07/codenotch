@@ -20715,6 +20715,17 @@
         }
       }
     },
+    "Notify when waiting on you": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уведомлять при ожидании ответа"
+          }
+        }
+      }
+    },
     "Open the notch for a moment": {
       "extractionState": "manual",
       "localizations": {

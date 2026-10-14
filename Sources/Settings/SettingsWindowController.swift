@@ -1,6 +1,20 @@
 import AppKit
 import SwiftUI
 
+private final class SettingsWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers == "w" {
+            performClose(nil)
+            return true
+        }
+        if event.keyCode == 53 { // Escape
+            performClose(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 /// Hosts the settings sheet in its own window.
 ///
 /// A real window rather than a panel attached to the notch: settings are a place
@@ -9,6 +23,7 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
+    var isWindowVisible: Bool { window?.isVisible == true }
     /// Ends text editing when a click lands anywhere but a text field.
     private var clickAwayMonitor: Any?
     private let preferences: Preferences
@@ -152,6 +167,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(preferences.appPresence.activationPolicy)
+        if preferences.appPresence.activationPolicy == .accessory {
+            NSApp.deactivate()
+        }
     }
 
     /// Sit the traffic lights in the middle of the panel's header band.
@@ -225,7 +243,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        let window = NSWindow(
+        let window = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0,
                                 width: SettingsView.width, height: SettingsView.height),
             // `fullSizeContentView` runs the sidebar flush up under the traffic

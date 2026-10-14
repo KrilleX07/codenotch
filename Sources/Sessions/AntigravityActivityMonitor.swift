@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import SQLite3
 
 /// Notices when Antigravity is working.
 ///
@@ -133,6 +132,9 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                         if name.contains("ask_question") {
                             return (.waiting, L10n.t("Question"))
                         }
+                        if name.contains("ask_permission") || name.contains("request_permission") {
+                            return (.waiting, L10n.t("Permission"))
+                        }
                         if name.contains("multi_replace_file_content") || name.contains("write_to_file") || name.contains("replace_file_content") {
                             if let args = call["arguments"] as? [String: Any],
                                let meta = args["ArtifactMetadata"] as? [String: Any],
@@ -165,31 +167,18 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     static func session(
         trajectory: URL, modified: Date, staleAfter: TimeInterval, now: Date
     ) -> AgentSession? {
-        var (state, waitingFor) = tail(of: trajectory).map(parseState(inTail:)) ?? (.idle, nil)
-        
-        if state == .busy {
-            let conversationID = trajectory.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
-            let dbURL = trajectory.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("conversations/" + conversationID + ".db")
-            
-            if let db = SQLiteStore.open(dbURL) {
-                defer { sqlite3_close(db) }
-                let rows = SQLiteStore.rows(in: db, sql: "SELECT status FROM steps ORDER BY idx DESC LIMIT 1")
-                if let first = rows.first, first.first == "2" {
-                    state = .waiting
-                    waitingFor = L10n.t("Permission")
-                }
-            }
-        }
+        let (state, waitingFor) = tail(of: trajectory).map(parseState(inTail:)) ?? (.idle, nil)
+        var resolvedState = state
         
         let age = now.timeIntervalSince(modified)
         
-        if state == .idle {
+        if resolvedState == .idle {
             if age <= 9 {
-                state = .success
+                resolvedState = .success
             } else {
                 return nil
             }
-        } else if state == .busy {
+        } else if resolvedState == .busy {
             // Fallback timeout for busy state, just in case the file stops updating
             // due to a crash but the state didn't become idle.
             guard age <= staleAfter + 15 else { return nil }
@@ -202,7 +191,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             .deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
             
         let detail: String
-        switch state {
+        switch resolvedState {
         case .busy: detail = L10n.t("Working")
         case .waiting: detail = waitingFor ?? L10n.t("Waiting")
         case .success: detail = L10n.t("Complete")
@@ -213,7 +202,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             id: "antigravity.\(id)",
             name: "Antigravity",
             detail: detail,
-            state: state,
+            state: resolvedState,
             waitingFor: waitingFor,
             since: modified
         )

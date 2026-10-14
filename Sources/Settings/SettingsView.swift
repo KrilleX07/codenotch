@@ -1233,12 +1233,13 @@ struct SettingsView: View {
             // for exactly that and nothing else.
             Section(L10n.t("When a session ends")) {
                 Toggle(L10n.t("Open the notch for a moment"), isOn: $preferences.announceSessionEnd)
+                Toggle(L10n.t("Notify when waiting on you"), isOn: $preferences.announceSessionWaiting)
 
                 Picker(L10n.t("For"), selection: $preferences.peekDuration) {
                     ForEach(PeekDuration.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .disabled(!preferences.announceSessionEnd)
+                .disabled(!preferences.announceSessionEnd && !preferences.announceSessionWaiting)
 
                 Text(preferences.peekDuration.explanation)
                     .font(.caption)
