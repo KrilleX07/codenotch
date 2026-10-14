@@ -2088,11 +2088,26 @@ final class NotchWindowController {
     /// old thirty-second pace when the notch is folded away — nothing on a
     /// collapsed notch is measured in seconds, so redrawing one every second for
     /// the rest of the day buys nobody anything.
-    private func tickClock() {
+    /// Internal rather than private so a test can drive it directly. Nothing
+    /// here sleeps or waits on the RunLoop timer, so the assertion is exact.
+    func tickClock() {
         let now = Date()
-        let readsAsClock = model.isExpanded || model.hoveredIndex != nil
+        let readsAsClock = Self.readsAsClock(hoveredIndex: model.hoveredIndex)
         guard readsAsClock || now.timeIntervalSince(model.now) >= 30 else { return }
         model.now = now
+    }
+
+    /// Whether a card is open and actually reading `model.now`, which is the
+    /// only time it is worth publishing every second.
+    ///
+    /// `isExpanded` is deliberately not part of this. Every consumer of
+    /// `model.now` is a hovered card — `TooltipCard` is only constructed for a
+    /// `hoveredIndex`, and `tooltipRect(_:)` measures that same card from it —
+    /// so "expanded" was never the question being asked. Under `alwaysShow` it
+    /// answers yes for the whole session anyway, which made the thirty-second
+    /// fallback above unreachable and published the clock every second forever.
+    static func readsAsClock(hoveredIndex: Int?) -> Bool {
+        hoveredIndex != nil
     }
 
     private func contextMenu() -> NSMenu {

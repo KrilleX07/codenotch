@@ -924,6 +924,46 @@ final class AlwaysShowTests: XCTestCase {
         XCTAssertFalse(controller.model.isExpanded)
     }
 
+    /// The bug: `tickClock` counted `isExpanded` as "a card is being read", and
+    /// `alwaysShow` holds that true for the whole session — so the clock was
+    /// published every second forever and the thirty-second fallback written
+    /// beside it could never run.
+    ///
+    /// `model.now` is set five seconds back and `tickClock` is called directly,
+    /// so this is five seconds short of the thirty-second threshold with nothing
+    /// on screen to read. No sleeping, and no dependence on the RunLoop timer.
+    func testAlwaysShowDoesNotRepublishTheClockEverySecond() {
+        let controller = NotchWindowController()
+        controller.apply(.alwaysShow)
+
+        XCTAssertTrue(controller.model.isExpanded, "the premise: alwaysShow holds it open")
+        XCTAssertNil(controller.model.hoveredIndex, "the premise: no card is open")
+
+        let fiveSecondsAgo = Date(timeIntervalSinceNow: -5)
+        controller.model.now = fiveSecondsAgo
+        controller.tickClock()
+
+        XCTAssertEqual(
+            controller.model.now, fiveSecondsAgo,
+            "the clock republished under alwaysShow with no card open, so the "
+                + "thirty-second fallback never ran")
+    }
+
+    /// The other half, so the fix cannot degenerate into "stop publishing": a
+    /// card that is genuinely open still gets the clock every second.
+    func testAHoveredCardStillReadsTheClockEverySecond() {
+        let controller = NotchWindowController()
+        controller.model.hoveredIndex = 0
+
+        let fiveSecondsAgo = Date(timeIntervalSinceNow: -5)
+        controller.model.now = fiveSecondsAgo
+        controller.tickClock()
+
+        XCTAssertNotEqual(
+            controller.model.now, fiveSecondsAgo,
+            "a hovered card stopped getting the clock")
+    }
+
     /// Switching to hover has to clear a pin left over from before, or the
     /// notch stays open and the new choice looks ignored.
     func testSwitchingToHoverClearsAStalePin() {
