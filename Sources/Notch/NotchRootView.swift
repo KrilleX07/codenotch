@@ -522,7 +522,9 @@ struct NotchRootView: View {
                 isRefreshing: model.isRefreshing(snapshot),
                 weeklyRing: model.weeklyRing,
                 showsWeeklyReading: model.weeklyReading,
-                showsReading: model.showsCellReading
+                showsReading: model.showsCellReading,
+                showsRemaining: model.showsRemainingInNotch,
+                shutRingsWhenSpent: model.shutRingsWhenSpent
             )
                 // The ring colours were sampled for a black notch and go faint
                 // over the floating slab's clear glass on a light desktop, so
@@ -587,6 +589,7 @@ struct NotchRootView: View {
         if model.readsAcrossTheCutout, let snapshot = model.snapshots.first {
             ProviderReading(snapshot: snapshot, weeklyRing: model.weeklyRing,
                             showsWeeklyReading: model.weeklyReading,
+                            showsRemaining: model.showsRemainingInNotch,
                             across: run.upperBound - run.lowerBound,
                             acrossAlignment: wing.onTheLeft ? .trailing : .leading)
                 .fixedSize(horizontal: false, vertical: true)

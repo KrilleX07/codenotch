@@ -270,6 +270,13 @@ final class NotchViewModel: ObservableObject {
     /// Whether each ring carries its percentage beside the hardware notch.
     /// Mirrors the Appearance setting; see `showsCellReading`.
     @Published var showsNotchReadings = false
+    /// Whether the notch reads what is left rather than what is spent.
+    /// Mirrors the Appearance setting; the figure and the arcs' sweep follow
+    /// it, the bands still judge by what is spent.
+    @Published var showsRemainingInNotch = false
+    /// Whether a spent window shuts the rings beside it. Mirrors the
+    /// Appearance setting.
+    @Published var shutRingsWhenSpent = true
 
     /// How much screen there is to spend on the panel.
     ///
@@ -934,7 +941,8 @@ final class NotchViewModel: ObservableObject {
     var readingAcrossTextWidth: CGFloat {
         guard let snapshot = snapshots.first else { return 0 }
         return ProviderReading(snapshot: snapshot, weeklyRing: weeklyRing,
-                               showsWeeklyReading: weeklyReading).acrossWidth
+                               showsWeeklyReading: weeklyReading,
+                               showsRemaining: showsRemainingInNotch).acrossWidth
     }
 
     /// **How long the side carrying it needs to be**, in design points: out of

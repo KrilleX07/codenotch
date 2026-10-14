@@ -572,6 +572,8 @@ actor ClaudeOAuthProvider: UsageProvider {
     /// `Retry-After: 0`, and obeying that literally means retrying immediately,
     /// which is what keeps you rate limited. So the wait starts at a minute and
     /// doubles for each 429 in a row. Only our schedule is capped, never the server's hint.
+    ///
+    /// Shared with the remote provider: same endpoint, same rate limit.
     static func backoff(forAttempt attempt: Int, retryAfter: TimeInterval?) -> TimeInterval {
         let floor: TimeInterval = 60
         let ceiling: TimeInterval = 15 * 60

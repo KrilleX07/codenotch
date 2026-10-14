@@ -137,6 +137,11 @@ pub struct Config {
     /// Mac's does, and hovering it still opens it. Off, it stays as Show has it.
     #[serde(default = "yes")]
     pub fold_for_full_screen: bool,
+    /// true = the figure under each ring reads what is left rather than what is spent, as the
+    /// Mac's Appearance toggle. Off by default: used is what the notch has always drawn. The
+    /// rings themselves still sweep by what is spent either way.
+    #[serde(default)]
+    pub notch_shows_remaining: bool,
 }
 
 fn default_notch_y() -> f64 {
@@ -314,6 +319,7 @@ impl Default for Config {
             reset_notification_sound: true,
             adaptive_pill: false,
             fold_for_full_screen: true,
+            notch_shows_remaining: false,
         }
     }
 }

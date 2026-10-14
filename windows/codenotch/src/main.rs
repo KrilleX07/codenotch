@@ -1675,6 +1675,25 @@ fn get_full_screen() -> bool {
     fullscreen::folding()
 }
 
+#[tauri::command]
+fn get_notch_shows_remaining(app: AppHandle) -> bool {
+    let st = app.state::<AppState>();
+    let c = st.cfg.lock().unwrap();
+    c.notch_shows_remaining
+}
+
+#[tauri::command]
+fn set_notch_shows_remaining(app: AppHandle, on: bool) -> bool {
+    {
+        let st = app.state::<AppState>();
+        let mut c = st.cfg.lock().unwrap();
+        c.notch_shows_remaining = on;
+        config::save(&c);
+    }
+    let _ = app.emit("notch_shows_remaining", on);
+    on
+}
+
 /// One attached monitor, as Settings lists it.
 #[derive(serde::Serialize)]
 pub struct MonitorInfo {
@@ -2024,6 +2043,8 @@ fn main() {
             get_fold_for_full_screen,
             set_fold_for_full_screen,
             get_full_screen,
+            get_notch_shows_remaining,
+            set_notch_shows_remaining,
             settings_window::get_system_look,
             settings_window::quit_app,
             settings_window::settings_ready,
