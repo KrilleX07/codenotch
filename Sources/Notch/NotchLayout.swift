@@ -395,7 +395,8 @@ enum NotchLayout {
                            localLedgerRows: Int = 0,
                            compactRowCount: Int = 0,
                            showsDeepSeekPricing: Bool = true,
-                           costRows: Int = 0) -> CGFloat {
+                           costRows: Int = 0,
+                           isAntigravity: Bool = false) -> CGFloat {
         let header = max(glyphSize, cardTitleLineHeight)
             + (hasPlan ? cardBodyLineHeight : 0)
         var height = 2 * cardPadding + header
@@ -471,12 +472,14 @@ enum NotchLayout {
             let shown = min(sessionCount, max(0, sessionCap))
             let row = 2 * cardBodyLineHeight + sessionRowGap
             height += blockSpacing + hairline + blockSpacing
-                + CGFloat(shown) * row
-                + CGFloat(max(0, shown - 1)) * blockSpacing
+                + cardBodyLineHeight
+                + CGFloat(shown) * (row + blockSpacing)
             // The "and N more" line, which only exists when something is hidden.
             if sessionCount > shown {
                 height += blockSpacing + cardBodyLineHeight
             }
+        } else if isAntigravity {
+            height += blockSpacing + hairline + blockSpacing + cardBodyLineHeight
         }
         return height
     }

@@ -1270,9 +1270,9 @@ final class NotchViewModel: ObservableObject {
 
     private func contentCardHeight(sessionCap: Int) -> CGFloat {
         snapshots.map { snapshot in
-            NotchLayout.cardHeight(windowCount: snapshot.windows.count,
-                groupCount: Set(snapshot.windows.compactMap(\.group)).count,
-                moneyWindowCount: snapshot.windows.filter { $0.money != nil }.count,
+            NotchLayout.cardHeight(windowCount: snapshot.visibleWindows.count,
+                groupCount: snapshot.visibleGroupCount,
+                moneyWindowCount: snapshot.visibleWindows.filter { $0.money != nil }.count,
                 usageDetailGroupCount: snapshot.usageDetail?.visibleGroups.count ?? 0,
                 sessionCount: snapshot.localModel == nil ? sessionCap + 1 : 0,
                 sessionCap: sessionCap,
@@ -1286,7 +1286,8 @@ final class NotchViewModel: ObservableObject {
                 localLedgerRows: snapshot.localLedgerRowCount,
                 compactRowCount: snapshot.compactRowCount,
                 showsDeepSeekPricing: deepSeekPricingEnabled,
-                costRows: costRows(for: snapshot))
+                costRows: costRows(for: snapshot),
+                isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id))
         }.max() ?? 0
     }
 

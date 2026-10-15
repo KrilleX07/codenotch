@@ -612,7 +612,7 @@ final class Preferences: ObservableObject {
     ) -> AntigravityHeadlineModel {
         guard let value = defaults.string(forKey: Keys.antigravityHeadlineModel),
               let model = AntigravityHeadlineModel(rawValue: value)
-        else { return .gemini }
+        else { return .all }
         return model
     }
 
@@ -885,7 +885,7 @@ final class Preferences: ObservableObject {
         self.antigravityHeadlineLimit = defaults.string(forKey: Keys.antigravityHeadlineLimit)
             .flatMap(AntigravityHeadlineLimit.init(rawValue:)) ?? .automatic
         self.antigravityHeadlineModel = defaults.string(forKey: Keys.antigravityHeadlineModel)
-            .flatMap(AntigravityHeadlineModel.init(rawValue:)) ?? .gemini
+            .flatMap(AntigravityHeadlineModel.init(rawValue:)) ?? .all
         // Follow the Mac unless the user explicitly chooses a Codenotch colour.
         // Off by default: an extra arc in a 44pt circle is a change to how
         // every reading looks, and nobody asked for it on their behalf.
