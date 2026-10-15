@@ -2028,31 +2028,23 @@ final class AntigravityModelFilterTests: XCTestCase {
 
     func testResolveHeadlineIDWithAll() {
         let provider = AntigravityProvider()
-        let defaults = UserDefaults.standard
-        let prevModel = defaults.string(forKey: "antigravityHeadlineModel")
-        let prevLimit = defaults.string(forKey: "antigravityHeadlineLimit")
-        addTeardownBlock {
-            if let prevModel { defaults.set(prevModel, forKey: "antigravityHeadlineModel") } else { defaults.removeObject(forKey: "antigravityHeadlineModel") }
-            if let prevLimit { defaults.set(prevLimit, forKey: "antigravityHeadlineLimit") } else { defaults.removeObject(forKey: "antigravityHeadlineLimit") }
-        }
+        let suite = "AntigravityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(AntigravityHeadlineModel.all.rawValue, forKey: "antigravityHeadlineModel")
         defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
-        let headline = provider.resolveHeadlineID(for: windows)
+        let headline = provider.resolveHeadlineID(for: windows, defaults: defaults)
         XCTAssertEqual(headline, "gemini-weekly")
     }
 
     func testResolveHeadlineIDWithThirdParty() {
         let provider = AntigravityProvider()
-        let defaults = UserDefaults.standard
-        let prevModel = defaults.string(forKey: "antigravityHeadlineModel")
-        let prevLimit = defaults.string(forKey: "antigravityHeadlineLimit")
-        addTeardownBlock {
-            if let prevModel { defaults.set(prevModel, forKey: "antigravityHeadlineModel") } else { defaults.removeObject(forKey: "antigravityHeadlineModel") }
-            if let prevLimit { defaults.set(prevLimit, forKey: "antigravityHeadlineLimit") } else { defaults.removeObject(forKey: "antigravityHeadlineLimit") }
-        }
+        let suite = "AntigravityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(AntigravityHeadlineModel.thirdParty.rawValue, forKey: "antigravityHeadlineModel")
         defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
-        let headline = provider.resolveHeadlineID(for: windows)
+        let headline = provider.resolveHeadlineID(for: windows, defaults: defaults)
         XCTAssertEqual(headline, "3p-weekly")
     }
 
