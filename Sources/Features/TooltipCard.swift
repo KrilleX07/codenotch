@@ -1019,12 +1019,11 @@ private struct SessionRow: View {
                      trailingColor: stateColor) {
                 StatusRing(state: session.state, color: stateColor)
             }
-            SplitRow(
-                leading: detail,
-                trailing: ElapsedCopy.text(since: session.since, now: now),
-                leadingColor: secondaryInk
-            )
-            .padding(.top, NotchLayout.sessionRowGap)
+            Text(detail)
+                .font(Typography.cardBody)
+                .foregroundStyle(secondaryInk)
+                .lineLimit(1)
+                .padding(.top, NotchLayout.sessionRowGap)
         }
         // Sessions that publish a pid can be jumped to; the rest are text,
         // and a gesture on them would promise something it cannot do.
