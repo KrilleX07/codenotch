@@ -182,8 +182,13 @@ actor AntigravityProvider: UsageProvider {
         )
     }
 
-    nonisolated static func filterWindows(_ windows: [LimitWindow], preferredModel: AntigravityHeadlineModel = Preferences.storedAntigravityHeadlineModel()) -> [LimitWindow] {
-        switch preferredModel {
+    nonisolated static func filterWindows(
+        _ windows: [LimitWindow],
+        preferredModel: AntigravityHeadlineModel? = nil,
+        defaults: UserDefaults = .standard
+    ) -> [LimitWindow] {
+        let model = preferredModel ?? Preferences.storedAntigravityHeadlineModel(defaults: defaults)
+        switch model {
         case .all:
             return windows
         case .gemini:
@@ -208,9 +213,9 @@ actor AntigravityProvider: UsageProvider {
         }
     }
 
-    nonisolated func resolveHeadlineID(for windows: [LimitWindow]) -> String {
-        let preferredLimit = Preferences.storedAntigravityHeadlineLimit()
-        let preferredModel = Preferences.storedAntigravityHeadlineModel()
+    nonisolated func resolveHeadlineID(for windows: [LimitWindow], defaults: UserDefaults = .standard) -> String {
+        let preferredLimit = Preferences.storedAntigravityHeadlineLimit(defaults: defaults)
+        let preferredModel = Preferences.storedAntigravityHeadlineModel(defaults: defaults)
         let modelCandidates: [LimitWindow]
         if preferredModel == .all {
             modelCandidates = windows
@@ -256,8 +261,8 @@ actor AntigravityProvider: UsageProvider {
         return lhs.id > rhs.id
     }
 
-    nonisolated func resolveWeeklyID(for windows: [LimitWindow]) -> String? {
-        let preferredModel = Preferences.storedAntigravityHeadlineModel()
+    nonisolated func resolveWeeklyID(for windows: [LimitWindow], defaults: UserDefaults = .standard) -> String? {
+        let preferredModel = Preferences.storedAntigravityHeadlineModel(defaults: defaults)
         let modelCandidates: [LimitWindow]
         if preferredModel == .all {
             modelCandidates = windows
