@@ -1,5 +1,6 @@
 import XCTest
 import Sparkle
+import SQLite3
 @testable import Codenotch
 
 /// Fixtures are the real thing: the keychain payload's shape and the actual
@@ -1210,6 +1211,98 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         let absent = root.appendingPathComponent("nowhere")
         XCTAssertTrue(AntigravityActivityMonitor.read(root: absent, staleAfter: 45).isEmpty)
     }
+
+    func testWorkspaceAndUserInputDateAreExtractedForSession() throws {
+        let file = try transcript("live", modified: Date())
+        let userInputDate = Date().addingTimeInterval(-300) // 5 minutes ago
+        let now = Date()
+        let session = AntigravityActivityMonitor.session(
+            trajectory: file,
+            title: "My Feature",
+            workspace: "Codenotch",
+            agentName: nil,
+            userInputDate: userInputDate,
+            modified: now,
+            staleAfter: 45,
+            now: now
+        )
+        XCTAssertNotNil(session)
+        XCTAssertEqual(session?.name, "My Feature")
+        XCTAssertEqual(session?.detail, "Codenotch")
+        XCTAssertEqual(session?.since, userInputDate)
+        XCTAssertEqual(session?.state, .busy)
+    }
+
+    func testWorkspaceParsedFromJSONString() {
+        XCTAssertEqual(
+            AntigravityActivityMonitor.parseWorkspace(from: "[\"file:///Users/dev/Desktop/Codenotch\"]"),
+            "Codenotch"
+        )
+        XCTAssertEqual(
+            AntigravityActivityMonitor.parseWorkspace(from: "[\"file:///Users/dev/Documents/antigravity/nifty-meitner\"]"),
+            "nifty-meitner"
+        )
+        XCTAssertNil(AntigravityActivityMonitor.parseWorkspace(from: "[]"))
+        XCTAssertNil(AntigravityActivityMonitor.parseWorkspace(from: "invalid"))
+    }
+
+    func testFallbackExtractsWorkspaceAndUserInputDateFromTranscriptTail() throws {
+        let now = Date()
+        let userDate = now.addingTimeInterval(-180)
+        let isoFormatter = ISO8601DateFormatter()
+        let userDateStr = isoFormatter.string(from: userDate)
+
+        let lines = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(userDateStr)\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"tool_calls\": [{\"name\": \"run_command\", \"args\": {\"Cwd\": \"/Users/dev/Desktop/Dropover\"}}]}"
+        ]
+        try transcript("project-session", modified: now, content: lines.joined(separator: "\n"))
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 45, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.name, "Dropover")
+        XCTAssertEqual(sessions.first?.detail, "Dropover")
+        XCTAssertEqual(sessions.first?.state, .busy)
+        if let since = sessions.first?.since {
+            XCTAssertEqual(floor(since.timeIntervalSince1970), floor(userDate.timeIntervalSince1970))
+        } else {
+            XCTFail("since should not be nil")
+        }
+    }
+
+    func testCancelledUserInputExpiresQuickly() throws {
+        let now = Date()
+        try transcript("cancelled", modified: now.addingTimeInterval(-15), content: "{\"type\": \"USER_INPUT\"}")
+        let sessionsOld = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertTrue(sessionsOld.isEmpty, "User input from 15s ago without response should not be considered running")
+
+        try transcript("fresh", modified: now.addingTimeInterval(-5), content: "{\"type\": \"USER_INPUT\"}")
+        let sessionsFresh = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertEqual(sessionsFresh.count, 1)
+        XCTAssertEqual(sessionsFresh.first?.state, .busy)
+    }
+
+    func testStaleDBCandidateDoesNotBecomeZombieBusySession() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            let wal = dbURL.appendingPathExtension("wal")
+            let shm = dbURL.appendingPathExtension("shm")
+            try? FileManager.default.removeItem(at: wal)
+            try? FileManager.default.removeItem(at: shm)
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+        let staleTime = "2026-10-14 20:00:00"
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo1', 'Old Session', 'running', '\(staleTime)', '\(staleTime)', '[]', '', 1, 0);", nil, nil, nil)
+
+        try transcript("convo1", modified: now.addingTimeInterval(-300))
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertTrue(sessions.isEmpty, "Stale conversation in DB should not produce a zombie busy session")
+    }
 }
 
 /// The "Open" button on an account row. The reading is borrowed from an app on
@@ -1936,6 +2029,12 @@ final class AntigravityModelFilterTests: XCTestCase {
     func testResolveHeadlineIDWithAll() {
         let provider = AntigravityProvider()
         let defaults = UserDefaults.standard
+        let prevModel = defaults.string(forKey: "antigravityHeadlineModel")
+        let prevLimit = defaults.string(forKey: "antigravityHeadlineLimit")
+        addTeardownBlock {
+            if let prevModel { defaults.set(prevModel, forKey: "antigravityHeadlineModel") } else { defaults.removeObject(forKey: "antigravityHeadlineModel") }
+            if let prevLimit { defaults.set(prevLimit, forKey: "antigravityHeadlineLimit") } else { defaults.removeObject(forKey: "antigravityHeadlineLimit") }
+        }
         defaults.set(AntigravityHeadlineModel.all.rawValue, forKey: "antigravityHeadlineModel")
         defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
         let headline = provider.resolveHeadlineID(for: windows)
@@ -1945,9 +2044,50 @@ final class AntigravityModelFilterTests: XCTestCase {
     func testResolveHeadlineIDWithThirdParty() {
         let provider = AntigravityProvider()
         let defaults = UserDefaults.standard
+        let prevModel = defaults.string(forKey: "antigravityHeadlineModel")
+        let prevLimit = defaults.string(forKey: "antigravityHeadlineLimit")
+        addTeardownBlock {
+            if let prevModel { defaults.set(prevModel, forKey: "antigravityHeadlineModel") } else { defaults.removeObject(forKey: "antigravityHeadlineModel") }
+            if let prevLimit { defaults.set(prevLimit, forKey: "antigravityHeadlineLimit") } else { defaults.removeObject(forKey: "antigravityHeadlineLimit") }
+        }
         defaults.set(AntigravityHeadlineModel.thirdParty.rawValue, forKey: "antigravityHeadlineModel")
         defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
         let headline = provider.resolveHeadlineID(for: windows)
         XCTAssertEqual(headline, "3p-weekly")
+    }
+
+    func testAntigravityBridgeFiltersOutCodenotchBridge() {
+        let processTable = """
+        36522 /Applications/Antigravity.app/Contents/Resources/bin/language_server --csrf_token OLD-TOKEN --app_data_dir codenotch-bridge
+        42033 /Applications/Antigravity.app/Contents/Resources/bin/language_server --csrf_token REAL-TOKEN --app_data_dir antigravity
+        """
+        let endpoint = AntigravityBridge.discover(processTable: processTable, listeningPorts: { pid in
+            pid == 42033 ? [54321] : [12345]
+        })
+        XCTAssertNotNil(endpoint)
+        XCTAssertEqual(endpoint?.csrfToken, "REAL-TOKEN")
+        XCTAssertEqual(endpoint?.ports, [54321])
+    }
+
+    func testAntigravityCredentialsEmailExtraction() {
+        let header = "eyJhbGciOiJSUzI1NiJ9"
+        let payload = "eyJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20ifQ"
+        let signature = "dGVzdA"
+        let jwt = "\(header).\(payload).\(signature)"
+        XCTAssertEqual(AntigravityCredentials.emailFromJWT(jwt), "user@example.com")
+    }
+
+    func testAntigravityLayoutHeightWithZeroAndMultipleSessions() {
+        let baseHeight = NotchLayout.cardHeight(windowCount: 2, isAntigravity: false)
+        let antigravityZeroSessionsHeight = NotchLayout.cardHeight(windowCount: 2, sessionCount: 0, isAntigravity: true)
+        XCTAssertGreaterThan(antigravityZeroSessionsHeight, baseHeight)
+        XCTAssertEqual(
+            antigravityZeroSessionsHeight - baseHeight,
+            NotchLayout.blockSpacing + NotchLayout.hairline + NotchLayout.blockSpacing + NotchLayout.cardBodyLineHeight,
+            accuracy: 0.001
+        )
+
+        let antigravityTwoSessionsHeight = NotchLayout.cardHeight(windowCount: 2, sessionCount: 2, isAntigravity: true)
+        XCTAssertGreaterThan(antigravityTwoSessionsHeight, antigravityZeroSessionsHeight)
     }
 }

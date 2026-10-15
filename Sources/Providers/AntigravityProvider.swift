@@ -42,6 +42,7 @@ actor AntigravityProvider: UsageProvider {
     /// number, and a ring that reads 8% one minute and 31 the next looks broken
     /// rather than degraded.
     private var everBridged = false
+    private var lastAccountIdentifier: String?
 
     /// How the language server is asked, when a test needs to say. Production
     /// leaves this nil and goes through `localQuota()`, which spawns `ps` and
@@ -74,9 +75,12 @@ actor AntigravityProvider: UsageProvider {
     }
 
     nonisolated func account() -> ProviderAccount? {
-        if AntigravityCredentials.isSignedIn(for: profile), let held = AntigravityCredentials.held(for: profile) {
-            let email = held.email
-            let plan = held.authMethod == "consumer" ? L10n.t("Personal") : held.authMethod
+        let email = AntigravityCredentials.currentAccountEmail(for: profile)
+            ?? AntigravityCredentials.held(for: profile)?.email
+        let held = AntigravityCredentials.held(for: profile)
+        let plan = (held?.authMethod == "consumer") ? L10n.t("Personal") : (held?.authMethod ?? L10n.t("Personal"))
+
+        if let email {
             return ProviderAccount(
                 label: email,
                 plan: plan,
@@ -108,15 +112,18 @@ actor AntigravityProvider: UsageProvider {
         // not need: someone who dismissed the keychain prompt got `accessDenied`
         // and an empty ring, while the server that would have answered sat
         // running on the same machine, never asked.
+        let acct = account()
+        let planString = acct?.label ?? acct?.plan
+
         if profile.slug == nil {
             if let rawWindows = await localQuota(), !rawWindows.isEmpty {
                 everBridged = true
                 UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
-                let windows = Self.filterWindows(rawWindows)
                 return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
-                                        fidelity: .official, status: .ok, windows: windows,
-                                        headlineID: resolveHeadlineID(for: windows),
-                                        weeklyID: resolveWeeklyID(for: windows))
+                                        fidelity: .official, status: .ok, windows: rawWindows,
+                                        headlineID: resolveHeadlineID(for: rawWindows),
+                                        weeklyID: resolveWeeklyID(for: rawWindows),
+                                        plan: planString)
             }
 
             if localQuotaOverride != nil && everBridged {
@@ -129,22 +136,22 @@ actor AntigravityProvider: UsageProvider {
         if let credentials,
            let rawWindows = try? await quota(token: credentials.accessToken, project: credentials.projectId),
            !rawWindows.isEmpty {
-            let windows = Self.filterWindows(rawWindows)
             return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
-                                    fidelity: .official, status: .ok, windows: windows,
-                                    headlineID: resolveHeadlineID(for: windows),
-                                    weeklyID: resolveWeeklyID(for: windows))
+                                    fidelity: .official, status: .ok, windows: rawWindows,
+                                    headlineID: resolveHeadlineID(for: rawWindows),
+                                    weeklyID: resolveWeeklyID(for: rawWindows),
+                                    plan: planString)
         }
 
         // 2. Fallback to OMP SQLite store if offline or direct call fails
         if profile.slug == nil {
             let rawOmpWindows = Self.ompUsageWindows(forEmail: credentials?.email)
             if !rawOmpWindows.isEmpty {
-                let windows = Self.filterWindows(rawOmpWindows)
                 return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
-                                        fidelity: .official, status: .ok, windows: windows,
-                                        headlineID: resolveHeadlineID(for: windows),
-                                        weeklyID: resolveWeeklyID(for: windows))
+                                        fidelity: .official, status: .ok, windows: rawOmpWindows,
+                                        headlineID: resolveHeadlineID(for: rawOmpWindows),
+                                        weeklyID: resolveWeeklyID(for: rawOmpWindows),
+                                        plan: planString)
             }
         }
 
@@ -273,7 +280,30 @@ actor AntigravityProvider: UsageProvider {
     /// answer to fall back to.
     private func localQuota() async -> [LimitWindow]? {
         if let localQuotaOverride { return await localQuotaOverride() }
+
+        // Track active account email & credentials modification date
+        let currentEmail = AntigravityCredentials.currentAccountEmail(for: profile)
+        let lastMod = AntigravityCredentials.lastModified(for: profile)
+        let accountKey = "\(currentEmail ?? "")-\(lastMod?.timeIntervalSince1970 ?? 0)"
+        if let last = lastAccountIdentifier, last != accountKey {
+            Log.usage.notice("Antigravity account or credentials changed (\(last) -> \(accountKey)); resetting bridge")
+            self.bridge = nil
+            AntigravityBridge.owned.stop()
+            AntigravityCredentials.forgetCached(for: profile)
+        }
+        self.lastAccountIdentifier = accountKey
+
         if let bridge {
+            // If the current bridge is our owned process, but a real IDE has now started,
+            // immediately switch to the real IDE!
+            if AntigravityBridge.owned.pid != nil, let realIDE = AntigravityBridge.discover() {
+                Log.usage.notice("Antigravity real IDE discovered; switching from owned bridge")
+                AntigravityBridge.owned.stop()
+                self.bridge = realIDE
+                if let windows = try? await AntigravityBridge.quota(from: realIDE, session: localSession), !windows.isEmpty {
+                    return windows
+                }
+            }
             do {
                 let windows = try await AntigravityBridge.quota(from: bridge, session: localSession)
                 if !windows.isEmpty { return windows }

@@ -452,6 +452,20 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// Group headings occupy space in both the card and its hover region.
     var windowGroupCount: Int { Set(windows.compactMap(\.group)).count }
 
+    var visibleWindows: [LimitWindow] {
+        if AntigravityProfile.isAntigravity(providerID: id) {
+            return AntigravityProvider.filterWindows(windows)
+        }
+        return windows
+    }
+
+    var visibleGroupCount: Int {
+        if AntigravityProfile.isAntigravity(providerID: id) {
+            return Set(visibleWindows.compactMap(\.group)).count
+        }
+        return windowGroupCount
+    }
+
     /// How many windows are count-only (no fraction, no bar) — they render as
     /// single-line rows and take less vertical space than full bar rows.
     var compactRowCount: Int {

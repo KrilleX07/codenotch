@@ -116,16 +116,71 @@ struct AntigravityCredentials {
     /// prefix the value is not JSON at all.
     private static let goKeyringPrefix = "go-keyring-base64:"
 
+    static func lastModified(for profile: AntigravityProfile = .default()) -> Date? {
+        if profile.slug == nil {
+            let keychainMod = KeychainItem.modifiedAt(service: service, account: account)
+            let jsonPath = ("~/.gemini/oauth_creds.json" as NSString).expandingTildeInPath
+            let jsonMod = (try? FileManager.default.attributesOfItem(atPath: jsonPath))?[.modificationDate] as? Date
+            let accountsPath = ("~/.gemini/google_accounts.json" as NSString).expandingTildeInPath
+            let accountsMod = (try? FileManager.default.attributesOfItem(atPath: accountsPath))?[.modificationDate] as? Date
+            let ompPath = ("~/.omp/agent/agent.db" as NSString).expandingTildeInPath
+            let ompMod = (try? FileManager.default.attributesOfItem(atPath: ompPath))?[.modificationDate] as? Date
+            return [keychainMod, jsonMod, accountsMod, ompMod].compactMap { $0 }.max()
+        } else {
+            let jsonMod = (try? FileManager.default.attributesOfItem(atPath: profile.authURL.path))?[.modificationDate] as? Date
+            let agentDB = profile.configDirectory.appendingPathComponent("agent.db").path
+            let dbMod = (try? FileManager.default.attributesOfItem(atPath: agentDB))?[.modificationDate] as? Date
+            return [jsonMod, dbMod].compactMap { $0 }.max()
+        }
+    }
+
+    /// Resolves the currently active Google account email for this profile.
+    static func currentAccountEmail(for profile: AntigravityProfile = .default()) -> String? {
+        if let held = held(for: profile), let email = held.email, !email.isEmpty {
+            return email
+        }
+        if profile.slug == nil {
+            let accountsPath = ("~/.gemini/google_accounts.json" as NSString).expandingTildeInPath
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: accountsPath)),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let active = json["active"] as? String, !active.isEmpty {
+                return active
+            }
+            let oauthPath = ("~/.gemini/oauth_creds.json" as NSString).expandingTildeInPath
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: oauthPath)),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let email = json["email"] as? String, !email.isEmpty { return email }
+                if let idToken = json["id_token"] as? String, let email = emailFromJWT(idToken) { return email }
+            }
+        } else {
+            let authURL = profile.authURL
+            if let data = try? Data(contentsOf: authURL),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let email = json["email"] as? String, !email.isEmpty { return email }
+                if let idToken = json["id_token"] as? String, let email = emailFromJWT(idToken) { return email }
+            }
+        }
+        return nil
+    }
+
+    static func emailFromJWT(_ token: String) -> String? {
+        let parts = token.split(separator: ".")
+        guard parts.count >= 2 else { return nil }
+        var base64 = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 {
+            base64.append("=")
+        }
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let email = json["email"] as? String, !email.isEmpty else { return nil }
+        return email
+    }
+
     static func load() throws -> AntigravityCredentials {
         try cache.value(
-            itemModifiedAt: {
-                let keychainMod = KeychainItem.modifiedAt(service: service, account: account)
-                let jsonPath = ("~/.gemini/oauth_creds.json" as NSString).expandingTildeInPath
-                let jsonMod = (try? FileManager.default.attributesOfItem(atPath: jsonPath))?[.modificationDate] as? Date
-                let ompPath = ("~/.omp/agent/agent.db" as NSString).expandingTildeInPath
-                let ompMod = (try? FileManager.default.attributesOfItem(atPath: ompPath))?[.modificationDate] as? Date
-                return [keychainMod, jsonMod, ompMod].compactMap { $0 }.max()
-            },
+            itemModifiedAt: { lastModified(for: .default()) },
             reload: read
         )
     }
@@ -133,12 +188,7 @@ struct AntigravityCredentials {
     static func load(for profile: AntigravityProfile) throws -> AntigravityCredentials {
         if profile.slug == nil { return try load() }
         return try cache(for: profile).value(
-            itemModifiedAt: {
-                let jsonMod = (try? FileManager.default.attributesOfItem(atPath: profile.authURL.path))?[.modificationDate] as? Date
-                let agentDB = profile.configDirectory.appendingPathComponent("agent.db").path
-                let dbMod = (try? FileManager.default.attributesOfItem(atPath: agentDB))?[.modificationDate] as? Date
-                return [jsonMod, dbMod].compactMap { $0 }.max()
-            },
+            itemModifiedAt: { lastModified(for: profile) },
             reload: { try read(for: profile) }
         )
     }
@@ -258,18 +308,20 @@ struct AntigravityCredentials {
             let email: String?
             let project_id: String?
             let projectId: String?
+            let id_token: String?
         }
 
         guard let payload = try? JSONDecoder().decode(JSONPayload.self, from: data),
               let token = payload.access_token else { return nil }
 
         let expiry = payload.expiry_date.map { Date(timeIntervalSince1970: $0 / 1000.0) } ?? Date.distantFuture
+        let email = payload.email ?? payload.id_token.flatMap(emailFromJWT)
         return AntigravityCredentials(
             accessToken: token,
             expiresAt: expiry,
             authMethod: "consumer",
             projectId: payload.projectId ?? payload.project_id,
-            email: payload.email
+            email: email
         )
     }
 
@@ -293,15 +345,19 @@ struct AntigravityCredentials {
             }
             let auth_method: String
             let token: Token
+            let id_token: String?
+            let email: String?
         }
 
         guard let stored = try? JSONDecoder().decode(Stored.self, from: payload),
               let expiry = parse(stored.token.expiry)
         else { return nil }
 
+        let email = stored.email ?? stored.id_token.flatMap(emailFromJWT)
         return AntigravityCredentials(accessToken: stored.token.access_token,
                                       expiresAt: expiry,
-                                      authMethod: stored.auth_method)
+                                      authMethod: stored.auth_method,
+                                      email: email)
     }
 
     /// Fractional seconds are not optional in this field, but a formatter that

@@ -597,12 +597,7 @@ private struct ProviderTooltip: View {
         var windows: [LimitWindow]
     }
 
-    private var visibleWindows: [LimitWindow] {
-        if AntigravityProfile.isAntigravity(providerID: snapshot.id) {
-            return AntigravityProvider.filterWindows(snapshot.windows)
-        }
-        return snapshot.windows
-    }
+    private var visibleWindows: [LimitWindow] { snapshot.visibleWindows }
 
     private var groupedWindows: [WindowGroup] {
         var result: [WindowGroup] = []
@@ -1064,12 +1059,32 @@ private struct SessionList: View {
     private var shown: [AgentSession] { Array(ordered.prefix(max(0, cap))) }
     private var hidden: Int { max(0, summary.sessions.count - shown.count) }
 
+    private var runningCount: Int {
+        summary.sessions.filter { $0.state == .busy || $0.state == .waiting }.count
+    }
+
+    private var runningCountText: String {
+        if runningCount == 0 {
+            return L10n.t("idle")
+        } else if runningCount == 1 {
+            return L10n.t("1 running")
+        } else {
+            return String(format: L10n.t("%lld running"), runningCount)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Rectangle()
                 .fill(Palette.ringTrack)
                 .frame(height: NotchLayout.hairline)
                 .padding(.top, NotchLayout.blockSpacing)
+
+            SplitRow(leading: L10n.t("Active Agents"), trailing: runningCountText) {
+                StatusRing(state: runningCount > 0 ? .busy : .idle,
+                           color: runningCount > 0 ? Palette.textPrimary : secondaryInk)
+            }
+            .padding(.top, NotchLayout.blockSpacing)
 
             // Only as many as the card's budgeted height can hold. The rest
             // are counted rather than drawn: the card is clipped, not scrolled,
@@ -1085,6 +1100,24 @@ private struct SessionList: View {
                     .foregroundStyle(secondaryInk)
                     .padding(.top, NotchLayout.blockSpacing)
             }
+        }
+    }
+}
+
+private struct NoAgentsRow: View {
+    @Environment(\.tooltipSecondaryInk) private var secondaryInk
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle()
+                .fill(Palette.ringTrack)
+                .frame(height: NotchLayout.hairline)
+                .padding(.top, NotchLayout.blockSpacing)
+
+            SplitRow(leading: L10n.t("Agents"), trailing: L10n.t("No agents running")) {
+                StatusRing(state: .idle, color: secondaryInk)
+            }
+            .padding(.top, NotchLayout.blockSpacing)
         }
     }
 }
@@ -1118,19 +1151,8 @@ struct TooltipCard: View {
         return activity.note ?? activity.sessions.first?.name ?? L10n.t("Thinking")
     }
 
-    private var visibleWindows: [LimitWindow] {
-        if AntigravityProfile.isAntigravity(providerID: snapshot.id) {
-            return AntigravityProvider.filterWindows(snapshot.windows)
-        }
-        return snapshot.windows
-    }
-
-    private var visibleGroupCount: Int {
-        if AntigravityProfile.isAntigravity(providerID: snapshot.id) {
-            return Set(visibleWindows.compactMap(\.group)).count
-        }
-        return snapshot.windowGroupCount
-    }
+    private var visibleWindows: [LimitWindow] { snapshot.visibleWindows }
+    private var visibleGroupCount: Int { snapshot.visibleGroupCount }
 
     /// The same figure the hover region uses, so what is drawn and what is
     /// reachable can never drift apart.
@@ -1152,7 +1174,8 @@ struct TooltipCard: View {
             localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount,
             showsDeepSeekPricing: deepSeekPricingEnabled,
-            costRows: costRows
+            costRows: costRows,
+            isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id)
         )
     }
 
@@ -1179,9 +1202,11 @@ struct TooltipCard: View {
                                             schedule: deepSeekPricingSchedule,
                                             showsPricing: deepSeekPricingEnabled)
                     }
-                    if let activity, snapshot.localModel == nil {
+                    if let activity, snapshot.localModel == nil, !activity.sessions.isEmpty {
                         SessionList(summary: activity, now: now, cap: sessionCap,
                                     onFocus: onFocusSession)
+                    } else if snapshot.localModel == nil, AntigravityProfile.isAntigravity(providerID: snapshot.id) {
+                        NoAgentsRow()
                     }
                     if costRows > 0, let model = CostModels.model(for: snapshot.id) {
                         CostSection(model: model, rows: costRows)

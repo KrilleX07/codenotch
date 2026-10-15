@@ -40,7 +40,13 @@ final class PhoneLinkTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("phone-link-v3-vectors.json")
-        let vector = try JSONDecoder().decode(Vector.self, from: Data(contentsOf: vectorURL))
+        let data: Data
+        do {
+            data = try Data(contentsOf: vectorURL)
+        } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoPermissionError {
+            throw XCTSkip("macOS privacy restricts reading vectors at \(vectorURL.path)")
+        }
+        let vector = try JSONDecoder().decode(Vector.self, from: data)
 
         let secret = try PhoneLinkCrypto.deviceSecret(code: vector.code, deviceId: vector.deviceId)
         let deviceKeys = PhoneLinkCrypto.deviceKeys(secret: secret)

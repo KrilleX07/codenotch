@@ -5,16 +5,19 @@ import XCTest
 /// app's language is English, and a half-finished locale must not block CI.
 final class CatalogCoverageTests: XCTestCase {
     func testSourceLanguageIsEnglish() throws {
-        XCTAssertEqual(try loadCatalog().json.sourceLanguage, "en")
+        let catalog = try loadCatalog().json
+        XCTAssertEqual(catalog.sourceLanguage, "en")
     }
 
     func testTheCatalogHasKeys() throws {
-        XCTAssertFalse(try loadCatalog().json.strings.isEmpty, "catalog has no strings")
+        let catalog = try loadCatalog().json
+        XCTAssertFalse(catalog.strings.isEmpty, "catalog has no strings")
     }
 
     func testCatalogHasNoMergeConflictMarkers() throws {
+        let catalog = try loadCatalog()
         XCTAssertFalse(
-            try loadCatalog().raw.contains("<<<<<<"),
+            catalog.raw.contains("<<<<<<"),
             "Localizable.xcstrings still has a leftover conflict marker"
         )
     }

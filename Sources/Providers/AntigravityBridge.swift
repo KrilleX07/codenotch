@@ -48,24 +48,35 @@ enum AntigravityBridge {
         let table = processTable ?? run("/bin/ps", ["-Ao", "pid,command"])
         let lines = table.split(separator: "\n")
 
-        // The IDE's language server, which is the one that carries a token.
-        if let line = lines.first(where: {
-            $0.contains("language_server") && $0.contains("--csrf_token")
-        }),
+        // 1. The IDE's language server, which carries a token and is NOT
+        // an internal Codenotch-spawned bridge (--app_data_dir codenotch-bridge).
+        // If multiple IDE language servers exist, take the newest (highest PID).
+        let ideCandidates = lines.filter { line in
+            line.contains("language_server") &&
+            line.contains("--csrf_token") &&
+            !line.contains("codenotch-bridge")
+        }
+        if let line = ideCandidates.max(by: { pid(of: $0) < pid(of: $1) }),
            let token = value(of: "--csrf_token", in: String(line)),
            let endpoint = endpoint(for: line, token: token, ports: listeningPorts) {
+            owned.stop()
             return endpoint
         }
 
-        // Then the CLI, which serves the same RPC and is a whole install of its
+        // 2. Then the CLI, which serves the same RPC and is a whole install of its
         // own — somebody who uses `agy` and never installs the IDE has a real
         // quota to read and was getting the counted-requests fallback instead.
         // It asks for no token: on loopback it answers anyone.
         if let line = lines.first(where: isCLI),
            let endpoint = endpoint(for: line, token: nil, ports: listeningPorts) {
+            owned.stop()
             return endpoint
         }
         return nil
+    }
+
+    static func pid(of line: Substring) -> Int {
+        Int(line.trimmingCharacters(in: .whitespaces).split(separator: " ").first ?? "") ?? 0
     }
 
     /// The CLI runs as plain `agy`, so match the executable's name rather than
@@ -252,6 +263,20 @@ enum AntigravityBridge {
             if process?.isRunning == true { process?.terminate() }
             process = nil
             endpoint = nil
+            AntigravityBridge.killOrphanBridges()
+        }
+    }
+
+    /// Terminates any orphaned codenotch-bridge language servers that might have survived
+    /// from prior launches or crashed sessions.
+    static func killOrphanBridges() {
+        let table = run("/bin/ps", ["-Ao", "pid,command"])
+        for line in table.split(separator: "\n") {
+            if line.contains("language_server") && line.contains("codenotch-bridge") {
+                if let pid = Int(line.trimmingCharacters(in: .whitespaces).split(separator: " ").first ?? "") {
+                    _ = run("/bin/kill", ["-9", "\(pid)"])
+                }
+            }
         }
     }
 
