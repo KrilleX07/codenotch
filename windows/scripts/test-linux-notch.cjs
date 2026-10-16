@@ -44,3 +44,51 @@ test('leaving during a drag does not close or fold the notch',()=>{
 test('the GTK pointer entry point is not installed on Windows',()=>{
   assert.equal(pointerPage(false).context.window.codenotchPointer,undefined);
 });
+
+const contour=section('const isLinux=','/* Colour ramp');
+function contourPage(edge='right',zoom=1,platform='Linux x86_64'){
+  const nodes=[];
+  const root={firstChild:null,insertBefore:node=>nodes.push(node)};
+  const rect=['right','left'].includes(edge)
+    ? {left:290*zoom,top:187*zoom,width:70*zoom,height:276*zoom}
+    : {left:187*zoom,top:0,width:276*zoom,height:70*zoom};
+  const context=vm.createContext({
+    navigator:{platform},notchEdge:edge,pill:{getBoundingClientRect:()=>rect},
+    edgeIsVertical:()=>['right','left'].includes(edge),
+    getComputedStyle:()=>({getPropertyValue:()=> '38.7px'}),
+    document:{
+      body:{classList:{toggle(){}}},documentElement:{style:{zoom:String(zoom)}},
+      getElementById:()=>root,
+      createElementNS:(namespaceURI,tag)=>({
+        namespaceURI,tag,style:{},attributes:{},children:[],
+        setAttribute(name,value){this.attributes[name]=value;},
+        appendChild(child){this.children.push(child);},
+      }),
+    },
+  });
+  vm.runInContext(contour,context);
+  context.paintPillContour();
+  return {context,nodes,rect};
+}
+test('all four edges draw the body and both fillets in one SVG path',()=>{
+  for(const edge of ['right','left','top','bottom']){
+    const {context,nodes}=contourPage(edge);
+    assert.equal(nodes.length,1,edge);
+    assert.equal(nodes[0].children.length,1,edge);
+    const path=nodes[0].children[0].attributes.d;
+    assert.equal((path.match(/ A/g)||[]).length,2,`${edge}: both fillets are in the body path`);
+    assert.doesNotMatch(path,/NaN|Infinity/,edge);
+    context.paintPillContour();
+    assert.equal(nodes.length,1,`${edge}: reuse the existing contour after layout updates`);
+  }
+});
+test('the contour stays aligned with the pill under CSS zoom',()=>{
+  const normal=contourPage('right'),scaled=contourPage('right',1.25);
+  assert.equal(scaled.nodes[0].style.left,normal.nodes[0].style.left);
+  assert.equal(scaled.nodes[0].style.top,normal.nodes[0].style.top);
+  assert.equal(scaled.nodes[0].style.width,normal.nodes[0].style.width);
+  assert.equal(scaled.nodes[0].style.height,normal.nodes[0].style.height);
+});
+test('Windows keeps its existing contour renderer',()=>{
+  assert.equal(contourPage('right',1,'Win32').nodes.length,0);
+});

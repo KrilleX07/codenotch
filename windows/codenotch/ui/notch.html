@@ -198,6 +198,19 @@
     --clip-rest:inset(calc(50% - 39.5px) 0 calc(50% - 39.5px) calc(100% - 10px) round 6px 0 0 6px);
     clip-path:var(--clip-open);transition:clip-path .36s cubic-bezier(.32,.72,.24,1)}
   body.folded #pill{clip-path:var(--clip-rest)}
+  /* WebKitGTK paints the overflowing gradient fillets separately from the
+     clipped pill. A single vector outline keeps all corners in the same frame. */
+  body.linux-vector #pill{background:transparent;border-color:transparent}
+  body.linux-vector #pill::before,body.linux-vector #pill::after{display:none}
+  #pillContour{position:absolute;pointer-events:none;overflow:visible;
+    transform-origin:100% 50%;transition:transform .36s cubic-bezier(.32,.72,.24,1),opacity .18s ease}
+  #pillContour path{fill:var(--pill);stroke:var(--edge);stroke-width:1}
+  body.folded #pillContour{transform:scale(.14,.2);opacity:0}
+  body[data-edge="left"] #pillContour{transform-origin:0 50%}
+  body[data-edge="top"] #pillContour{transform-origin:50% 0}
+  body[data-edge="bottom"] #pillContour{transform-origin:50% 100%}
+  body.folded[data-edge="top"] #pillContour,body.folded[data-edge="bottom"] #pillContour{transform:scale(.2,.14)}
+  @media(prefers-reduced-motion:reduce){#pillContour{transition:none}}
   body[data-edge="left"] #pill{--clip-rest:inset(calc(50% - 39.5px) calc(100% - 10px) calc(50% - 39.5px) 0 round 0 6px 6px 0)}
   body[data-edge="top"] #pill,body[data-edge="bottom"] #pill{--clip-open:inset(-1px -40px -1px -40px round 0)}
   body[data-edge="top"] #pill{--clip-rest:inset(0 calc(50% - 39.5px) calc(100% - 10px) calc(50% - 39.5px) round 0 0 6px 6px)}
@@ -333,6 +346,28 @@
 const invoke = window.__TAURI__.core.invoke;
 const listen = window.__TAURI__.event.listen;
 const isLinux=/Linux/.test(navigator.platform);
+document.body.classList.toggle('linux-vector',isLinux);
+let pillContour=null, contourPath=null;
+function paintPillContour(){
+  if(!isLinux)return;
+  if(!pillContour){
+    pillContour=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    pillContour.id='pillContour';pillContour.setAttribute('aria-hidden','true');
+    contourPath=document.createElementNS(pillContour.namespaceURI,'path');
+    pillContour.appendChild(contourPath);
+    const root=document.getElementById('root');root.insertBefore(pillContour,root.firstChild);
+  }
+  const r=pill.getBoundingClientRect(),vertical=edgeIsVertical();
+  const z=parseFloat(document.documentElement.style.zoom)||1;
+  const F=(parseFloat(getComputedStyle(pill).getPropertyValue('--fillet'))||38.7)*z;
+  const W=vertical?r.width:r.height,H=vertical?r.height:r.width,R=Math.min(20*z,W/2,H/2);
+  if(!W||!H)return;
+  const width=vertical?W:H+2*F,height=vertical?H+2*F:W;
+  pillContour.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  Object.assign(pillContour.style,{left:`${(r.left-(vertical?0:F))/z}px`,top:`${(r.top-(vertical?F:0))/z}px`,width:`${width/z}px`,height:`${height/z}px`});
+  contourPath.setAttribute('d',`M${W} 0 A${F} ${F} 0 0 1 ${W-F} ${F} H${R} Q0 ${F} 0 ${F+R} V${F+H-R} Q0 ${F+H} ${R} ${F+H} H${W-F} A${F} ${F} 0 0 1 ${W} ${H+2*F} Z`);
+  contourPath.setAttribute('transform',notchEdge==='left'?`matrix(-1 0 0 1 ${W} 0)`:notchEdge==='top'?`matrix(0 -1 1 0 0 ${W})`:notchEdge==='bottom'?'matrix(0 1 1 0 0 0)':'matrix(1 0 0 1 0 0)');
+}
 
 /* Colour ramp (upstream palette values) */
 let AMPLE='#00FF88', WATCH='#F2FF00', CRIT='#FF3F00';
@@ -1509,6 +1544,7 @@ function tailReach(){
 /* Rust gates click-through on these, so they are reported whenever the pill or card moves, not only
    when the card opens: a stale pill rectangle is a pill that cannot be clicked. */
 function reportHot(){
+  paintPillContour();
   if(folded){ callq('set_hot',{rects:[wakeRect()],expanded:false,probe:probeRect()}).catch(()=>{}); return; }
   const open=card.classList.contains('show');
   const rects=open?[rectOf(pill),tailReach(),rectOf(card)]:[rectOf(pill)];
