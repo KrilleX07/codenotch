@@ -332,6 +332,7 @@
 <script>
 const invoke = window.__TAURI__.core.invoke;
 const listen = window.__TAURI__.event.listen;
+const isLinux=/Linux/.test(navigator.platform);
 
 /* Colour ramp (upstream palette values) */
 let AMPLE='#00FF88', WATCH='#F2FF00', CRIT='#FF3F00';
@@ -1601,6 +1602,7 @@ function pointerInHot(x,y){
 }
 let hideLogged=0;
 document.addEventListener('mousemove',e=>{
+  if(isLinux){ pointerIn=true; clearTimeout(foldTimer); clearTimeout(tuckTimer); }
   // Folded, the page is sent events only over the pill, so any movement at all is the pointer reaching it
   if(folded){ pointerIn=true; unfold(); }
   if(dragging)return; // no card while dragging
@@ -1616,6 +1618,7 @@ document.addEventListener('mousemove',e=>{
   else if(card.classList.contains('show')){ if(hideLogged++<5) jslog(`mousemove left the hot area -> collapse at ${e.clientX},${e.clientY}`); scheduleHide(); }
 });
 document.addEventListener('mouseout',e=>{ // relatedTarget null = the cursor left the page
+  if(isLinux&&!e.relatedTarget){ pointerIn=false; setHovered(null); scheduleFold(); }
   if(!e.relatedTarget && card.classList.contains('show')){ if(hideLogged++<5) jslog('mouseout left the page -> collapse'); scheduleHide(); }
 });
 listen('pointer_left',()=>{clearTimeout(hideTimer);hideCard();}).catch(()=>{});
@@ -2138,6 +2141,12 @@ function applyFullScreen(on){
 }
 listen('full_screen',e=>applyFullScreen(e.payload)).catch(()=>{});
 invoke('get_full_screen').then(applyFullScreen).catch(()=>{});
+// Called by GTK crossing events on Linux; the native side owns the leave grace timer.
+if(isLinux) window.codenotchPointer = inside => {
+  pointerIn=inside;
+  if(inside){ clearTimeout(hideTimer); unfold(); }
+  else if(!dragging){ setHovered(null); clearTimeout(hideTimer); hideCard(); scheduleFold(); }
+};
 // Off the notch is off the orb too: once the window is click-through the page may never see it leave
 listen('notch_pointer',e=>{
   pointerIn=e.payload===true;
