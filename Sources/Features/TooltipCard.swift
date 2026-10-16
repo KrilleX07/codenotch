@@ -1,3 +1,5 @@
+import AppKit
+import QuartzCore
 import SwiftUI
 
 /// The regular Liquid Glass material follows the desktop behind it. A dark
@@ -366,10 +368,6 @@ private struct StatusRing: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// One turn, in seconds. Slow enough to read as deliberate rather than as
-    /// something struggling.
-    private static let period: Double = 1.4
-
     var body: some View {
         Group {
             switch state {
@@ -379,19 +377,15 @@ private struct StatusRing: View {
                     // "in progress" without anything moving.
                     ring(trim: 0.75)
                 } else {
-                    // A timeline rather than `repeatForever`. An endless
-                    // animation has to be cancelled to stop, and setting the
-                    // value it is already heading towards does not cancel it —
-                    // which is exactly how the refresh ring here once span for
-                    // ever. Derived from the clock, it simply stops being drawn.
-                    TimelineView(.animation) { context in
-                        ring(trim: 0.75)
-                            .rotationEffect(.degrees(angle(at: context.date)))
-                    }
+                    // Turned by Core Animation rather than SwiftUI TimelineView.
+                    // A TimelineView in a non-activating panel pauses when the mouse
+                    // stops moving or when display links throttle; a layer animation
+                    // is carried out by the render server and turns continuously
+                    // without stopping or consuming CPU.
+                    StatusRingSpinner(color: color)
                 }
             case .waiting, .success:
                 // Half a ring, held still: blocked, not progressing. (Or a full ring for success).
-                // Wait, if we want success to be a full ring, we can use 1.0 trim for success.
                 ring(trim: state == .success ? 1.0 : 0.5)
             case .idle:
                 ring(trim: 1)
@@ -408,10 +402,156 @@ private struct StatusRing: View {
             // Start the gap at the top, where the eye lands first.
             .rotationEffect(.degrees(-90))
     }
+}
 
-    private func angle(at date: Date) -> Double {
-        let turns = date.timeIntervalSinceReferenceDate / Self.period
-        return turns.truncatingRemainder(dividingBy: 1) * 360
+private struct StatusRingSpinner: NSViewRepresentable {
+    let color: Color
+
+    func makeNSView(context: Context) -> StatusRingSpinnerView {
+        StatusRingSpinnerView(color: NSColor(color))
+    }
+
+    func updateNSView(_ view: StatusRingSpinnerView, context: Context) {
+        view.setColor(NSColor(color))
+    }
+}
+
+final class StatusRingSpinnerView: NSView {
+    static let turnDuration: CFTimeInterval = 1.4
+    static let animationKey = "statusRingTurn"
+
+    private let arc = CAShapeLayer()
+    private var color: NSColor
+    private var lastBounds: NSRect = .zero
+
+    init(color: NSColor) {
+        self.color = color
+        super.init(frame: NSRect(x: 0, y: 0, width: NotchLayout.statusDot, height: NotchLayout.statusDot))
+        wantsLayer = true
+        arc.fillColor = nil
+        arc.lineCap = .round
+        arc.lineWidth = NotchLayout.statusDotStroke
+        arc.strokeStart = 0
+        arc.strokeEnd = 0.75
+        arc.contentsScale = NSScreen.main?.backingScaleFactor ?? 2.0
+        layer?.addSublayer(arc)
+        applyColor()
+        rebuildPath()
+        updateAnimation()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NotchLayout.statusDot, height: NotchLayout.statusDot)
+    }
+
+    func setColor(_ newColor: NSColor) {
+        guard color != newColor else { return }
+        color = newColor
+        applyColor()
+    }
+
+    override func layout() {
+        super.layout()
+        rebuildPath()
+        updateAnimation()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let scale = window?.backingScaleFactor {
+            arc.contentsScale = scale
+        }
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: nil
+        )
+        if let window = window {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowOcclusionDidChange),
+                name: NSWindow.didChangeOcclusionStateNotification,
+                object: window
+            )
+        }
+        updateAnimation()
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        NotificationCenter.default.removeObserver(
+            self,
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: nil
+        )
+    }
+
+    @objc private func windowOcclusionDidChange() {
+        if window?.occlusionState.contains(.visible) == true {
+            updateAnimation()
+        }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyColor()
+    }
+
+    private func applyColor() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            arc.strokeColor = color.cgColor
+        }
+        CATransaction.commit()
+    }
+
+    private func rebuildPath() {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        guard bounds != lastBounds else { return }
+        lastBounds = bounds
+
+        let stroke = NotchLayout.statusDotStroke
+        let radius = max(0, (min(bounds.width, bounds.height) - stroke) / 2)
+        let path = CGMutablePath()
+        // In NSView (y-up): startAngle .pi / 2 (12 o'clock), sweep clockwise (decreasing angle)
+        // by 2 * .pi back to 12 o'clock. Combined with strokeStart = 0, strokeEnd = 0.75,
+        // this draws a 270-degree arc from 12 o'clock clockwise to 9 o'clock.
+        path.addArc(
+            center: CGPoint(x: bounds.midX, y: bounds.midY),
+            radius: radius,
+            startAngle: .pi / 2,
+            endAngle: .pi / 2 - 2 * .pi,
+            clockwise: true
+        )
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        arc.frame = bounds
+        arc.path = path
+        CATransaction.commit()
+    }
+
+    private func updateAnimation() {
+        guard arc.animation(forKey: Self.animationKey) == nil else { return }
+        let turn = CABasicAnimation(keyPath: "transform.rotation.z")
+        turn.fromValue = 0
+        turn.toValue = -2 * Double.pi
+        turn.duration = Self.turnDuration
+        turn.repeatCount = .infinity
+        turn.isRemovedOnCompletion = false
+        turn.timingFunction = CAMediaTimingFunction(name: .linear)
+        // Phase-lock to the media clock so all spinners on screen turn in sync,
+        // and recreating views on SwiftUI state changes never causes angle skips.
+        turn.timeOffset = CACurrentMediaTime().truncatingRemainder(dividingBy: Self.turnDuration)
+        arc.add(turn, forKey: Self.animationKey)
     }
 }
 
@@ -1051,7 +1191,13 @@ private struct SessionList: View {
             let rank: (AgentSession) -> Int = {
                 switch $0.state { case .waiting: 0; case .busy: 1; case .success: 2; case .idle: 3 }
             }
-            return rank(a) == rank(b) ? a.since > b.since : rank(a) < rank(b)
+            if rank(a) != rank(b) {
+                return rank(a) < rank(b)
+            }
+            if a.since != b.since {
+                return a.since > b.since
+            }
+            return a.id < b.id
         }
     }
 

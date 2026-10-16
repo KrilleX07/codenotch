@@ -23,6 +23,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     /// Generous, because a model can think for a while between two lines.
     private let staleAfter: TimeInterval
     private var timer: Timer?
+    private var entered: [String: (state: AgentSession.State, at: Date)] = [:]
 
     init(roots: [URL] = AntigravityActivity.transcriptRoots,
          interval: TimeInterval = 2,
@@ -55,9 +56,28 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     }
 
     private func poll() {
-        let found = Self.read(roots: roots, staleAfter: staleAfter)
+        let read = Self.read(roots: roots, staleAfter: staleAfter)
+        let found = Self.settled(read, entered: &entered)
         guard found != sessions else { return }
         sessions = found
+    }
+
+    /// The rows with `since` meaning when the row entered its current state.
+    /// Preserves stable sort order so active sessions don't swap places on every write.
+    static func settled(_ sessions: [AgentSession],
+                        entered: inout [String: (state: AgentSession.State, at: Date)])
+    -> [AgentSession] {
+        var next: [String: (state: AgentSession.State, at: Date)] = [:]
+        let settled = sessions.map { session -> AgentSession in
+            let held = entered[session.id]
+            let at = held.flatMap { $0.state == session.state ? $0.at : nil } ?? session.since
+            next[session.id] = (session.state, at)
+            return AgentSession(id: session.id, name: session.name, detail: session.detail,
+                                state: session.state, waitingFor: session.waitingFor,
+                                since: at, processID: session.processID)
+        }
+        entered = next
+        return settled.sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
     }
 
     static func antigravityPID() -> pid_t? {
@@ -70,7 +90,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         let all = roots.flatMap { read(root: $0, staleAfter: staleAfter, now: now) }
         var seen = Set<String>()
         var unique: [AgentSession] = []
-        for s in all.sorted(by: { $0.since > $1.since }) {
+        for s in all.sorted(by: { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }) {
             if seen.insert(s.id).inserted {
                 unique.append(s)
             }
@@ -90,6 +110,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 let convoID = row[0]
                 guard !convoID.isEmpty else { continue }
                 let title = row[1]
+                let status = row[2]
                 let lastModifiedStr = row[3]
                 let lastUserInputStr = row[4]
                 let workspaceURIsStr = row[5]
@@ -114,6 +135,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 if let sess = session(
                     trajectory: transcriptPath,
                     title: title,
+                    status: status,
                     workspace: workspace,
                     agentName: agentName,
                     userInputDate: userInputDate,
@@ -125,7 +147,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 }
             }
             if !sessions.isEmpty {
-                return sessions.sorted(by: { $0.since > $1.since })
+                return sessions.sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
             }
         }
 
@@ -249,6 +271,12 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 }
             }
             
+            if let stepStatus = json["status"] as? String, stepStatus == "RUNNING" {
+                if resolvedState == nil {
+                    resolvedState = .busy
+                }
+            }
+
             if resolvedState == nil {
                 if type == "USER_INPUT" {
                     if isTurnOver {
@@ -287,7 +315,11 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                             resolvedState = .busy
                         }
                     } else {
-                        isTurnOver = true
+                        if let status = json["status"] as? String, status == "RUNNING" {
+                            resolvedState = .busy
+                        } else {
+                            isTurnOver = true
+                        }
                     }
                 } else if type == "EPHEMERAL_MESSAGE" || type == "CONVERSATION_HISTORY" || type == "KNOWLEDGE_ARTIFACTS" || type == "CHECKPOINT" {
                     continue
@@ -308,6 +340,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     static func session(
         trajectory: URL,
         title: String? = nil,
+        status: String? = nil,
         workspace: String? = nil,
         agentName: String? = nil,
         userInputDate: Date? = nil,
@@ -315,12 +348,28 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         staleAfter: TimeInterval,
         now: Date
     ) -> AgentSession? {
-        let (state, waitingFor, parsedUserInputDate, parsedWorkspace, latestStepType) = tail(of: trajectory)
+        let (parsedState, waitingFor, parsedUserInputDate, parsedWorkspace, latestStepType) = tail(of: trajectory)
             .map(parseState(inTail:)) ?? (.idle, nil, nil, nil, nil)
-        var resolvedState = state
+        var resolvedState = parsedState
         
         let age = now.timeIntervalSince(modified)
         
+        if let status = status?.uppercased(), !status.isEmpty {
+            if status.contains("RUNNING") {
+                if parsedState == .waiting {
+                    resolvedState = .waiting
+                } else {
+                    resolvedState = .busy
+                }
+            } else if status.contains("IDLE") {
+                if age <= 9 {
+                    resolvedState = .success
+                } else {
+                    return nil
+                }
+            }
+        }
+
         if resolvedState == .idle {
             if age <= 9 {
                 resolvedState = .success
