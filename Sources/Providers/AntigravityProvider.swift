@@ -109,10 +109,24 @@ actor AntigravityProvider: UsageProvider {
         // and an empty ring, while the server that would have answered sat
         // running on the same machine, never asked.
         if profile.slug == nil {
-            if let windows = await localQuota(), !windows.isEmpty {
+            if let bridged = await localQuota(), !bridged.isEmpty {
                 everBridged = true
                 UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
-                
+
+                // The language server's quota summary covers the groups it
+                // serves, which is not the whole account. Measured against one
+                // account: the server answered with the third-party group only,
+                // while Cloud Code PA answered with the Gemini group as well —
+                // and the Gemini group was where the usage actually was. Taking
+                // the server's answer as the account's would report a different
+                // allowance than the one asked for.
+                //
+                // So ask Cloud Code PA as well, but only when the answer so far
+                // cannot serve the family that was chosen. Where the server
+                // does report that family, nothing changes and the keychain is
+                // still never read.
+                let windows = await completedWindows(bridged) ?? bridged
+
                 return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
                                         fidelity: .official, status: .ok, windows: windows,
                                         headlineID: resolveHeadlineID(for: windows),
@@ -292,6 +306,42 @@ actor AntigravityProvider: UsageProvider {
         }
         Log.usage.debug("Antigravity: started server never bound a port")
         return nil
+    }
+
+    /// Completes a language-server answer with the account's other quota
+    /// groups, when it is missing the one that was chosen.
+    ///
+    /// The server's summary is a subset: it reports the groups it serves, and
+    /// the family the reader picked can be among the ones it does not. The
+    /// direct Cloud Code PA answer is the whole account, so it is asked for
+    /// only when the subset cannot serve the chosen family — otherwise the
+    /// reading would fall through to a different allowance and say so by
+    /// displaying that allowance's name, which reads as an answer rather than
+    /// as a missing one.
+    ///
+    /// Returns nil when there is nothing to add or the direct answer cannot be
+    /// had, so the caller keeps what it already has.
+    private func completedWindows(_ bridged: [LimitWindow]) async -> [LimitWindow]? {
+        let preferred = Preferences.storedAntigravityHeadlineModel().rawValue
+        guard !bridged.contains(where: { $0.id.hasPrefix(preferred) }) else { return nil }
+        guard let credentials = try? AntigravityCredentials.load(for: profile) else { return nil }
+        guard let direct = try? await quota(token: credentials.accessToken,
+                                            project: credentials.projectId),
+              !direct.isEmpty else { return nil }
+
+        // Union by id, the direct answer winning. Measured, it is a superset,
+        // but a union loses nothing if that stops being true.
+        var merged: [LimitWindow] = []
+        var indexByID: [String: Int] = [:]
+        for window in bridged + direct {
+            if let existing = indexByID[window.id] {
+                merged[existing] = window
+            } else {
+                indexByID[window.id] = merged.count
+                merged.append(window)
+            }
+        }
+        return merged
     }
 
     /// Ask for the account's quota, returning nil when it is not allowed to.
