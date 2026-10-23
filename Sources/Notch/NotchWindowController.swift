@@ -122,7 +122,7 @@ final class NotchWindowController {
     /// the change any sooner. A space or app switch drops it, so those
     /// still answer at once.
     private var lastFullScreenReading: (at: Date, screen: NSScreen?, value: Bool)?
-    static let fullScreenReadingLifetime: TimeInterval = 0.25
+    static let fullScreenReadingLifetime: TimeInterval = 1.5
 
     private func fullScreenReading() -> Bool {
         let screen = currentScreen()
