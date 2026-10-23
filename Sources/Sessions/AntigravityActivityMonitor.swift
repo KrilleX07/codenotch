@@ -146,9 +146,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                     sessions.append(sess)
                 }
             }
-            if !sessions.isEmpty {
-                return sessions.sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
-            }
+            return sessions.sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
         }
 
         // 2. Fallback: scan all trajectory transcripts in the directory
@@ -166,6 +164,8 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             let modified = Date(timeIntervalSince1970:
                 TimeInterval(info.st_mtimespec.tv_sec)
                 + TimeInterval(info.st_mtimespec.tv_nsec) / 1_000_000_000)
+            let age = now.timeIntervalSince(modified)
+            guard age <= max(staleAfter + 15, 86400) else { continue }
             if let sess = session(
                 trajectory: URL(fileURLWithPath: transcriptPath),
                 title: nil,
@@ -183,21 +183,33 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         return sessions.sorted(by: { $0.since > $1.since })
     }
 
-    private static func parseDate(_ string: String) -> Date? {
-        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let normalized = trimmed.replacingOccurrences(of: " ", with: "T")
+    private static let isoFormatterFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = f.date(from: normalized) { return d }
-        f.formatOptions = [.withInternetDateTime]
-        if let d = f.date(from: normalized) { return d }
+        return f
+    }()
 
+    private static let isoFormatterInternet: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static let fallbackDateFormatter: DateFormatter = {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
         df.timeZone = TimeZone(secondsFromGMT: 0)
         df.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return df.date(from: trimmed)
+        return df
+    }()
+
+    private static func parseDate(_ string: String) -> Date? {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let normalized = trimmed.replacingOccurrences(of: " ", with: "T")
+        if let d = isoFormatterFractional.date(from: normalized) { return d }
+        if let d = isoFormatterInternet.date(from: normalized) { return d }
+        return fallbackDateFormatter.date(from: trimmed)
     }
 
     static func parseWorkspace(from jsonString: String) -> String? {
@@ -348,11 +360,14 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         staleAfter: TimeInterval,
         now: Date
     ) -> AgentSession? {
+        let age = now.timeIntervalSince(modified)
+        if let status = status?.uppercased(), !status.isEmpty, status.contains("IDLE"), age > 9 {
+            return nil
+        }
+
         let (parsedState, waitingFor, parsedUserInputDate, parsedWorkspace, latestStepType) = tail(of: trajectory)
             .map(parseState(inTail:)) ?? (.idle, nil, nil, nil, nil)
         var resolvedState = parsedState
-        
-        let age = now.timeIntervalSince(modified)
         
         if let status = status?.uppercased(), !status.isEmpty {
             if status.contains("RUNNING") {
@@ -377,9 +392,15 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 return nil
             }
         } else if resolvedState == .busy {
-            if latestStepType == "USER_INPUT" {
-                // If a turn ended on USER_INPUT with no follow-up, it was cancelled
-                // immediately by the user or dropped. Expire quickly.
+            let isRunning = status?.uppercased().contains("RUNNING") == true
+            if isRunning {
+                // The Antigravity database explicitly marks this session as RUNNING.
+                // Models often think (CoT) for 15-45s and build commands can take minutes,
+                // during which transcript.jsonl is not updated. Don't drop active agents.
+                guard age <= max(staleAfter, 120) else { return nil }
+            } else if latestStepType == "USER_INPUT" {
+                // If a turn ended on USER_INPUT with no follow-up and no RUNNING status,
+                // it was cancelled immediately by the user or dropped. Expire quickly.
                 guard age <= min(staleAfter, 12) else { return nil }
             } else {
                 guard age <= staleAfter else { return nil }
