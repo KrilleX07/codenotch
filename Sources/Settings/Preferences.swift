@@ -323,6 +323,11 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(colorTransitionStyle.rawValue, forKey: Keys.colorTransitionStyle) }
     }
 
+    /// Horizontal progress bar direction in tooltip cards — consumed or remaining.
+    @Published var progressBarMode: ProgressBarMode {
+        didSet { defaults.set(progressBarMode.rawValue, forKey: Keys.progressBarMode) }
+    }
+
     /// The language the app itself speaks.
     ///
     /// `.system` follows the Mac. Written through `L10n.apply` so the store
@@ -557,6 +562,7 @@ final class Preferences: ObservableObject {
         static let watchLimit = "watchLimit"
         static let criticalLimit = "criticalLimit"
         static let colorTransitionStyle = "colorTransitionStyle"
+        static let progressBarMode = "progressBarMode"
         static let customEndpoints = "customEndpoints"
         static let lastSeenVersion = "lastSeenVersion"
         static let order = "providerOrder"
@@ -910,6 +916,8 @@ final class Preferences: ObservableObject {
         self.watchLimit = min(max(storedWatchLimit, 0.01), critical - 0.01)
         self.colorTransitionStyle = defaults.string(forKey: Keys.colorTransitionStyle)
             .flatMap(ColorTransitionStyle.init(rawValue:)) ?? .hardStep
+        self.progressBarMode = defaults.string(forKey: Keys.progressBarMode)
+            .flatMap(ProgressBarMode.init(rawValue:)) ?? .remaining
         // Absent means never chosen, which is follow-the-Mac.
         self.language = defaults.string(forKey: L10n.languageDefaultsKey)
             .flatMap(AppLanguage.init(rawValue:)) ?? .system

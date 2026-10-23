@@ -33083,9 +33083,83 @@
         }
       }
     },
+    "Progress bar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress bar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полоса прогресса"
+          }
+        }
+      }
+    },
+    "Consumed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consumed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Расход"
+          }
+        }
+      }
+    },
+    "Bar fills from left to right (0% to 100%) as quota is used.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bar fills from left to right (0% to 100%) as quota is used."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полоса заполняется слева направо (от 0% до 100%) по мере расхода."
+          }
+        }
+      }
+    },
+    "Bar starts full and empties from right to left (100% to 0%) as quota is used.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bar starts full and empties from right to left (100% to 0%) as quota is used."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полоса начинается полной и опустошается справа налево (от 100% до 0%) по мере расхода."
+          }
+        }
+      }
+    },
     "Remaining": {
       "extractionState": "manual",
       "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остаток"
+          }
+        },
         "de": {
           "stringUnit": {
             "state": "translated",
