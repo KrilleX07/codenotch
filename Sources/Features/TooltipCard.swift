@@ -641,7 +641,7 @@ private struct LimitWindowRow: View {
                     .animation(NotchMotion.reading, value: barColor)
                 }
 
-                Text("\(window.usedFraction == nil ? "" : fidelity.qualifier)\(window.detail ?? window.summary)\(paceText)")
+                Text("\(window.usedFraction == nil ? "" : fidelity.qualifier)\(window.detail ?? window.summary(mode: progressBarMode))\(paceText)")
                     .font(Typography.cardBody)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
