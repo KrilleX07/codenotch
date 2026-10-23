@@ -571,6 +571,7 @@ private struct LimitWindowRow: View {
     @Environment(\.usageCriticalLimit) private var criticalLimit
     @Environment(\.colorTransitionStyle) private var colorTransitionStyle
     @Environment(\.tooltipSecondaryInk) private var secondaryInk
+    @Environment(\.progressBarMode) private var progressBarMode
 
     private var band: UsageBand {
         if let override = window.bandOverride { return override }
@@ -587,7 +588,14 @@ private struct LimitWindowRow: View {
     private var trackWidth: CGFloat { NotchLayout.cardWidth - 2 * NotchLayout.cardPadding - inset }
     private var fillWidth: CGFloat {
         let fraction = CGFloat(min(max(window.usedFraction ?? 0, 0), 1))
-        return max(NotchLayout.barHeight, trackWidth * fraction)
+        switch progressBarMode {
+        case .consumed:
+            return max(NotchLayout.barHeight, trackWidth * fraction)
+        case .remaining:
+            let remaining = 1 - fraction
+            guard remaining > 0 else { return 0 }
+            return max(NotchLayout.barHeight, trackWidth * remaining)
+        }
     }
 
     private var paceText: Text {
@@ -623,10 +631,14 @@ private struct LimitWindowRow: View {
                 if window.usedFraction != nil {
                     ZStack(alignment: .leading) {
                         Capsule().fill(Palette.barTrack)
-                        Capsule().fill(barColor).frame(width: fillWidth)
+                        if fillWidth > 0 {
+                            Capsule().fill(barColor).frame(width: fillWidth)
+                        }
                     }
                     .frame(width: trackWidth, height: NotchLayout.barHeight)
                     .padding(.top, NotchLayout.labelToBar)
+                    .animation(NotchMotion.reading, value: fillWidth)
+                    .animation(NotchMotion.reading, value: barColor)
                 }
 
                 Text("\(window.usedFraction == nil ? "" : fidelity.qualifier)\(window.detail ?? window.summary)\(paceText)")
@@ -648,6 +660,7 @@ private struct MoneyBreakdownView: View {
     @Environment(\.usageWatchLimit) private var watchLimit
     @Environment(\.usageCriticalLimit) private var criticalLimit
     @Environment(\.colorTransitionStyle) private var colorTransitionStyle
+    @Environment(\.progressBarMode) private var progressBarMode
 
     private var barColor: Color {
         guard colorTransitionStyle == .ramp else {
@@ -675,10 +688,19 @@ private struct MoneyBreakdownView: View {
             SplitRow(leading: title,
                      trailing: "\(fidelity.qualifier)\(Percent.text(for: money.spentFraction))% used")
             GeometryReader { proxy in
+                let activeFraction: CGFloat = {
+                    let spent = CGFloat(min(max(money.spentFraction, 0), 1))
+                    switch progressBarMode {
+                    case .consumed: return spent
+                    case .remaining: return max(0, 1 - spent)
+                    }
+                }()
                 HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(barColor)
-                        .frame(width: proxy.size.width * CGFloat(money.spentFraction))
+                    if activeFraction > 0 {
+                        Rectangle()
+                            .fill(barColor)
+                            .frame(width: proxy.size.width * activeFraction)
+                    }
                     Rectangle().fill(Palette.barTrack)
                 }
             }

@@ -668,6 +668,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak fleet] in fleet?.apply(colorTransitionStyle: $0) }
                 .store(in: &cancellables)
 
+            preferences.$progressBarMode
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(progressBarMode: $0) }
+                .store(in: &cancellables)
+
             Publishers.CombineLatest(preferences.$connectedProviders, preferences.$disabledModels)
                 .receive(on: RunLoop.main)
                 .sink { [weak store, weak preferences] _, _ in
@@ -1019,6 +1024,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(accentColor: preferences.accentColor)
         fleet.apply(watchLimit: preferences.watchLimit, criticalLimit: preferences.criticalLimit)
         fleet.apply(colorTransitionStyle: preferences.colorTransitionStyle)
+        fleet.apply(progressBarMode: preferences.progressBarMode)
         fleet.apply(weeklyRing: preferences.weeklyRing)
         fleet.apply(weeklyRingDashed: preferences.weeklyRingDashed)
         fleet.apply(showsNotchReadings: preferences.showsNotchReadings)
