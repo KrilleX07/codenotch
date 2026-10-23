@@ -219,9 +219,9 @@ struct LimitWindow: Identifiable, Codable, Equatable {
     }
 
     /// What the tooltip says on the line under the bar.
-    var summary: String { summary(locale: L10n.locale) }
+    var summary: String { summary(mode: .consumed, locale: L10n.locale) }
 
-    func summary(locale: Locale = L10n.locale) -> String {
+    func summary(mode: ProgressBarMode = .consumed, locale: Locale = L10n.locale) -> String {
         if let usedFraction {
             // Both ends of the same figure. Vendors do not agree on which to
             // show — Codex writes "87% remaining", Claude writes "% used" — so
@@ -230,7 +230,12 @@ struct LimitWindow: Identifiable, Codable, Equatable {
             // different numbers rather than one seen from either end. That is
             // what made a correct reading look wrong.
             let halves = Percent.halves(for: usedFraction)
-            return L10n.t("\(halves.used)% Used · \(halves.left)% left", locale: locale)
+            switch mode {
+            case .consumed:
+                return L10n.t("\(halves.used)% Used · \(halves.left)% left", locale: locale)
+            case .remaining:
+                return L10n.t("\(halves.left)% left · \(halves.used)% Used", locale: locale)
+            }
         }
         if let remaining {
             return remaining < 10_000
