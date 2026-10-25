@@ -1331,6 +1331,41 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
         XCTAssertTrue(sessions.isEmpty, "Stale conversation in DB should not produce a zombie busy session")
     }
+
+    func testRecentlyCompletedSessionProducesSuccessSession() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            let wal = dbURL.appendingPathExtension("wal")
+            let shm = dbURL.appendingPathExtension("shm")
+            try? FileManager.default.removeItem(at: wal)
+            try? FileManager.default.removeItem(at: shm)
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        let completedTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-2))
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_completed', 'Task Done', 'CASCADE_RUN_STATUS_IDLE', '\(completedTime)', '\(completedTime)', '[]', '', 0, 0);", nil, nil, nil)
+
+        let finishedTurnContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(completedTime)\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Task finished\"}"
+        ].joined(separator: "\n")
+        try transcript("convo_completed", modified: now.addingTimeInterval(-2), content: finishedTurnContent)
+
+        // Within 9 seconds: reads as .success so completion watcher can announce it
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.name, "Task Done")
+        XCTAssertEqual(sessions.first?.state, .success)
+
+        // After 9 seconds: expires cleanly and produces no active session
+        let expiredSessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now.addingTimeInterval(15))
+        XCTAssertTrue(expiredSessions.isEmpty, "Completed session should expire after 9 seconds")
+    }
 }
 
 /// The "Open" button on an account row. The reading is borrowed from an app on
