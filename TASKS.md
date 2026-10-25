@@ -384,7 +384,7 @@ Cursor both feed it, through one display model.
       inputs, summary precedence, label widths, elapsed copy
 - [ ] Notify on `waiting` (deliberately not built — colour and pulse only, per the
       design call. The hook is `ActivitySummary.waitingSessions`)
-- [ ] Click a session to focus its terminal window
+- [x] Click a session to focus its terminal window (`SessionFocus`)
 
 ### Why it is inside the ring
 
@@ -396,10 +396,44 @@ radius, a much thinner stroke, and a neutral colour. Working is **white** on
 purpose — the outer ring's colour already encodes how much of the limit is gone,
 so a green or amber inner arc could be misread as part of that scale. Waiting is
 the exception and takes amber, because it is the one state asking for something.
+Still the default — the breathing disc below is the opt-in alternative.
 
 Staleness dimming applies to the usage reading only. Whether Claude is working is
 known first-hand from a local file, so it stays at full strength even when the
 percentage behind it has gone stale.
+
+### The breathing disc
+
+The disc is offered as the "Working indicator" setting (`BusyIndicatorStyle`,
+Settings → Notch) next to the spinning quarter-arc. The arc stays the default
+because a visual change to every existing user's notch must be opt-in, the same
+rule `ColorTransitionStyle` follows. The brand colour, the faster breath when
+requests are queued and the absence of stale dimming come with the disc as one
+choice: they are what make it readable, and offered separately they would
+produce combinations nobody asked for.
+
+Working is then a filled disc that breathes under the glyph: it scales from 0.88
+to 1 and fades from 0.35 to 1 opacity over 1.1 s, autoreversing. It was picked
+from four prototypes viewed in the notch itself — a radar ring, a three-ring
+sonar, a radial-gradient fill and this breath.
+
+It takes the provider's brand colour (`ProviderGlyph.brandColor`), which revises
+"working is white on purpose". A soft fill at the glyph's radius is a different
+shape in a different place from the ring's stroke, and the usage scale only ever
+uses `ample` / `watch` / `critical`, so the two are not confused. Monochrome brands
+stay `textPrimary`. The disc is drawn under the glyph so the mark stays crisp.
+
+It is not dimmed when the reading goes stale. Whether an agent is working is known
+first-hand, which is the same rule the spinner followed.
+
+A local model with requests queued behind the running one breathes at 0.55 s
+instead of growing dots: a dotted stroke fought the fill. Reduce Motion leaves a
+still disc at 0.18 alpha.
+
+It is still a Core Animation layer rather than a SwiftUI `repeatForever`: that
+loop re-ran the hosting view's layout every frame and kept the app near
+4% of a core while any session was working, so the breath, like the spinner
+before it, is a layer animation the render server carries out.
 
 ### The floating notch
 
@@ -523,13 +557,28 @@ The first attempt at a back-off did nothing, because the endpoint answers
 `Retry-After: 0` and that was obeyed literally: "wait zero seconds" meant the
 poll kept firing straight back into the limit it was sustaining. The server's
 hint is now only allowed to *raise* the floor — the wait starts at 60s, doubles
-per consecutive 429, and caps at 15 minutes so it always recovers unattended.
+per consecutive 429, and caps its own schedule at 15 minutes. The server's
+Retry-After is never capped: a 3000-second hint means waiting at least 3000 seconds.
 
 The back-off also had to outlive the process. Every relaunch started clean and
 fired a request immediately, so a development loop of `make run` walked into the
 limit each time and kept it alive — the app was the thing sustaining its own
 punishment. `UsageArchive` now persists the deadline, and a relaunch during a
 penalty waits rather than spending an attempt.
+Windows persists separate profile deadlines in `usage-backoffs.json` next to
+`usage.json`; older snapshots conservatively restore the aggregate deadline for
+all profiles when the separate file is unavailable. Expired penalties are ignored.
+Both platforms parse Retry-After as seconds or an HTTP-date.
+
+Routine Claude OAuth reads use the plain endpoint, never `cedar_ember`. macOS
+reuses each profile's successful endpoint reading for five minutes at `.standard`
+and two minutes at `.live` or `.fromSource`, unless a window has expired or the
+token has changed. Interactive credential permission still reads the keychain,
+but an unchanged token does not bypass reuse. Back-off is checked before reuse.
+Windows spaces every account's attempts by five minutes, including failed and
+manual requests, with one early attempt for a newly crossed reset boundary.
+Its 60-second active loop stays in place for credential renewal, which does not
+cancel an endpoint penalty. Both platforms log endpoint attempts by profile.
 
 A 429 renders as staleness rather than an error: the last good reading is still
 roughly true and there is nothing the user can do about it.
@@ -680,7 +729,7 @@ corner's arc.
       point inside the open notch maps to a cell, so once rings became buttons
       there was no click target left to unpin with
 - [ ] Remember the pinned state across launches
-- [ ] Auto-fold when a full-screen app is frontmost
+- [x] Auto-fold when a full-screen app is frontmost (`FullScreenDetector`)
 
 The panel never resizes for the fold: animating a window frame is jerky, and the
 reserved space is transparent anyway. Both states share a centre line, so folding
@@ -806,10 +855,10 @@ rather than probing one point. A point 1pt below the top sits in a flare only
 hundredths of a point wide; that is a fact about arcs, not a bug.
 
 ## M6 — Polish
-- [ ] Threshold notifications (80% / 100%), per-provider mute
+- [x] Threshold notifications (80% / 100%), per-provider mute (`ThresholdNotifier`)
 - [ ] Auto-hide: never / on fullscreen / on overlap
-- [ ] Multi-display follow + unplug handling
-- [ ] Reduced-motion / reduced-transparency — reduced transparency is now the system's on the glass surface; see "The glass surface"
+- [x] Multi-display follow + unplug handling (`NotchFleet`)
+- [x] Reduced-motion / reduced-transparency — `NotchMotion` respects reduce-motion, and reduced transparency is handled across settings and notch surfaces
 - [ ] App icon, final name, README screenshots
 
 ## Managing accounts from Settings
@@ -880,10 +929,8 @@ credential, which is the same control under an honest name.
 - [x] On a fresh install it comes first and Settings follows when it is
       dismissed. Two windows arriving together is one to dismiss before you can
       read either.
-- [ ] **Write 1.0.0's copy.** `ReleaseNotes.all` carries a placeholder entry
-      drawn from the unreleased work. `testTheCurrentVersionHasANote` fails the
-      build if `MARKETING_VERSION` is bumped without an entry, so the ritual is
-      caught rather than remembered.
+- [x] **Write release notes copy up to 1.11.0.** `ReleaseNotes.all` carries full
+      entries up through 1.11.0, verified by `testTheCurrentVersionHasANote`.
 
 Two things worth keeping in mind:
 
@@ -1237,14 +1284,14 @@ it and then notice when the answer changes.
 
 ### Before charging for it
 
-- [ ] **`deploymentTarget` is macOS 26.0.** Nothing else on this list matters as
-      much: it excludes every Mac not on the newest OS. Worth checking what
-      actually requires it before shipping a paid build.
+- [x] **`deploymentTarget` lowered to macOS 15.0.** Sequoia support enabled,
+      gating macOS 26 Liquid Glass behind availability checks.
 - [ ] App icon — the dmg currently shows the generic application icon.
 - [ ] `MARKETING_VERSION` is still `0.1.0`.
-- [ ] The archive keeps a `perplexity` entry from a provider that no longer
+- [x] The archive keeps a `perplexity` entry from a provider that no longer
       exists. Harmless (snapshots are built from `providers`, so it is ignored)
-      but it never gets collected.
+      but it never gets collected. Pruned on load and save in `UsageArchive` so
+      cold starts and stored cache only preserve active provider states.
 
 ## Renaming to Codenotch
 
@@ -1705,6 +1752,61 @@ The dim is the one part of the style a headless render can see, so
 a panel size of its own, because the hand-me-down above would otherwise hand
 this test's dim to the folded-pill test that sorts right before it.
 
+### Dock
+
+`NotchSurfaceStyle.dock` draws the notch as the macOS Dock draws itself: on
+the left, right and bottom edges a floating slab of clear, lightly black-tinted
+Liquid Glass, corner radius 32pt continuous, 5pt clear of the screen edge;
+folded, a small floating capsule that morphs from and back into the slab. On
+the top edge the notch has to stay welded to the bezel and to a MacBook's own
+cutout, so the style resolves to Dark glass there (`resolved(on:)`). It is
+always dark (`darkAqua` on the panel), macOS 26+ only, and below 26 or under
+Reduce transparency it resolves to `solid` and the classic shape. Because a
+floating slab has nothing to anchor a settings orb or a move grip to, neither
+is drawn; Settings is reached from the notch's context menu, which gained a
+"Settings…" item for every style for that reason, and the notch is moved by
+option-dragging. A notch carried by option-drag keeps today's classic black
+shape in the hand. The radius and the gap were measured beside the real Dock,
+not quoted from the frame; the gap is not scaled by the size setting (it is a
+distance from the screen, like `bezelBleed`), the radius is.
+
+Earlier glass never looked like the Dock because the system frosts clear glass
+in any window that does not have active appearance, and a notch never takes
+focus. That was found by watching an ordinary test window frost the instant
+focus left it. Everything public failed: drawing the glass outside the clip,
+scale and mask of the notch; `NSGlassEffectView`; an ordinary key-capable
+window at normal level; `controlActiveState` and `appearsActive`; claiming
+`isKeyWindow` and `isMainWindow`, including on a non-activating panel. The one
+thing that works is answering AppKit's private selector `_hasActiveAppearance`
+with `true`. That is a private API, accepted by the user and named as such in
+`NotchPanel`'s comment and in the pull request. The panel claims it only while
+the notch floats (`claimsActiveAppearance`), so every other style looks exactly
+as it always did, and if a later macOS drops the selector it is never called
+and the slab falls back to frosted glass.
+
+The material is SwiftUI `Glass.clear` with a black tint (`Palette.dockGlassTint`,
+0.15). The AppKit tile at 0.15 was the reference beside the real Dock, and the
+same number matched best by eye. `NSGlassEffectView`'s private `_variant`
+values were looked at too and none was closer. The earlier note that a black
+tint cannot darken glass is about `.regular`; on `.clear` it does.
+
+The panel-wide claim cost two things, and each was paid for. Clear glass in the
+tooltip and the cards became truly clear, so a card laid over a terminal let
+its text through; the cards now take frosted `.regular` glass over a 0.40 black
+dim (`Palette.dockCardDim`), on every edge including the top one, which is why
+they read a style of their own (`\.notchCardSurfaceStyle`, the chosen style)
+rather than the one drawn on this edge. And the ring colours, sampled for a
+black notch, went faint over clear glass on a light desktop, so while the notch
+floats each ring gets a 0.25 black disc beneath it (`Palette.dockRingBacking`),
+as the Dock's own icons carry their own ground. Both numbers were tuned once by
+eye.
+
+A headless render leaves the glass material out, so the pixel tests check what
+is ours: the empty gap between the screen edge and the slab, the Dark glass dim
+on the top edge, the ring's disc and Reduce transparency painting solid.
+`DockStyleGeometryTests` pins the numbers, and skips the floating cases where
+there is no Liquid Glass. The material itself can only be judged by eye.
+
 ## The local model's ring
 
 ### A small context is an arc, not a dot
@@ -1784,9 +1886,9 @@ Two events ask outside the schedule, and neither is a timer:
 Even bounded at two minutes, a percentage is still a figure that was *read*
 rather than a live wire — and somebody comparing Codenotch against a vendor's
 own dashboard figure by figure wants the wire. `UsageFreshness.fromSource` is
-that: zero allowance on both of Claude's held sources, so whatever is held is
-skipped however new it is. A cache written two seconds ago *is* the account's
-number, so this knowingly spends a request to be told what it already knew.
+that: zero allowance on Claude's Desktop and CLI sources, so those held readings
+are skipped however new they are. The OAuth endpoint still protects each profile:
+`.fromSource` obeys its two-minute reuse floor and any active rate-limit penalty.
 
 It is a setting (`Preferences.asksProviderOnLook`, **General › Readings**) and
 off by default, because it is not strictly better. A provider that rate-limits
@@ -1796,7 +1898,7 @@ the schedule decides: the closure reaches `refreshBecauseSomeoneIsLooking` and
 nothing else, and the spacing is unchanged at 15s — the setting changes what an
 answer may be served from, never how often one is asked for. **Refresh now**, a
 ring clicked, the settings row's refresh and a phone's refresh ask for it
-unconditionally: each of those is a human's own click, rate-limited by the human.
+unconditionally; Claude's endpoint reuse floor and back-off still apply.
 
 Two things had to be right for it not to make freshness *worse*:
 
@@ -1843,9 +1945,14 @@ nevertheless stale:
 - [x] ~~Which service is the third glyph in the mockup?~~ Perplexity — its mark,
       traced off the frame, matches. Wired up as `ProviderGlyph.third`.
 - [ ] Plan ceilings: configured by hand, or inferred from observed peak usage?
-- [ ] Are web-session adapters (ChatGPT et al.) in scope for v1, accepting the fragility?
-      Claude now answers this for itself: the OAuth endpoint is in, so the same
-      question is live for OpenAI and Perplexity.
+- [x] ~~Are web-session adapters (ChatGPT et al.) in scope for v1, accepting the fragility?~~
+      Decided: **Out of scope.** Scraping ChatGPT web sessions or building a WKWebView
+      adapter is rejected due to Cloudflare/Turnstile bot defenses, rapid token churn,
+      and ToS risks. OpenAI/ChatGPT usage is officially covered via `CodexLocalProvider`
+      (reading the local Codex CLI / app session against `/wham/usage`) and Custom
+      Endpoints for API billing. `WebSessionProvider` remains reserved strictly for
+      explicit in-app WKWebView logins where no CLI exists and platforms permit it
+      (DeepSeek, Qianwen, MiniMax, Qoder). See `docs/plans/2026-10-12-web-session-adapters-roadmap-decision.md`.
 - [ ] `Design.scale` — the frame fixes only proportions, so the absolute size is
       a free parameter. It is anchored on the spec's 44pt ring, which puts the
       notch at 70 x 401pt. One constant changes it.

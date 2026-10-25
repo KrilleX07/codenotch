@@ -24,10 +24,25 @@ pub struct TraySlot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeProfileConfig {
+    pub id: String,
+    pub name: String,
+    #[serde(default = "yes")]
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(default)]
+    pub claude_profiles: Vec<ClaudeProfileConfig>,
+    /// off | left | right; an owned child window on the primary Windows taskbar.
+    #[serde(default = "default_taskbar_mode")]
+    pub taskbar_mode: String,
+    #[serde(default = "default_taskbar_width")]
+    pub taskbar_width: u32,
     #[serde(default = "default_port")]
     pub port: u16,
-    /// "auto" | "zh" | "zh-Hant" | "en" | "ja" | "ko" | "pt-BR" | "ru" | "uk"
+    /// "auto" | "zh" | "zh-Hant" | "en" | "ja" | "ko" | "pt-BR" | "ru" | "uk" | "es"
     #[serde(default = "default_lang")]
     pub lang: String,
     #[serde(default)]
@@ -107,9 +122,15 @@ pub struct Config {
     /// The same one-shot migration for the OpenCode ring.
     #[serde(default)]
     pub opencode_notch_fixed: bool,
+    /// Add Command Code to a previously saved notch selection once.
+    #[serde(default)]
+    pub commandcode_notch_fixed: bool,
     /// The same one-shot migration for the GitHub Copilot ring.
     #[serde(default)]
     pub copilot_notch_fixed: bool,
+    /// The same one-shot migration for the Qoder ring.
+    #[serde(default)]
+    pub qoder_notch_fixed: bool,
     /// false = the pill is kept off the screen edge entirely; the tray icon is then the only way in
     #[serde(default = "yes")]
     pub notch_visible: bool,
@@ -133,7 +154,23 @@ pub struct Config {
     /// (backdrop.rs). Opt-in for that reason; off, the pill takes Theme's colour.
     #[serde(default)]
     pub adaptive_pill: bool,
+    /// true = the notch folds to its pill while a full-screen app is in front on its screen, as the
+    /// Mac's does, and hovering it still opens it. Off, it stays as Show has it.
+    #[serde(default = "yes")]
+    pub fold_for_full_screen: bool,
+    /// true = the figure under each ring reads what is left rather than what is spent, as the
+    /// Mac's Appearance toggle. Off by default: used is what the notch has always drawn. The
+    /// rings themselves still sweep by what is spent either way.
+    #[serde(default)]
+    pub notch_shows_remaining: bool,
+    /// true = the card adds how far a timed window is ahead of its clock ("12% deficit"), as the
+    /// Mac's usage pace setting. Off by default, as on the Mac.
+    #[serde(default)]
+    pub show_usage_pace: bool,
 }
+
+fn default_taskbar_mode() -> String { "off".into() }
+fn default_taskbar_width() -> u32 { 280 }
 
 fn default_notch_y() -> f64 {
     0.5
@@ -279,6 +316,9 @@ fn default_lang() -> String {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            claude_profiles: Vec::new(),
+            taskbar_mode: default_taskbar_mode(),
+            taskbar_width: default_taskbar_width(),
             port: default_port(),
             lang: default_lang(),
             bar_x: None,
@@ -302,13 +342,18 @@ impl Default for Config {
             antigravity_model: default_antigravity_model(),
             glm_notch_fixed: true, // a fresh install picks from the full list already
             opencode_notch_fixed: true,
+            commandcode_notch_fixed: true,
             copilot_notch_fixed: true,
+            qoder_notch_fixed: true,
             notch_visible: true,
             notch_on_hover: true,
             tray_visible: true,
             reset_notifications: true,
             reset_notification_sound: true,
             adaptive_pill: false,
+            fold_for_full_screen: true,
+            notch_shows_remaining: false,
+            show_usage_pace: false,
         }
     }
 }
@@ -320,13 +365,40 @@ pub fn config_path() -> PathBuf {
         .join("config.json")
 }
 
+/// A byte-order mark is not JSON. PowerShell 5's `Set-Content -Encoding UTF8` and Notepad's "UTF-8
+/// with BOM" both write one, and serde_json takes it for a stray character, so a file edited that way
+/// lost every setting in it — and the migrations below, which read the same text, misread it too.
+fn without_bom(text: String) -> String {
+    match text.strip_prefix('\u{feff}') {
+        Some(rest) => rest.to_string(),
+        None => text,
+    }
+}
+
+/// A file that does not parse runs on the defaults, and the first thing saved would write them over
+/// it. So the owner's file is copied out of the way first, and run.log says why — before this a single
+/// hand-edit typo reset everything without a word. File names only in the log line: run.log is what
+/// gets pasted into issues.
+fn set_aside(path: &std::path::Path, err: &serde_json::Error) {
+    let kept = path.with_file_name("config.unreadable.json");
+    let note = match std::fs::copy(path, &kept) {
+        Ok(_) => "the file is kept as config.unreadable.json".to_string(),
+        Err(e) => format!("could not keep a copy ({e})"),
+    };
+    crate::applog(&format!("config: config.json could not be read ({err}), running on defaults; {note}"));
+}
+
 pub fn load() -> Config {
     let path = config_path();
-    let raw = std::fs::read_to_string(&path).ok();
-    let mut cfg: Config = raw
-        .as_deref()
-        .and_then(|t| serde_json::from_str(t).ok())
-        .unwrap_or_default();
+    let raw = std::fs::read_to_string(&path).ok().map(without_bom);
+    let mut cfg: Config = match raw.as_deref().map(serde_json::from_str::<Config>) {
+        Some(Ok(cfg)) => cfg,
+        Some(Err(e)) => {
+            set_aside(&path, &e);
+            Config::default()
+        }
+        None => Config::default(),
+    };
     keep_open_on_upgrade(&mut cfg, raw.as_deref());
 
     // Migration: before slots existed the notch was a plain provider list, one ring each. That is
@@ -344,8 +416,11 @@ pub fn load() -> Config {
     migrate_glm_notch(&mut cfg, &raw);
     // Likewise for OpenCode.
     migrate_opencode_notch(&mut cfg, &raw);
+    migrate_commandcode_notch(&mut cfg, &raw);
     // And for GitHub Copilot.
     migrate_copilot_notch(&mut cfg, &raw);
+    // And for Qoder.
+    migrate_qoder_notch(&mut cfg, &raw);
 
     // Both hidden would leave the app unreachable: no pill, no tray icon, no way to open settings.
     if !cfg.notch_visible && !cfg.tray_visible {
@@ -394,6 +469,22 @@ fn migrate_opencode_notch(cfg: &mut Config, raw: &Option<String>) {
     cfg.opencode_notch_fixed = true;
 }
 
+fn migrate_commandcode_notch(cfg: &mut Config, raw: &Option<String>) {
+    let predates = raw.as_deref()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(text).ok())
+        .is_some_and(|value| value.get("commandcode_notch_fixed").is_none());
+    if !predates { return; }
+    // Only for someone who has Command Code: every other upgrade would gain a ring for an app it
+    // has never had.
+    if crate::commandcode::present()
+        && !cfg.notch_slots.is_empty()
+        && !cfg.notch_slots.iter().any(|slot| slot.provider == "commandcode")
+    {
+        cfg.notch_slots.push(TraySlot { provider: "commandcode".into() });
+    }
+    cfg.commandcode_notch_fixed = true;
+}
+
 fn migrate_copilot_notch(cfg: &mut Config, raw: &Option<String>) {
     let predates = raw
         .as_deref()
@@ -409,21 +500,39 @@ fn migrate_copilot_notch(cfg: &mut Config, raw: &Option<String>) {
     cfg.copilot_notch_fixed = true;
 }
 
+fn migrate_qoder_notch(cfg: &mut Config, raw: &Option<String>) {
+    let predates = raw
+        .as_deref()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(t).ok())
+        .map(|v| v.get("qoder_notch_fixed").is_none())
+        .unwrap_or(false);
+    if !predates {
+        return;
+    }
+    if !cfg.notch_slots.is_empty() && !cfg.notch_slots.iter().any(|s| s.provider == "qoder") {
+        cfg.notch_slots.push(TraySlot { provider: "qoder".into() });
+    }
+    cfg.qoder_notch_fixed = true;
+}
+
 pub fn save(cfg: &Config) {
+    let _ = save_checked(cfg);
+}
+
+pub fn save_checked(cfg: &Config) -> Result<(), String> {
     let path = config_path();
     if let Some(dir) = path.parent() {
-        let _ = std::fs::create_dir_all(dir);
+        std::fs::create_dir_all(dir).map_err(|_| "Unable to create the settings folder".to_string())?;
     }
-    if let Ok(txt) = serde_json::to_string_pretty(cfg) {
-        let _ = std::fs::write(path, txt);
-    }
+    let txt = serde_json::to_string_pretty(cfg).map_err(|_| "Unable to serialize settings".to_string())?;
+    std::fs::write(path, txt).map_err(|_| "Unable to save settings".to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         carry_shared_position, clamp_critical_limit, clamp_watch_limit, color_transition_or_step,
-        keep_open_on_upgrade, snap_scale, theme_or_system, weekly_ring_or_off, Config,
+        keep_open_on_upgrade, snap_scale, theme_or_system, weekly_ring_or_off, without_bom, Config,
     };
 
     #[test]
@@ -440,6 +549,36 @@ mod tests {
         assert!(!restored.reset_notification_sound);
         assert!(!restored.notch_visible);
         assert_eq!(restored.theme, "light");
+    }
+
+    /// "es", the code the Mac's picker stores too, so both ports name Spanish the same way.
+    #[test]
+    fn spanish_is_kept_as_its_language_code() {
+        let cfg: Config = serde_json::from_str("{\"lang\":\"es\"}").expect("a Spanish config parses");
+        assert_eq!(cfg.lang, "es");
+    }
+
+    /// What PowerShell 5 writes for `Set-Content -Encoding UTF8`: the same JSON behind a BOM. It used
+    /// to read as an unreadable file, and every setting in it fell back to its default.
+    #[test]
+    fn a_byte_order_mark_keeps_the_settings() {
+        let text = without_bom("\u{feff}{\"lang\":\"ko\",\"scale\":0.8,\"notch_edge\":\"left\"}".to_string());
+        let cfg: Config = serde_json::from_str(&text).expect("a BOM-prefixed config parses");
+        assert_eq!(cfg.lang, "ko");
+        assert_eq!(cfg.scale, 0.8);
+        assert_eq!(cfg.notch_edge, "left");
+
+        // The migrations read the same text, so they must see past the mark too
+        let mut upgraded = Config::default();
+        keep_open_on_upgrade(&mut upgraded, Some(&without_bom("\u{feff}{\"notch_visible\":true}".to_string())));
+        assert!(!upgraded.notch_on_hover, "an upgrade saved with a BOM still stays open");
+    }
+
+    #[test]
+    fn text_without_a_mark_is_left_alone() {
+        assert_eq!(without_bom("{}".to_string()), "{}");
+        // Only a leading mark is one; anywhere else it is content
+        assert_eq!(without_bom("{\"a\":\"\u{feff}\"}".to_string()), "{\"a\":\"\u{feff}\"}");
     }
 
     /// Show on hover is the Mac's default, so a fresh install gets it — but an update must not start

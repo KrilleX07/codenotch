@@ -43,8 +43,28 @@ jobs:
       - name: Test Claude sign-in controls
         run: node scripts/test-claude-auth-ui.cjs
 
+      - name: Test Claude quota freshness
+        run: node scripts/test-claude-quota-freshness.cjs
+      - name: Test account and taskbar controls
+        run: node --test test-accounts-taskbar.cjs
+
       - name: Test Korean card localization
         run: node --test scripts/test-ko-i18n.cjs
+
+      - name: Test Spanish card localization
+        run: node --test scripts/test-es-i18n.cjs
+
+      - name: Test notch percentage text
+        run: node scripts/test-notch-pct.cjs
+
+      - name: Test usage pace deficit
+        run: node --test test-deficit.cjs
+
+      - name: Test Qoder usage parsing
+        run: node test-qoder-usage.cjs
+
+      - name: Test Linux notch hover and contour
+        run: node --test scripts/test-linux-notch.cjs
 
       - uses: dtolnay/rust-toolchain@stable
         with:

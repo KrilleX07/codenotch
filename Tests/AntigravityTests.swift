@@ -485,6 +485,34 @@ final class AntigravityQuotaTests: XCTestCase {
         XCTAssertEqual(providerWindows[3].usedFraction ?? -1, 0, accuracy: 0.0001)
     }
 
+    /// The server names groups and windows in English whatever the app's
+    /// language. They used to reach the card and the menu bar as sent, so a
+    /// Spanish Mac read "Weekly Limit" under "Claude and GPT models".
+    func testTheServersEnglishNamesAreShownInTheAppsLanguage() {
+        let previousLocale = L10n.testLocale
+        L10n.testLocale = Locale(identifier: "es")
+        defer { L10n.testLocale = previousLocale }
+
+        let grouped = Data("""
+        {"groups":[{"displayName":"Claude and GPT models","buckets":[
+          {"bucketId":"3p-5h","displayName":"Five Hour Limit Remaining","remainingFraction":1},
+          {"bucketId":"3p-weekly","displayName":"Weekly Limit","remainingFraction":1}]}]}
+        """.utf8)
+        let groupedWindows = AntigravityProvider.windows(in: grouped)
+        XCTAssertEqual(groupedWindows.map(\.group), ["Modelos Claude y GPT", "Modelos Claude y GPT"])
+        XCTAssertEqual(groupedWindows.map(\.label), ["Límite de 5 horas", "Límite semanal"])
+
+        let now = Date(timeIntervalSince1970: 1788900000)
+        let models = Data("""
+        {"buckets":[
+          {"modelId":"gemini-2.5-pro","remainingFraction":0.9,"resetTime":"2026-09-09T10:39:57Z"},
+          {"modelId":"claude-sonnet-4-6","remainingFraction":0.8,"resetTime":"2026-09-16T10:39:57Z"}]}
+        """.utf8)
+        let modelWindows = AntigravityProvider.windows(in: models, now: now)
+        XCTAssertEqual(modelWindows.map(\.group), ["Modelos Gemini", "Modelos Claude y GPT"])
+        XCTAssertEqual(modelWindows.map(\.label), ["Límite de 5 horas", "Límite semanal"])
+    }
+
     func testDirectCloudCodeIgnoresInvalidFractions() {
         let body = Data("""
         {
@@ -1585,9 +1613,10 @@ final class StatusMenuTests: XCTestCase {
         XCTAssertEqual(details, ["Sign in to Codex to read your usage"])
     }
 
-    /// The header carries the headline figure and the reading's age — the same
-    /// pair the tooltip header shows.
-    func testTheMenuListsEveryProviderWithRefreshAndSettings() {
+    /// Every provider gets a card, and the card carries the headline figure
+    /// and the reading's age — the same pair the tooltip header shows — with
+    /// its windows in the words accessibility is handed.
+    func testTheMenuDrawsEveryProviderWithRefreshAndSettings() throws {
         let controller = StatusItemController(onOpenSettings: {})
         controller.snapshots = [snapshot(
             status: .stale(since: now.addingTimeInterval(-(20 * 3600 + 21 * 60))),
@@ -1600,12 +1629,15 @@ final class StatusMenuTests: XCTestCase {
         let titles = menu.items.map(\.title)
         XCTAssertTrue(titles[0].contains("Codex — 29%"), titles[0])
         XCTAssertTrue(titles[0].contains("20 hr 21 min ago"), titles[0])
-        XCTAssertTrue(titles[1].contains("Weekly limit"), titles[1])
-        XCTAssertTrue(titles[1].contains("29% Used · 71% left"), titles[1])
+        XCTAssertNotNil(menu.items[0].view, "the provider was drawn as text")
+        let heard = try XCTUnwrap(menu.items[0].accessibilityLabel())
+        XCTAssertTrue(heard.contains("Weekly limit"), heard)
+        XCTAssertTrue(heard.contains("29% Used · 71% left"), heard)
         XCTAssertTrue(titles.contains("Refresh all"))
         XCTAssertTrue(titles.contains("Settings…"))
         XCTAssertTrue(titles.contains("Quit Codenotch"))
-        // The header re-reads its own provider.
+        // The card knows which provider it is drawn for, so an open menu can
+        // put a fresh reading on it without being rebuilt.
         XCTAssertEqual(menu.items[0].representedObject as? String, "codex")
     }
 
@@ -2081,5 +2113,130 @@ final class AntigravityModelFilterTests: XCTestCase {
 
         let antigravityTwoSessionsHeight = NotchLayout.cardHeight(windowCount: 2, sessionCount: 2, isAntigravity: true)
         XCTAssertGreaterThan(antigravityTwoSessionsHeight, antigravityZeroSessionsHeight)
+    }
+}
+
+final class AntigravityFlavorSelectionTests: XCTestCase {
+    func testRunningProcessBeatsNonRunningEvenWithOlderActivity() {
+        let ide = FlavorCandidate(
+            flavor: .ide,
+            credentials: nil,
+            isRunning: true,
+            lastActivity: Date(timeIntervalSince1970: 1000),
+            canProvideQuota: true,
+            isActive: true
+        )
+        let acp = FlavorCandidate(
+            flavor: .acp,
+            credentials: nil,
+            isRunning: false,
+            lastActivity: Date(timeIntervalSince1970: 2000),
+            canProvideQuota: true,
+            isActive: true
+        )
+
+        let ranked = AntigravityFlavor.rankCandidates([acp, ide])
+        XCTAssertEqual(ranked.first?.flavor, .ide, "A live running process must strictly beat a non-running one")
+    }
+
+    func testMultipleRunningTieBreaksByMostRecentActivity() {
+        let ide = FlavorCandidate(
+            flavor: .ide,
+            credentials: nil,
+            isRunning: true,
+            lastActivity: Date(timeIntervalSince1970: 1000),
+            canProvideQuota: true,
+            isActive: true
+        )
+        let acp = FlavorCandidate(
+            flavor: .acp,
+            credentials: nil,
+            isRunning: true,
+            lastActivity: Date(timeIntervalSince1970: 2000),
+            canProvideQuota: true,
+            isActive: true
+        )
+
+        let ranked = AntigravityFlavor.rankCandidates([ide, acp])
+        XCTAssertEqual(ranked.first?.flavor, .acp, "When multiple are running, newest activity wins")
+    }
+
+    func testMultipleRunningTieBreaksByPrecedenceWhenActivityIsMissingOrTied() {
+        let cli = FlavorCandidate(
+            flavor: .cli,
+            credentials: nil,
+            isRunning: true,
+            lastActivity: nil,
+            canProvideQuota: true,
+            isActive: true
+        )
+        let acp = FlavorCandidate(
+            flavor: .acp,
+            credentials: nil,
+            isRunning: true,
+            lastActivity: nil,
+            canProvideQuota: true,
+            isActive: true
+        )
+        let ide = FlavorCandidate(
+            flavor: .ide,
+            credentials: nil,
+            isRunning: true,
+            lastActivity: nil,
+            canProvideQuota: true,
+            isActive: true
+        )
+
+        let ranked = AntigravityFlavor.rankCandidates([cli, acp, ide])
+        XCTAssertEqual(ranked.map(\.flavor), [.ide, .acp, .cli], "Tie-breaker precedence must be IDE > ACP > CLI")
+    }
+
+    func testNoRunningProcessesTieBreaksByMostRecentActivity() {
+        let ide = FlavorCandidate(
+            flavor: .ide,
+            credentials: nil,
+            isRunning: false,
+            lastActivity: Date(timeIntervalSince1970: 1000),
+            canProvideQuota: true,
+            isActive: true
+        )
+        let cli = FlavorCandidate(
+            flavor: .cli,
+            credentials: nil,
+            isRunning: false,
+            lastActivity: Date(timeIntervalSince1970: 3000),
+            canProvideQuota: true,
+            isActive: true
+        )
+        let acp = FlavorCandidate(
+            flavor: .acp,
+            credentials: nil,
+            isRunning: false,
+            lastActivity: Date(timeIntervalSince1970: 2000),
+            canProvideQuota: true,
+            isActive: true
+        )
+
+        let ranked = AntigravityFlavor.rankCandidates([ide, cli, acp])
+        XCTAssertEqual(ranked.map(\.flavor), [.cli, .acp, .ide])
+    }
+
+    func testRunningFlavorsDetection() {
+        let table = """
+        100 /sbin/launchd
+        200 /Applications/Antigravity.app/Contents/Resources/bin/language_server --csrf_token 123
+        300 /usr/local/bin/agy
+        400 /Users/test/external_agents/antigravity-acp/agy_acp_server.par
+        """
+        let running = AntigravityFlavor.runningFlavors(processTable: table)
+        XCTAssertTrue(running.contains(.ide))
+        XCTAssertTrue(running.contains(.cli))
+        XCTAssertTrue(running.contains(.acp))
+    }
+
+    func testFlavorDisplayNames() {
+        XCTAssertEqual(AntigravityFlavor.ide.displayName, "Antigravity IDE")
+        XCTAssertEqual(AntigravityFlavor.cli.displayName, "Antigravity CLI")
+        XCTAssertEqual(AntigravityFlavor.acp.displayName, "Antigravity ACP")
     }
 }

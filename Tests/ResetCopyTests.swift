@@ -84,6 +84,24 @@ final class ResetCopyTests: XCTestCase {
         }
     }
 
+    /// The hover path formats the same templates on every mouse event, so the
+    /// formatter behind each template is built once and then reused — while
+    /// two templates, or two locales, must never share one.
+    func testFormattersAreReusedPerTemplateAndLocale() {
+        let calendar = Calendar(identifier: .gregorian)
+        let us = Locale(identifier: "en_US")
+        let first = ResetCopy.formatter(template: "E j:mm", calendar: calendar, locale: us)
+        let second = ResetCopy.formatter(template: "E j:mm", calendar: calendar, locale: us)
+        XCTAssertIdentical(first, second)
+        XCTAssertNotIdentical(
+            first,
+            ResetCopy.formatter(template: "MMM d", calendar: calendar, locale: us))
+        XCTAssertNotIdentical(
+            first,
+            ResetCopy.formatter(template: "E j:mm", calendar: calendar,
+                                locale: Locale(identifier: "fr_FR")))
+    }
+
     func testPastResetsReadAsResetting() {
         XCTAssertEqual(ResetCopy.text(for: now.addingTimeInterval(-5), now: now), "Resetting…")
     }
@@ -302,5 +320,182 @@ final class WindowSummaryTests: XCTestCase {
     /// Only the number shortens; the wording around it does not.
     func testALargeCountKeepsItsWording() {
         XCTAssertEqual(LimitWindow(id: "w", label: "Tokens", used: 651_061).summary, "651k used")
+    }
+
+    /// Both ends stay on the line — the card is the detailed view — but the
+    /// remaining figure leads when the notch is set that way.
+    func testRemainingLeadsWhenSet() {
+        XCTAssertEqual(window(0.12).summary(showingRemaining: true), "88% left · 12% Used")
+    }
+
+    /// Swapping the order never changes the numbers, so the halves still add
+    /// up in either mode.
+    func testTheHalvesStillSumToAHundredWhenRemainingLeads() {
+        for percent in stride(from: 0, through: 100, by: 7) {
+            let text = window(Double(percent) / 100).summary(showingRemaining: true)
+            let numbers = text.split(separator: " ").compactMap { Int($0.replacingOccurrences(of: "%", with: "")) }
+            XCTAssertEqual(numbers.count, 2, "unexpected wording: \(text)")
+            XCTAssertEqual(numbers[0] + numbers[1], 100, "\(text) does not add up")
+        }
+    }
+
+    func testAnOverspentLimitLeadsWithNothingLeft() {
+        XCTAssertEqual(window(1.04).summary(showingRemaining: true), "0% left · 104% Used")
+    }
+
+    func testFractionsOfAPercentLeadFromTheOtherEnd() {
+        XCTAssertEqual(window(0.0034).summary(showingRemaining: true), "99.7% left · 0.3% Used")
+        XCTAssertEqual(window(0.998).summary(showingRemaining: true), "0.2% left · 99.8% Used")
+        XCTAssertEqual(window(0.0004).summary(showingRemaining: true), ">99.9% left · <0.1% Used")
+    }
+
+    /// Counts keep their own wording — "3 left" already leads with what is left.
+    func testCountsAreUntouchedWhenRemainingLeads() {
+        XCTAssertEqual(LimitWindow(id: "w", label: "Requests", used: 8).summary(showingRemaining: true), "8 used")
+        XCTAssertEqual(LimitWindow(id: "w", label: "Requests", remaining: 3).summary(showingRemaining: true), "3 left")
+    }
+}
+
+/// "Resets in 4h 55m (13:30)" — how long there is, and when that is.
+///
+/// One timestamp read twice, so the two halves cannot disagree, and the day is
+/// carried only when there is more than one day it could mean.
+final class ResetStampTests: XCTestCase {
+    private var calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+        c.locale = Locale(identifier: "en_GB")
+        return c
+    }()
+    private let english = Locale(identifier: "en_GB")
+
+    private func date(_ iso: String) -> Date {
+        let f = ISO8601DateFormatter()
+        f.timeZone = calendar.timeZone
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: iso)!
+    }
+
+    private func stamped(_ from: String, _ to: String) -> String {
+        ResetCopy.text(for: date(to), now: date(from), calendar: calendar,
+                       format: .remaining, locale: english, withAbsoluteStamp: true)
+    }
+
+    /// Later today: the time alone. There is only one 13:30 it could be.
+    func testSameDayCarriesTheTimeAlone() {
+        let text = stamped("2026-09-01T08:35:00+07:00", "2026-09-01T13:30:00+07:00")
+        XCTAssertEqual(text, "Resets in 4h 55m (13:30)")
+    }
+
+    /// Past midnight: the weekday joins it, because "01:30" alone would read
+    /// as this morning — the one already gone.
+    func testCrossingIntoAnotherDayCarriesTheDay() {
+        let text = stamped("2026-09-01T21:00:00+07:00", "2026-09-02T01:30:00+07:00")
+        XCTAssertEqual(text, "Resets in 4h 30m (Wed 01:30)")
+    }
+
+    /// A weekly window: days and hours, then the day and time it lands.
+    func testAWeeklyWindowCarriesTheDayAndTime() {
+        let text = stamped("2026-09-01T09:00:00+07:00", "2026-09-06T08:55:00+07:00")
+        XCTAssertEqual(text, "Resets in 4 Days 23h (Sun 08:55)")
+    }
+
+    /// Past the week a weekday is ambiguous — the same reason `text` drops it
+    /// there — so the stamp becomes a date.
+    func testPastTheWeekTheStampBecomesADate() {
+        let text = stamped("2026-09-01T23:30:00+07:00", "2026-09-28T15:55:00+07:00")
+        XCTAssertTrue(text.hasPrefix("Resets in 26 Days"), text)
+        XCTAssertTrue(text.contains("28"), text)
+        XCTAssertFalse(text.contains("Mon"), "a date four weeks out still reads as a weekday: \(text)")
+    }
+
+    /// Both halves are read off one instant, so the countdown and the clock
+    /// time can never drift apart.
+    func testTheTwoHalvesComeFromOneTimestamp() {
+        let from = date("2026-09-01T08:35:00+07:00")
+        let to = date("2026-09-01T13:30:00+07:00")
+        let combined = ResetCopy.text(for: to, now: from, calendar: calendar,
+                                      format: .remaining, locale: english, withAbsoluteStamp: true)
+        let relative = ResetCopy.text(for: to, now: from, calendar: calendar,
+                                      format: .remaining, locale: english)
+        let absolute = ResetCopy.absoluteStamp(for: to, now: from, calendar: calendar,
+                                               locale: english)
+        XCTAssertEqual(combined, "\(relative) (\(absolute))")
+    }
+
+    /// Asked for off, nothing changes — which is what keeps every surface that
+    /// has not got the room exactly as it was.
+    func testWithoutTheStampNothingChanges() {
+        let from = date("2026-09-01T08:35:00+07:00")
+        let to = date("2026-09-01T13:30:00+07:00")
+        for format in ResetTimeFormat.allCases {
+            XCTAssertEqual(
+                ResetCopy.text(for: to, now: from, calendar: calendar, format: format, locale: english),
+                ResetCopy.text(for: to, now: from, calendar: calendar, format: format,
+                               locale: english, withAbsoluteStamp: false))
+        }
+    }
+
+    /// The date format already names the day past the hour, so it is never
+    /// made to say it twice — only its one relative case takes a stamp.
+    func testTheDateFormatIsNotStampedTwice() {
+        let under = stampedAutomatic("2026-09-01T08:35:00+07:00", "2026-09-01T09:20:00+07:00")
+        XCTAssertEqual(under, "Resets in 45 min (09:20)")
+
+        let over = stampedAutomatic("2026-09-01T08:35:00+07:00", "2026-09-01T13:30:00+07:00")
+        XCTAssertFalse(over.contains("("), "the absolute form was stamped with itself: \(over)")
+    }
+
+    private func stampedAutomatic(_ from: String, _ to: String) -> String {
+        ResetCopy.text(for: date(to), now: date(from), calendar: calendar,
+                       format: .automatic, locale: english, withAbsoluteStamp: true)
+    }
+}
+
+/// The stamp costs a row about 40pt, and the notch's card has not got it. A
+/// card decides once, for every row on it, so a reset never half-appears.
+@MainActor
+final class ResetStampFitTests: XCTestCase {
+    func testTheNotchColumnKeepsThePlainCountdownAndTheMenusCarriesTheStamp() {
+        let label = "All models"
+        let plain = "Resets in 2 Days 10h"
+        let stamped = "Resets in 2 Days 10h (Mon 08:55)"
+
+        XCTAssertTrue(NotchLayout.splitRowFits(leading: label, trailing: plain,
+                                               width: NotchLayout.cardTextWidth))
+        XCTAssertFalse(NotchLayout.splitRowFits(leading: label, trailing: stamped,
+                                                width: NotchLayout.cardTextWidth),
+                       "the notch card would have had to truncate the label")
+        XCTAssertTrue(NotchLayout.splitRowFits(leading: label, trailing: stamped,
+                                               width: MenuUsageCard.contentWidth),
+                      "the menu card has the room and should be using it")
+    }
+
+    func testTheGapMeasuredIsTheGapDrawn() {
+        // The two halves, the gap `SplitRow` draws, and the slack the fit test
+        // keeps back: that width fits, a point under it does not.
+        let width = NotchLayout.splitRowGap + NotchLayout.splitRowSlack
+            + ("ab" as NSString).size(withAttributes: [.font: NotchLayout.cardBodyFont]).width
+            + ("cd" as NSString).size(withAttributes: [.font: NotchLayout.cardBodyFont]).width
+        XCTAssertTrue(NotchLayout.splitRowFits(leading: "ab", trailing: "cd", width: width))
+        XCTAssertFalse(NotchLayout.splitRowFits(leading: "ab", trailing: "cd", width: width - 1))
+    }
+
+    /// The row that actually truncated on screen. `NSString` measured it as
+    /// fitting the notch's column; SwiftUI did not, and the reset came out
+    /// "…(Fri 18:…". The slack is what keeps this one off.
+    func testTheRowThatTruncatedIsRefused() {
+        XCTAssertFalse(
+            NotchLayout.splitRowFits(leading: "All models",
+                                     trailing: "Resets in 2 Days 10h (Fri 18:59)",
+                                     width: NotchLayout.cardTextWidth))
+        XCTAssertFalse(
+            NotchLayout.splitRowFits(leading: "Current session",
+                                     trailing: "Resets in 4h 20m (13:09)",
+                                     width: NotchLayout.cardTextWidth))
+        XCTAssertTrue(
+            NotchLayout.splitRowFits(leading: "All models",
+                                     trailing: "Resets in 2 Days 10h (Fri 18:59)",
+                                     width: MenuUsageCard.contentWidth))
     }
 }
