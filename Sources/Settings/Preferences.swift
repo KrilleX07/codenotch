@@ -394,7 +394,6 @@ final class Preferences: ObservableObject {
     @Published var busyIndicatorStyle: BusyIndicatorStyle {
         didSet { defaults.set(busyIndicatorStyle.rawValue, forKey: Keys.busyIndicatorStyle) }
     }
-    }
 
     /// The language the app itself speaks.
     ///
