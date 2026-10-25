@@ -3,20 +3,23 @@
     <channel>
         <title>Codenotch</title>
         <item>
-            <title>1.22.0</title>
-            <pubDate>Tue, 06 Oct 2026 15:18:27 +0700</pubDate>
-            <sparkle:version>24</sparkle:version>
-            <sparkle:shortVersionString>1.22.0</sparkle:shortVersionString>
+            <title>1.24.0</title>
+            <pubDate>Sat, 24 Oct 2026 12:20:33 +0700</pubDate>
+            <sparkle:version>26</sparkle:version>
+            <sparkle:shortVersionString>1.24.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<p>Qoder's credits, more than one Command Code account, and DeepSeek's balance from the wallet that has one.</p>
+            <description><![CDATA[<p>A menu bar that does more: provider cards, a waiting dot, your choice of width, order and click. Plus Spanish, Higgsfield, and rings ordered by what is about to expire.</p>
 <ul>
-<li><b>Qoder</b>: a ring for your credits, international or China mainland.</li>
-<li><b>More than one Command Code account</b>, each its own ring.</li>
-<li><b>DeepSeek's balance from the funded wallet.</b></li>
-<li><b>Українська</b>, up to date.</li>
+<li><b>Provider cards in the menu</b>, with a Detail switch per card.</li>
+<li><b>Waiting and done in the menu bar</b>: a red dot when an agent waits for you, a blink when it finishes, and a deeper working pulse.</li>
+<li><b>The menu bar, your way</b>: show what is left, choose how much each reading prints, sort by what is left, and pick what a click does.</li>
+<li><b>Order rings by burn deficit</b>: quota that would expire unused comes first.</li>
+<li><b>Español</b> on the Mac and on Windows, and a <b>Higgsfield</b> ring.</li>
+<li>Antigravity reads the quota group you chose, Ollama's cloud usage, OpenCode 2.x keys, whole tokens per second under local rings, and even bar thickness.</li>
+<li><b>Windows</b>: Claude accounts and an optional taskbar display, Command Code, Qoder, DeepSeek Harness, OpenCode sessions, and an optional usage pace line.</li>
 </ul>
 ]]></description>
-            <enclosure url="https://hivinz.com/Codenotch-1.22.0.dmg" length="12539050" type="application/octet-stream" sparkle:edSignature="LQKgAU5TlcmJscVui3QIJGTLUzUtQQSQ/YqqMT2IKSsdvjEp1hHgIQ21phRyZe8WGL74Dhi5o3kdqBPNAm6ZCQ=="/>
+            <enclosure url="https://hivinz.com/Codenotch-1.24.0.dmg" length="13615778" type="application/octet-stream" sparkle:edSignature="hLrTXm3V7GA0wjQqR6wJUQL5rSgQpwElp28pNEBpIgu/TzHliDQCgWCxwY7dVMlmTjUi3n8W7um0bcgj7Ro+AQ=="/>
         </item>
     </channel>
 </rss>

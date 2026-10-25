@@ -9,18 +9,60 @@ hover card with per-window bars), rebuilt for Windows in Rust + Tauri 2 / WebVie
 No code is copied from the Swift app; the providers are reimplemented from their
 documented behaviour and the wire formats.
 
+## Claude accounts
+
+Settings → Accounts can add, name, reconnect and pause Claude accounts. Each account
+uses the official Claude Code CLI sign-in in its own `~/.claude-<slug>` directory;
+the standalone CLI must be installed. Existing profiles in that layout are detected.
+Pausing monitoring retains the tool's sign-in. Authentication, cached readings and
+retry deadlines stay separate, including after rate limiting or reconnection.
+
+## Taskbar display
+
+Settings → Appearance → Taskbar can place compact usage indicators in free space
+on the left side of the primary taskbar or before the system tray. This is opt-in;
+Original notch restores the screen-edge display. Hover shows account limits and
+reset times, left-click requests a refresh of that account, and right-click opens
+Settings. The width control adjusts the space used by the indicators.
+
+Claude and Codex display the weekly percentage. Available 5-hour and weekly quotas
+have independent arcs; a weekly-only Codex plan has one outer arc, even when the
+provider calls that bucket `primary`. Claude Enterprise accounts publishing only a
+spend limit display that limit. Activity is assigned only to an identified
+account; unknown ownership never animates a different account's indicator.
+
+Size, theme, warning thresholds, colour transition, remaining/used display and weekly-ring position/style
+reuse the existing appearance settings. The weekly option controls an additional
+ring; an account with only a weekly quota keeps its one primary ring. Floating-notch
+visibility, adaptive pill, edge and screen controls are disabled in taskbar mode.
+Changes apply while the app runs. Large indicators are bounded by the taskbar height
+and available width. Use Outside to keep the weekly arc around the 5-hour arc.
+Remaining mode reverses meter fill and numbers; warning colours still reflect used
+quota. Claude indicators hide stale or expired quota arcs; details retain dated
+historical readings and the last reported reset. Clicks respect the existing
+five-minute attempt floor, reset-boundary exception and each account's backoff.
+
+The strip uses an owned native child window and DirectComposition. It does not
+inject code, subclass Explorer or alter its controls. UI Automation finds free
+space; full screen apps, hidden taskbars or missing space hide the strip. Separate
+WebView windows show the details without clipping them to the taskbar. The strip
+is recreated after Explorer restarts. This relies on Explorer's internal layout;
+custom shells, vertical taskbars and secondary taskbars are not supported.
+
 ## What it shows
 
 | Cell | Source | How it reads it |
 |---|---|---|
-| **Claude** | `GET https://api.anthropic.com/api/oauth/usage` with the token Claude Code keeps in `~/.claude/.credentials.json` | Session / weekly windows, 429 back-off with a persisted deadline, stale readings dimmed with their age. Renews that token by running the standalone `claude -p` shortly before it expires (Claude Code inside the desktop app never writes this file), and never sends an expired one. A thin arc spins inside the ring while a Claude session is working, and pulses amber when one is waiting on you (Claude Code hooks + transcript watcher, desktop app included). |
+| **Claude** | `GET https://api.anthropic.com/api/oauth/usage` with the token Claude Code keeps in `~/.claude/.credentials.json` | Session / weekly windows with a five-minute request-attempt floor per account, including manual refresh. 429 back-off honours the full Retry-After (seconds or HTTP-date), with per-account deadlines persisted across restarts; stale readings dimmed with their age. Renews that token by running the standalone `claude -p` shortly before it expires (Claude Code inside the desktop app never writes this file), and never sends an expired one. A thin arc spins inside the ring while a Claude session is working, and pulses amber when one is waiting on you (Claude Code hooks + transcript watcher, desktop app included). |
 | **Codex** | The local Codex sign-in in `~/.codex/auth.json` (read only, never refreshed), falling back to the newest session snapshot | Live primary/secondary windows (5h + weekly on paid plans, a monthly window on free) while Codex is signed in; Spark and Code review appear on the hover card when Codex reports them; otherwise the last snapshot, marked stale by its own timestamp. |
 | **Cursor** | The editor's own session from `state.vscdb` → `cursor.com/api/usage-summary` | Included usage / API usage / on-demand, reset at billing-cycle end. Nothing to sign into: it borrows the editor's session, so there is only ever one account. |
 | **Grok** | The Grok CLI's own session in `~/.grok/auth.json` (read only, never refreshed) → `cli-chat-proxy.grok.com/v1/billing?format=credits`, the endpoint that CLI's own `/usage` asks | The weekly Grok Build allowance, with the account on the hover card. Only a session minted by `auth.x.ai` is used — the file can also hold a customer IdP token meant for that customer's private proxy. A fresh weekly period reads 0 %, not "unmetered". |
 | **GitHub Copilot** | The GitHub CLI's own session, read only: `GH_TOKEN`/`GITHUB_TOKEN` when set, else `oauth_token` in `%APPDATA%\GitHub CLI\hosts.yml`, else `gh auth token` run hidden (the token may live in Credential Manager) → `api.github.com/copilot_internal/user`, the quota endpoint GitHub's own editors ask | Premium requests on the ring, with chat requests and completions on the hover card; all reset on the first of the month. An `unlimited` quota, or one with no entitlement, draws nothing. The account and plan are named on the card. Sign in with `gh auth login`; Codenotch never starts a sign-in itself. |
-| **OpenCode** | OpenCode's own sign-in, read only: the `opencode-go` key in `~/.local/share/opencode/auth.json` → `opencode.ai/zen/go/v1/usage`, or — since OpenCode 1.18 — the OAuth sign-in in `opencode.db` (`credential` table) → `opencode.ai/inference/go/v1/usage` | The Go plan's 5-hour, weekly and monthly windows. A sign-in without a Go plan shows "No OpenCode Go subscription" instead of a ring; Zen pay-as-you-go credit has no balance or usage API, so it is not shown. |
+| **OpenCode** | OpenCode's own sign-in, read only: the `opencode-go` key in `~/.local/share/opencode/auth.json` → `opencode.ai/zen/go/v1/usage`, or — since OpenCode 1.18 — the OAuth sign-in in `opencode.db` (`credential` table) → `opencode.ai/inference/go/v1/usage` | The Go plan's 5-hour, weekly and monthly windows. A sign-in without a Go plan shows "No OpenCode Go subscription" instead of a ring; Zen pay-as-you-go credit has no balance or usage API, so it is not shown. Working-state and per-session model/cost come from the local `opencode.db` `session_v2` table (read-only, WAL-aware) — see OpenCode Desktop sessions below. |
+| **Command Code** | The Command Code app's `~/.commandcode/auth.json` key, or `COMMAND_CODE_API_KEY`, read only; its official `/alpha` billing endpoints | GOAT plan monthly spend on the ring, with 5-hour and weekly limits on the hover card. Sign in through the Command Code app. |
 | **Antigravity** | Official `agy` CLI `/usage` print when installed; otherwise the existing local `language_server` bridge, Google Cloud Code API, or transcript model count | Official four quota rows (Gemini & Claude/GPT 5h/weekly) without running the full IDE. When CLI is absent, falls back to legacy local bridge/API. |
 | **OpenCode Go** | `GET https://opencode.ai/zen/go/v1/usage` | Reads the `opencode-go` key in OpenCode's `auth.json`, or `OPENCODE_APIKEY` when set. The environment key takes precedence. Shows rolling 5-hour, weekly and monthly usage. This is a separate subscription from the Z.ai GLM Coding Plan; its key must not be sent to Z.ai's monitor endpoint. |
+| **Qoder** | `getUsageInfo()` on the account plane of the official [`@qoder-ai/qoder-agent-sdk`](https://docs.qoder.com/cli/sdk/overview), through the bundled `qoder-usage.cjs` sidecar, reusing the local signed-in `qodercli` session (`qodercliAuth()`) | Plan usage ring (the account's own total where the plan bucket is empty) with the renewal date (`expiresAt`), add-on and organization rows when the account carries them, credits left in the card note. The read is a documented account query: no inference is started and no credits are spent to ask. Qoder Desktop's own DPAPI vault is never opened or decrypted. |
 
 Providers that are not installed simply do not get a cell.
 
@@ -66,7 +108,7 @@ it prints no account credentials or quota values and is not run by CI.
 ### Reset cards
 
 The Windows app can show a short card when any active provider — Claude,
-Codex, Cursor, GLM, OpenCode, Grok, Antigravity — renews a quota window it was
+Codex, Cursor, GLM, OpenCode, Grok, Antigravity, Qoder — renews a quota window it was
 using. Each provider's own windows are watched independently and by their own
 id, not by a fixed duration, so this needs no per-provider list to stay
 current. Each window needs at least 10% usage before its reset counts, and a
@@ -89,7 +131,8 @@ other. The Windows app must be running to observe and show a reset.
 
 When Claude is signed out, its card offers **Sign in**, which opens the standalone
 Claude Code CLI's browser login (`claude auth login --claudeai`). It is offered on
-the default `~/.claude` account only, since that is the one the CLI signs in.
+the default `~/.claude` account only. Settings → Accounts also provides sign-in for
+named profiles, passing each profile's directory to the official CLI.
 Finish in the browser; if it
 displays a code, paste it in the opened terminal, not in Codenotch. The card
 refreshes after the CLI exits without restarting the widget. The native CLI must
@@ -101,6 +144,22 @@ or expose tokens through UI IPC. The interactive child has a 15-minute timeout.
 To read Claude again, click its ring or choose **Refresh now** from the notch's
 right-click menu. HTTP 403 is reported as an access/network refusal rather than claiming
 that a still-valid login has expired. Existing automatic renewal is unchanged.
+Manual refresh respects the five-minute per-account attempt floor and any
+rate-limit deadline. A newly crossed reset boundary permits one earlier attempt;
+credential renewal still runs on the existing 60-second active loop.
+
+Browser approval is only one part of sign-in: wait for the CLI terminal to report
+`Login successful`. If it reports 403 afterwards, do not interpret that as a
+successful login or repeatedly delete credentials. Check the CLI error and the
+network/account access used by that CLI; browser and terminal connectivity can
+differ. Keep authorization codes, tokens and raw debug logs out of issue reports.
+
+The Claude quota arcs and headline require a fresh successful reading whose
+reported reset has not passed. On sign-out or a stale/error response they show
+no quota arc instead of presenting a cached percentage as current. The hover
+card can retain the last known values, explicitly labelled as historical, with
+their last reported reset time. A successful refresh restores the live reading;
+this display rule does not bypass HTTP 403 or change OAuth, polling or backoff.
 
 ### Antigravity
 
@@ -113,6 +172,63 @@ that a still-valid login has expired. Existing automatic renewal is unchanged.
 Restart Codenotch after installing or removing `agy`: the source is selected at startup.
 The CLI's text report is parsed defensively; an unsupported format or failed sign-in
 shows an error or the last reading marked stale. Codenotch does not automate sign-in.
+
+### OpenCode Desktop sessions
+
+The Go windows are remote quota figures (documented in the table above). On top of them, the
+working-state engine reads the local `opencode.db` (`session_v2`, opened read-only like every
+other SQLite here): a non-idle, non-archived session whose `time_updated` moved within the last
+two minutes appears on the card as *working*, named by its title and detailed with its model and
+recorded cost. Those are the fields OpenCode itself writes — model ids, token counts, cost.
+
+There is no local quota data to invent: no Go/Zen percentage, reset time, credit balance or
+subscription state exists in the database or the Desktop logs on a machine (checked), so those
+figures stay exclusive to the documented endpoints. A *waiting on you* state is not derived either
+— OpenCode's pending-permission shape is not documented, and guessing a table layout would report
+sessions that are not waiting.
+
+### Qoder
+
+- **Official SDK sidecar**: the usage read goes through `qoder-usage.cjs`, which uses the official
+  `@qoder-ai/qoder-agent-sdk` `getUsageInfo()` on the daemon account plane — a documented read-only
+  account query. It starts no inference and spends no credits; a hidden `node` process runs it with
+  a two-minute timeout every five minutes (or on a ring click). The daemon it spawns takes around
+  18 s to initialize on a cold start, which is why the budget is generous.
+- **Sign in**: the sidecar reuses the local signed-in `qodercli` session (`qodercliAuth()`), which
+  the daemon borrows read-only — its `auth()` answers `false` when there is no such sign-in, and
+  the cell then says *sign in to qodercli* rather than guessing from an error message. Codenotch
+  never reads or decrypts Qoder Desktop's own credential vault (`auth.v1.dat`, DPAPI) — borrowing
+  another product's OS-protected vault is neither safe nor supported.
+- **Setup** (one-time, per machine): Node.js on `PATH` (or `CODENOTCH_QODER_NODE` pointing at it),
+  then in `%APPDATA%\codenotch\qoder-sdk\`:
+
+  ```
+  copy <repo>\windows\codenotch\qoder-usage.cjs  %APPDATA%\codenotch\qoder-sdk\
+  cd %APPDATA%\codenotch\qoder-sdk
+  npm install @qoder-ai/qoder-agent-sdk
+  npm approve-scripts @qoder-ai/qoder-agent-sdk     # or: node node_modules\@qoder-ai\qoder-agent-sdk\scripts\postinstall.cjs
+  ```
+
+  npm blocks install scripts by default, and the SDK's postinstall is what lands its runtime —
+  without it the daemon never starts. Other sidecar locations are probed too: next to the exe, in
+  the bundle resources, or via `CODENOTCH_QODER_SIDECAR`. Without any of them the cell shows what
+  to install instead of a ring.
+  To sign in, the CLI itself is needed once: re-run the postinstall with `QODER_INSTALL_BUNDLED_CLI=1`
+  (it fetches a ~209 MB `qodercli.exe` into the package's `dist\_bundled`) and run `qodercli login`,
+  which opens the browser. The usage read does not need that binary afterwards.
+- **What it shows**: the plan window on the ring — `userQuota` when that bucket carries numbers,
+  otherwise the account's own `totalUsagePercentage` (labelled *Total usage*) — with `expiresAt` as
+  the renewal watched for reset cards; `addOnQuota` and `orgResourcePackage` as extra card rows when
+  the account carries them; the plan type and the credits left, quoted from whichever bucket
+  actually meters, in the note.
+- **What it deliberately does not show**: the SDK's `session` credits block — it meters the
+  sidecar's own freshly-started daemon session (≈0 by construction), not the user's IDE sessions,
+  and presenting it would be an invented number. A quota the plan does not publish reads as
+  "nothing to meter", never as 0 %: a standard account reports an all-zero `userQuota` while its
+  consumption sits in the add-on pool, so an empty bucket is skipped rather than drawn as a full
+  ring. `expiresAt` also arrives as a far-future sentinel (year 9999) on plans that do not renew;
+  anything past 2100 is read as no renewal date.
+
 
 ## Install / build
 
@@ -222,7 +338,8 @@ position, and the data folder (`%APPDATA%\codenotch` — logs, persisted reading
 
 Notch: clicking a ring re-reads that provider, as on the Mac. Right-clicking the notch or its card
 offers **Refresh now**, the provider's usage page (**Open claude.ai**, **Open chatgpt.com**, …) and
-**Quit Codenotch**. Neither click, nor the tray, asks Claude again while its rate-limit wait runs.
+**Quit Codenotch**. Neither click nor the tray bypasses Claude's five-minute
+per-account attempt floor or its rate-limit wait.
 
 ### Where the notch sits
 
@@ -248,6 +365,12 @@ which, Codenotch reads a thin strip of the screen beside the pill twice a second
 and keeps only its average brightness, which is never stored or sent. With the switch off, the notch
 open, or Show set to Always show, nothing is read.
 
+**Appearance → Fold for full-screen apps**, on unless switched off, folds the notch to its pill while
+a full-screen app — a video, a game, a slideshow — is in front on its screen, whatever Show says, as
+the Mac's does. Hovering the pill still opens it, and leaving the app unfolds it again. Switch on or
+off, the notch moves to the screen's very edge meanwhile, into the room the taskbar has made for the
+app, and back when the taskbar returns.
+
 ### Icons
 
 Provider marks are the SVGs from [`@lobehub/icons-static-svg`](https://github.com/lobehub/lobe-icons)
@@ -261,9 +384,9 @@ Three surfaces draw their own text, so each keeps its own table:
 
 | Surface | Table | Languages today |
 |---|---|---|
-| Tray menu | `codenotch/src/i18n.rs` (`tr`), `codenotch/src/traymenu.rs` (`label`) | en · ru · zh · ja · ko · uk |
-| Hover card | `codenotch/ui/notch.html` (`TEXT`, `PATTERNS`, `UI`) | en · ru · zh |
-| Settings window | `codenotch/ui/settings.html` (`STATIC_TEXT`, `STATUS_TEXT`) | en · ru · zh · ja · ko |
+| Tray menu | `codenotch/src/i18n.rs` (`tr`), `codenotch/src/traymenu.rs` (`label`) | en · ru · zh · ja · ko · uk · es |
+| Hover card | `codenotch/ui/notch.html` (`TEXT`, `PATTERNS`, `UI`) | en · ru · zh · es |
+| Settings window | `codenotch/ui/settings.html` (`STATIC_TEXT`, `STATUS_TEXT`) | en · ru · zh · ja · ko · es |
 
 Help is welcome on the gaps, which fall back to English rather than breaking anything:
 

@@ -163,7 +163,45 @@ final class UsageResponseTests: XCTestCase {
         XCTAssertEqual(money.currency, "USD")
         // 297/20000, not the `percent: 1` the response rounds it to.
         XCTAssertEqual(balance.usedFraction ?? -1, 0.01485, accuracy: 0.00001)
-        XCTAssertNil(balance.resetsAt, "the block carries no reset time")
+        XCTAssertNotNil(balance.resetsAt, "`monthly_limit` gives the balance a month")
+    }
+
+    private func utc(_ text: String) -> Date { ISO8601DateFormatter().date(from: text)! }
+
+    /// `spend` names no period, `extra_usage.monthly_limit` does: the balance
+    /// runs to midnight UTC on the 1st, over the whole calendar month.
+    func testAMonthlyBalanceRunsToTheFirstOfNextMonthInUTC() throws {
+        let windows = try decode(enterprise).limitWindows(readAt: utc("2026-10-12T07:29:56Z"))
+        let balance = try XCTUnwrap(windows.first)
+        XCTAssertEqual(balance.resetsAt, utc("2026-11-01T00:00:00Z"))
+        XCTAssertEqual(balance.duration, 31 * 86400)
+
+        let february = try XCTUnwrap(try decode(enterprise)
+            .limitWindows(readAt: utc("2027-02-10T12:00:00Z")).first)
+        XCTAssertEqual(february.resetsAt, utc("2027-03-01T00:00:00Z"))
+        XCTAssertEqual(february.duration, 28 * 86400)
+    }
+
+    /// The month is the one the reading was written in, not the one it is
+    /// decoded in: a reading from late on the 30th still ends on the 1st, so
+    /// read the next day it is recognisably over rather than passing for new.
+    func testTheMonthIsTheReadingsOwn() throws {
+        let windows = try decode(enterprise).limitWindows(readAt: utc("2026-09-30T23:59:00Z"))
+        XCTAssertEqual(windows.first?.resetsAt, utc("2026-10-01T00:00:00Z"))
+        XCTAssertTrue(ClaudeOAuthProvider.hasExpiredWindow(windows, at: utc("2026-10-01T00:00:01Z")))
+    }
+
+    /// Without `monthly_limit` nothing says the balance has a period, and none
+    /// is assumed for it.
+    func testABalanceWithoutAMonthlyLimitHasNoReset() throws {
+        let json = """
+        { "limits": [], "spend": { "enabled": true,
+            "limit": { "amount_minor": 20000, "currency": "USD", "exponent": 2 },
+            "used": { "amount_minor": 297, "currency": "USD", "exponent": 2 } } }
+        """
+        let balance = try XCTUnwrap(try decode(json).limitWindows().first)
+        XCTAssertNil(balance.resetsAt)
+        XCTAssertNil(balance.duration)
     }
 
     /// The ring has to *mean* the balance on a seat that reports only that.
@@ -394,6 +432,67 @@ final class UsageArchiveTests: XCTestCase {
         XCTAssertTrue(UsageArchive(defaults: makeDefaults()).load().isEmpty)
     }
 
+    func testLegacyPerplexityEntryIsPrunedOnLoad() throws {
+        let defaults = makeDefaults()
+        let taken = Date(timeIntervalSince1970: 1_787_900_000)
+        let perplexity = ProviderSnapshot(
+            id: "perplexity", displayName: "Perplexity", glyph: .third,
+            fidelity: .official, status: .ok,
+            windows: [LimitWindow(id: "queries", label: "Queries", used: 2)]
+        )
+        struct LegacyEntry: Codable {
+            let id: String
+            let displayName: String
+            let glyph: ProviderGlyph
+            let fidelity: Fidelity
+            let windows: [LimitWindow]
+            let fetchedAt: Date
+            let headlineID: String?
+            let weeklyID: String?
+            let tokenUsage: CodexTokenUsage?
+            let usageDetail: ProviderUsageDetail?
+            let plan: String?
+        }
+        let legacy = [
+            LegacyEntry(id: "claude", displayName: "Claude", glyph: .claude,
+                        fidelity: .official, windows: reading.windows, fetchedAt: taken,
+                        headlineID: nil, weeklyID: nil, tokenUsage: nil, usageDetail: nil, plan: nil),
+            LegacyEntry(id: "perplexity", displayName: "Perplexity", glyph: .third,
+                        fidelity: .official, windows: perplexity.windows, fetchedAt: taken,
+                        headlineID: nil, weeklyID: nil, tokenUsage: nil, usageDetail: nil, plan: nil)
+        ]
+        let data = try JSONEncoder().encode(legacy)
+        defaults.set(data, forKey: "lastGoodReadings")
+
+        let loaded = UsageArchive(defaults: defaults).load()
+        XCTAssertNil(loaded["perplexity"], "Obsolete perplexity readings must be pruned on load")
+        XCTAssertNotNil(loaded["claude"], "Active provider readings must survive")
+
+        // The stored cache in defaults must also be cleaned up immediately
+        let savedData = try XCTUnwrap(defaults.data(forKey: "lastGoodReadings"))
+        let rawEntries = try JSONDecoder().decode([LegacyEntry].self, from: savedData)
+        XCTAssertFalse(rawEntries.contains { $0.id == "perplexity" },
+                       "Stored cache in UserDefaults must not retain obsolete perplexity entry")
+        XCTAssertEqual(rawEntries.map(\.id), ["claude"])
+    }
+
+    func testPerplexityEntryIsNotSavedToArchive() throws {
+        let defaults = makeDefaults()
+        let taken = Date(timeIntervalSince1970: 1_787_900_000)
+        let perplexity = ProviderSnapshot(
+            id: "perplexity", displayName: "Perplexity", glyph: .third,
+            fidelity: .official, status: .ok,
+            windows: [LimitWindow(id: "queries", label: "Queries", used: 2)]
+        )
+        UsageArchive(defaults: defaults).save([
+            "perplexity": (perplexity, taken),
+            "claude": (reading, taken)
+        ])
+
+        let loaded = UsageArchive(defaults: defaults).load()
+        XCTAssertNil(loaded["perplexity"])
+        XCTAssertNotNil(loaded["claude"])
+    }
 }
 
 /// `Retry-After: 0` is the endpoint's actual answer, and obeying it literally is
@@ -416,6 +515,11 @@ final class BackoffTests: XCTestCase {
     /// A server that asks for longer than our own schedule gets its way.
     func testAGenerousHintWins() {
         XCTAssertEqual(ClaudeOAuthProvider.backoff(forAttempt: 0, retryAfter: 600), 600)
+    }
+
+    func testALongHintIsNotCapped() {
+        XCTAssertEqual(ClaudeOAuthProvider.backoff(forAttempt: 0, retryAfter: 3000), 3000)
+        XCTAssertEqual(ClaudeOAuthProvider.backoff(forAttempt: 99, retryAfter: 3000), 3000)
     }
 }
 

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Codenotch Settings</title>
+<link rel="stylesheet" href="accounts-taskbar.css">
 <style>
   /* The Mac's Settings (Sources/Settings/SettingsView.swift) over Windows 11's Mica: a sidebar card
      darker than the pane, grouped sections with captions as rows, and Windows' own control cues —
@@ -122,6 +123,7 @@
   .link{border:0;background:none;padding:0;color:var(--accent);cursor:pointer;font-size:12px}
   .link:hover{text-decoration:underline}
 
+  .notch-only{border:0;margin:0;padding:0;min-width:0}.notch-only:disabled{opacity:.45}
   #toast{position:fixed;right:18px;bottom:14px;background:var(--side);border:1px solid var(--line);border-radius:8px;
     padding:5px 10px;font-size:12px;color:var(--text2);opacity:0;transition:opacity .3s;pointer-events:none}
   #toast.show{opacity:1}
@@ -147,6 +149,14 @@
     <div id="body">
 
       <section class="pane" id="pane-accounts" role="tabpanel" aria-labelledby="tab-accounts" hidden>
+        <div class="sec" id="claude-profiles-title" data-dynamic>Claude accounts</div>
+        <div class="group" id="claude-profiles" data-dynamic></div>
+        <form class="group profile-add" id="claude-add-form">
+          <label for="claude-account-name" id="claude-name-label">New account name</label>
+          <div class="profile-add-line"><input id="claude-account-name" maxlength="40" required autocomplete="off" placeholder="Example: Work"><button class="btn" id="claude-add-button" type="submit">Add account</button></div>
+          <p id="claude-login-help">Each account uses the official Claude CLI sign-in in a separate folder.</p>
+        </form>
+        <p id="claude-profile-message" class="profile-message" role="status" aria-live="polite" data-dynamic></p>
         <div class="sec">Connected</div>
         <div class="group" id="acc-on" data-dynamic></div>
         <div id="acc-off-wrap" hidden>
@@ -156,12 +166,24 @@
       </section>
 
       <section class="pane" id="pane-appearance" role="tabpanel" aria-labelledby="tab-appearance" hidden>
-        <div class="sec">Notch</div>
+        <div class="sec" id="taskbar-title" data-dynamic>Taskbar</div>
         <div class="group">
+          <div class="item"><label id="taskbar-position-label" for="taskbar-position">Display</label><select id="taskbar-position"><option value="off">Original notch</option><option value="left">Left side</option><option value="right">Before system tray</option></select></div>
+          <div class="item slider"><label id="taskbar-width-label" for="taskbar-width">Width</label><span class="value" id="taskbar-width-value" data-dynamic>280 px</span><input id="taskbar-width" class="range" type="range" min="144" max="520" step="8"></div>
+          <div class="item cap" id="taskbar-help" data-dynamic>Use free space on the primary taskbar. Hover for account limits; click to refresh that account.</div>
+          <div class="item cap" id="taskbar-status" role="status" data-dynamic hidden></div>
+        </div>
+        <div class="sec" id="appearance-indicators-title" data-dynamic>Notch</div>
+        <div class="group">
+          <div class="item cap" id="taskbar-appearance-note" data-dynamic hidden></div>
+          <fieldset class="notch-only" data-notch-only>
           <div class="item"><span>Show</span><span class="seg" id="seg-show"><button data-v="show">Always show</button><button data-v="hover">Show on hover</button><button data-v="hide">Hide</button></span></div>
           <div class="item cap" id="cap-show" data-dynamic></div>
+          <div class="item"><span>Fold for full-screen apps</span><button class="switch" id="sw-fullscreen" role="switch" aria-checked="false" aria-label="Fold for full-screen apps"></button></div>
+          <div class="item cap">The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.</div>
           <div class="item"><span>Adaptive pill</span><button class="switch" id="sw-adaptive" role="switch" aria-checked="false" aria-label="Adaptive pill"></button></div>
           <div class="item cap">While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.</div>
+          </fieldset>
           <div class="item"><span>Size</span><span class="seg" id="seg-size"><button data-v="0.8">Small</button><button data-v="1">Medium</button><button data-v="1.25">Large</button></span></div>
           <div class="item cap" id="cap-size" data-dynamic></div>
           <div class="item"><span>Theme</span><span class="seg" id="seg-theme"><button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></span></div>
@@ -169,6 +191,11 @@
           <div class="item"><span>Weekly ring</span><span class="seg" id="seg-weekly"><button data-v="off">Off</button><button data-v="inside">Inside</button><button data-v="outside">Outside</button></span></div>
           <div class="item cap" id="cap-weekly" data-dynamic></div>
           <div class="item" id="row-weekly-dashed" hidden><span>Dashed weekly ring</span><button class="switch" id="sw-weekly-dashed" role="switch" aria-checked="false" aria-label="Dashed weekly ring"></button></div>
+          <div class="item"><span>Show remaining instead of used</span><button class="switch" id="sw-remaining" role="switch" aria-checked="false" aria-label="Show remaining instead of used"></button></div>
+          <div class="item cap">The figure under each ring reads what is left — 87% instead of 13% used, the same number the card prints beside it. The rings themselves still fill by what is spent.</div>
+          <div class="item"><span>Show usage pace</span><button class="switch" id="sw-pace" role="switch" aria-checked="false" aria-label="Show usage pace"></button></div>
+          <div class="item cap">The card adds how far a timed window is ahead of its clock — 12% deficit means 12 points more spent than the time gone would allow.</div>
+          <fieldset class="notch-only" data-notch-only>
           <div class="item"><span>Edge</span><span class="seg" id="seg-edge"><button data-v="left">Left</button><button data-v="right">Right</button><button data-v="top">Top</button><button data-v="bottom">Bottom</button></span></div>
           <div class="item cap" id="cap-edge" data-dynamic></div>
           <div class="item" id="row-screen" hidden><span>Screen</span>
@@ -176,6 +203,7 @@
           </div>
           <div class="item cap" id="cap-screen" data-dynamic hidden></div>
           <div class="item"><span class="hint">Hold the dots beside the settings button, or hold Alt, and drag the notch round the screen's edges. Each edge remembers where you left it. Recentre puts it back in the middle of the edge it is on, or on the main screen's right-hand edge if the screen it was on has been unplugged.</span><button class="btn" id="btn-recentre">Recentre</button></div>
+          </fieldset>
         </div>
         <div class="sec">Usage Limits</div>
         <div class="group">
@@ -202,6 +230,7 @@
               <option value="ko">&#54620;&#44397;&#50612;</option>
               <option value="ru">Русский</option>
               <option value="uk">Українська</option>
+              <option value="es">Español</option>
             </select>
           </div>
           <div class="item cap">Sets the language used by Codenotch. “Follow system” uses the language Windows itself is set to.</div>
@@ -335,6 +364,8 @@ const PT_BR_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Um anel mais fino para o limite semanal, desenhado ao redor do principal, no espaço entre o anel e a borda do notch.',
   'Show on hover':'Exibir ao passar o cursor',
   'A small pill at the screen edge that opens when you reach it.':'Uma pequena cápsula na borda da tela que abre quando você chega nela.',
+  'Fold for full-screen apps':'Recolher em apps de tela cheia',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'O notch se recolhe enquanto um app em tela cheia está à frente e volta quando você sai dele. Desligado, ele continua no lugar sobre apps em tela cheia.',
   'Adaptive pill':'Cápsula adaptável',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'Com o notch recolhido, a cápsula acompanha o que está atrás dela: clara sobre um fundo escuro, preta sobre um claro, para continuar fácil de achar. Para isso, o Codenotch lê duas vezes por segundo uma faixa estreita da tela ao lado da cápsula e guarda só o brilho médio dela.',
   'The notch stays open with every reading visible.':'O notch fica aberto com todas as leituras visíveis.',
@@ -427,6 +458,8 @@ const RU_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Тонкое кольцо недельного лимита вокруг основного, в промежутке между кольцом и краем панели.',
   'Show on hover':'Показывать при наведении',
   'A small pill at the screen edge that opens when you reach it.':'Небольшая панель у края экрана, которая открывается при наведении.',
+  'Fold for full-screen apps':'Сворачивать для полноэкранных приложений',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'Панель сворачивается, пока впереди полноэкранное приложение, и возвращается, когда вы из него выходите. Если выключено, она остаётся на месте поверх полноэкранных приложений.',
   'Adaptive pill':'Адаптивная свёрнутая панель',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'Когда панель свёрнута, она подстраивается под фон: светлая на тёмном, чёрная на светлом, чтобы её было легко найти. Для этого Codenotch дважды в секунду считывает узкую полоску экрана рядом с ней и сохраняет только её среднюю яркость.',
   'The notch stays open with every reading visible.':'Выемка остаётся открытой, и все данные видны.',
@@ -522,6 +555,8 @@ const ZH_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'一条更细的每周额度圆环，画在主环外侧，圆环和刘海边缘之间的空隙里。',
   'Show on hover':'悬停时显示',
   'A small pill at the screen edge that opens when you reach it.':'屏幕边缘一颗小胶囊，指针移过去就会展开。',
+  'Fold for full-screen apps':'全屏应用时收起',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'全屏应用在最前时，刘海会收起，离开后再回来。关闭则全屏时也留在原处。',
   'Adaptive pill':'自适应胶囊',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'刘海收起时，胶囊会随背后的内容变化：深色背景上变浅，浅色背景上变黑，方便找到。为此，Codenotch 每秒读取两次胶囊旁边一条窄窄的屏幕区域，只保留它的平均亮度。',
   'The notch stays open with every reading visible.':'刘海保持展开，所有读数都看得见。',
@@ -631,6 +666,8 @@ const ZH_HANT_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'一條更細的每週額度圓環，畫在主環外側，圓環和瀏海邊緣之間的空隙裡。',
   'Show on hover':'懸停時顯示',
   'A small pill at the screen edge that opens when you reach it.':'螢幕邊緣一顆小膠囊，游標移過去就會展開。',
+  'Fold for full-screen apps':'全螢幕 App 時收合',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'當全螢幕 App 在最前面時，瀏海會收合，離開後再回來。關閉則會讓它繼續蓋在全螢幕 App 上。',
   'Adaptive pill':'自適應膠囊',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'瀏海收起時，膠囊會隨背後的內容變化：深色背景上變淺，淺色背景上變黑，方便找到。為此，Codenotch 每秒讀取兩次膠囊旁邊一條窄窄的螢幕區域，只保留它的平均亮度。',
   'The notch stays open with every reading visible.':'瀏海保持展開，所有讀數都看得見。',
@@ -740,6 +777,8 @@ const JA_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'週間の上限を細いリングで主リングの外側、リングとノッチの端の間の余白に描きます。',
   'Show on hover':'ホバー時に表示',
   'A small pill at the screen edge that opens when you reach it.':'画面の端に小さなピル。ポインタを近づけると開きます。',
+  'Fold for full-screen apps':'フルスクリーンのアプリでは折りたたむ',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'フルスクリーンのアプリが前面にある間、ノッチは折りたたまれ、離れると戻ります。オフにすると、フルスクリーンのアプリの上でもそのまま表示されます。',
   'Adaptive pill':'ピルの色を自動調整',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'ノッチが折りたたまれている間、ピルは背後の色に合わせて変わります。暗い背景では明るく、明るい背景では黒くなるので、見つけやすくなります。そのために Codenotch は、ピルの横にある画面の細い帯を1秒に2回読み取り、平均の明るさだけを残します。',
   'The notch stays open with every reading visible.':'ノッチは開いたままで、すべての読み取りが見えます。',
@@ -836,6 +875,8 @@ const KO_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'기본 링과 노치 가장자리 사이의 여백에 주간 한도를 얇은 링으로 표시합니다.',
   'Show on hover':'마우스를 올리면 표시',
   'A small pill at the screen edge that opens when you reach it.':'화면 가장자리의 작은 필에 포인터를 가져가면 펼쳐집니다.',
+  'Fold for full-screen apps':'전체 화면 앱 사용 시 접기',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'전체 화면 앱이 맨 앞에 있으면 노치를 접고, 해당 앱을 벗어나면 다시 표시합니다. 끄면 전체 화면 앱 위에서도 그대로 표시합니다.',
   'Adaptive pill':'적응형 필',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'노치가 접혀 있는 동안 필은 뒤의 배경에 맞춰 바뀝니다. 어두운 배경에서는 밝게, 밝은 배경에서는 검게 바뀌어 쉽게 찾을 수 있습니다. 이를 위해 Codenotch는 필 옆의 좁은 화면 영역을 1초에 두 번 읽고 평균 밝기만 남깁니다.',
   'The notch stays open with every reading visible.':'노치를 열어 두고 모든 측정값을 표시합니다.',
@@ -947,6 +988,8 @@ const UK_STATIC = {
   'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Тонше кільце тижневого ліміту навколо основного, у проміжку між кільцем і краєм вирізу.',
   'Show on hover':'Показувати при наведенні',
   'A small pill at the screen edge that opens when you reach it.':'Невелика смужка біля краю екрана, що розгортається при наведенні.',
+  'Fold for full-screen apps':'Згортати для повноекранних застосунків',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'Виріз згортається, поки попереду повноекранний застосунок, і повертається, коли ви його залишите. Вимкнено — виріз лишається поверх повноекранних застосунків.',
   'Adaptive pill':'Адаптивна смужка',
   'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'Поки виріз згорнуто, смужка підлаштовується під тло: світла на темному, чорна на світлому, щоб її було легко знайти. Для цього Codenotch двічі на секунду зчитує вузьку ділянку екрана поруч із нею і зберігає лише її середню яскравість.',
   'The notch stays open with every reading visible.':'Виріз лишається відкритим, усі показники видно.',
@@ -991,7 +1034,127 @@ const UK_STATIC = {
   'English':'English',
   'Русский':'Русский'
 };
-const STATIC_TEXT = { 'pt-BR': PT_BR_STATIC, ru: RU_STATIC, zh: ZH_STATIC, 'zh-Hant': ZH_HANT_STATIC, ja: JA_STATIC, ko: KO_STATIC, uk: UK_STATIC };
+PT_BR_STATIC['Indicators']='Indicadores';
+PT_BR_STATIC['Size, theme, colours and rings also apply to the taskbar. Floating display, edge and screen belong to the original notch. Size fits the taskbar height and available space.']='Tamanho, tema, cores e anéis também se aplicam à barra. Exibição flutuante, borda e tela pertencem ao formato original. O tamanho se ajusta à altura e ao espaço livre da barra.';
+const ES_STATIC = {
+  'Colour transition':'Transición de color',
+  'Hard step':'Salto brusco',
+  'Colour ramp':'Degradado',
+  'Ample, watch and critical each stay one flat colour, jumping between them at the limits below.':'Holgado, aviso y crítico mantienen cada uno un color fijo y saltan de uno a otro en los límites de abajo.',
+  'The colour blends continuously from ample to critical across the full range, turning yellow at the watch limit below.':'El color pasa de forma continua de holgado a crítico a lo largo de todo el rango y se vuelve amarillo en el límite de aviso de abajo.',
+  'Usage Limits':'Límites de uso',
+  'Watch limit':'Límite de aviso',
+  'Critical limit':'Límite crítico',
+  'Reset to defaults':'Restaurar ajustes',
+  'With the colour ramp on, the ring only turns red at 100%, so the critical limit applies under Hard step.':'Con el degradado activado, el anillo solo se pone rojo al 100%, así que el límite crítico se aplica en Salto brusco.',
+  'Theme':'Tema',
+  'System':'Sistema',
+  'Light':'Claro',
+  'Dark':'Oscuro',
+  'The notch and this window follow the Windows app colour.':'El notch y esta ventana siguen el color de las apps de Windows.',
+  'A light notch and card, whatever Windows is set to.':'Notch y tarjeta claros, sea cual sea el ajuste de Windows.',
+  'The dark notch, whatever Windows is set to.':'El notch oscuro, sea cual sea el ajuste de Windows.',
+  'Updates':'Actualizaciones',
+  'Check for updates':'Buscar actualizaciones',
+  'Update':'Actualizar',
+  'Download installer':'Descargar instalador',
+  'Checking…':'Comprobando…',
+  'Installing…':'Instalando…',
+  'Up to date':'Actualizado',
+  'Could not check for updates':'No se pudieron buscar actualizaciones',
+  'Could not install the update':'No se pudo instalar la actualización',
+  'Codenotch checks for new Windows releases shortly after it starts. Signed updates install here; otherwise download and run the official installer from GitHub.':'Codenotch busca nuevas versiones para Windows poco después de abrirse. Las actualizaciones firmadas se instalan aquí; si no, descarga y ejecuta el instalador oficial desde GitHub.',
+  'Settings sections':'Secciones de ajustes',
+  'Accounts':'Cuentas',
+  'Appearance':'Apariencia',
+  'General':'General',
+  'Quit Codenotch':'Salir de Codenotch',
+  'Connected':'Conectado',
+  'Not connected':'No conectado',
+  'These have no ring to place. Switch one on and it joins the end of the list above.':'Estos no tienen anillo que colocar. Activa uno y se añadirá al final de la lista de arriba.',
+  'One provider always stays ticked, so the pill is never empty.':'Siempre queda al menos un proveedor marcado, para que la cápsula nunca esté vacía.',
+  'At least one provider stays on the notch':'Al menos un proveedor queda en el notch',
+  'Notch reads':'El notch muestra',
+  'Automatic':'Automático',
+  '5-Hour Limit':'Límite de 5 horas',
+  'Weekly Limit':'Límite semanal',
+  'Gemini Models':'Modelos Gemini',
+  'Claude and GPT models':'Modelos Claude y GPT',
+  'Let Claude Code notify Codenotch':'Dejar que Claude Code avise a Codenotch',
+  'Turning this on adds a few lines to your Claude Code settings file so that Claude Code sends Codenotch a short message when a session starts, when it is working, when it is waiting for your answer, and when it finishes. That is what makes the ring spin and the amber ring pulse.':'Al activarlo se añaden unas líneas al archivo de ajustes de Claude Code para que envíe a Codenotch un mensaje breve cuando una sesión empieza, cuando está trabajando, cuando espera tu respuesta y cuando termina. Eso es lo que hace girar el anillo y latir el anillo ámbar.',
+  'Notch':'Notch',
+  'Show':'Mostrar',
+  'Always show':'Mostrar siempre',
+  'Hide':'Ocultar',
+  'Size':'Tamaño',
+  'Small':'Pequeño',
+  'Medium':'Mediano',
+  'Large':'Grande',
+  'Takes the least room on the edge. Readable, but not from across the desk.':'Ocupa lo mínimo en el borde. Se lee bien, pero no desde el otro lado de la mesa.',
+  'The size the notch was drawn at.':'El tamaño con el que se diseñó el notch.',
+  'Easier to read at a glance, and harder to ignore.':'Más fácil de leer de un vistazo, y más difícil de ignorar.',
+  'Weekly ring':'Anillo semanal',
+  'Dashed weekly ring':'Anillo semanal discontinuo',
+  'Off':'Desactivado',
+  'Inside':'Dentro',
+  'Outside':'Fuera',
+  'One ring per provider, showing the headline limit. The weekly allowance stays in the hover card.':'Un anillo por proveedor, con el límite principal. La asignación semanal queda en la tarjeta.',
+  'A thinner ring for the weekly limit, drawn inside the main one. It shares the gap with the working indicator.':'Un anillo más fino para el límite semanal, dibujado dentro del principal. Comparte el hueco con el indicador de actividad.',
+  'A thinner ring for the weekly limit, drawn around the main one, in the margin between the ring and the notch edge.':'Un anillo más fino para el límite semanal, dibujado alrededor del principal, en el margen entre el anillo y el borde del notch.',
+  'Show on hover':'Al pasar el cursor',
+  'A small pill at the screen edge that opens when you reach it.':'Una pequeña cápsula en el borde de la pantalla que se abre cuando llegas a ella.',
+  'Fold for full-screen apps':'Plegar en pantalla completa',
+  'The notch folds away while a full-screen app is frontmost, and returns when you leave it. Off keeps it in place over full-screen apps.':'El notch se pliega mientras una app en pantalla completa está al frente y vuelve cuando sales de ella. Desactivado, se queda en su sitio sobre las apps en pantalla completa.',
+  'Adaptive pill':'Cápsula adaptable',
+  'While the notch is folded, its pill follows what is behind it: light over a dark background, black over a light one, so it stays easy to find. To tell, Codenotch reads a thin strip of the screen beside the pill twice a second and keeps only its average brightness.':'Con el notch plegado, su cápsula se adapta a lo que tiene detrás: clara sobre un fondo oscuro y negra sobre uno claro, para que siga siendo fácil de encontrar. Para saberlo, Codenotch lee dos veces por segundo una franja estrecha de la pantalla junto a la cápsula y solo guarda su brillo medio.',
+  'The notch stays open with every reading visible.':'El notch permanece abierto con todas las lecturas a la vista.',
+  'Edge':'Borde',
+  'Left':'Izquierda',
+  'Right':'Derecha',
+  'Top':'Arriba',
+  'Bottom':'Abajo',
+  'Screen':'Pantalla',
+  'Main':'Principal',
+  'Stands upright on the left-hand edge, with the card opening to its right.':'En vertical en el borde izquierdo, con la tarjeta abriéndose a su derecha.',
+  'Stands upright on the right-hand edge, the side it was drawn for.':'En vertical en el borde derecho, el lado para el que se diseñó.',
+  'Lies flat along the top edge, with the card opening below it.':'En horizontal a lo largo del borde superior, con la tarjeta abriéndose debajo.',
+  'Lies flat along the bottom edge, with the card opening above it.':'En horizontal a lo largo del borde inferior, con la tarjeta abriéndose encima.',
+  'Which screen the notch lives on.':'En qué pantalla está el notch.',
+  'this screen cannot be remembered by name':'esta pantalla no se puede recordar por su nombre',
+  'The black pill against the right-hand edge of the screen, with one ring per tool. Turn it off and the pill disappears; Codenotch keeps counting your usage either way.':'La cápsula negra junto al borde derecho de la pantalla, con un anillo por herramienta. Si lo desactivas, la cápsula desaparece; Codenotch sigue contando tu uso de todos modos.',
+  'Recentre':'Centrar',
+  'Hold the dots beside the settings button, or hold Alt, and drag the notch round the screen\'s edges. Each edge remembers where you left it. Recentre puts it back in the middle of the edge it is on, or on the main screen\'s right-hand edge if the screen it was on has been unplugged.':'Mantén pulsados los puntos junto al botón de ajustes, o mantén pulsada Alt, y arrastra el notch por los bordes de la pantalla. Cada borde recuerda dónde lo dejaste. Centrar lo devuelve al centro de su borde, o al borde derecho de la pantalla principal si la pantalla en la que estaba se desconectó.',
+  'The notch is back in the middle':'El notch volvió al centro',
+  'App':'App',
+  'App icon':'Icono de la app',
+  'Neither':'Ninguno',
+  'The small icon down by the clock. Right-clicking it opens this window, refreshes the readings, or quits Codenotch.':'El icono pequeño junto al reloj. Con clic derecho abre esta ventana, actualiza las lecturas o sale de Codenotch.',
+  'Held on: the notch is hidden, so this icon is the only way left to reach Codenotch. Switch the notch back on first if you want to hide it.':'Se mantiene activado: el notch está oculto, así que este icono es la única forma de llegar a Codenotch. Vuelve a activar el notch si quieres ocultarlo.',
+  'The taskbar icon has been kept on. With the notch hidden it is the only way left to open this window or to quit Codenotch, so Codenotch will not let both of them be switched off at the same time.':'El icono de la barra de tareas se mantuvo activado. Con el notch oculto, es la única forma de abrir esta ventana o salir de Codenotch, así que Codenotch no deja desactivar ambos a la vez.',
+  'Language':'Idioma',
+  'Follow system':'Según el sistema',
+  'Sets the language used by Codenotch. “Follow system” uses the language Windows itself is set to.':'Define el idioma de Codenotch. “Según el sistema” usa el idioma configurado en Windows.',
+  'Open Codenotch at login':'Abrir Codenotch al iniciar sesión',
+  'Codenotch opens by itself every time you sign in to this computer, and waits quietly in the background until a coding session starts. Turn it off and you have to open Codenotch yourself.':'Codenotch se abre solo cada vez que inicias sesión en este equipo y espera en segundo plano hasta que empieza una sesión de programación. Si lo desactivas, tendrás que abrir Codenotch tú mismo.',
+  'Version':'Versión',
+  'Data folder':'Carpeta de datos',
+  'Open folder':'Abrir carpeta',
+  'Everything Codenotch remembers lives in one folder: your settings, its log file, and the "glyphs" folder where you can drop your own icons. Opens in File Explorer.':'Todo lo que Codenotch recuerda está en una carpeta: tus ajustes, su archivo de registro y la carpeta "glyphs", donde puedes poner tus propios iconos. Se abre en el Explorador de archivos.',
+  'App designed and developed by':'App diseñada y desarrollada por',
+  'Saved':'Guardado',
+  'System tray':'Bandeja del sistema',
+  'Close':'Cerrar',
+  'No icon in the system tray. Open Codenotch again from the Start menu to bring these settings back.':'Sin icono en la bandeja del sistema. Vuelve a abrir Codenotch desde el menú Inicio para recuperar estos ajustes.',
+  'Model data':'Datos del modelo',
+  'English':'English',
+  'Русский':'Русский',
+  // Not in the other tables yet: the remaining-mode row came with 1.23.0.
+  'Show remaining instead of used':'Mostrar restante en vez de usado',
+  'Show usage pace':'Mostrar el ritmo de uso',
+  'The card adds how far a timed window is ahead of its clock — 12% deficit means 12 points more spent than the time gone would allow.':'La tarjeta añade cuánto va una ventana por delante de su reloj: 12% de déficit significa 12 puntos más gastados de lo que permitiría el tiempo transcurrido.',
+  'The figure under each ring reads what is left — 87% instead of 13% used, the same number the card prints beside it. The rings themselves still fill by what is spent.':'La cifra bajo cada anillo muestra lo que queda: 87% en lugar de 13% usado, el mismo número que la tarjeta muestra al lado. Los anillos se siguen llenando según lo gastado.'
+};
+const STATIC_TEXT = { 'pt-BR': PT_BR_STATIC, ru: RU_STATIC, zh: ZH_STATIC, 'zh-Hant': ZH_HANT_STATIC, ja: JA_STATIC, ko: KO_STATIC, uk: UK_STATIC, es: ES_STATIC };
 const RESET_COPY = {
   'pt-BR':['Notificações de reset','Mostrar um cartão quando o Claude, Codex, Cursor ou outro provedor ativo renovar uma janela após pelo menos 10% de uso. O cartão também aparece com a notch oculta.','Som de notificação','Prévia do cartão de reset','Ver prévia','Notificações'],
   ru:['Уведомления о сбросе','Показывать карточку, когда Claude, Codex, Cursor или другой активный провайдер обновляет окно, если использовано не менее 10%. Карточка видна и при скрытой панели.','Звук уведомления','Предпросмотр карточки','Показать','Уведомления'],
@@ -999,6 +1162,7 @@ const RESET_COPY = {
   'zh-Hant':['重設通知','當 Claude、Codex、Cursor 或其他啟用中的服務窗口在使用至少 10% 後更新時顯示卡片。隱藏凹口列時也會顯示。','通知音效','預覽重設卡片','預覽卡片','通知'],
   ja:['リセット通知','Claude、Codex、Cursor などアクティブなプロバイダーの枠を 10% 以上使った後に更新されたらカードを表示します。ノッチを非表示にしていても表示されます。','通知音','リセットカードをプレビュー','プレビュー','通知'],
   ko:['한도 초기화 알림','Claude, Codex, Cursor 등 활성 공급자의 한도를 10% 이상 사용한 뒤 갱신되면 카드를 표시합니다. 노치를 숨겨도 표시됩니다.','알림 소리','초기화 카드 미리 보기','미리 보기','알림'],
+  es:['Notificaciones de renovación','Muestra una tarjeta cuando Claude, Codex, Cursor u otro proveedor activo renueva un periodo tras al menos un 10% de uso. La tarjeta aparece aunque el notch esté oculto.','Sonido de notificación','Vista previa de la tarjeta','Ver tarjeta','Notificaciones'],
   uk:['Сповіщення про скидання','Показувати картку, коли Claude, Codex, Cursor чи інший активний провайдер оновлює вікно, якщо використано щонайменше 10%. Картка зʼявляється і за прихованої панелі.','Звук сповіщення','Попередній перегляд картки','Переглянути','Сповіщення'],
 };
 const RESET_KEYS = ['Reset notifications', 'Show a card when Claude, Codex, Cursor or another active provider renews a window after at least 10% use. The card also appears while the notch is hidden.', 'Notification sound', 'Preview the reset card', 'Preview card', 'Notifications'];
@@ -1013,6 +1177,7 @@ const STATUS_TEXT = {
   'zh-Hant':{ ok:'', stale:'上次讀數已過期', needsAuth:'未登入', absent:'未安裝', none:'暫無報告', error:'無法連線' },
   ja:{ ok:'', stale:'最後の読み取りが古いです', needsAuth:'サインインしていません', absent:'インストールされていません', none:'報告するものがありません', error:'到達できません' },
   ko:{ ok:'', stale:'마지막 측정값이 오래되었습니다', needsAuth:'로그인되지 않음', absent:'설치되지 않음', none:'보고할 내용 없음', error:'연결할 수 없음' },
+  es:{ ok:'', stale:'última lectura desactualizada', needsAuth:'sin sesión iniciada', absent:'no instalado', none:'nada que mostrar', error:'inaccesible' },
   uk:{ ok:'', stale:'останній показник застарів', needsAuth:'не виконано вхід', absent:'не встановлено', none:'немає даних', error:'недоступний' }
 };
 let uiLang = 'en';
@@ -1160,8 +1325,8 @@ document.getElementById('close').addEventListener('click', () => {
 });
 
 /* ---- providers ---------------------------------------------------------- */
-const ORDER = ['claude', 'codex', 'glm', 'opencode', 'cursor', 'grok', 'copilot', 'gemini'];
-const FALLBACK_LABEL = { claude:'Claude', codex:'Codex', glm:'z.ai', opencode:'OpenCode', cursor:'Cursor', grok:'Grok', copilot:'GitHub Copilot', gemini:'Antigravity' };
+const ORDER = ['claude', 'codex', 'glm', 'opencode', 'commandcode', 'cursor', 'grok', 'copilot', 'gemini', 'deepseek', 'qoder'];
+const FALLBACK_LABEL = { claude:'Claude', codex:'Codex', glm:'z.ai', opencode:'OpenCode', commandcode:'Command Code', cursor:'Cursor', grok:'Grok', copilot:'GitHub Copilot', gemini:'Antigravity', deepseek:'DeepSeek Harness', qoder:'Qoder' };
 let options = [];      // [{id,label,status,used}] from get_tray_options
 let glyphs = {};       // id -> {kind:'svg'|'png'|'appicon', svg, url}
 function providerList(){
@@ -1215,6 +1380,8 @@ function drawSwitch(el, s){
 const hooks = remote('get_hooks_installed', 'set_hooks_installed', 'The Claude Code messages', () => renderAccounts());
 const autostart = remote('get_autostart', 'set_autostart', 'Open Codenotch at login', () => drawSwitch(document.getElementById('sw-autostart'), autostart));
 document.getElementById('sw-autostart').addEventListener('click', () => autostart.toggle());
+const foldFullScreen = remote('get_fold_for_full_screen', 'set_fold_for_full_screen', 'Fold for full-screen apps', () => drawSwitch(document.getElementById('sw-fullscreen'), foldFullScreen));
+document.getElementById('sw-fullscreen').addEventListener('click', () => foldFullScreen.toggle());
 const resetAlert = remote('get_reset_notifications', 'set_reset_notifications', 'Reset notifications', () => drawSwitch(document.getElementById('sw-reset-alert'), resetAlert));
 document.getElementById('sw-reset-alert').addEventListener('click', () => resetAlert.toggle());
 const resetSound = remote('get_reset_notification_sound', 'set_reset_notification_sound', 'Notification sound', () => drawSwitch(document.getElementById('sw-reset-sound'), resetSound));
@@ -1229,6 +1396,10 @@ document.getElementById('btn-reset-preview').addEventListener('click', async e =
 try { window.__TAURI__.event.listen('reset_alert_preview_error', e => strip('Preview card failed: ' + errText(e.payload))); } catch(e) { /* invoke failure uses the strip */ }
 const adaptivePill = remote('get_adaptive_pill', 'set_adaptive_pill', 'Adaptive pill', () => drawSwitch(document.getElementById('sw-adaptive'), adaptivePill));
 document.getElementById('sw-adaptive').addEventListener('click', () => adaptivePill.toggle());
+const showRemaining = remote('get_notch_shows_remaining', 'set_notch_shows_remaining', 'Show remaining instead of used', () => drawSwitch(document.getElementById('sw-remaining'), showRemaining));
+document.getElementById('sw-remaining').addEventListener('click', () => showRemaining.toggle());
+const showPace = remote('get_show_usage_pace', 'set_show_usage_pace', 'Show usage pace', () => drawSwitch(document.getElementById('sw-pace'), showPace));
+document.getElementById('sw-pace').addEventListener('click', () => showPace.toggle());
 const weeklyDashed = remote('get_weekly_ring_dashed', 'set_weekly_ring_dashed', 'Dashed weekly ring', () => drawSwitch(document.getElementById('sw-weekly-dashed'), weeklyDashed));
 document.getElementById('sw-weekly-dashed').addEventListener('click', () => weeklyDashed.toggle());
 
@@ -1323,6 +1494,19 @@ accountsPane.addEventListener('change', e => {
     .then(v => { agPrefs = v; renderAccounts(); toast(); })
     .catch(err => { renderAccounts(); strip('set_antigravity_prefs failed: ' + errText(err)); });
 });
+
+let taskbarAppearanceMode = 'off';
+function applyTaskbarAppearance(mode){
+  taskbarAppearanceMode = mode;
+  const active = mode === 'left' || mode === 'right';
+  document.querySelectorAll('[data-notch-only]').forEach(fieldset => { fieldset.disabled = active; });
+  document.getElementById('appearance-indicators-title').textContent = active
+    ? ui('Indicators','Indicators') : ui('Notch','Notch');
+  const note = document.getElementById('taskbar-appearance-note');
+  note.hidden = !active;
+  const copy = 'Size, theme, colours and rings also apply to the taskbar. Floating display, edge and screen belong to the original notch. Size fits the taskbar height and available space.';
+  note.textContent = ui(copy,copy);
+}
 
 /* ---- Appearance: Show, and App icon -------------------------------------
    Two choices, one command. Hiding both would leave nothing to click, so Rust keeps the tray icon
@@ -1667,7 +1851,7 @@ document.getElementById('btn-recentre').addEventListener('click', () => {
 /* ---- Appearance: language ------------------------------------------------ */
 // Must list every <option> in the picker above: a value missing here is
 // discarded on save and read back as 'auto', so the language is unreachable.
-const LANGS = ['auto', 'en', 'pt-BR', 'zh', 'zh-Hant', 'ja', 'ko', 'ru', 'uk'];
+const LANGS = ['auto', 'en', 'pt-BR', 'zh', 'zh-Hant', 'ja', 'ko', 'ru', 'uk', 'es'];
 document.getElementById('lang').addEventListener('change', e => {
   const previous = e.target.dataset.previous || 'auto';
   const v = LANGS.indexOf(e.target.value) >= 0 ? e.target.value : 'auto';
@@ -1729,6 +1913,7 @@ Promise.resolve(updateListener).catch(() => {}).then(() =>
 
 /* ---- start ---------------------------------------------------------------- */
 function renderAll(){
+  applyTaskbarAppearance(taskbarAppearanceMode);
   renderAccounts();
   renderFlags();
   renderSize();
@@ -1738,6 +1923,7 @@ function renderAll(){
   renderTheme();
   renderTransition();
   drawSwitch(document.getElementById('sw-autostart'), autostart);
+  drawSwitch(document.getElementById('sw-fullscreen'), foldFullScreen);
   drawSwitch(document.getElementById('sw-reset-alert'), resetAlert);
   drawSwitch(document.getElementById('sw-reset-sound'), resetSound);
   drawSwitch(document.getElementById('sw-adaptive'), adaptivePill);
@@ -1775,10 +1961,12 @@ function boot(){
       setUiLanguage(l === 'auto' && typeof resolved === 'string' ? resolved : l);
     }),
     autostart.refresh(),
+    foldFullScreen.refresh(),
     resetAlert.refresh(),
     resetSound.refresh(),
     adaptivePill.refresh(),
     weeklyDashed.refresh(),
+    showRemaining.refresh(),
     hooks.refresh()
   ];
   try { window.__TAURI__.event.listen('glyphs', e => { if(e.payload){ glyphs = e.payload; renderAccounts(); } }); } catch(e) { /* the letters stay */ }
@@ -1800,5 +1988,6 @@ window.addEventListener('focus', () => {
 });
 boot();
 </script>
+<script src="accounts-taskbar.js"></script>
 </body>
 </html>

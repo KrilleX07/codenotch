@@ -46,6 +46,7 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
     let used = if w.derived { format!("~{used}") } else { used };
     match lang {
         "pt-BR" => format!("{used}% usado · {left}% restante"),
+        "es" => format!("{used}% usado · {left}% restante"),
         "ru" => format!("Использовано {used}% · осталось {left}%"),
         "zh" => format!("已用 {used}% · 剩余 {left}%"),
         "zh-Hant" => format!("已用 {used}% · 剩餘 {left}%"),
@@ -56,12 +57,38 @@ pub fn used_left(w: &LimitWindow, lang: &str) -> String {
     }
 }
 
+/// Unknown window lengths must not imply an even pace.
+pub fn pace_points(w: &LimitWindow, now: u64) -> Option<f64> {
+    if w.count.is_some() || !w.used.is_finite() || w.used < 0.0 { return None }
+    let duration = w.duration_ms.filter(|d| *d > 0)? as f64;
+    let remaining = w.resets_at.filter(|r| *r > now)?.saturating_sub(now) as f64;
+    let elapsed = 1.0 - (remaining / duration).min(1.0);
+    Some((w.used.min(1.0) - elapsed) * 100.0)
+}
+
+/// Only ahead-of-pace usage adds text; the reserved side stays unsaid.
+pub fn deficit_text(w: &LimitWindow, now: u64, lang: &str) -> Option<String> {
+    let points = pace_points(w, now).filter(|p| *p > 0.0)?;
+    let rounded = (points * 10.0).round() / 10.0;
+    let value = if rounded == 0.0 { "<0.1".to_string() } else { format!("{rounded:.1}").trim_end_matches(".0").to_string() };
+    Some(match lang {
+        "pt-BR" => format!("{value}% de déficit"),
+        "ru" => format!("дефицит {value}%"),
+        "zh" | "zh-Hant" => format!("{value}% 透支"),
+        "ja" => format!("{value}% 超過"),
+        "uk" => format!("{value}% дефіциту"),
+        "ko" => format!("{value}% 초과"),
+        _ => format!("{value}% deficit"),
+    })
+}
+
 /// "Resets in 59 min", "Resets in 2h 15m", "Resets in 3 Days 4h", or the date and time once it is
 /// far enough out that a duration stops meaning anything.
 pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     if resets_at <= now {
         return match lang {
             "pt-BR" => "Renovando…",
+            "es" => "Renovando…",
             "ru" => "Сброс…",
             "zh" => "正在重置…",
             "zh-Hant" => "正在重置…",
@@ -78,6 +105,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         let m = minutes.max(1);
         return match lang {
             "pt-BR" => format!("Renova em {m} min"),
+            "es" => format!("Se renueva en {m} min"),
             "ru" => format!("Сброс через {m} мин"),
             "zh" => format!("{m} 分钟后重置"),
             "zh-Hant" => format!("{m} 分鐘後重置"),
@@ -91,6 +119,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         let (h, m) = (hours, minutes % 60);
         return match lang {
             "pt-BR" => format!("Renova em {h}h {m}m"),
+            "es" => format!("Se renueva en {h}h {m}m"),
             "ru" => format!("Сброс через {h} ч {m} мин"),
             "zh" => format!("{h} 小时 {m} 分钟后重置"),
             "zh-Hant" => format!("{h} 小時 {m} 分鐘後重置"),
@@ -104,6 +133,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
         let (d, h) = (days, hours % 24);
         return match lang {
             "pt-BR" => if d == 1 { format!("Renova em {d} dia {h}h") } else { format!("Renova em {d} dias {h}h") },
+            "es" => if d == 1 { format!("Se renueva en {d} día {h}h") } else { format!("Se renueva en {d} días {h}h") },
             "ru" => format!("Сброс через {d} дн. {h} ч"),
             "zh" => format!("{d} 天 {h} 小时后重置"),
             "zh-Hant" => format!("{d} 天 {h} 小時後重置"),
@@ -117,6 +147,7 @@ pub fn reset_text(resets_at: u64, now: u64, lang: &str) -> String {
     let when = system_datetime(resets_at);
     match lang {
         "pt-BR" => format!("Renova {when}"),
+        "es" => format!("Se renueva el {when}"),
         "ru" => format!("Сброс: {when}"),
         "zh" => format!("{when} 重置"),
         "zh-Hant" => format!("{when} 重置"),
@@ -133,6 +164,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
     let span = if minutes < 60 {
         match lang {
             "pt-BR" => format!("{minutes} min"),
+            "es" => format!("{minutes} min"),
             "ru" => format!("{minutes} мин"),
             "zh" => format!("{minutes} 分钟"),
             "zh-Hant" => format!("{minutes} 分鐘"),
@@ -145,6 +177,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
         let h = (minutes as f64 / 60.0).round() as u64;
         match lang {
             "pt-BR" => format!("{h} h"),
+            "es" => format!("{h} h"),
             "ru" => format!("{h} ч"),
             "zh" => format!("{h} 小时"),
             "zh-Hant" => format!("{h} 小時"),
@@ -156,6 +189,7 @@ pub fn ago(since: u64, now: u64, lang: &str) -> String {
     };
     match lang {
         "pt-BR" => format!("há {span}"),
+        "es" => format!("hace {span}"),
         "ru" => format!("{span} назад"),
         "zh" => format!("{span}前"),
         "zh-Hant" => format!("{span}前"),
@@ -179,9 +213,25 @@ pub fn label(name: &str, lang: &str) -> String {
         ("pt-BR", "5-hour Limit" | "5-Hour Limit") => "Limite de 5 horas",
         ("pt-BR", "Included usage") => "Uso incluído",
         ("pt-BR", "API usage") => "Uso da API",
+        ("pt-BR", "Plan usage") => "Uso do plano",
+        ("pt-BR", "Total usage") => "Uso total",
+        ("pt-BR", "Add-on credits") => "Créditos adicionais",
+        ("pt-BR", "Organization package") => "Pacote da organização",
         ("pt-BR", "Premium requests") => "Solicitações premium",
         ("pt-BR", "Chat requests") => "Solicitações de chat",
         ("pt-BR", "Completions") => "Conclusões de código",
+        ("es", "Current session") => "Sesión actual",
+        ("es", "Weekly (all models)") => "Semanal (todos los modelos)",
+        ("es", "Weekly (Opus)") => "Semanal (Opus)",
+        ("es", "Weekly (model-scoped)") => "Semanal (por modelo)",
+        ("es", "Weekly limit" | "Weekly Limit") => "Límite semanal",
+        ("es", "Monthly limit" | "Monthly Limit") => "Límite mensual",
+        ("es", "5-hour Limit" | "5-Hour Limit") => "Límite de 5 horas",
+        ("es", "Included usage") => "Uso incluido",
+        ("es", "API usage") => "Uso de API",
+        ("es", "Premium requests") => "Solicitudes premium",
+        ("es", "Chat requests") => "Solicitudes de chat",
+        ("es", "Completions") => "Autocompletados",
         ("ru", "Current session") => "Текущий сеанс",
         ("ru", "Weekly (all models)") => "Недельный (все модели)",
         ("ru", "Weekly (Opus)") => "Недельный (Opus)",
@@ -281,6 +331,10 @@ pub fn window_line(w: &LimitWindow, now: u64, lang: &str) -> String {
         return format!("{name}: ~{count}");
     }
     let mut line = format!("{name}: {}", used_left(w, lang));
+    if let Some(deficit) = deficit_text(w, now, lang) {
+        line.push_str(" · ");
+        line.push_str(&deficit);
+    }
     if let Some(at) = w.resets_at {
         line.push_str(" · ");
         line.push_str(&reset_text(at, now, lang));
@@ -363,6 +417,90 @@ mod tests {
 
     const MIN: u64 = 60 * 1000;
 
+    fn paced(used: f64, remaining: u64, duration: u64) -> LimitWindow {
+        let mut w = window("Current session", used, Some(MIN + remaining));
+        w.duration_ms = Some(duration);
+        w
+    }
+
+    #[test]
+    fn deficit_matches_the_mac_and_worked_examples() {
+        let duration = crate::usage::FIVE_HOURS_MS;
+        for (used, remaining, expected) in [
+            (0.10, 150 * MIN, None),
+            (0.50, 150 * MIN, None),
+            (0.60, 150 * MIN, Some("10% deficit")),
+            (0.70, 210 * MIN, Some("40% deficit")),
+            (0.625, 150 * MIN, Some("12.5% deficit")),
+            (0.5004, 150 * MIN, Some("<0.1% deficit")),
+            (1.0, 240 * MIN, Some("80% deficit")),
+            (1.2, 240 * MIN, Some("80% deficit")),
+            (0.30, 360 * MIN, Some("30% deficit")),
+            (0.02, duration, Some("2% deficit")),
+        ] {
+            assert_eq!(deficit_text(&paced(used, remaining, duration), MIN, "en").as_deref(), expected);
+        }
+        let weekly = crate::usage::SEVEN_DAYS_MS;
+        let w = paced(0.98, 1440 * MIN, weekly);
+        assert!((pace_points(&w, MIN).unwrap() - 12.285714).abs() < 0.00001);
+        assert_eq!(deficit_text(&w, MIN, "en").as_deref(), Some("12.3% deficit"));
+        let reserve = paced(0.27, weekly / 2, weekly);
+        assert!((pace_points(&reserve, MIN).unwrap() + 23.0).abs() < 0.00001);
+        assert_eq!(deficit_text(&reserve, MIN, "en"), None);
+        assert_eq!(deficit_text(&paced(0.4996, weekly / 2, weekly), MIN, "en"), None);
+        assert!((pace_points(&paced(0.8, 36 * 60 * MIN, 3 * 1440 * MIN), MIN).unwrap() - 30.0).abs() < 0.00001);
+        assert!((pace_points(&paced(0.2, weekly + 1000, weekly), MIN).unwrap() - 20.0).abs() < 0.00001);
+    }
+
+    #[test]
+    fn pace_requires_a_valid_current_percentage_window() {
+        let valid = paced(0.6, 150 * MIN, crate::usage::FIVE_HOURS_MS);
+        let invalid = [
+            LimitWindow { duration_ms: None, ..valid.clone() },
+            LimitWindow { duration_ms: Some(0), ..valid.clone() },
+            LimitWindow { resets_at: None, ..valid.clone() },
+            LimitWindow { resets_at: Some(MIN), ..valid.clone() },
+            LimitWindow { resets_at: Some(0), ..valid.clone() },
+            LimitWindow { count: Some(42), ..valid.clone() },
+            LimitWindow { used: f64::NAN, ..valid.clone() },
+            LimitWindow { used: f64::INFINITY, ..valid.clone() },
+            LimitWindow { used: f64::NEG_INFINITY, ..valid.clone() },
+            LimitWindow { used: -0.1, ..valid.clone() },
+        ];
+        for w in invalid {
+            assert_eq!(pace_points(&w, MIN), None);
+            assert_eq!(deficit_text(&w, MIN, "en"), None);
+        }
+    }
+
+    #[test]
+    fn a_deficit_sits_between_usage_and_reset_in_each_language() {
+        let w = paced(0.6, 150 * MIN, crate::usage::FIVE_HOURS_MS);
+        assert_eq!(window_line(&w, MIN, "en"), "Current session: 60% Used · 40% left · 10% deficit · Resets in 2h 30m");
+        assert_eq!(window_line(&w, MIN, "ru"), "Текущий сеанс: Использовано 60% · осталось 40% · дефицит 10% · Сброс через 2 ч 30 мин");
+        for used in [0.1, 0.5] {
+            let mut w = LimitWindow { used, ..w.clone() };
+            let under_pace = window_line(&w, MIN, "en");
+            w.duration_ms = None;
+            assert_eq!(under_pace, window_line(&w, MIN, "en"));
+        }
+    }
+
+    #[test]
+    fn the_card_and_the_menu_agree_on_deficit_wording() {
+        let page = include_str!("../ui/notch.html");
+        let dictionary = page.split("const UI={").nth(1).unwrap().split("function ui()").next().unwrap();
+        let w = paced(0.6, 150 * MIN, crate::usage::FIVE_HOURS_MS);
+        for lang in ["en", "pt-BR", "ru", "zh", "zh-Hant", "ja", "uk", "ko"] {
+            let key = if lang == "ja" { "UI.ja={".to_string() } else if lang.contains('-') { format!("'{lang}':{{") } else { format!("{lang}:{{") };
+            let block = dictionary.split(&key).nth(1).unwrap_or_else(|| panic!("missing {lang} UI")).split("},").next().unwrap();
+            let wording = deficit_text(&w, MIN, lang).unwrap().replace("10", "${v}");
+            assert!(block.contains(&format!("deficit:v=>`{wording}`")), "{lang} card and tray disagree on deficit wording");
+        }
+        assert_eq!(deficit_text(&w, MIN, "unknown"), deficit_text(&w, MIN, "en"));
+    }
+
+
     #[test]
     fn a_reading_reads_as_the_card_prints_it() {
         assert_eq!(pct(0.0), "0");
@@ -398,6 +536,23 @@ mod tests {
         assert_eq!(label("Included usage", "pt-BR"), "Uso incluído");
         assert_eq!(label("API usage", "pt-BR"), "Uso da API");
         assert_eq!(ago(0, 20 * MIN, "pt-BR"), "há 20 min");
+    }
+
+    /// "Renovar", not "reiniciar": the quota renews, the app does not restart (#295 had it that way
+    /// in Portuguese). One day is singular, like the Mac's "Se renueva en %lld día %lldh".
+    #[test]
+    fn spanish_readings_renew_rather_than_restart() {
+        let w = window("Current session", 0.61, Some(60 * MIN));
+        assert_eq!(window_line(&w, MIN, "es"), "Sesión actual: 61% usado · 39% restante · Se renueva en 59 min");
+        assert_eq!(reset_text(MIN, MIN, "es"), "Renovando…");
+        assert_eq!(reset_text(136 * MIN, MIN, "es"), "Se renueva en 2h 15m");
+        assert_eq!(reset_text((1440 + 60 + 1) * MIN, MIN, "es"), "Se renueva en 1 día 1h");
+        assert_eq!(reset_text((3 * 1440 + 4 * 60 + 1) * MIN, MIN, "es"), "Se renueva en 3 días 4h");
+        assert_eq!(ago(MIN, 21 * MIN, "es"), "hace 20 min");
+        assert_eq!(ago(MIN, 121 * MIN, "es"), "hace 2 h");
+        assert_eq!(used_left(&window("", 0.006, None), "es"), "0.6% usado · 99.4% restante");
+        assert_eq!(label("5-hour Limit", "es"), "Límite de 5 horas");
+        assert_eq!(label("A future limit", "es"), "A future limit");
     }
 
     #[test]
@@ -476,6 +631,9 @@ mod tests {
             let korean = label(name, "ko");
             assert_ne!(korean, name, "{name:?} lost its Korean here");
             assert!(page.contains(&format!("'{name}':'{korean}'")), "Korean card and tray disagree on {name:?}");
+            let spanish = label(name, "es");
+            assert_ne!(spanish, name, "{name:?} lost its Spanish here");
+            assert!(page.contains(&format!("'{name}':'{spanish}'")), "Spanish card and tray disagree on {name:?}");
         }
     }
 }

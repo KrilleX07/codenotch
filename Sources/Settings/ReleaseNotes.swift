@@ -32,6 +32,74 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.24.0",
+                headline: L10n.t("A menu bar that does more: provider cards, a waiting dot, your choice of width, order and click. Plus Spanish, Higgsfield, and rings ordered by what is about to expire."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Provider cards in the menu"),
+                        detail: L10n.t("The menu under the menu bar item shows each provider's card, with a Detail switch per card.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Waiting and done in the menu bar"),
+                        detail: L10n.t("A red dot when an agent is waiting for your reply, and a blink when it finishes. The working pulse is deeper, so it is seen.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("The menu bar, your way"),
+                        detail: L10n.t("A Menu bar group in Appearance: show what is left, how much of each reading to print, sort by what is left, and what a click does.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Order rings by burn deficit"),
+                        detail: L10n.t("Manual, most remaining, or quota that will expire unused first.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Español"),
+                        detail: L10n.t("Codenotch in Spanish, on the Mac and on Windows.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Higgsfield"),
+                        detail: L10n.t("A ring for your Higgsfield credits.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("More"),
+                        detail: L10n.t("Antigravity reads the quota group you chose and its ACP sign-in, Ollama's cloud usage, OpenCode 2.x keys, whole tokens per second under local rings, even bar thickness, and Pi sessions that quit no longer read as working.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
+                version: "1.23.0",
+                headline: L10n.t("Show what is left instead of what is used, a Dock style, oMLX, and Claude and Codex on your own servers."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("Show remaining instead of used"),
+                        detail: L10n.t("The rings and figures count down what is left. Rings can shut when a window is spent, and order themselves by what remains.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Remote hosts and Muse"),
+                        detail: L10n.t("Claude and Codex accounts on servers you reach over SSH, and Muse, each with a ring of its own.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("A Dock style"),
+                        detail: L10n.t("The notch floats just clear of the screen's edge as a slab of glass.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("oMLX"),
+                        detail: L10n.t("The models oMLX has loaded, what they are doing, their speed, how full the context is, and a daily token count.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Breathing working indicator"),
+                        detail: L10n.t("Optional: a disc in the provider's colour breathes while a session works, in place of the spinning arc.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("Enterprise spend forecast"),
+                        detail: L10n.t("The spend card says whether the monthly limit lasts until it resets.")
+                    ),
+                    ReleaseNote.Change(
+                        title: L10n.t("More"),
+                        detail: L10n.t("OpenCode activity on Custom Endpoints, Grok Bot's weekly usage, DeepSeek off-peak all day on Chinese public holidays, gentler Claude retries when rate limited, notches back on external displays after sleep, and Claude sessions nobody has open left out.")
+                    ),
+                ]
+            ),
+            ReleaseNote(
                 version: "1.22.0",
                 headline: L10n.t("Qoder's credits, more than one Command Code account, and DeepSeek's balance from the wallet that has one."),
                 changes: [

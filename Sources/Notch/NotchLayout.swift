@@ -50,6 +50,14 @@ enum NotchLayout {
     /// The pill is small, so the region that wakes it is deliberately larger.
     static let pillHotZone = Design.px(90)
 
+    // The dock style's floating slab. Plain points, and the one pair of numbers
+    // here not quoted from the design frame: the frame has no Dock in it, so
+    // both were measured beside the real one. The gap is a distance from the
+    // screen, like `bezelBleed`, so the size setting leaves it alone; the
+    // radius belongs to the notch and is scaled with it like every other.
+    static let dockGap: CGFloat = 5
+    static let dockCornerRadius: CGFloat = 32
+
     // A provider cell
     static let ringDiameter  = Design.px(117)   // 44pt, the design spec's anchor
 
@@ -188,13 +196,19 @@ enum NotchLayout {
     static let tailLength    = Design.px(75)
     static let tailHeight    = Design.px(87)
     static let tailGap       = Design.px(28)    // tail tip -> notch body edge
-    static let barHeight     = Design.px(10.5)
+    /// Whole points, unlike the distances around it. A usage bar is a solid
+    /// edge-to-edge fill, so the compositor snaps its top and its bottom to the
+    /// pixel grid separately: at the frame's 3.95pt, a bar that happened to sit
+    /// half a pixel lower came out a whole pixel thinner than the one beside
+    /// it. Four points is four pixels at 1x and eight at 2x wherever it lands.
+    static let barHeight     = Design.px(10.5).rounded()
     static let headerGap     = Design.px(17)    // glyph -> title
     static let headerToBlock = Design.px(21)
     static let labelToBar    = Design.px(16.8)
     static let barToUsed     = Design.px(17.8)
     static let blockSpacing  = Design.px(20)
-    static let moneyBarHeight = Design.px(12)
+    /// Whole points for the reason `barHeight` is.
+    static let moneyBarHeight = Design.px(12).rounded()
     static let moneyBarToStats = Design.px(14)
     static let moneyStatGap = Design.px(4)
     static let usageDetailIdentityGap = Design.px(4)
@@ -262,16 +276,47 @@ enum NotchLayout {
     ///
     /// Rounded up to whole lines: the card's height is a stack of line boxes,
     /// and half a line of budget leaves the last one straddling the clip.
-    static func bodyTextHeight(_ text: String) -> CGFloat {
+    ///
+    /// `width` is the column the text actually wraps to. The notch's card is
+    /// the default and the only one the panel geometry is solved against; the
+    /// Detail panel passes its own, so a name that fits one line there is not
+    /// given two lines of room.
+    static func bodyTextHeight(_ text: String, width: CGFloat = cardTextWidth) -> CGFloat {
         guard !text.isEmpty else { return cardBodyLineHeight }
         let bounds = (text as NSString).boundingRect(
-            with: CGSize(width: cardTextWidth, height: .greatestFiniteMagnitude),
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             attributes: [.font: cardBodyFont]
         )
         let lines = max(1, Int((bounds.height / cardBodyLineHeight).rounded(.up)))
         return CGFloat(lines) * cardBodyLineHeight
     }
+
+    /// Whether a label and the value opposite it both fit on one row of
+    /// `width`, with the gap `SplitRow` keeps between them and a little room
+    /// to spare.
+    ///
+    /// Measured in the card's own body face, because this decides whether a
+    /// row may carry a longer string at all — a row that cannot is given the
+    /// short one rather than left to truncate.
+    ///
+    /// The slack is not padding for its own sake. `NSString`'s metrics come in
+    /// a point or two under what SwiftUI's `Text` asks for the same string in
+    /// the same face, so a row measured to fit exactly was still truncated on
+    /// screen — and a row that fits to the last point reads as crowded even
+    /// when it does not truncate. Both are answered by refusing the last few
+    /// points.
+    static func splitRowFits(leading: String, trailing: String, width: CGFloat) -> Bool {
+        let attributes: [NSAttributedString.Key: Any] = [.font: cardBodyFont]
+        let leadingWidth = (leading as NSString).size(withAttributes: attributes).width
+        let trailingWidth = (trailing as NSString).size(withAttributes: attributes).width
+        return leadingWidth + splitRowGap + trailingWidth + splitRowSlack <= width
+    }
+
+    /// The least `SplitRow` leaves between a label and its value.
+    static let splitRowGap = Design.px(20)
+    /// What `splitRowFits` keeps back — see its note.
+    static let splitRowSlack = Design.px(24)
 
     private static func lineHeight(_ font: NSFont) -> CGFloat {
         ceil(font.ascender - font.descender + font.leading)
@@ -383,7 +428,9 @@ enum NotchLayout {
     }
 
     static func cardHeight(windowCount: Int, groupCount: Int = 0,
-                           moneyWindowCount: Int = 0, usageDetailGroupCount: Int = 0,
+                           moneyWindowCount: Int = 0, moneyResetCount: Int = 0,
+                           moneyProjectionCount: Int = 0,
+                           usageDetailGroupCount: Int = 0,
                            sessionCount: Int = 0,
                            sessionCap: Int = defaultSessionCap,
                            statusMessage: String? = nil,
@@ -426,6 +473,10 @@ enum NotchLayout {
             height += headerToBlock
                 + CGFloat(fullCount) * fullBlock
                 + CGFloat(moneyCount) * moneyBlock
+                // A balance with a period adds its reset line under the stats,
+                // and its forecast once there is one.
+                + CGFloat(min(max(0, moneyResetCount), moneyCount)
+                          + min(max(0, moneyProjectionCount), moneyCount)) * (moneyStatGap + cardBodyLineHeight)
                 + CGFloat(compactRowCount) * compactBlock
                 + CGFloat(windowCount - 1) * blockSpacing
             if groupCount > 0 {
@@ -484,8 +535,8 @@ enum NotchLayout {
         return height
     }
 
-    static func modelNameHeight(_ name: String) -> CGFloat {
-        min(2 * cardBodyLineHeight, bodyTextHeight(name))
+    static func modelNameHeight(_ name: String, width: CGFloat = cardTextWidth) -> CGFloat {
+        min(2 * cardBodyLineHeight, bodyTextHeight(name, width: width))
     }
 
 
