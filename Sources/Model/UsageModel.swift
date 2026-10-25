@@ -253,9 +253,9 @@ struct LimitWindow: Identifiable, Codable, Equatable {
     }
 
     /// What the tooltip says on the line under the bar.
-    var summary: String { summary() }
+    var summary: String { summary(locale: L10n.locale, showingRemaining: false) }
 
-    func summary(mode: ProgressBarMode = .consumed, locale: Locale = L10n.locale) -> String {
+    func summary(mode: ProgressBarMode, locale: Locale = L10n.locale) -> String {
         summary(locale: locale, showingRemaining: mode == .remaining)
     }
 
@@ -277,7 +277,6 @@ struct LimitWindow: Identifiable, Codable, Equatable {
                 return L10n.t("\(halves.left)% left · \(halves.used)% Used", locale: locale)
             }
             return L10n.t("\(halves.used)% Used · \(halves.left)% left", locale: locale)
-        }
         }
         if let remaining {
             return remaining < 10_000

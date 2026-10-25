@@ -304,6 +304,10 @@ enum AntigravityBridge {
             endpoint = nil
             AntigravityBridge.killOrphanBridges()
         }
+
+        func resetForTesting() {
+            stop()
+        }
     }
 
     /// Terminates any orphaned codenotch-bridge language servers that might have survived
@@ -316,10 +320,6 @@ enum AntigravityBridge {
                     _ = run("/bin/kill", ["-9", "\(pid)"])
                 }
             }
-        }
-
-        func resetForTesting() {
-            stop()
         }
     }
 

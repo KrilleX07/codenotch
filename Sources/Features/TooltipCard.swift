@@ -636,7 +636,7 @@ private struct LimitWindowRow: View {
         return UsageBand.rampColor(for: window.usedFraction ?? 0, watchLimit: watchLimit, accent: accentColor)
     }
     private var trackWidth: CGFloat { detailWidth - inset }
-    private var fillWidth: CGFloat {
+
     private var isDraining: Bool {
         progressBarMode == .remaining || showsRemaining
     }
@@ -701,7 +701,7 @@ private struct LimitWindowRow: View {
                     .animation(NotchMotion.reading, value: barColor)
                 }
 
-                Text("\(window.usedFraction == nil ? "" : fidelity.qualifier)\(window.detail ?? window.summary(mode: progressBarMode, showingRemaining: isDraining))\(paceText)")
+                Text("\(window.usedFraction == nil ? "" : fidelity.qualifier)\(window.detail ?? window.summary(showingRemaining: isDraining))\(paceText)")
                     .font(Typography.cardBody)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
