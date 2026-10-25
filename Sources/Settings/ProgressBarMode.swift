@@ -27,7 +27,7 @@ enum ProgressBarMode: String, CaseIterable, Identifiable {
 }
 
 private struct ProgressBarModeKey: EnvironmentKey {
-    static let defaultValue = ProgressBarMode.remaining
+    static let defaultValue = ProgressBarMode.consumed
 }
 
 extension EnvironmentValues {
