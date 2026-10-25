@@ -103,7 +103,21 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
         if let db = SQLiteStore.open(dbURL) {
             defer { sqlite3_close(db) }
-            let sql = "SELECT conversation_id, title, status, last_modified_time, last_user_input_time, workspace_uris, agent_name FROM conversation_summaries WHERE not_fully_idle = 1 AND killed = 0 ORDER BY last_modified_time DESC;"
+            let sql = """
+            SELECT conversation_id, title, status, last_modified_time, last_user_input_time, workspace_uris, agent_name
+            FROM conversation_summaries
+            WHERE not_fully_idle = 1 AND killed = 0
+            UNION
+            SELECT conversation_id, title, status, last_modified_time, last_user_input_time, workspace_uris, agent_name
+            FROM (
+                SELECT conversation_id, title, status, last_modified_time, last_user_input_time, workspace_uris, agent_name
+                FROM conversation_summaries
+                WHERE killed = 0
+                ORDER BY last_modified_time DESC
+                LIMIT 5
+            )
+            ORDER BY last_modified_time DESC;
+            """
             let rows = SQLiteStore.rows(in: db, sql: sql, columns: 7)
             var sessions: [AgentSession] = []
             for row in rows {
@@ -121,15 +135,17 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
 
                 let transcriptPath = root.appendingPathComponent("\(convoID)/.system_generated/logs/transcript.jsonl")
                 var info = stat()
-                let modified: Date
-                if stat(transcriptPath.path, &info) == 0 {
-                    modified = Date(timeIntervalSince1970:
+                let fileDate: Date? = stat(transcriptPath.path, &info) == 0
+                    ? Date(timeIntervalSince1970:
                         TimeInterval(info.st_mtimespec.tv_sec)
                         + TimeInterval(info.st_mtimespec.tv_nsec) / 1_000_000_000)
-                } else if let parsedDate = parseDate(lastModifiedStr) {
-                    modified = parsedDate
+                    : nil
+                let dbDate = parseDate(lastModifiedStr)
+                let modified: Date
+                if let fileDate, let dbDate {
+                    modified = max(fileDate, dbDate)
                 } else {
-                    modified = now
+                    modified = fileDate ?? dbDate ?? now
                 }
 
                 if let sess = session(
