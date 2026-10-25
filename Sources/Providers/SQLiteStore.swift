@@ -25,7 +25,11 @@ enum SQLiteStore {
             if sqlite3_open_v2("file:\(url.path)?\(query)", &db,
                                SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK,
                let db {
-                return db
+                var probe: OpaquePointer?
+                if sqlite3_prepare_v2(db, "SELECT 1;", -1, &probe, nil) == SQLITE_OK {
+                    sqlite3_finalize(probe)
+                    return db
+                }
             }
             sqlite3_close(db)
         }
