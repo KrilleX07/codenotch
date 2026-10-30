@@ -90,12 +90,28 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         let all = roots.flatMap { read(root: $0, staleAfter: staleAfter, now: now) }
         var seen = Set<String>()
         var unique: [AgentSession] = []
-        for s in all.sorted(by: { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }) {
+        for s in all.sorted(by: { lhs, rhs in
+            let lp = statePriority(lhs.state)
+            let rp = statePriority(rhs.state)
+            if lp != rp {
+                return lp > rp
+            }
+            return lhs.since == rhs.since ? lhs.id < rhs.id : lhs.since > rhs.since
+        }) {
             if seen.insert(s.id).inserted {
                 unique.append(s)
             }
         }
         return unique
+    }
+
+    private static func statePriority(_ state: AgentSession.State) -> Int {
+        switch state {
+        case .busy:    return 3
+        case .waiting: return 2
+        case .success: return 1
+        case .idle:    return 0
+        }
     }
 
     static func read(root: URL, staleAfter: TimeInterval, now: Date = Date()) -> [AgentSession] {
@@ -155,6 +171,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                     workspace: workspace,
                     agentName: agentName,
                     userInputDate: userInputDate,
+                    fileDate: fileDate,
                     modified: modified,
                     staleAfter: staleAfter,
                     now: now
@@ -188,6 +205,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 workspace: nil,
                 agentName: nil,
                 userInputDate: nil,
+                fileDate: modified,
                 modified: modified,
                 staleAfter: staleAfter,
                 now: now
@@ -372,14 +390,12 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         workspace: String? = nil,
         agentName: String? = nil,
         userInputDate: Date? = nil,
+        fileDate: Date? = nil,
         modified: Date,
         staleAfter: TimeInterval,
         now: Date
     ) -> AgentSession? {
         let age = now.timeIntervalSince(modified)
-        if let status = status?.uppercased(), !status.isEmpty, status.contains("IDLE"), age > 9 {
-            return nil
-        }
 
         let (parsedState, waitingFor, parsedUserInputDate, parsedWorkspace, latestStepType) = tail(of: trajectory)
             .map(parseState(inTail:)) ?? (.idle, nil, nil, nil, nil)
@@ -392,26 +408,25 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 } else {
                     resolvedState = .busy
                 }
-            } else if status.contains("IDLE") {
-                if age <= 9 {
-                    resolvedState = .success
-                } else {
-                    return nil
-                }
             }
         }
 
         if resolvedState == .idle {
-            if age <= 9 {
+            // A completed turn is only eligible for the temporary 9-second .success announcement
+            // if the transcript file itself was modified recently. An old transcript touched only
+            // by a database timestamp must not produce a phantom completion.
+            let fileAge = fileDate.map { now.timeIntervalSince($0) } ?? age
+            if fileAge <= 9 {
                 resolvedState = .success
             } else {
                 return nil
             }
         } else if resolvedState == .busy {
             let isRunning = status?.uppercased().contains("RUNNING") == true
-            if isRunning {
-                // The Antigravity database explicitly marks this session as RUNNING.
-                // Models often think (CoT) for 15-45s and build commands can take minutes,
+            let isRunningTool = latestStepType == "PLANNER_RESPONSE" || latestStepType == "GENERIC"
+            if isRunning || isRunningTool {
+                // The Antigravity database or active tool call indicates work in progress.
+                // Models often think (CoT) for 15-45s and build/test commands can take minutes,
                 // during which transcript.jsonl is not updated. Don't drop active agents.
                 guard age <= max(staleAfter, 120) else { return nil }
             } else if latestStepType == "USER_INPUT" {
