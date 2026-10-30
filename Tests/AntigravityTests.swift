@@ -1366,6 +1366,136 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         let expiredSessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now.addingTimeInterval(15))
         XCTAssertTrue(expiredSessions.isEmpty, "Completed session should expire after 9 seconds")
     }
+
+    func testRunningToolInCLISessionDoesNotEmitSuccess() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            let wal = dbURL.appendingPathExtension("wal")
+            let shm = dbURL.appendingPathExtension("shm")
+            try? FileManager.default.removeItem(at: wal)
+            try? FileManager.default.removeItem(at: shm)
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        // CLI sessions often have CASCADE_RUN_STATUS_IDLE in conversation_summaries.db while executing tools
+        let modifiedTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-2))
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_running_tool', 'CLI Task', 'CASCADE_RUN_STATUS_IDLE', '\(modifiedTime)', '\(modifiedTime)', '[]', '', 0, 0);", nil, nil, nil)
+
+        let runningToolContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(modifiedTime)\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"run_command\"}]}"
+        ].joined(separator: "\n")
+        try transcript("convo_running_tool", modified: now.addingTimeInterval(-2), content: runningToolContent)
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.name, "CLI Task")
+        XCTAssertEqual(sessions.first?.state, .busy, "A session with an executing tool must read as .busy, never .success")
+    }
+
+    func testRunningToolLastingMoreThanNineSecondsDoesNotDropOrEmitSuccess() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            let wal = dbURL.appendingPathExtension("wal")
+            let shm = dbURL.appendingPathExtension("shm")
+            try? FileManager.default.removeItem(at: wal)
+            try? FileManager.default.removeItem(at: shm)
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        // Tool started 15 seconds ago
+        let startedTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-15))
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_long_cmd', 'Build Task', 'CASCADE_RUN_STATUS_IDLE', '\(startedTime)', '\(startedTime)', '[]', '', 0, 0);", nil, nil, nil)
+
+        let runningToolContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(startedTime)\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"run_command\"}]}"
+        ].joined(separator: "\n")
+        try transcript("convo_long_cmd", modified: now.addingTimeInterval(-15), content: runningToolContent)
+
+        // Must still be considered busy even after > 9 seconds
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.state, .busy, "Long-running command (> 9s) must not be dropped or marked finished")
+    }
+
+    func testMultiFlavourDeduplicationPrefersBusyOverIdleOrSuccess() throws {
+        let now = Date()
+        let rootCLI = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("cli-\(UUID().uuidString)")
+        let rootIDE = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ide-\(UUID().uuidString)")
+        defer {
+            try? FileManager.default.removeItem(at: rootCLI)
+            try? FileManager.default.removeItem(at: rootIDE)
+        }
+
+        // Setup CLI transcript: active tool running now
+        let dirCLI = rootCLI.appendingPathComponent("shared_convo/.system_generated/logs")
+        try FileManager.default.createDirectory(at: dirCLI, withIntermediateDirectories: true)
+        let fileCLI = dirCLI.appendingPathComponent("transcript.jsonl")
+        let runningContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-5)))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"run_command\"}]}"
+        ].joined(separator: "\n")
+        try runningContent.write(to: fileCLI, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-2)], ofItemAtPath: fileCLI.path)
+
+        // Setup IDE transcript: completed turn from 3 seconds ago
+        let dirIDE = rootIDE.appendingPathComponent("shared_convo/.system_generated/logs")
+        try FileManager.default.createDirectory(at: dirIDE, withIntermediateDirectories: true)
+        let fileIDE = dirIDE.appendingPathComponent("transcript.jsonl")
+        let completedContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-10)))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Done earlier\"}"
+        ].joined(separator: "\n")
+        try completedContent.write(to: fileIDE, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-3)], ofItemAtPath: fileIDE.path)
+
+        let sessions = AntigravityActivityMonitor.read(roots: [rootIDE, rootCLI], staleAfter: 25, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.id, "antigravity.shared_convo")
+        XCTAssertEqual(sessions.first?.state, .busy, "Active terminal turn must win over an idle mirror")
+    }
+
+    func testOldTranscriptWithRecentDBTouchDoesNotProduceSuccess() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            let wal = dbURL.appendingPathExtension("wal")
+            let shm = dbURL.appendingPathExtension("shm")
+            try? FileManager.default.removeItem(at: wal)
+            try? FileManager.default.removeItem(at: shm)
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        // Database touched 2s ago (e.g. background sync or metadata update)
+        let freshDBTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-2))
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_old_transcript', 'Old Task', 'CASCADE_RUN_STATUS_IDLE', '\(freshDBTime)', '\(freshDBTime)', '[]', '', 0, 0);", nil, nil, nil)
+
+        // But transcript was finished 1 hour ago
+        let oldTranscriptTime = now.addingTimeInterval(-3600)
+        let finishedTurnContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: oldTranscriptTime))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Finished an hour ago\"}"
+        ].joined(separator: "\n")
+        try transcript("convo_old_transcript", modified: oldTranscriptTime, content: finishedTurnContent)
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertTrue(sessions.isEmpty, "An old transcript whose DB row was bumped must not emit a phantom .success notification")
+    }
 }
 
 /// The "Open" button on an account row. The reading is borrowed from an app on
