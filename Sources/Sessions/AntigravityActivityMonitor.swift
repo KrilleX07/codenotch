@@ -87,19 +87,28 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
 
     /// Returns all live turns across every install directory.
     static func read(roots: [URL], staleAfter: TimeInterval, now: Date = Date()) -> [AgentSession] {
-        let all = roots.flatMap { read(root: $0, staleAfter: staleAfter, now: now) }
+        let all = roots.flatMap { readWithActivity(root: $0, staleAfter: staleAfter, now: now) }
         var seen = Set<String>()
         var unique: [AgentSession] = []
-        for s in all.sorted(by: { lhs, rhs in
-            let lp = statePriority(lhs.state)
-            let rp = statePriority(rhs.state)
+        for item in all.sorted(by: { lhs, rhs in
+            let timeDiff = lhs.activityDate.timeIntervalSince(rhs.activityDate)
+            if abs(timeDiff) > 2.0 {
+                // If one candidate has distinctly newer activity (> 2s), the newer one represents
+                // the current conversation state and must win.
+                return timeDiff > 0
+            }
+            // If activity timestamps are within 2 seconds of each other (essentially simultaneous),
+            // prefer active work (busy > waiting > success > idle) so an idle mirror doesn't override
+            // an active turn.
+            let lp = statePriority(lhs.session.state)
+            let rp = statePriority(rhs.session.state)
             if lp != rp {
                 return lp > rp
             }
-            return lhs.since == rhs.since ? lhs.id < rhs.id : lhs.since > rhs.since
+            return lhs.session.since == rhs.session.since ? lhs.session.id < rhs.session.id : lhs.session.since > rhs.session.since
         }) {
-            if seen.insert(s.id).inserted {
-                unique.append(s)
+            if seen.insert(item.session.id).inserted {
+                unique.append(item.session)
             }
         }
         return unique
@@ -115,6 +124,10 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     }
 
     static func read(root: URL, staleAfter: TimeInterval, now: Date = Date()) -> [AgentSession] {
+        readWithActivity(root: root, staleAfter: staleAfter, now: now).map(\.session)
+    }
+
+    static func readWithActivity(root: URL, staleAfter: TimeInterval, now: Date = Date()) -> [(session: AgentSession, activityDate: Date)] {
         // 1. Try reading real-time conversation statuses from conversation_summaries.db
         let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
         if let db = SQLiteStore.open(dbURL) {
@@ -135,7 +148,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             ORDER BY last_modified_time DESC;
             """
             let rows = SQLiteStore.rows(in: db, sql: sql, columns: 7)
-            var sessions: [AgentSession] = []
+            var sessions: [(session: AgentSession, activityDate: Date)] = []
             for row in rows {
                 let convoID = row[0]
                 guard !convoID.isEmpty else { continue }
@@ -157,9 +170,26 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                         + TimeInterval(info.st_mtimespec.tv_nsec) / 1_000_000_000)
                     : nil
                 let dbDate = parseDate(lastModifiedStr)
+                let isRunningInDB = status.uppercased().contains("RUNNING")
+
+                // If transcript.jsonl exists in this root, but was modified long ago,
+                // and the DB does not say RUNNING, this transcript cannot be part of an
+                // active turn. A recent dbDate (e.g. from an external CLI run or DB touch)
+                // must not resurrect a stale transcript file.
+                if let fileDate, !isRunningInDB {
+                    let fileAge = now.timeIntervalSince(fileDate)
+                    if fileAge > max(staleAfter, 120) {
+                        continue
+                    }
+                }
+
                 let modified: Date
                 if let fileDate, let dbDate {
-                    modified = max(fileDate, dbDate)
+                    if abs(fileDate.timeIntervalSince(dbDate)) <= max(staleAfter, 120) {
+                        modified = max(fileDate, dbDate)
+                    } else {
+                        modified = fileDate
+                    }
                 } else {
                     modified = fileDate ?? dbDate ?? now
                 }
@@ -176,10 +206,10 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                     staleAfter: staleAfter,
                     now: now
                 ) {
-                    sessions.append(sess)
+                    sessions.append((sess, modified))
                 }
             }
-            return sessions.sorted { $0.since == $1.since ? $0.id < $1.id : $0.since > $1.since }
+            return sessions.sorted { $0.session.since == $1.session.since ? $0.session.id < $1.session.id : $0.session.since > $1.session.since }
         }
 
         // 2. Fallback: scan all trajectory transcripts in the directory
@@ -188,7 +218,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             at: root, includingPropertiesForKeys: nil
         ) else { return [] }
 
-        var sessions: [AgentSession] = []
+        var sessions: [(session: AgentSession, activityDate: Date)] = []
         for trajectory in trajectories {
             let transcriptPath = trajectory.path
                 + "/.system_generated/logs/transcript.jsonl"
@@ -210,11 +240,11 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                 staleAfter: staleAfter,
                 now: now
             ) {
-                sessions.append(sess)
+                sessions.append((sess, modified))
             }
         }
 
-        return sessions.sorted(by: { $0.since > $1.since })
+        return sessions.sorted(by: { $0.session.since > $1.session.since })
     }
 
     private static let isoFormatterFractional: ISO8601DateFormatter = {
@@ -415,7 +445,8 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             // A completed turn is only eligible for the temporary 9-second .success announcement
             // if the transcript file itself was modified recently. An old transcript touched only
             // by a database timestamp must not produce a phantom completion.
-            let fileAge = fileDate.map { now.timeIntervalSince($0) } ?? age
+            guard let fileDate else { return nil }
+            let fileAge = now.timeIntervalSince(fileDate)
             if fileAge <= 9 {
                 resolvedState = .success
             } else {
@@ -424,10 +455,14 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
         } else if resolvedState == .busy {
             let isRunning = status?.uppercased().contains("RUNNING") == true
             let isRunningTool = latestStepType == "PLANNER_RESPONSE" || latestStepType == "GENERIC"
+            let fileAge = fileDate.map { now.timeIntervalSince($0) } ?? age
             if isRunning || isRunningTool {
                 // The Antigravity database or active tool call indicates work in progress.
                 // Models often think (CoT) for 15-45s and build/test commands can take minutes,
                 // during which transcript.jsonl is not updated. Don't drop active agents.
+                if !isRunning {
+                    guard fileAge <= max(staleAfter, 120) else { return nil }
+                }
                 guard age <= max(staleAfter, 120) else { return nil }
             } else if latestStepType == "USER_INPUT" {
                 // If a turn ended on USER_INPUT with no follow-up and no RUNNING status,

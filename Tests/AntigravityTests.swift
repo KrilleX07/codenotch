@@ -1496,6 +1496,94 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
         XCTAssertTrue(sessions.isEmpty, "An old transcript whose DB row was bumped must not emit a phantom .success notification")
     }
+
+    func testStaleToolTranscriptDoesNotResurrectAsBusyWhenDBIsTouched() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            let wal = dbURL.appendingPathExtension("wal")
+            let shm = dbURL.appendingPathExtension("shm")
+            try? FileManager.default.removeItem(at: wal)
+            try? FileManager.default.removeItem(at: shm)
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        // Database touched 2s ago with CASCADE_RUN_STATUS_IDLE
+        let freshDBTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-2))
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_stale_tool', 'Old Task', 'CASCADE_RUN_STATUS_IDLE', '\(freshDBTime)', '\(freshDBTime)', '[]', '', 0, 0);", nil, nil, nil)
+
+        // But transcript stopped on a tool call 1 hour ago
+        let oldTranscriptTime = now.addingTimeInterval(-3600)
+        let toolContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: oldTranscriptTime))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"run_command\"}]}",
+            "{\"type\": \"GENERIC\", \"status\": \"DONE\"}"
+        ].joined(separator: "\n")
+        try transcript("convo_stale_tool", modified: oldTranscriptTime, content: toolContent)
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertTrue(sessions.isEmpty, "An old tool transcript whose DB row was touched must not resurrect as busy")
+    }
+
+    func testFinishedCLITurnWinsOverStaleToolTranscriptMirrorAndEmitsSuccess() throws {
+        let now = Date()
+        let rootCLI = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("cli-\(UUID().uuidString)")
+        let rootIDE = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ide-\(UUID().uuidString)")
+        defer {
+            try? FileManager.default.removeItem(at: rootCLI)
+            try? FileManager.default.removeItem(at: rootIDE)
+        }
+
+        // Setup IDE: DB touched 2s ago with CASCADE_RUN_STATUS_IDLE, but transcript stopped on tool call 1 day ago
+        let dbIDEURL = rootIDE.appendingPathComponent("conversation_summaries.db")
+        try FileManager.default.createDirectory(at: rootIDE, withIntermediateDirectories: true)
+        var dbIDE: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbIDEURL.path, &dbIDE), SQLITE_OK)
+        sqlite3_exec(dbIDE, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+        let freshDBTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-2))
+        sqlite3_exec(dbIDE, "INSERT INTO conversation_summaries VALUES ('shared_minter', 'minter', 'CASCADE_RUN_STATUS_IDLE', '\(freshDBTime)', '\(freshDBTime)', '[\"file:///workspace/minter\"]', '', 0, 0);", nil, nil, nil)
+        sqlite3_close(dbIDE)
+
+        let dirIDE = rootIDE.appendingPathComponent("brain/shared_minter/.system_generated/logs")
+        try FileManager.default.createDirectory(at: dirIDE, withIntermediateDirectories: true)
+        let fileIDE = dirIDE.appendingPathComponent("transcript.jsonl")
+        let staleToolContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-86400)))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"run_command\"}]}",
+            "{\"type\": \"GENERIC\", \"status\": \"DONE\"}"
+        ].joined(separator: "\n")
+        try staleToolContent.write(to: fileIDE, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-86400)], ofItemAtPath: fileIDE.path)
+
+        // Setup CLI: finished turn right now (1 second ago)
+        let dbCLIURL = rootCLI.appendingPathComponent("conversation_summaries.db")
+        try FileManager.default.createDirectory(at: rootCLI, withIntermediateDirectories: true)
+        var dbCLI: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbCLIURL.path, &dbCLI), SQLITE_OK)
+        sqlite3_exec(dbCLI, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+        let cliFinishTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-1))
+        sqlite3_exec(dbCLI, "INSERT INTO conversation_summaries VALUES ('shared_minter', 'minter', 'CASCADE_RUN_STATUS_IDLE', '\(cliFinishTime)', '\(cliFinishTime)', '[\"file:///workspace/minter\"]', '', 0, 0);", nil, nil, nil)
+        sqlite3_close(dbCLI)
+
+        let dirCLI = rootCLI.appendingPathComponent("brain/shared_minter/.system_generated/logs")
+        try FileManager.default.createDirectory(at: dirCLI, withIntermediateDirectories: true)
+        let fileCLI = dirCLI.appendingPathComponent("transcript.jsonl")
+        let finishedContent = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-60)))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Turn completely finished\"}"
+        ].joined(separator: "\n")
+        try finishedContent.write(to: fileCLI, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-1)], ofItemAtPath: fileCLI.path)
+
+        let sessions = AntigravityActivityMonitor.read(roots: [rootIDE.appendingPathComponent("brain"), rootCLI.appendingPathComponent("brain")], staleAfter: 25, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.id, "antigravity.shared_minter")
+        XCTAssertEqual(sessions.first?.state, .success, "Finished CLI turn must produce .success and must not be trapped in .busy by a stale mirror")
+    }
 }
 
 /// The "Open" button on an account row. The reading is borrowed from an app on
