@@ -348,7 +348,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             }
             
             if let stepStatus = json["status"] as? String, stepStatus == "RUNNING" {
-                if resolvedState == nil {
+                if !isTurnOver, resolvedState == nil {
                     resolvedState = .busy
                 }
             }
@@ -395,6 +395,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
                             resolvedState = .busy
                         } else {
                             isTurnOver = true
+                            resolvedState = .idle
                         }
                     }
                 } else if type == "EPHEMERAL_MESSAGE" || type == "CONVERSATION_HISTORY" || type == "KNOWLEDGE_ARTIFACTS" || type == "CHECKPOINT" {
