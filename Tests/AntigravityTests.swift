@@ -1584,6 +1584,25 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         XCTAssertEqual(sessions.first?.id, "antigravity.shared_minter")
         XCTAssertEqual(sessions.first?.state, .success, "Finished CLI turn must produce .success and must not be trapped in .busy by a stale mirror")
     }
+
+    func testTurnWithEarlierRunningGenericStepEmitsSuccessWhenFinalPlannerResponseFinishes() throws {
+        let now = Date()
+        let content = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(ISO8601DateFormatter().string(from: now.addingTimeInterval(-120)))\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"run_command\"}]}",
+            "{\"type\": \"GENERIC\", \"status\": \"RUNNING\", \"content\": \"Background process started\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"tool_calls\": [{\"name\": \"edit_file\"}]}",
+            "{\"type\": \"GENERIC\", \"status\": \"DONE\", \"content\": \"File edited\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Everything is done!\"}"
+        ].joined(separator: "\n")
+
+        try transcript("convo_background_generic", modified: now.addingTimeInterval(-1), content: content)
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.id, "antigravity.convo_background_generic")
+        XCTAssertEqual(sessions.first?.state, .success, "A turn ending on a completed PLANNER_RESPONSE must emit .success immediately despite earlier RUNNING background tasks")
+    }
 }
 
 /// The "Open" button on an account row. The reading is borrowed from an app on
