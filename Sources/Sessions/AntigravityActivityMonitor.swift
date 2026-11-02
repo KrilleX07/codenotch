@@ -161,6 +161,11 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
 
                 let workspace = parseWorkspace(from: workspaceURIsStr)
                 let userInputDate = parseDate(lastUserInputStr)
+                let baseDir = root.deletingLastPathComponent()
+
+                if isAutomatedSession(convoID: convoID, baseDir: baseDir, workspaceURIsStr: workspaceURIsStr, workspace: workspace) {
+                    continue
+                }
 
                 let transcriptPath = root.appendingPathComponent("\(convoID)/.system_generated/logs/transcript.jsonl")
                 var info = stat()
@@ -289,6 +294,40 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
             }
         }
         return nil
+    }
+
+    /// Determines whether a conversation is an automated, headless, or bot task
+    /// (e.g. background batch solver, automated agents, or test scripts)
+    /// that should not trigger interactive UI alerts, notch peeks, or chimes.
+    static func isAutomatedSession(
+        convoID: String,
+        baseDir: URL,
+        workspaceURIsStr: String? = nil,
+        workspace: String? = nil
+    ) -> Bool {
+        // 1. Workspace path heuristics: internal bot runs, scratch dirs, or hidden ~/.gemini paths
+        if let ws = workspaceURIsStr?.lowercased() {
+            if ws.contains("bot_run") || ws.contains("/.gemini/") || ws.contains("/private/tmp/") {
+                return true
+            }
+        }
+        if let ws = workspace?.lowercased() {
+            if ws.contains("bot_run") || ws.contains(".gemini") {
+                return true
+            }
+        }
+
+        // 2. Trajectory source check: CORTEX_TRAJECTORY_SOURCE_AGENT_API is 17
+        let convoDBURL = baseDir.appendingPathComponent("conversations/\(convoID).db")
+        if let db = SQLiteStore.open(convoDBURL) {
+            defer { sqlite3_close(db) }
+            let rows = SQLiteStore.rows(in: db, sql: "SELECT source FROM trajectory_meta LIMIT 1", columns: 1)
+            if let firstRow = rows.first, let firstCol = firstRow.first, let src = Int(firstCol), src == 17 {
+                return true
+            }
+        }
+
+        return false
     }
 
     static func tail(of url: URL, bytes: Int = 64 * 1024) -> Data? {
@@ -428,8 +467,19 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     ) -> AgentSession? {
         let age = now.timeIntervalSince(modified)
 
+        let convoID = trajectory.deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().lastPathComponent
+        let baseDir = trajectory.deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+
         let (parsedState, waitingFor, parsedUserInputDate, parsedWorkspace, latestStepType) = tail(of: trajectory)
             .map(parseState(inTail:)) ?? (.idle, nil, nil, nil, nil)
+
+        if isAutomatedSession(convoID: convoID, baseDir: baseDir, workspace: workspace ?? parsedWorkspace) {
+            return nil
+        }
+
         var resolvedState = parsedState
         
         if let status = status?.uppercased(), !status.isEmpty {
