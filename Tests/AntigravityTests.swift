@@ -1603,6 +1603,73 @@ final class AntigravityActivityMonitorTests: XCTestCase {
         XCTAssertEqual(sessions.first?.id, "antigravity.convo_background_generic")
         XCTAssertEqual(sessions.first?.state, .success, "A turn ending on a completed PLANNER_RESPONSE must emit .success immediately despite earlier RUNNING background tasks")
     }
+
+    func testAutomatedBotRunsWorkspaceIsIgnored() throws {
+        let now = Date()
+        let dbURL = root.deletingLastPathComponent().appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            try? FileManager.default.removeItem(at: dbURL.appendingPathExtension("wal"))
+            try? FileManager.default.removeItem(at: dbURL.appendingPathExtension("shm"))
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        let modifiedTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-1))
+        let botWorkspace = "[\"file:///Users/test/.gemini/atmosphere_bot_runs\"]"
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_bot', 'Bot Question', 'CASCADE_RUN_STATUS_IDLE', '\(modifiedTime)', '\(modifiedTime)', '\(botWorkspace)', '', 0, 0);", nil, nil, nil)
+
+        let content = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(modifiedTime)\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Solved\"}"
+        ].joined(separator: "\n")
+        try transcript("convo_bot", modified: now.addingTimeInterval(-1), content: content)
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertTrue(sessions.isEmpty, "Automated headless bot runs must be ignored and never pop up in the UI")
+    }
+
+    func testAutomatedAgentAPISessionWithSource17IsIgnored() throws {
+        let now = Date()
+        let baseDir = root.deletingLastPathComponent()
+        let convoDir = baseDir.appendingPathComponent("conversations")
+        try FileManager.default.createDirectory(at: convoDir, withIntermediateDirectories: true)
+        let convoDBURL = convoDir.appendingPathComponent("convo_api.db")
+        defer {
+            try? FileManager.default.removeItem(at: convoDBURL)
+        }
+
+        var cdb: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(convoDBURL.path, &cdb), SQLITE_OK)
+        sqlite3_exec(cdb, "CREATE TABLE trajectory_meta (trajectory_id text, cascade_id text, trajectory_type integer, source integer);", nil, nil, nil)
+        sqlite3_exec(cdb, "INSERT INTO trajectory_meta VALUES ('t1', 'convo_api', 4, 17);", nil, nil, nil)
+        sqlite3_close(cdb)
+
+        let dbURL = baseDir.appendingPathComponent("conversation_summaries.db")
+        defer {
+            try? FileManager.default.removeItem(at: dbURL)
+            try? FileManager.default.removeItem(at: dbURL.appendingPathExtension("wal"))
+            try? FileManager.default.removeItem(at: dbURL.appendingPathExtension("shm"))
+        }
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(dbURL.path, &db), SQLITE_OK)
+        defer { sqlite3_close(db) }
+        sqlite3_exec(db, "CREATE TABLE conversation_summaries (conversation_id text, title text, status text, last_modified_time datetime, last_user_input_time datetime, workspace_uris text, agent_name text, not_fully_idle numeric, killed numeric);", nil, nil, nil)
+
+        let modifiedTime = ISO8601DateFormatter().string(from: now.addingTimeInterval(-1))
+        sqlite3_exec(db, "INSERT INTO conversation_summaries VALUES ('convo_api', 'Script Run', 'CASCADE_RUN_STATUS_IDLE', '\(modifiedTime)', '\(modifiedTime)', '[\"file:///Users/test/Projects/my_project\"]', '', 0, 0);", nil, nil, nil)
+
+        let content = [
+            "{\"type\": \"USER_INPUT\", \"created_at\": \"\(modifiedTime)\"}",
+            "{\"type\": \"PLANNER_RESPONSE\", \"status\": \"DONE\", \"content\": \"Script done\"}"
+        ].joined(separator: "\n")
+        try transcript("convo_api", modified: now.addingTimeInterval(-1), content: content)
+
+        let sessions = AntigravityActivityMonitor.read(root: root, staleAfter: 25, now: now)
+        XCTAssertTrue(sessions.isEmpty, "Sessions with source == 17 (AGENT_API) must be filtered as automated")
+    }
 }
 
 /// The "Open" button on an account row. The reading is borrowed from an app on
