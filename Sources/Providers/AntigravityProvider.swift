@@ -310,7 +310,9 @@ actor AntigravityProvider: UsageProvider {
         case .all:
             return windows
         case .gemini:
-            let filtered = windows.filter { matches(window: $0, model: .gemini) }
+            let filtered = windows.filter {
+                matches(window: $0, model: .gemini) || matches(window: $0, model: .argon)
+            }
             return filtered.isEmpty ? windows : filtered
         case .argon:
             let filtered = windows.filter { matches(window: $0, model: .argon) }

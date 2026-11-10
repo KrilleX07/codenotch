@@ -2392,13 +2392,14 @@ final class AntigravityModelFilterTests: XCTestCase {
         XCTAssertTrue(result.allSatisfy { $0.id.hasPrefix("3p") })
     }
 
-    func testFilterWindowsGeminiExcludesArgon() {
+    func testFilterWindowsGeminiIncludesArgon() {
         let windowsWithArgon = windows + [
             LimitWindow(id: "gemini-argon-wtu-weekly", group: "Gemini 4 Argon", label: "Gemini 4 Argon Weekly Limit", usedFraction: 0.98)
         ]
         let result = AntigravityProvider.filterWindows(windowsWithArgon, preferredModel: .gemini)
-        XCTAssertEqual(result.count, 2)
-        XCTAssertFalse(result.contains(where: { $0.id.contains("argon") }))
+        XCTAssertEqual(result.count, 3)
+        XCTAssertTrue(result.contains(where: { $0.id.contains("argon") }))
+        XCTAssertFalse(result.contains(where: { $0.id.hasPrefix("3p") }))
     }
 
     func testFilterWindowsArgon() {
