@@ -312,6 +312,9 @@ actor AntigravityProvider: UsageProvider {
         case .gemini:
             let filtered = windows.filter { matches(window: $0, model: .gemini) }
             return filtered.isEmpty ? windows : filtered
+        case .argon:
+            let filtered = windows.filter { matches(window: $0, model: .argon) }
+            return filtered.isEmpty ? windows : filtered
         case .thirdParty:
             let filtered = windows.filter { matches(window: $0, model: .thirdParty) }
             return filtered.isEmpty ? windows : filtered
@@ -321,11 +324,15 @@ actor AntigravityProvider: UsageProvider {
     private nonisolated static func matches(window: LimitWindow, model: AntigravityHeadlineModel) -> Bool {
         let idLower = window.id.lowercased()
         let groupLower = window.group?.lowercased() ?? ""
+        let isArgon = idLower.contains("argon") || groupLower.contains("argon")
         switch model {
         case .all:
             return true
         case .gemini:
+            guard !isArgon else { return false }
             return idLower.hasPrefix("gemini") || groupLower.contains("gemini")
+        case .argon:
+            return isArgon
         case .thirdParty:
             return idLower.hasPrefix("3p") || groupLower.contains("claude") || groupLower.contains("gpt")
         }
@@ -340,9 +347,13 @@ actor AntigravityProvider: UsageProvider {
         // account had no Gemini group, and the ring showed the third-party
         // group's number as if it were the answer. A family that reported
         // nothing is an absent reading, not another family's reading.
-        let candidates = preferredModel == .all
-            ? windows
-            : windows.filter { $0.id.hasPrefix(preferredModel.rawValue) }
+        let candidates: [LimitWindow]
+        if preferredModel == .all {
+            let core = windows.filter { !Self.matches(window: $0, model: .argon) }
+            candidates = core.isEmpty ? windows : core
+        } else {
+            candidates = windows.filter { Self.matches(window: $0, model: preferredModel) }
+        }
         guard !candidates.isEmpty else { return Self.unavailableWindowID }
 
         if preferredLimit != .automatic {
@@ -384,9 +395,13 @@ actor AntigravityProvider: UsageProvider {
 
     nonisolated func resolveWeeklyID(for windows: [LimitWindow], defaults: UserDefaults = .standard) -> String? {
         let preferredModel = Preferences.storedAntigravityHeadlineModel(defaults: defaults)
-        let candidates = preferredModel == .all
-            ? windows
-            : windows.filter { $0.id.hasPrefix(preferredModel.rawValue) }
+        let candidates: [LimitWindow]
+        if preferredModel == .all {
+            let core = windows.filter { !Self.matches(window: $0, model: .argon) }
+            candidates = core.isEmpty ? windows : core
+        } else {
+            candidates = windows.filter { Self.matches(window: $0, model: preferredModel) }
+        }
         let weekly = candidates.filter { window in
             window.duration == 7 * 86400 ||
                 window.id.lowercased().hasSuffix("-weekly") ||
@@ -422,7 +437,7 @@ actor AntigravityProvider: UsageProvider {
         for windows: [LimitWindow]
     ) -> (windows: [LimitWindow], headlineID: String, weeklyID: String?) {
         let preferred = Preferences.storedAntigravityHeadlineModel()
-        let reported = windows.contains { $0.id.hasPrefix(preferred.rawValue) }
+        let reported = windows.contains { Self.matches(window: $0, model: preferred) }
         let shown = reported ? windows : windows + [Self.unavailableWindow(for: preferred)]
         return (shown, resolveHeadlineID(for: shown), resolveWeeklyID(for: shown))
     }
@@ -524,8 +539,8 @@ actor AntigravityProvider: UsageProvider {
     /// Returns nil when there is nothing to add or the direct answer cannot be
     /// had, so the caller keeps what it already has.
     private func completedWindows(_ bridged: [LimitWindow]) async -> [LimitWindow]? {
-        let preferred = Preferences.storedAntigravityHeadlineModel().rawValue
-        guard !bridged.contains(where: { $0.id.hasPrefix(preferred) }) else { return nil }
+        let preferred = Preferences.storedAntigravityHeadlineModel()
+        guard !bridged.contains(where: { Self.matches(window: $0, model: preferred) }) else { return nil }
         // An account that has no such group answers the same way every poll,
         // and each try is a keychain read and a round trip to Google. So a try
         // that could not help waits half an hour before the next.
@@ -536,7 +551,7 @@ actor AntigravityProvider: UsageProvider {
         guard let direct = try? await quota(token: credentials.accessToken,
                                             project: credentials.projectId),
               !direct.isEmpty else { return nil }
-        if direct.contains(where: { $0.id.hasPrefix(preferred) }) {
+        if direct.contains(where: { Self.matches(window: $0, model: preferred) }) {
             completionPausedUntil = .distantPast
         }
         return Self.union(bridged, direct)
@@ -642,7 +657,8 @@ actor AntigravityProvider: UsageProvider {
             let usedFraction = max(0.0, min(1.0, 1.0 - remaining))
             let resetsAt = resetText.flatMap { ISO8601DateFormatter().date(from: $0) }
 
-            let group = modelID.lowercased().contains("gemini") ? "Gemini Models" : "Claude and GPT models"
+            let isArgon = modelID.lowercased().contains("argon")
+            let group = isArgon ? "Gemini 4 Argon" : (modelID.lowercased().contains("gemini") ? "Gemini Models" : "Claude and GPT models")
             let label = isWeekly ? "Weekly Limit" : "5-hour Limit"
 
             windows.append(LimitWindow(

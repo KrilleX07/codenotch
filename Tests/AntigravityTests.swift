@@ -2392,6 +2392,69 @@ final class AntigravityModelFilterTests: XCTestCase {
         XCTAssertTrue(result.allSatisfy { $0.id.hasPrefix("3p") })
     }
 
+    func testFilterWindowsGeminiExcludesArgon() {
+        let windowsWithArgon = windows + [
+            LimitWindow(id: "gemini-argon-wtu-weekly", group: "Gemini 4 Argon", label: "Gemini 4 Argon Weekly Limit", usedFraction: 0.98)
+        ]
+        let result = AntigravityProvider.filterWindows(windowsWithArgon, preferredModel: .gemini)
+        XCTAssertEqual(result.count, 2)
+        XCTAssertFalse(result.contains(where: { $0.id.contains("argon") }))
+    }
+
+    func testFilterWindowsArgon() {
+        let windowsWithArgon = windows + [
+            LimitWindow(id: "gemini-argon-wtu-weekly", group: "Gemini 4 Argon", label: "Gemini 4 Argon Weekly Limit", usedFraction: 0.98)
+        ]
+        let result = AntigravityProvider.filterWindows(windowsWithArgon, preferredModel: .argon)
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.id, "gemini-argon-wtu-weekly")
+    }
+
+    func testResolveHeadlineIDWithGeminiExcludesArgon() {
+        let provider = AntigravityProvider()
+        let suite = "AntigravityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(AntigravityHeadlineModel.gemini.rawValue, forKey: "antigravityHeadlineModel")
+        defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
+        let windowsWithArgon = windows + [
+            LimitWindow(id: "gemini-argon-wtu-weekly", group: "Gemini 4 Argon", label: "Gemini 4 Argon Weekly Limit", usedFraction: 0.98)
+        ]
+        let headline = provider.resolveHeadlineID(for: windowsWithArgon, defaults: defaults)
+        XCTAssertEqual(headline, "gemini-weekly")
+
+        let weekly = provider.resolveWeeklyID(for: windowsWithArgon, defaults: defaults)
+        XCTAssertEqual(weekly, "gemini-weekly")
+    }
+
+    func testResolveHeadlineIDWithAllPrefersCoreOverArgon() {
+        let provider = AntigravityProvider()
+        let suite = "AntigravityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(AntigravityHeadlineModel.all.rawValue, forKey: "antigravityHeadlineModel")
+        defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
+        let windowsWithArgon = windows + [
+            LimitWindow(id: "gemini-argon-wtu-weekly", group: "Gemini 4 Argon", label: "Gemini 4 Argon Weekly Limit", usedFraction: 0.98)
+        ]
+        let headline = provider.resolveHeadlineID(for: windowsWithArgon, defaults: defaults)
+        XCTAssertEqual(headline, "gemini-weekly")
+    }
+
+    func testResolveHeadlineIDWithArgonSelected() {
+        let provider = AntigravityProvider()
+        let suite = "AntigravityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(AntigravityHeadlineModel.argon.rawValue, forKey: "antigravityHeadlineModel")
+        defaults.set(AntigravityHeadlineLimit.automatic.rawValue, forKey: "antigravityHeadlineLimit")
+        let windowsWithArgon = windows + [
+            LimitWindow(id: "gemini-argon-wtu-weekly", group: "Gemini 4 Argon", label: "Gemini 4 Argon Weekly Limit", usedFraction: 0.98)
+        ]
+        let headline = provider.resolveHeadlineID(for: windowsWithArgon, defaults: defaults)
+        XCTAssertEqual(headline, "gemini-argon-wtu-weekly")
+    }
+
     func testFilterWindowsAll() {
         let result = AntigravityProvider.filterWindows(windows, preferredModel: .all)
         XCTAssertEqual(result.count, 4)

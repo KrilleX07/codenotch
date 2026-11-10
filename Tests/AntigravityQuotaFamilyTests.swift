@@ -52,6 +52,23 @@ final class AntigravityQuotaFamilyTests: XCTestCase {
         }
     }
 
+    func testGeminiFamilyIsNotAnsweredWithArgon() {
+        withPreferredModel(.gemini) {
+            let provider = AntigravityProvider(session: URLSession.shared)
+            let argonWindow = window("gemini-argon-wtu-weekly", "Gemini 4 Argon", "Gemini 4 Argon Weekly Limit", used: 0.98)
+            let windows = geminiWindows + [argonWindow]
+            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-5h")
+            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-weekly")
+
+            // When only Argon exists, Gemini family must be reported as unavailable
+            XCTAssertEqual(
+                provider.resolveHeadlineID(for: [argonWindow]),
+                AntigravityProvider.unavailableWindowID
+            )
+            XCTAssertNil(provider.resolveWeeklyID(for: [argonWindow]))
+        }
+    }
+
     // MARK: - A missing family is not answered with another one
 
     /// The reading before: a Gemini reader with no Gemini group was shown the
