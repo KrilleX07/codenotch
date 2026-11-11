@@ -404,12 +404,18 @@ actor AntigravityProvider: UsageProvider {
         } else {
             candidates = windows.filter { Self.matches(window: $0, model: preferredModel) }
         }
+        let headlineID = resolveHeadlineID(for: windows, defaults: defaults)
         let weekly = candidates.filter { window in
             window.duration == 7 * 86400 ||
                 window.id.lowercased().hasSuffix("-weekly") ||
                 window.label.lowercased().contains("weekly")
         }
-        return weekly.max(by: constrainedBefore)?.id
+        let weeklyID = weekly.max(by: constrainedBefore)?.id
+        if headlineID == weeklyID {
+            let sessionCandidates = candidates.filter { matches($0, cadence: .fiveHour) }
+            return sessionCandidates.max(by: constrainedBefore)?.id
+        }
+        return weeklyID
     }
 
     /// The id of the window that stands in for a family which reported nothing.

@@ -744,7 +744,7 @@ final class Preferences: ObservableObject {
     ) -> AntigravityHeadlineLimit {
         guard let value = defaults.string(forKey: Keys.antigravityHeadlineLimit),
               let limit = AntigravityHeadlineLimit(rawValue: value)
-        else { return .automatic }
+        else { return .weekly }
         return limit
     }
 
@@ -1054,7 +1054,7 @@ final class Preferences: ObservableObject {
         self.notchScope = defaults.string(forKey: Keys.scope)
             .flatMap(NotchScreenScope.init(rawValue:)) ?? .mainDisplay
         self.antigravityHeadlineLimit = defaults.string(forKey: Keys.antigravityHeadlineLimit)
-            .flatMap(AntigravityHeadlineLimit.init(rawValue:)) ?? .automatic
+            .flatMap(AntigravityHeadlineLimit.init(rawValue:)) ?? .weekly
         self.antigravityHeadlineModel = defaults.string(forKey: Keys.antigravityHeadlineModel)
             .flatMap(AntigravityHeadlineModel.init(rawValue:)) ?? .all
         // Follow the Mac unless the user explicitly chooses a Codenotch colour.

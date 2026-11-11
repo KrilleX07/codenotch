@@ -102,8 +102,8 @@ final class AntigravityQuotaCompletionTests: XCTestCase {
         // The whole account answers the reader of the Gemini family.
         let merged = direct
         let headlineAfter = provider.resolveHeadlineID(for: merged)
-        XCTAssertEqual(headlineAfter, "gemini-5h")
+        XCTAssertEqual(headlineAfter, "gemini-weekly")
         XCTAssertEqual(merged.first { $0.id == headlineAfter }?.group, "Gemini Models")
-        XCTAssertEqual(provider.resolveWeeklyID(for: merged), "gemini-weekly")
+        XCTAssertEqual(provider.resolveWeeklyID(for: merged), "gemini-5h")
     }
 }

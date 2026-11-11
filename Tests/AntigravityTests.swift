@@ -2425,7 +2425,21 @@ final class AntigravityModelFilterTests: XCTestCase {
         XCTAssertEqual(headline, "gemini-weekly")
 
         let weekly = provider.resolveWeeklyID(for: windowsWithArgon, defaults: defaults)
-        XCTAssertEqual(weekly, "gemini-weekly")
+        XCTAssertEqual(weekly, "gemini-5h")
+    }
+
+    func testResolveHeadlineIDWithWeeklyPreference() {
+        let provider = AntigravityProvider()
+        let suite = "AntigravityTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(AntigravityHeadlineModel.gemini.rawValue, forKey: "antigravityHeadlineModel")
+        defaults.set(AntigravityHeadlineLimit.weekly.rawValue, forKey: "antigravityHeadlineLimit")
+        let headline = provider.resolveHeadlineID(for: windows, defaults: defaults)
+        XCTAssertEqual(headline, "gemini-weekly")
+
+        let weekly = provider.resolveWeeklyID(for: windows, defaults: defaults)
+        XCTAssertEqual(weekly, "gemini-5h")
     }
 
     func testResolveHeadlineIDWithAllPrefersCoreOverArgon() {

@@ -47,8 +47,8 @@ final class AntigravityQuotaFamilyTests: XCTestCase {
         withPreferredModel(.gemini) {
             let provider = AntigravityProvider(session: URLSession.shared)
             let windows = geminiWindows + thirdPartyWindows
-            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-5h")
-            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-weekly")
+            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-weekly")
+            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-5h")
         }
     }
 
@@ -57,8 +57,8 @@ final class AntigravityQuotaFamilyTests: XCTestCase {
             let provider = AntigravityProvider(session: URLSession.shared)
             let argonWindow = window("gemini-argon-wtu-weekly", "Gemini 4 Argon", "Gemini 4 Argon Weekly Limit", used: 0.98)
             let windows = geminiWindows + [argonWindow]
-            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-5h")
-            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-weekly")
+            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-weekly")
+            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-5h")
 
             // When only Argon exists, Gemini family must be reported as unavailable
             XCTAssertEqual(
@@ -128,8 +128,8 @@ final class AntigravityQuotaFamilyTests: XCTestCase {
         withPreferredModel(.gemini) {
             let provider = AntigravityProvider(session: URLSession.shared)
             let windows = geminiWindows + [AntigravityProvider.unavailableWindow(for: .gemini)]
-            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-5h")
-            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-weekly")
+            XCTAssertEqual(provider.resolveHeadlineID(for: windows), "gemini-weekly")
+            XCTAssertEqual(provider.resolveWeeklyID(for: windows), "gemini-5h")
         }
     }
 }
