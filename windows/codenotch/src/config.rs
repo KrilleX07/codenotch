@@ -26,6 +26,9 @@ pub struct TraySlot {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeProfileConfig {
     pub id: String,
+    /// No longer read: accounts are named from their sign-in, as on the Mac. Still written, with
+    /// that name, because 1.24.0 needs it to load the file, shows it, and won't save a blank one.
+    #[serde(default)]
     pub name: String,
     #[serde(default = "yes")]
     pub enabled: bool,
@@ -38,8 +41,6 @@ pub struct Config {
     /// off | left | right; an owned child window on the primary Windows taskbar.
     #[serde(default = "default_taskbar_mode")]
     pub taskbar_mode: String,
-    #[serde(default = "default_taskbar_width")]
-    pub taskbar_width: u32,
     #[serde(default = "default_port")]
     pub port: u16,
     /// "auto" | "zh" | "zh-Hant" | "en" | "ja" | "ko" | "pt-BR" | "ru" | "uk" | "es"
@@ -167,10 +168,12 @@ pub struct Config {
     /// Mac's usage pace setting. Off by default, as on the Mac.
     #[serde(default)]
     pub show_usage_pace: bool,
+    /// Require X-Codenotch-Token on /event requests (defense-in-depth, #165)
+    #[serde(default = "yes")]
+    pub require_event_token: bool,
 }
 
 fn default_taskbar_mode() -> String { "off".into() }
-fn default_taskbar_width() -> u32 { 280 }
 
 fn default_notch_y() -> f64 {
     0.5
@@ -318,7 +321,6 @@ impl Default for Config {
         Self {
             claude_profiles: Vec::new(),
             taskbar_mode: default_taskbar_mode(),
-            taskbar_width: default_taskbar_width(),
             port: default_port(),
             lang: default_lang(),
             bar_x: None,
@@ -354,6 +356,7 @@ impl Default for Config {
             fold_for_full_screen: true,
             notch_shows_remaining: false,
             show_usage_pace: false,
+            require_event_token: true,
         }
     }
 }
