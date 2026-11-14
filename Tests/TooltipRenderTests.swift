@@ -338,10 +338,11 @@ final class TooltipRenderTests: XCTestCase {
         let renderer = ImageRenderer(content: view)
         renderer.scale = 3
         let image = try XCTUnwrap(renderer.nsImage)
-        XCTAssertGreaterThan(
+        XCTAssertEqual(
             image.size.height,
-            NotchLayout.cardHeight(windowCount: 2) + NotchLayout.codexChartHeight,
-            "the account activity section was not included in the rendered card"
+            NotchLayout.cardHeight(windowCount: 2) + 40,
+            accuracy: 1.0,
+            "the account activity section should not be included in the rendered card"
         )
 
         if let path = ProcessInfo.processInfo.environment["CODEX_TOOLTIP_RENDER_PATH"] {

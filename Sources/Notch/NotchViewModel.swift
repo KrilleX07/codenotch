@@ -1321,7 +1321,7 @@ final class NotchViewModel: ObservableObject {
     var sessionCap: Int { sessionCap(cellCount: snapshots.count) }
 
     private var hasTokenUsage: Bool {
-        snapshots.contains { $0.tokenUsage != nil }
+        false
     }
 
     private var hasPlan: Bool {
@@ -1344,7 +1344,7 @@ final class NotchViewModel: ObservableObject {
     /// Project rows a card may list: the ones the cost model has, capped at
     /// what the section draws.
     func costRows(for snapshot: ProviderSnapshot) -> Int {
-        CostSection.rowCount(for: snapshot)
+        0
     }
 
     private func contentCardHeight(sessionCap: Int) -> CGFloat {
@@ -1362,7 +1362,7 @@ final class NotchViewModel: ObservableObject {
                 sessionCap: sessionCap,
                 statusMessage: snapshot.statusMessage,
                 blockMessage: snapshot.block?.summary(now: now),
-                hasTokenUsage: snapshot.tokenUsage != nil,
+                hasTokenUsage: false,
                 hasPlan: snapshot.plan != nil,
                 hasResetCredits: snapshot.hasAvailableResetCredits,
                 localModelName: snapshot.localModel?.name,

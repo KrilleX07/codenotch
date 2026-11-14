@@ -134,7 +134,7 @@ final class CursorGeometry {
             sessionCap: sessionCap,
             statusMessage: snapshot.statusMessage,
             blockMessage: snapshot.block?.summary(now: model.now),
-            hasTokenUsage: snapshot.tokenUsage != nil,
+            hasTokenUsage: false,
             hasPlan: snapshot.plan != nil,
             hasResetCredits: snapshot.hasAvailableResetCredits,
             localModelName: snapshot.localModel?.name,

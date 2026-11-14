@@ -677,7 +677,7 @@ struct NotchRootView: View {
             sessionCap: model.sessionCap,
             statusMessage: snapshot.statusMessage,
             blockMessage: snapshot.block?.summary(now: model.now),
-            hasTokenUsage: snapshot.tokenUsage != nil,
+            hasTokenUsage: false,
             hasPlan: snapshot.plan != nil,
             hasResetCredits: snapshot.hasAvailableResetCredits,
             localModelName: snapshot.localModel?.name,
@@ -685,7 +685,7 @@ struct NotchRootView: View {
             localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount,
             showsDeepSeekPricing: model.deepSeekPricingEnabled,
-            costRows: model.costRows(for: snapshot),
+            costRows: 0,
             isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id))
     }
 

@@ -1059,69 +1059,6 @@ enum UsageFormat {
     }
 }
 
-private struct CodexMetric: Identifiable {
-    let id: String
-    let value: String
-    let label: String
-}
-
-private struct CodexMetricList: View {
-    let metrics: [CodexMetric]
-    @Environment(\.tooltipSecondaryInk) private var secondaryInk
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: NotchLayout.codexMetricRowGap) {
-            ForEach(metrics) { metric in
-                HStack(alignment: .firstTextBaseline, spacing: Design.px(20)) {
-                    Text(metric.label)
-                        .font(Typography.cardBody)
-                        .foregroundStyle(Palette.textPrimary)
-                        .lineLimit(1)
-
-                    Spacer(minLength: 0)
-
-                    Text(metric.value)
-                        .font(Typography.cardBody)
-                        .foregroundStyle(secondaryInk)
-                        .lineLimit(1)
-                        .monospacedDigit()
-                }
-                .frame(height: NotchLayout.codexMetricRowHeight)
-            }
-        }
-        .frame(height: NotchLayout.codexMetricHeight)
-    }
-}
-
-private struct CodexDailyUsageChart: View {
-    let buckets: [CodexTokenUsage.DailyBucket]
-    let maximum: Int
-    @Environment(\.tooltipSecondaryInk) private var secondaryInk
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .bottomLeading) {
-                Rectangle()
-                    .fill(Palette.ringTrack)
-                    .frame(height: NotchLayout.hairline)
-
-                HStack(alignment: .bottom, spacing: Design.px(4)) {
-                    ForEach(buckets) { bucket in
-                        RoundedRectangle(cornerRadius: Design.px(3), style: .continuous)
-                            .fill(secondaryInk)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: proxy.size.height
-                                   * CGFloat(bucket.tokens) / CGFloat(maximum))
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            }
-        }
-        .frame(height: NotchLayout.codexChartHeight)
-        .clipped()
-    }
-}
-
 /// Unused rate-limit resets on this account.
 private struct UsageResetCreditsSection: View {
     let credits: UsageResetCredits
@@ -1192,66 +1129,6 @@ private struct UsageResetCreditsSection: View {
             ? "MMM d" : "E j:mm"
         return ResetCopy.formatter(template: template, calendar: calendar,
                                    locale: L10n.locale).string(from: date)
-    }
-}
-
-/// Account-wide Codex activity. Unlike the quota rows above, this is sourced
-/// from the Codex profile usage endpoint and is not a local estimate.
-private struct CodexUsageSection: View {
-    let usage: CodexTokenUsage
-    let now: Date
-
-    private var buckets: [CodexTokenUsage.DailyBucket] {
-        usage.last30Days(now: now)
-    }
-
-    private var maximum: Int {
-        max(1, buckets.map(\.tokens).max() ?? 0)
-    }
-
-    private var todayText: String {
-        usage.usageToday(now: now).map { UsageFormat.tokens($0) } ?? L10n.t("Pending")
-    }
-
-    private var metrics: [CodexMetric] {
-        let summary = usage.summary
-        return [
-            CodexMetric(id: "lifetime", value: UsageFormat.tokens(summary?.lifetimeTokens),
-                        label: L10n.t("Lifetime tokens")),
-            CodexMetric(id: "peak", value: UsageFormat.tokens(summary?.peakDailyTokens),
-                        label: L10n.t("Peak tokens")),
-            CodexMetric(id: "longest", value: UsageFormat.duration(
-                seconds: summary?.longestRunningTurnSeconds), label: L10n.t("Longest chat")),
-            CodexMetric(id: "current-streak", value: UsageFormat.days(
-                summary?.currentStreakDays), label: L10n.t("Current streak")),
-            CodexMetric(id: "longest-streak", value: UsageFormat.days(
-                summary?.longestStreakDays), label: L10n.t("Longest streak"))
-        ]
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Rectangle()
-                .fill(Palette.ringTrack)
-                .frame(height: NotchLayout.hairline)
-                .padding(.top, NotchLayout.codexUsageTop)
-
-            CodexMetricList(metrics: metrics)
-                .padding(.top, NotchLayout.codexMetricTop)
-                .padding(.bottom, NotchLayout.codexMetricBottom)
-
-            Rectangle()
-                .fill(Palette.ringTrack)
-                .frame(height: NotchLayout.hairline)
-
-            SplitRow(leading: L10n.t("Today"), trailing: todayText)
-                .padding(.top, NotchLayout.blockSpacing)
-            SplitRow(leading: L10n.t("30-day tokens"),
-                     trailing: UsageFormat.tokens(usage.usageInLast30Days(now: now)))
-                .padding(.top, NotchLayout.codexUsageRowGap)
-            CodexDailyUsageChart(buckets: buckets, maximum: maximum)
-                .padding(.top, NotchLayout.codexChartTop)
-        }
     }
 }
 
@@ -1503,11 +1380,6 @@ struct ProviderDetailContent: View {
                 if let resetCredits = snapshot.availableResetCredits(at: now) {
                     UsageResetCreditsSection(credits: resetCredits, now: now)
                 }
-                if let tokenUsage = snapshot.tokenUsage {
-                    CodexUsageSection(usage: tokenUsage, now: now)
-                } else if let history = snapshot.customUsageHistory {
-                    CodexUsageSection(usage: history.codexUsage, now: now)
-                }
                 if let usageDetail = snapshot.usageDetail, usageDetail.hasUsage {
                     DeepSeekUsageDetail(detail: usageDetail, now: now,
                                         schedule: deepSeekPricingSchedule,
@@ -1518,9 +1390,6 @@ struct ProviderDetailContent: View {
                                 onFocus: onFocusSession)
                 } else if snapshot.localModel == nil, AntigravityProfile.isAntigravity(providerID: snapshot.id) {
                     NoAgentsRow()
-                }
-                if costRows > 0, let model = CostModels.model(for: snapshot.id) {
-                    CostSection(model: model, rows: costRows)
                 }
             }
         }
@@ -1583,7 +1452,7 @@ struct TooltipCard: View {
             sessionCap: sessionCap,
             statusMessage: snapshot.statusMessage,
             blockMessage: snapshot.block?.summary(now: now),
-            hasTokenUsage: snapshot.tokenUsage != nil || snapshot.customUsageHistory != nil,
+            hasTokenUsage: false,
             hasPlan: snapshot.plan != nil,
             hasResetCredits: snapshot.availableResetCredits(at: now) != nil,
             localModelName: snapshot.localModel?.name,
@@ -1591,7 +1460,7 @@ struct TooltipCard: View {
             localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount,
             showsDeepSeekPricing: deepSeekPricingEnabled,
-            costRows: costRows,
+            costRows: 0,
             isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id)
         )
     }
