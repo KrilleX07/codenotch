@@ -428,6 +428,7 @@ enum NotchLayout {
     }
 
     static func cardHeight(windowCount: Int, groupCount: Int = 0,
+                           titlelessGroupCount: Int = 0,
                            moneyWindowCount: Int = 0, moneyResetCount: Int = 0,
                            moneyProjectionCount: Int = 0,
                            usageDetailGroupCount: Int = 0,
@@ -479,14 +480,17 @@ enum NotchLayout {
                           + min(max(0, moneyProjectionCount), moneyCount)) * (moneyStatGap + cardBodyLineHeight)
                 + CGFloat(compactRowCount) * compactBlock
                 + CGFloat(windowCount - 1) * blockSpacing
-            if groupCount > 0 {
-                // Each group adds a title line, spacing (12), and 16px vertical padding inside the box
-                let groupExtra = cardBodyLineHeight + Design.px(12) + 2 * Design.px(16)
-                height += CGFloat(groupCount) * groupExtra
+            let totalGroups = groupCount + titlelessGroupCount
+            if totalGroups > 0 {
+                // Each group adds 16px vertical padding inside the box
+                // Groups with titles also add a title line and spacing (12px)
+                let titledExtra = CGFloat(groupCount) * (cardBodyLineHeight + Design.px(12) + 2 * Design.px(16))
+                let titlelessExtra = CGFloat(titlelessGroupCount) * (2 * Design.px(16))
+                height += titledExtra + titlelessExtra
 
-                if groupCount > 1 {
+                if totalGroups > 1 {
                     // We use 28px between groups instead of the default 20px (blockSpacing)
-                    height += CGFloat(groupCount - 1) * (Design.px(28) - blockSpacing)
+                    height += CGFloat(totalGroups - 1) * (Design.px(28) - blockSpacing)
                 }
 
                 // Extra padding at the very bottom
@@ -595,6 +599,7 @@ enum NotchLayout {
     /// costs nothing.
     static func sessionsFitting(cardBudget: CGFloat, windowCount: Int,
                                 groupCount: Int = 2,
+                                titlelessGroupCount: Int = 0,
                                 hasTokenUsage: Bool = false,
                                 hasPlan: Bool = false,
                                 hasResetCredits: Bool = false) -> Int {
@@ -604,6 +609,7 @@ enum NotchLayout {
             // the nth row can never be what pushes the summary line off the
             // bottom of the card.
             let height = cardHeight(windowCount: windowCount, groupCount: groupCount,
+                                    titlelessGroupCount: titlelessGroupCount,
                                     sessionCount: n + 1, sessionCap: n,
                                     hasTokenUsage: hasTokenUsage, hasPlan: hasPlan,
                                     hasResetCredits: hasResetCredits)
@@ -627,10 +633,13 @@ enum NotchLayout {
     /// clicks through everywhere the chrome is not — but it cannot be so
     /// generous that the panel runs off the screen, which is what the cap is
     /// solved for.
-    static func maxCardHeight(sessionCap: Int, hasTokenUsage: Bool = false,
+    static func maxCardHeight(sessionCap: Int, groupCount: Int = 2,
+                              titlelessGroupCount: Int = 0,
+                              hasTokenUsage: Bool = false,
                               hasPlan: Bool = false,
                               hasResetCredits: Bool = false) -> CGFloat {
-        cardHeight(windowCount: maxWindowCount, groupCount: 2,
+        cardHeight(windowCount: maxWindowCount, groupCount: groupCount,
+                   titlelessGroupCount: titlelessGroupCount,
                    sessionCount: sessionCap + 1, sessionCap: sessionCap,
                    hasTokenUsage: hasTokenUsage, hasPlan: hasPlan,
                    hasResetCredits: hasResetCredits)

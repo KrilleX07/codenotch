@@ -863,6 +863,8 @@ struct ProviderLimitsContent: View {
         return ElapsedCopy.ago(since: since, now: now)
     }
 
+    private var isCodex: Bool { CodexProfile.isCodex(providerID: snapshot.id) }
+
     /// Whether every reset on this card has room to say when it lands.
     ///
     /// All of them or none. "(20:30)" on one row and nothing on the row under
@@ -874,7 +876,7 @@ struct ProviderLimitsContent: View {
     private var showsResetStamps: Bool {
         let rows = snapshot.windows.compactMap { window -> (String, String, CGFloat)? in
             guard let resetsAt = window.resetsAt else { return nil }
-            let inset = window.group == nil ? 0 : 2 * Design.px(16)
+            let inset = (window.group == nil && !isCodex) ? 0 : 2 * Design.px(16)
             return (window.label,
                     ResetCopy.text(for: resetsAt, now: now, format: resetTimeFormat,
                                    withAbsoluteStamp: true),
@@ -942,13 +944,16 @@ struct ProviderLimitsContent: View {
                 let stamps = showsResetStamps
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(groupedWindows.enumerated()), id: \.element.id) { groupIndex, group in
-                        if let title = group.title {
-                            VStack(alignment: .leading, spacing: Design.px(12)) {
-                                Text(title)
-                                    .font(Typography.cardBody)
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(Palette.textPrimary)
-                                    .padding(.leading, Design.px(4))
+                        let isBoxed = group.title != nil || isCodex
+                        if isBoxed {
+                            VStack(alignment: .leading, spacing: group.title != nil ? Design.px(12) : 0) {
+                                if let title = group.title {
+                                    Text(title)
+                                        .font(Typography.cardBody)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(Palette.textPrimary)
+                                        .padding(.leading, Design.px(4))
+                                }
 
                                 VStack(alignment: .leading, spacing: NotchLayout.blockSpacing) {
                                     ForEach(Array(group.windows.enumerated()), id: \.element.id) { windowIndex, window in
@@ -971,7 +976,7 @@ struct ProviderLimitsContent: View {
                         }
                     }
                 }
-                .padding(.bottom, groupedWindows.contains(where: { $0.title != nil }) ? Design.px(8) : 0)
+                .padding(.bottom, (groupedWindows.contains(where: { $0.title != nil }) || isCodex) ? Design.px(8) : 0)
             }
         }
     }
@@ -1437,6 +1442,7 @@ struct TooltipCard: View {
 
     private var visibleWindows: [LimitWindow] { snapshot.visibleWindows }
     private var visibleGroupCount: Int { snapshot.visibleGroupCount }
+    private var titlelessGroupCount: Int { snapshot.titlelessGroupCount }
 
     /// The same figure the hover region uses, so what is drawn and what is
     /// reachable can never drift apart.
@@ -1444,6 +1450,7 @@ struct TooltipCard: View {
         NotchLayout.cardHeight(
             windowCount: visibleWindows.count,
             groupCount: visibleGroupCount,
+            titlelessGroupCount: titlelessGroupCount,
             moneyWindowCount: visibleWindows.filter { $0.money != nil }.count,
             moneyResetCount: visibleWindows.filter { $0.money != nil && $0.resetsAt != nil }.count,
             moneyProjectionCount: visibleWindows.filter { $0.money != nil && $0.usageProjection(now: now) != nil }.count,

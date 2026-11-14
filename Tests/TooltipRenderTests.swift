@@ -340,7 +340,7 @@ final class TooltipRenderTests: XCTestCase {
         let image = try XCTUnwrap(renderer.nsImage)
         XCTAssertEqual(
             image.size.height,
-            NotchLayout.cardHeight(windowCount: 2) + 40,
+            NotchLayout.cardHeight(windowCount: 2, titlelessGroupCount: 1) + 40,
             accuracy: 1.0,
             "the account activity section should not be included in the rendered card"
         )

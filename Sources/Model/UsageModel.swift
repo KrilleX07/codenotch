@@ -562,6 +562,13 @@ struct ProviderSnapshot: Identifiable, Equatable {
         return windowGroupCount
     }
 
+    var titlelessGroupCount: Int {
+        if CodexProfile.isCodex(providerID: id) {
+            return visibleWindows.contains(where: { $0.group == nil }) ? 1 : 0
+        }
+        return 0
+    }
+
     /// How many windows are count-only (no fraction, no bar) — they render as
     /// single-line rows and take less vertical space than full bar rows.
     var compactRowCount: Int {

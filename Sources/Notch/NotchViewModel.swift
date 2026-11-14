@@ -1354,6 +1354,7 @@ final class NotchViewModel: ObservableObject {
         return snapshots.map { snapshot in
             NotchLayout.cardHeight(windowCount: snapshot.visibleWindows.count,
                 groupCount: snapshot.visibleGroupCount,
+                titlelessGroupCount: snapshot.titlelessGroupCount,
                 moneyWindowCount: snapshot.visibleWindows.filter { $0.money != nil }.count,
                 moneyResetCount: snapshot.visibleWindows.filter { $0.money != nil && $0.resetsAt != nil }.count,
                 moneyProjectionCount: snapshot.visibleWindows.filter { $0.money != nil && $0.usageProjection(now: now) != nil }.count,
