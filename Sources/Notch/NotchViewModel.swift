@@ -1372,7 +1372,7 @@ final class NotchViewModel: ObservableObject {
                 compactRowCount: snapshot.compactRowCount,
                 showsDeepSeekPricing: deepSeekPricingEnabled,
                 costRows: costRows(for: snapshot),
-                isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id))
+                showsEmptyAgentRow: snapshot.showsEmptyAgentRow)
         }.max() ?? 0
     }
 

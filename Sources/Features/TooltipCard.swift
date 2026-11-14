@@ -1393,7 +1393,7 @@ struct ProviderDetailContent: View {
                 if let activity, snapshot.localModel == nil, !activity.sessions.isEmpty {
                     SessionList(summary: activity, now: now, cap: sessionCap,
                                 onFocus: onFocusSession)
-                } else if snapshot.localModel == nil, AntigravityProfile.isAntigravity(providerID: snapshot.id) {
+                } else if snapshot.showsEmptyAgentRow {
                     NoAgentsRow()
                 }
             }
@@ -1468,7 +1468,7 @@ struct TooltipCard: View {
             compactRowCount: snapshot.compactRowCount,
             showsDeepSeekPricing: deepSeekPricingEnabled,
             costRows: 0,
-            isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id)
+            showsEmptyAgentRow: snapshot.showsEmptyAgentRow
         )
     }
 

@@ -569,6 +569,10 @@ struct ProviderSnapshot: Identifiable, Equatable {
         return 0
     }
 
+    var showsEmptyAgentRow: Bool {
+        localModel == nil && (AntigravityProfile.isAntigravity(providerID: id) || CodexProfile.isCodex(providerID: id))
+    }
+
     /// How many windows are count-only (no fraction, no bar) — they render as
     /// single-line rows and take less vertical space than full bar rows.
     var compactRowCount: Int {

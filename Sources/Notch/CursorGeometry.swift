@@ -142,7 +142,8 @@ final class CursorGeometry {
             showsLocalPerformance: snapshot.showsLocalPerformance,
             localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount,
-            showsDeepSeekPricing: model.deepSeekPricingEnabled
+            showsDeepSeekPricing: model.deepSeekPricingEnabled,
+            showsEmptyAgentRow: snapshot.showsEmptyAgentRow
         )
         // Across the stack the region is the card, its tail, and the gap the
         // pointer has to cross. Along it, the card's own extent.

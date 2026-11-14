@@ -340,7 +340,7 @@ final class TooltipRenderTests: XCTestCase {
         let image = try XCTUnwrap(renderer.nsImage)
         XCTAssertEqual(
             image.size.height,
-            NotchLayout.cardHeight(windowCount: 2, titlelessGroupCount: 1) + 40,
+            NotchLayout.cardHeight(windowCount: 2, titlelessGroupCount: 1, showsEmptyAgentRow: true) + 40,
             accuracy: 1.0,
             "the account activity section should not be included in the rendered card"
         )
@@ -351,6 +351,17 @@ final class TooltipRenderTests: XCTestCase {
                 .representation(using: .png, properties: [:]))
             try png.write(to: URL(fileURLWithPath: path))
         }
+    }
+
+    func testCodexCardHeightIncludesNoAgentsRowWhenNoSessions() {
+        let baseHeight = NotchLayout.cardHeight(windowCount: 2, titlelessGroupCount: 1, showsEmptyAgentRow: false)
+        let codexZeroSessionsHeight = NotchLayout.cardHeight(windowCount: 2, titlelessGroupCount: 1, showsEmptyAgentRow: true)
+        XCTAssertGreaterThan(codexZeroSessionsHeight, baseHeight)
+        XCTAssertEqual(
+            codexZeroSessionsHeight - baseHeight,
+            NotchLayout.blockSpacing + NotchLayout.hairline + NotchLayout.blockSpacing + NotchLayout.cardBodyLineHeight,
+            accuracy: 0.001
+        )
     }
 
     /// The glass is masked by this one outline, so anything it fails to cover

@@ -687,7 +687,7 @@ struct NotchRootView: View {
             compactRowCount: snapshot.compactRowCount,
             showsDeepSeekPricing: model.deepSeekPricingEnabled,
             costRows: 0,
-            isAntigravity: AntigravityProfile.isAntigravity(providerID: snapshot.id))
+            showsEmptyAgentRow: snapshot.showsEmptyAgentRow)
     }
 
     private func tooltipTailOffset(index: Int, snapshot: ProviderSnapshot) -> CGFloat {

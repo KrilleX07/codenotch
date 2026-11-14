@@ -444,6 +444,7 @@ enum NotchLayout {
                            compactRowCount: Int = 0,
                            showsDeepSeekPricing: Bool = true,
                            costRows: Int = 0,
+                           showsEmptyAgentRow: Bool = false,
                            isAntigravity: Bool = false) -> CGFloat {
         let header = max(glyphSize, cardTitleLineHeight)
             + (hasPlan ? cardBodyLineHeight : 0)
@@ -533,7 +534,7 @@ enum NotchLayout {
             if sessionCount > shown {
                 height += blockSpacing + cardBodyLineHeight
             }
-        } else if isAntigravity {
+        } else if showsEmptyAgentRow || isAntigravity {
             height += blockSpacing + hairline + blockSpacing + cardBodyLineHeight
         }
         return height
