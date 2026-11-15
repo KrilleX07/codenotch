@@ -27,7 +27,7 @@ final class CodexUsageTests: XCTestCase {
         XCTAssertEqual(result.map(\.group),
                        [nil, nil, "Spark", "Code review", "Code review"] as [String?])
         XCTAssertEqual(result.map(\.label),
-                       ["5h limit", "Weekly limit", "5h limit", "Weekly limit", "5h limit"])
+                       ["5-hour Limit", "Weekly Limit", "5-hour Limit", "Weekly Limit", "5-hour Limit"])
         XCTAssertEqual(result.map(\.usedFraction), [0.25, 0.10, 0.99, 0.90, 0.15])
         XCTAssertEqual(result.first?.id, "primary")
         XCTAssertEqual(result.first?.resetsAt, Date(timeIntervalSince1970: 1_800_001_000))
@@ -84,7 +84,7 @@ final class CodexUsageTests: XCTestCase {
         "reset_after_seconds":604119,"reset_at":1789308033},"secondary_window":null}}
         """)
         XCTAssertEqual(result.map(\.id), ["primary"])
-        XCTAssertEqual(result.first?.label, "Weekly limit")
+        XCTAssertEqual(result.first?.label, "Weekly Limit")
         XCTAssertEqual(result.first?.resetsAt, Date(timeIntervalSince1970: 1_789_308_033))
     }
 
@@ -113,7 +113,7 @@ final class CodexUsageTests: XCTestCase {
           "secondary_window":{"used_percent":29,"limit_window_seconds":604800,"reset_at":1800600000}}}
         """)
         XCTAssertEqual(result.map(\.id), ["secondary"])
-        XCTAssertEqual(result.first?.label, "Weekly limit")
+        XCTAssertEqual(result.first?.label, "Weekly Limit")
         XCTAssertEqual(result.first?.usedFraction ?? -1, 0.29, accuracy: 0.0001)
     }
 
@@ -127,7 +127,7 @@ final class CodexUsageTests: XCTestCase {
         """)
         XCTAssertEqual(result.map(\.id), ["primary", "secondary"])
         XCTAssertEqual(result.first?.label, "Current session")
-        XCTAssertEqual(result.last?.label, "Weekly limit")
+        XCTAssertEqual(result.last?.label, "Weekly Limit")
     }
 
     /// Both windows malformed is still an error, not an empty success — the
@@ -156,7 +156,7 @@ final class CodexUsageTests: XCTestCase {
         """)
         XCTAssertEqual(result.map(\.id), ["spark", "spark-secondary"])
         XCTAssertEqual(result.map(\.group), ["Spark", "Spark"] as [String?])
-        XCTAssertEqual(result.map(\.label), ["5h limit", "Weekly limit"])
+        XCTAssertEqual(result.map(\.label), ["5-hour Limit", "Weekly Limit"])
         XCTAssertEqual(result.map(\.usedFraction), [0.40, 0.70])
     }
 
@@ -194,7 +194,7 @@ final class CodexUsageTests: XCTestCase {
         XCTAssertEqual(result.map(\.group),
                        [nil, nil, "Spark", "Code review"] as [String?])
         XCTAssertEqual(result.map(\.label),
-                       ["5h limit", "Weekly limit", "Weekly limit", "5h limit"])
+                       ["5-hour Limit", "Weekly Limit", "Weekly Limit", "5-hour Limit"])
         XCTAssertEqual(result.map(\.usedFraction), [0.25, 0.10, 0.40, 0.08])
     }
 
@@ -236,7 +236,7 @@ final class CodexUsageTests: XCTestCase {
          "additional_rate_limits":[]}
         """)
         XCTAssertEqual(result.map(\.id), ["primary", "secondary"])
-        XCTAssertEqual(result.map(\.label), ["5h limit", "Weekly limit"])
+        XCTAssertEqual(result.map(\.label), ["5-hour Limit", "Weekly Limit"])
         XCTAssertEqual(result.map(\.usedFraction), [0.25, 0.10])
         XCTAssertEqual(result.map(\.group), [nil, nil] as [String?])
     }
@@ -255,7 +255,7 @@ final class CodexUsageTests: XCTestCase {
             """)
             XCTAssertEqual(result.map(\.id), ["primary", "spark", "spark-secondary"], field)
             XCTAssertEqual(result.map(\.group), [nil, "Spark", "Spark"] as [String?], field)
-            XCTAssertEqual(result.map(\.label), ["5h limit", "5h limit", "Weekly limit"], field)
+            XCTAssertEqual(result.map(\.label), ["5-hour Limit", "5-hour Limit", "Weekly Limit"], field)
             XCTAssertEqual(result.dropFirst().map(\.usedFraction), [0.99, 0.05], field)
         }
     }
@@ -319,7 +319,7 @@ final class CodexUsageTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), ["primary", "secondary", "spark", "spark-secondary"])
         XCTAssertEqual(Set(result.map(\.id)).count, result.count)
         XCTAssertEqual(result.map(\.group), [nil, nil, "Spark", "Spark"] as [String?])
-        XCTAssertEqual(result.map(\.label), ["5h limit", "Weekly limit", "5h limit", "Weekly limit"])
+        XCTAssertEqual(result.map(\.label), ["5-hour Limit", "Weekly Limit", "5-hour Limit", "Weekly Limit"])
         XCTAssertEqual(result.map(\.usedFraction), [0.25, 0.10, 0.40, 0.12])
     }
 

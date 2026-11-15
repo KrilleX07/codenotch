@@ -324,8 +324,8 @@ final class TooltipRenderTests: XCTestCase {
             id: "codex", displayName: "Codex", glyph: .openai,
             fidelity: .official, status: .ok,
             windows: [
-                LimitWindow(id: "primary", label: "5h limit", usedFraction: 0),
-                LimitWindow(id: "secondary", label: "Weekly limit", usedFraction: 0.28)
+                LimitWindow(id: "primary", label: "5-hour Limit", usedFraction: 0),
+                LimitWindow(id: "secondary", label: "Weekly Limit", usedFraction: 0.28)
             ],
             tokenUsage: usage
         )

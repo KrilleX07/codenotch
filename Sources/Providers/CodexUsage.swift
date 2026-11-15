@@ -461,10 +461,16 @@ enum CodexUsage {
         }
         let minutes = windowSeconds / 60
         if minutes < 60 { return L10n.t("\(Int(minutes))m limit") }
-        if minutes < 60 * 24 { return L10n.t("\(Int(minutes / 60))h limit") }
+        if minutes < 60 * 24 {
+            let hours = Int((minutes / 60).rounded())
+            if hours == 5 {
+                return L10n.t("5-hour Limit")
+            }
+            return L10n.t("\(hours)h limit")
+        }
         let days = Int((minutes / (60 * 24)).rounded())
         switch days {
-        case 7:  return L10n.t("Weekly limit")
+        case 7:  return L10n.t("Weekly Limit")
         case 30: return L10n.t("Monthly limit")
         default: return L10n.t("\(days)d limit")
         }
