@@ -864,6 +864,15 @@ struct ProviderLimitsContent: View {
     }
 
     private var isCodex: Bool { CodexProfile.isCodex(providerID: snapshot.id) }
+    private var isAntigravity: Bool { AntigravityProfile.isAntigravity(providerID: snapshot.id) }
+
+    private var planSubtitle: String? {
+        guard let plan = snapshot.plan else { return nil }
+        if isCodex {
+            return plan.prefix(1).uppercased() + plan.dropFirst()
+        }
+        return plan
+    }
 
     /// Whether every reset on this card has room to say when it lands.
     ///
@@ -876,7 +885,7 @@ struct ProviderLimitsContent: View {
     private var showsResetStamps: Bool {
         let rows = snapshot.windows.compactMap { window -> (String, String, CGFloat)? in
             guard let resetsAt = window.resetsAt else { return nil }
-            let inset = (window.group == nil && !isCodex) ? 0 : 2 * Design.px(16)
+            let inset = (window.group == nil && !isCodex && !isAntigravity) ? 0 : 2 * Design.px(16)
             return (window.label,
                     ResetCopy.text(for: resetsAt, now: now, format: resetTimeFormat,
                                    withAbsoluteStamp: true),
@@ -915,10 +924,10 @@ struct ProviderLimitsContent: View {
         VStack(alignment: .leading, spacing: 0) {
             TooltipHeader(title: snapshot.kind == .localRuntime
                           ? L10n.t("\(snapshot.localModel?.brand?.displayName ?? snapshot.displayName) · Local")
-                          : AntigravityProfile.isAntigravity(providerID: snapshot.id)
+                          : (isAntigravity || isCodex)
                               ? snapshot.displayName
                               : L10n.t("\(snapshot.displayName) Usage"),
-                          subtitle: snapshot.plan ?? runtimeSummary,
+                          subtitle: planSubtitle ?? runtimeSummary,
                           note: activityNote ?? (snapshot.localModel?.brand != nil ? snapshot.displayName : readingAge),
                           accessory: headerAccessory) {
                 ProviderGlyphView(glyph: snapshot.glyph, customIconFilename: snapshot.customIconFilename)
@@ -944,11 +953,13 @@ struct ProviderLimitsContent: View {
                 let stamps = showsResetStamps
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(groupedWindows.enumerated()), id: \.element.id) { groupIndex, group in
-                        let isBoxed = group.title != nil || isCodex
+                        let isGeminiModels = group.title == L10n.t("Gemini Models") || group.title == "Gemini Models"
+                        let displayTitle = isGeminiModels ? nil : group.title
+                        let isBoxed = group.title != nil || isCodex || isAntigravity
                         if isBoxed {
-                            VStack(alignment: .leading, spacing: group.title != nil ? Design.px(12) : 0) {
-                                if let title = group.title {
-                                    Text(title)
+                            VStack(alignment: .leading, spacing: displayTitle != nil ? Design.px(12) : 0) {
+                                if let displayTitle {
+                                    Text(displayTitle)
                                         .font(Typography.cardBody)
                                         .fontWeight(.semibold)
                                         .foregroundStyle(Palette.textPrimary)
@@ -976,7 +987,7 @@ struct ProviderLimitsContent: View {
                         }
                     }
                 }
-                .padding(.bottom, (groupedWindows.contains(where: { $0.title != nil }) || isCodex) ? Design.px(8) : 0)
+                .padding(.bottom, (groupedWindows.contains(where: { $0.title != nil }) || isCodex || isAntigravity) ? Design.px(8) : 0)
             }
         }
     }

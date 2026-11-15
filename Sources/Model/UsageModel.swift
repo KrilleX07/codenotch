@@ -557,7 +557,8 @@ struct ProviderSnapshot: Identifiable, Equatable {
 
     var visibleGroupCount: Int {
         if AntigravityProfile.isAntigravity(providerID: id) {
-            return Set(visibleWindows.compactMap(\.group)).count
+            let groups = Set(visibleWindows.compactMap(\.group))
+            return groups.filter { $0 != L10n.t("Gemini Models") && $0 != "Gemini Models" }.count
         }
         return windowGroupCount
     }
@@ -565,6 +566,12 @@ struct ProviderSnapshot: Identifiable, Equatable {
     var titlelessGroupCount: Int {
         if CodexProfile.isCodex(providerID: id) {
             return visibleWindows.contains(where: { $0.group == nil }) ? 1 : 0
+        }
+        if AntigravityProfile.isAntigravity(providerID: id) {
+            let groups = Set(visibleWindows.compactMap(\.group))
+            let geminiCount = groups.contains(where: { $0 == L10n.t("Gemini Models") || $0 == "Gemini Models" }) ? 1 : 0
+            let nilGroupCount = visibleWindows.contains(where: { $0.group == nil }) ? 1 : 0
+            return max(geminiCount, nilGroupCount)
         }
         return 0
     }
