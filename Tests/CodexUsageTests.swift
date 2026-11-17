@@ -102,6 +102,40 @@ final class CodexUsageTests: XCTestCase {
         XCTAssertEqual(result.last?.resetsAt, Date(timeIntervalSince1970: 1_800_000_120))
     }
 
+    func testHeadlineIDLeadsWithWeeklyLimitAndPairsWithFiveHourWindow() throws {
+        let windows = [
+            LimitWindow(id: "primary", label: "5-hour Limit", usedFraction: 0.07, duration: 18000),
+            LimitWindow(id: "secondary", label: "Weekly Limit", usedFraction: 0.35, duration: 604800)
+        ]
+        XCTAssertEqual(CodexUsage.resolveHeadlineID(for: windows), "secondary")
+        XCTAssertEqual(CodexUsage.resolveWeeklyID(for: windows), "primary")
+    }
+
+    func testHeadlineIDWithPrimaryWeeklyPairsWithSecondaryFiveHour() throws {
+        let windows = [
+            LimitWindow(id: "primary", label: "Weekly Limit", usedFraction: 0.35, duration: 604800),
+            LimitWindow(id: "secondary", label: "5-hour Limit", usedFraction: 0.07, duration: 18000)
+        ]
+        XCTAssertEqual(CodexUsage.resolveHeadlineID(for: windows), "primary")
+        XCTAssertEqual(CodexUsage.resolveWeeklyID(for: windows), "secondary")
+    }
+
+    func testHeadlineIDFallsBackToPrimaryWhenNoWeeklyWindow() throws {
+        let windows = [
+            LimitWindow(id: "primary", label: "5-hour Limit", usedFraction: 0.07, duration: 18000)
+        ]
+        XCTAssertEqual(CodexUsage.resolveHeadlineID(for: windows), "primary")
+        XCTAssertNil(CodexUsage.resolveWeeklyID(for: windows))
+    }
+
+    func testHeadlineIDHandlesCreditsAccount() throws {
+        let windows = [
+            LimitWindow(id: "credits", label: "Credits", usedFraction: 0.40)
+        ]
+        XCTAssertEqual(CodexUsage.resolveHeadlineID(for: windows), "credits")
+        XCTAssertNil(CodexUsage.resolveWeeklyID(for: windows))
+    }
+
     /// The reported symptom: the tooltip showed only the weekly window and the
     /// ring showed a dash. A null `used_percent` on one window threw the whole
     /// fetch away, so a good weekly window was hidden behind the bad hourly

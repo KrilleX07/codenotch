@@ -332,6 +332,40 @@ enum CodexUsage {
         return windows
     }
 
+    /// The window that leads on the notch: by default the weekly allowance,
+    /// matching Antigravity's behavior. A single-window or credit-based account
+    /// falls back to its main window.
+    static func resolveHeadlineID(for windows: [LimitWindow]) -> String {
+        if let weekly = windows.first(where: {
+            $0.group == nil && ($0.id == "secondary" || $0.duration == 7 * 86400 || $0.label.lowercased().contains("weekly"))
+        }) {
+            return weekly.id
+        }
+        if windows.contains(where: { $0.group == nil && $0.id == "primary" }) {
+            return "primary"
+        }
+        if windows.contains(where: { $0.id == "credits" }) {
+            return "credits"
+        }
+        return windows.first?.id ?? "primary"
+    }
+
+    /// The paired secondary window for the thin second ring, when switched on.
+    /// When the headline is the weekly allowance, this pairs it with the 5-hour
+    /// window (`primary`).
+    static func resolveWeeklyID(for windows: [LimitWindow]) -> String? {
+        let headline = resolveHeadlineID(for: windows)
+        let weekly = windows.first(where: {
+            $0.group == nil && ($0.id == "secondary" || $0.duration == 7 * 86400 || $0.label.lowercased().contains("weekly"))
+        })
+        if let weekly, headline == weekly.id {
+            return windows.first(where: {
+                $0.group == nil && ($0.id == "primary" || $0.isFiveHour || $0.duration == 5 * 3600) && $0.id != headline
+            })?.id
+        }
+        return weekly?.id
+    }
+
     /// The account tier the usage payload names, when it names one.
     static func plan(from data: Data) -> String? {
         (try? JSONDecoder().decode(Response.self, from: data))?.plan_type?.nonEmptyPlan

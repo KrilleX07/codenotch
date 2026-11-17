@@ -122,9 +122,10 @@ actor CodexRemoteProvider: UsageProvider {
         return ProviderSnapshot(
             id: id, displayName: displayName, glyph: glyph,
             fidelity: .official, status: .ok, windows: windows,
-            headlineID: "primary",
-            // The weekly ring is the account weekly, never Spark's own weekly.
-            weeklyID: "secondary",
+            // Leading with the weekly allowance, matching Antigravity's behavior.
+            headlineID: CodexUsage.resolveHeadlineID(for: windows),
+            // The weekly ring pairs with the 5-hour window when the weekly limit leads.
+            weeklyID: CodexUsage.resolveWeeklyID(for: windows),
             tokenUsage: profileUsage,
             plan: CodexUsage.plan(from: data) ?? account()?.plan?.nonEmptyPlan,
             resetCredits: await resetCredits

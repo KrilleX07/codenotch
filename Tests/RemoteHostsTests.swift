@@ -864,8 +864,8 @@ final class CodexRemoteProviderTests: XCTestCase {
         let snapshot = try await makeProvider(answers: [(200, usage)]).fetchSnapshot()
         XCTAssertEqual(snapshot.id, "codex-remote-host-1")
         XCTAssertEqual(snapshot.displayName, "Hetzner")
-        XCTAssertEqual(snapshot.headlineText, "25%")
-        XCTAssertEqual(snapshot.weeklyFraction ?? -1, 0.10, accuracy: 0.0001)
+        XCTAssertEqual(snapshot.headlineText, "10%")
+        XCTAssertEqual(snapshot.weeklyFraction ?? -1, 0.25, accuracy: 0.0001)
     }
 
     func testAProxiedHostIsNotAskedAgainEveryTick() async throws {
