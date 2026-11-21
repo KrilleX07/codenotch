@@ -209,6 +209,33 @@ final class WeeklyExhaustionBlockTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(blocked.block).reason, "Weekly limit reached")
     }
 
+    func testSpentSessionBlocksRoomyWeeklyHeadline() throws {
+        var s = snapshot(headlineFraction: 1.0, weeklyFraction: 0.0)
+        s.headlineID = "weekly"
+        s.weeklyID = "session"
+        let blocked = s.blockingSpentWeek()
+        let block = try XCTUnwrap(blocked.block)
+        XCTAssertEqual(block.reason, "Session limit reached")
+        XCTAssertFalse(block.isWeeklyExhaustion)
+    }
+
+    func testSpentFiveHourBlocksRoomyWeeklyHeadlineWithFiveHourLabel() throws {
+        let sessionReset = Date(timeIntervalSince1970: 1790550000)
+        let windows = [
+            LimitWindow(id: "primary", label: "5-hour Limit", usedFraction: 1.0, resetsAt: sessionReset, duration: 18000),
+            LimitWindow(id: "secondary", label: "Weekly Limit", usedFraction: 0.0, resetsAt: reset, duration: 604800)
+        ]
+        let s = ProviderSnapshot(id: "codex", displayName: "Codex", glyph: .openai, fidelity: .official,
+                                 status: .ok, windows: windows, headlineID: "secondary", weeklyID: "primary")
+        XCTAssertEqual(s.weeklyLimitWindow?.id, "secondary")
+        XCTAssertEqual(s.fiveHourWindow?.id, "primary")
+        let blocked = s.blockingSpentWeek()
+        let block = try XCTUnwrap(blocked.block)
+        XCTAssertEqual(block.reason, "5-hour limit reached")
+        XCTAssertEqual(block.resetsAt, sessionReset)
+        XCTAssertFalse(block.isWeeklyExhaustion)
+    }
+
     private let monthlyReset = Date(timeIntervalSince1970: 1791763200)
 
     private func withMonth(_ s: ProviderSnapshot, used: Double?) -> ProviderSnapshot {

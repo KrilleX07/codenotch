@@ -107,6 +107,48 @@ final class UsageLimitWatcherTests: XCTestCase {
         XCTAssertEqual(alerts[0].currentFraction, 1.00)
     }
 
+    func testCodexWeeklyHeadlineAlertsSessionWhenFiveHourLimitReached() {
+        let makeSnapshot: (Double, Double) -> ProviderSnapshot = { session, weekly in
+            ProviderSnapshot(
+                id: "codex", displayName: "Codex", glyph: .openai, fidelity: .official,
+                status: .ok,
+                windows: [
+                    LimitWindow(id: "primary", label: "5-hour Limit", usedFraction: session, duration: 18000),
+                    LimitWindow(id: "secondary", label: "Weekly Limit", usedFraction: weekly, duration: 604800)
+                ],
+                headlineID: "secondary", weeklyID: "primary"
+            )
+        }
+        watcher.observe([makeSnapshot(0.80, 0.10)])
+        watcher.observe([makeSnapshot(1.00, 0.10)])
+
+        XCTAssertEqual(alerts.count, 1)
+        XCTAssertEqual(alerts[0].kind, .sessionLimitReached)
+        XCTAssertEqual(alerts[0].providerID, "codex")
+        XCTAssertEqual(alerts[0].windowLabel, "5-hour Limit")
+    }
+
+    func testCodexWeeklyHeadlineAlertsWeeklyWhenWeeklyLimitReached() {
+        let makeSnapshot: (Double, Double) -> ProviderSnapshot = { session, weekly in
+            ProviderSnapshot(
+                id: "codex", displayName: "Codex", glyph: .openai, fidelity: .official,
+                status: .ok,
+                windows: [
+                    LimitWindow(id: "primary", label: "5-hour Limit", usedFraction: session, duration: 18000),
+                    LimitWindow(id: "secondary", label: "Weekly Limit", usedFraction: weekly, duration: 604800)
+                ],
+                headlineID: "secondary", weeklyID: "primary"
+            )
+        }
+        watcher.observe([makeSnapshot(0.80, 0.80)])
+        watcher.observe([makeSnapshot(0.80, 1.00)])
+
+        XCTAssertEqual(alerts.count, 1)
+        XCTAssertEqual(alerts[0].kind, .weeklyLimitReached)
+        XCTAssertEqual(alerts[0].providerID, "codex")
+        XCTAssertEqual(alerts[0].windowLabel, "Weekly Limit")
+    }
+
     func testAlertsWhenBlocked() {
         watcher.observe([snapshot("claude", "Claude", sessionFraction: 0.50)])
         watcher.observe([snapshot("claude", "Claude", sessionFraction: 0.50, block: UsageBlock(reason: "Rate limited", resetsAt: nil))])

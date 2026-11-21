@@ -235,10 +235,29 @@ struct LimitWindow: Identifiable, Codable, Equatable {
     /// from an id, because every vendor names it differently: Claude's
     /// `session`, Codex's `primary`, Kimi's `rolling`.
     var isFiveHour: Bool {
-        guard let duration else { return false }
-        // A minute's slack: some vendors send the window as a start and an
-        // end, and the difference is not always a whole number of seconds.
-        return abs(duration - 5 * 3600) < 60
+        if let duration {
+            // A minute's slack: some vendors send the window as a start and an
+            // end, and the difference is not always a whole number of seconds.
+            return abs(duration - 5 * 3600) < 60
+        }
+        let idLower = id.lowercased()
+        let labelLower = label.lowercased()
+        return idLower.contains("hourly") || idLower.contains("session") || idLower == "primary"
+            || labelLower.contains("5-hour") || labelLower.contains("hourly") || labelLower.contains("session")
+    }
+
+    /// Whether this window meters a weekly allowance (~7 days).
+    var isWeekly: Bool {
+        if let duration {
+            return duration >= 6 * 86_400 && duration <= 8 * 86_400
+        }
+        let idLower = id.lowercased()
+        let labelLower = label.lowercased()
+        if idLower.contains("hourly") || idLower.contains("session") || labelLower.contains("5-hour") || labelLower.contains("hourly") {
+            return false
+        }
+        return idLower.contains("weekly") || idLower.hasSuffix("-weekly") || idLower == "weekly_all"
+            || labelLower.contains("weekly")
     }
 
     /// A count short enough to sit inside a 44 pt ring.
@@ -453,8 +472,20 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// while compact summaries still need to know that a valid weekly reading
     /// exists alongside their own five-hour figure.
     var weeklyLimitWindow: LimitWindow? {
-        guard let weeklyID else { return nil }
-        return windows.first { $0.id == weeklyID }
+        if let headline, headline.isWeekly { return headline }
+        if let weeklyID, let window = windows.first(where: { $0.id == weeklyID }), window.isWeekly {
+            return window
+        }
+        if let weekly = windows.first(where: { $0.isWeekly && $0.group == nil }) {
+            return weekly
+        }
+        if let weekly = windows.first(where: { $0.isWeekly }) {
+            return weekly
+        }
+        if let weeklyID, let window = windows.first(where: { $0.id == weeklyID }), !window.isFiveHour {
+            return window
+        }
+        return nil
     }
 
     /// The window the second ring draws, when one is switched on.
@@ -468,14 +499,8 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// Nil means this provider has no second window worth a ring, which is a
     /// real answer rather than a missing one.
     var weeklyWindow: LimitWindow? {
-        guard let weeklyLimitWindow else { return nil }
-        // Never the window the headline is already drawing. Providers that pick
-        // their headline by which limit is tightest — Antigravity does — will
-        // sometimes land on the weekly one, and two rings reporting the same
-        // number is worse than one: it reads as a second fact that happens to
-        // agree, rather than as the same fact twice.
-        guard weeklyID != headlineID else { return nil }
-        return weeklyLimitWindow
+        guard let weeklyID, weeklyID != headlineID else { return nil }
+        return windows.first { $0.id == weeklyID }
     }
 
     /// Nil when there is no weekly window, or when the provider reports one
@@ -493,6 +518,20 @@ struct ProviderSnapshot: Identifiable, Equatable {
               let used = weekly.usedFraction, used >= 1 else { return nil }
         return UsageBlock(reason: L10n.t("Weekly limit reached"), resetsAt: weekly.resetsAt,
                           isWeeklyExhaustion: true)
+    }
+
+    /// A five-hour (session) window is spent, shutting the headline when the
+    /// headline is the weekly window and still shows room.
+    var spentFiveHourBlock: UsageBlock? {
+        guard block == nil, spentWeeklyBlock == nil, spentLongWindowBlock == nil,
+              let fiveHour = fiveHourWindow,
+              fiveHour.id != headlineID,
+              let used = fiveHour.usedFraction, used >= 1 else { return nil }
+        let reason = fiveHour.label.lowercased().contains("session")
+            ? L10n.t("Session limit reached")
+            : L10n.t("5-hour limit reached")
+        return UsageBlock(reason: reason, resetsAt: fiveHour.resetsAt,
+                          isWeeklyExhaustion: false)
     }
 
     /// A window longer than the week — a monthly plan allowance — is spent.
@@ -521,6 +560,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
         guard !status.isStale else { return false }
         return headlineIsSpent
             || (weeklyLimitWindow?.usedFraction ?? 0) >= 1
+            || (fiveHourWindow?.usedFraction ?? 0) >= 1
             || spentLongWindow != nil
     }
 
@@ -534,15 +574,15 @@ struct ProviderSnapshot: Identifiable, Equatable {
         return (headline.usedFraction ?? 0) >= 1
     }
 
-    /// The snapshot with a spent week attached as a block, so every surface
+    /// The snapshot with a spent window attached as a block, so every surface
     /// that reads `block` — ring, card, menu, phone — treats the headline as
     /// shut. Applied by the store on publication, before any derivation
     /// swaps the headline and weekly ids around.
     func blockingSpentWeek() -> ProviderSnapshot {
-        guard let spent = spentWeeklyBlock ?? spentLongWindowBlock else { return self }
+        guard let spent = spentWeeklyBlock ?? spentLongWindowBlock ?? spentFiveHourBlock else { return self }
         var snapshot = self
         snapshot.block = spent
-        if spentWeeklyBlock == nil, let long = spentLongWindow { snapshot.headlineID = long.id }
+        if spentWeeklyBlock == nil, spentFiveHourBlock == nil, let long = spentLongWindow { snapshot.headlineID = long.id }
         return snapshot
     }
 
@@ -595,7 +635,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     }
 
     var titlelessGroupCount: Int {
-        if CodexProfile.isCodex(providerID: id) {
+        if CodexProfile.isCodex(providerID: id) || id == "devin" {
             return visibleWindows.contains(where: { $0.group == nil }) ? 1 : 0
         }
         if AntigravityProfile.isAntigravity(providerID: id) {
@@ -608,7 +648,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     }
 
     var showsEmptyAgentRow: Bool {
-        localModel == nil && (AntigravityProfile.isAntigravity(providerID: id) || CodexProfile.isCodex(providerID: id))
+        localModel == nil && (AntigravityProfile.isAntigravity(providerID: id) || CodexProfile.isCodex(providerID: id) || id == "devin")
     }
 
     /// How many windows are count-only (no fraction, no bar) — they render as

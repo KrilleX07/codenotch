@@ -17,8 +17,8 @@ import Foundation
 /// missing percent with a reset is therefore 0% remaining, not "not metered";
 /// only when both are absent is there no reading to fabricate.
 enum DevinUsage {
-    static var dailyLabel: String { L10n.t("Daily quota") }
-    static var weeklyLabel: String { L10n.t("Weekly quota") }
+    static var dailyLabel: String { L10n.t("Daily Limit") }
+    static var weeklyLabel: String { L10n.t("Weekly Limit") }
     static var overageLabel: String { L10n.t("Extra usage balance") }
     static var usageGroup: String { L10n.t("Usage") }
     static var extraGroup: String { L10n.t("Extra usage") }
@@ -45,7 +45,7 @@ enum DevinUsage {
             } else {
                 continue
             }
-            windows.append(LimitWindow(id: id, group: usageGroup, label: label,
+            windows.append(LimitWindow(id: id, group: nil, label: label,
                                        usedFraction: (100 - remaining) / 100, resetsAt: reset))
         }
         // Overage is appended before the empty guard so a response that reports

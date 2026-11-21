@@ -63,15 +63,30 @@ final class UsageLimitWatcher {
         }
         var state = states[snapshot.id] ?? ProviderLimitState()
 
-        // 1. Session limit (headline window)
-        if let headline = snapshot.headline, let fraction = snapshot.usedFraction {
+        // Resolve session and weekly windows by cadence rather than ring position.
+        let sessionWindow: LimitWindow?
+        let weeklyWindow: LimitWindow?
+
+        if let headline = snapshot.headline, headline.isWeekly {
+            weeklyWindow = headline
+            sessionWindow = snapshot.fiveHourWindow ?? snapshot.weeklyWindow
+        } else if let weekly = snapshot.weeklyLimitWindow {
+            weeklyWindow = weekly
+            sessionWindow = snapshot.fiveHourWindow ?? snapshot.headline
+        } else {
+            sessionWindow = snapshot.headline
+            weeklyWindow = snapshot.weeklyWindow
+        }
+
+        // 1. Session limit
+        if let session = sessionWindow, let fraction = session.usedFraction {
             // A block the spent week attached is the weekly alert's news, not
             // the session's: counting it here would fire a session card
             // claiming the session itself spent while it still shows room.
             let blockedBeyondWeekly = snapshot.block.map { !$0.isWeeklyExhaustion } ?? false
-            let isExhausted = fraction >= 1.0 || blockedBeyondWeekly
+            let isExhausted = fraction >= 1.0 || (blockedBeyondWeekly && session.id == snapshot.headlineID)
 
-            let dateRolledOver = rolledOver(from: state.session.resetsAt, to: headline.resetsAt)
+            let dateRolledOver = rolledOver(from: state.session.resetsAt, to: session.resetsAt)
 
             if dateRolledOver || fraction < 0.95 {
                 state.session.isExhausted = false
@@ -86,20 +101,20 @@ final class UsageLimitWatcher {
                     kind: .sessionLimitReached,
                     providerID: snapshot.id,
                     providerName: snapshot.displayName,
-                    windowLabel: headline.label,
+                    windowLabel: session.label,
                     glyph: snapshot.glyph,
                     previousFraction: state.session.fraction,
                     currentFraction: fraction,
-                    resetsAt: headline.resetsAt
+                    resetsAt: session.resetsAt
                 ))
             }
 
             state.session.fraction = fraction
-            state.session.resetsAt = headline.resetsAt
+            state.session.resetsAt = session.resetsAt
         }
 
-        // 2. Weekly limit (secondary window)
-        if let weekly = snapshot.weeklyWindow, let weeklyFraction = snapshot.weeklyFraction {
+        // 2. Weekly limit
+        if let weekly = weeklyWindow, let weeklyFraction = weekly.usedFraction {
             let isWeeklyExhausted = weeklyFraction >= 1.0
 
             let dateRolledOver = rolledOver(from: state.weekly.resetsAt, to: weekly.resetsAt)

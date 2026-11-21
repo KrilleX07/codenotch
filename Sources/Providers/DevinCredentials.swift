@@ -80,7 +80,21 @@ struct DevinCredentials {
         guard let row = try? JSONDecoder().decode(Row.self, from: Data(json.utf8)),
               !row.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { throw UsageProviderError.needsAuth }
-        return DevinCredentials(apiKey: row.apiKey, email: row.email)
+        return DevinCredentials(apiKey: row.apiKey, email: row.email ?? lastLoginEmail(in: db))
+    }
+
+    /// `windsurfAuthStatus` carries no address; the sign-in extension keeps it
+    /// in `codeium.windsurf-auth` as `lastLoginEmail`.
+    private static func lastLoginEmail(in db: OpaquePointer) -> String? {
+        struct Row: Decodable { let lastLoginEmail: String? }
+        guard let json = SQLiteStore.rows(
+            in: db, sql: "SELECT value FROM ItemTable WHERE key = ?", bind: "codeium.windsurf-auth"
+        ).first,
+              let email = (try? JSONDecoder().decode(Row.self, from: Data(json.utf8)))?.lastLoginEmail?
+                  .trimmingCharacters(in: .whitespacesAndNewlines),
+              !email.isEmpty
+        else { return nil }
+        return email
     }
 
     /// The CLI's `credentials.toml`. The file is simple enough that a TOML

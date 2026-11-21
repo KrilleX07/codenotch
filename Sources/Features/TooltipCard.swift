@@ -870,7 +870,7 @@ struct ProviderLimitsContent: View {
     }
 
     private var isCodex: Bool { CodexProfile.isCodex(providerID: snapshot.id) }
-    private var isAntigravity: Bool { AntigravityProfile.isAntigravity(providerID: snapshot.id) }
+    private var isAntigravity: Bool { AntigravityProfile.isAntigravity(providerID: snapshot.id) || snapshot.id == "devin" }
 
     private var planSubtitle: String? {
         guard let plan = snapshot.plan else { return nil }
