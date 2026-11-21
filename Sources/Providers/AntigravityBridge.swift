@@ -39,16 +39,36 @@ enum AntigravityBridge {
 
     // MARK: - Finding it
 
-    /// The token is passed to the language server on its command line, so the
-    /// process table is the source of truth. There is no file to read: the
-    /// server is started with `--https_server_port 0`, meaning the port is
-    /// chosen at runtime and never written down.
-    static func discover(processTable: String? = nil, listeningPorts: ((Int) -> [Int])? = nil)
-        -> Endpoint? {
+    struct DaemonHub: Decodable {
+        let pid: Int
+        let httpsPort: Int?
+        let httpPort: Int?
+        let lsVersion: String?
+        let csrfToken: String?
+    }
+
+    /// The token is passed either via a daemon discovery file in ~/.gemini/antigravity/daemon/hub_*.json
+    /// (Antigravity 2.30+) or on the language server's command line (--csrf_token in older versions).
+    static func discover(
+        daemonDirectory: URL? = nil,
+        processTable: String? = nil,
+        listeningPorts: ((Int) -> [Int])? = nil
+    ) -> Endpoint? {
         let table = processTable ?? run("/bin/ps", ["-Ao", "pid,command"])
         let lines = table.split(separator: "\n")
 
-        // 1. The IDE's language server, which carries a token and is NOT
+        // 1. Daemon discovery files in ~/.gemini/antigravity*/daemon/hub_*.json
+        if let daemonEndpoint = discoverFromDaemon(
+            directory: daemonDirectory,
+            lines: lines,
+            isMockProcessTable: processTable != nil,
+            listeningPorts: listeningPorts
+        ) {
+            owned.stop()
+            return daemonEndpoint
+        }
+
+        // 2. The IDE's language server, which carries a token and is NOT
         // an internal Codenotch-spawned bridge (--app_data_dir codenotch-bridge).
         // If multiple IDE language servers exist, take the newest (highest PID).
         let ideCandidates = lines.filter { line in
@@ -63,7 +83,7 @@ enum AntigravityBridge {
             return endpoint
         }
 
-        // 2. Then the CLI, which serves the same RPC and is a whole install of its
+        // 3. Then the CLI, which serves the same RPC and is a whole install of its
         // own — somebody who uses `agy` and never installs the IDE has a real
         // quota to read and was getting the counted-requests fallback instead.
         // It asks for no token: on loopback it answers anyone.
@@ -73,6 +93,90 @@ enum AntigravityBridge {
             return endpoint
         }
         return nil
+    }
+
+    private static func discoverFromDaemon(
+        directory: URL?,
+        lines: [Substring],
+        isMockProcessTable: Bool,
+        listeningPorts: ((Int) -> [Int])?
+    ) -> Endpoint? {
+        let fileManager = FileManager.default
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        var searchDirs: [URL] = []
+        if let directory {
+            searchDirs = [directory]
+        } else {
+            let defaultDir = home.appendingPathComponent(".gemini")
+                .appendingPathComponent("antigravity")
+                .appendingPathComponent("daemon")
+            searchDirs.append(defaultDir)
+
+            let geminiDir = home.appendingPathComponent(".gemini")
+            if let entries = try? fileManager.contentsOfDirectory(atPath: geminiDir.path) {
+                for entry in entries where entry.hasPrefix("antigravity-") && entry != "antigravity-bridge" {
+                    let dir = geminiDir.appendingPathComponent(entry).appendingPathComponent("daemon")
+                    searchDirs.append(dir)
+                }
+            }
+        }
+
+        struct HubCandidate {
+            let pid: Int
+            let ports: [Int]
+            let csrfToken: String
+            let modDate: Date
+        }
+
+        var candidates: [HubCandidate] = []
+
+        for dir in searchDirs {
+            guard let files = try? fileManager.contentsOfDirectory(
+                at: dir,
+                includingPropertiesForKeys: [.contentModificationDateKey]
+            ) else { continue }
+
+            for file in files where file.lastPathComponent.hasPrefix("hub_") && file.pathExtension == "json" {
+                guard let data = try? Data(contentsOf: file),
+                      let hub = try? JSONDecoder().decode(DaemonHub.self, from: data),
+                      hub.pid > 0,
+                      let token = hub.csrfToken, !token.isEmpty
+                else { continue }
+
+                // Skip our own spawned bridge if any
+                if let ownedPid = owned.pid, Int(ownedPid) == hub.pid {
+                    continue
+                }
+
+                // Verify that the process table contains this PID, is language_server, and not codenotch-bridge
+                guard lines.contains(where: {
+                    pid(of: $0) == hub.pid &&
+                    $0.contains("language_server") &&
+                    !$0.contains("codenotch-bridge")
+                }) else { continue }
+
+                // In production (not mock process table), verify process is actually alive
+                if !isMockProcessTable {
+                    guard kill(pid_t(hub.pid), 0) == 0 else { continue }
+                }
+
+                let ports: [Int]
+                if let listeningPorts {
+                    ports = listeningPorts(hub.pid)
+                } else {
+                    let directPorts = [hub.httpsPort, hub.httpPort].compactMap { $0 }.filter { $0 > 0 }
+                    ports = !directPorts.isEmpty ? directPorts : self.listeningPorts(ofPID: hub.pid)
+                }
+
+                guard !ports.isEmpty else { continue }
+
+                let modDate = (try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                candidates.append(HubCandidate(pid: hub.pid, ports: ports, csrfToken: token, modDate: modDate))
+            }
+        }
+
+        guard let best = candidates.max(by: { $0.pid < $1.pid }) else { return nil }
+        return Endpoint(ports: best.ports, csrfToken: best.csrfToken)
     }
 
     static func pid(of line: Substring) -> Int {
@@ -99,9 +203,9 @@ enum AntigravityBridge {
         return table.split(separator: "\n").contains(where: isACP)
     }
 
-    /// IDE runs as language_server with --csrf_token or Antigravity.app.
+    /// IDE runs as language_server (not codenotch-bridge) or Antigravity.app.
     static func isIDE(_ line: Substring) -> Bool {
-        (line.contains("language_server") && line.contains("--csrf_token")) ||
+        (line.contains("language_server") && !line.contains("codenotch-bridge")) ||
         line.contains("Antigravity.app")
     }
 

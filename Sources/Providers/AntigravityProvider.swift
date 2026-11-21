@@ -256,7 +256,7 @@ actor AntigravityProvider: UsageProvider {
             return nil
 
         case .cli:
-            if candidate.isRunning, let bridge = AntigravityBridge.discover(processTable: processTable) {
+            if candidate.isRunning, let bridge = AntigravityBridge.discover(daemonDirectory: profile.configDirectory.appendingPathComponent("daemon"), processTable: processTable) {
                 if let windows = try? await AntigravityBridge.quota(from: bridge, session: localSession), !windows.isEmpty {
                     everBridged = true
                     UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
@@ -473,7 +473,7 @@ actor AntigravityProvider: UsageProvider {
         if let bridge {
             // If the current bridge is our owned process, but a real IDE has now started,
             // immediately switch to the real IDE!
-            if AntigravityBridge.owned.pid != nil, let realIDE = AntigravityBridge.discover() {
+            if AntigravityBridge.owned.pid != nil, let realIDE = AntigravityBridge.discover(daemonDirectory: profile.configDirectory.appendingPathComponent("daemon")) {
                 Log.usage.notice("Antigravity real IDE discovered; switching from owned bridge")
                 AntigravityBridge.owned.stop()
                 self.bridge = realIDE
@@ -504,7 +504,7 @@ actor AntigravityProvider: UsageProvider {
 
     /// Where to ask: the IDE's own server while it runs, otherwise one we start.
     private func resolveEndpoint(processTable: String? = nil) async -> AntigravityBridge.Endpoint? {
-        if let running = AntigravityBridge.discover(processTable: processTable) { return running }
+        if let running = AntigravityBridge.discover(daemonDirectory: profile.configDirectory.appendingPathComponent("daemon"), processTable: processTable) { return running }
 
         guard let binary = AntigravityBridge.serverBinaryURL(),
               AntigravityBridge.owned.endpointOrStart(binary: binary) != nil,

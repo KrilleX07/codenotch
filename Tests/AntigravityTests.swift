@@ -736,6 +736,53 @@ final class AntigravityBridgeTests: XCTestCase {
         }
     }
 
+    func testDaemonDiscoveryReadsHubJsonWithoutCsrfTokenInArgv() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let hubFile = tempDir.appendingPathComponent("hub_58054.json")
+        let hubContent = """
+        {
+          "pid": 45678,
+          "httpsPort": 58053,
+          "httpPort": 58054,
+          "lsVersion": "2.34.0",
+          "csrfToken": "daemon-csrf-token"
+        }
+        """
+        try hubContent.write(to: hubFile, atomically: true, encoding: .utf8)
+
+        let table = "45678 /Applications/Antigravity.app/Contents/Resources/bin/language_server --standalone --app_data_dir antigravity"
+        let endpoint = try XCTUnwrap(
+            AntigravityBridge.discover(daemonDirectory: tempDir, processTable: table, listeningPorts: { _ in [58053, 58054] })
+        )
+
+        XCTAssertEqual(endpoint.csrfToken, "daemon-csrf-token")
+        XCTAssertEqual(endpoint.ports, [58053, 58054])
+    }
+
+    func testDaemonDiscoveryIgnoresCodenotchBridge() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let hubFile = tempDir.appendingPathComponent("hub_58054.json")
+        let hubContent = """
+        {
+          "pid": 11111,
+          "httpsPort": 58053,
+          "httpPort": 58054,
+          "lsVersion": "2.34.0",
+          "csrfToken": "bridge-token"
+        }
+        """
+        try hubContent.write(to: hubFile, atomically: true, encoding: .utf8)
+
+        let table = "11111 /Applications/Antigravity.app/Contents/Resources/bin/language_server --app_data_dir codenotch-bridge"
+        XCTAssertNil(AntigravityBridge.discover(daemonDirectory: tempDir, processTable: table, listeningPorts: { _ in [58053] }))
+    }
+
     func testItParsesPortsFromLSOF() {
         let output = """
         language_server 29283 vinz 12u IPv4 0x1 0t0 TCP 127.0.0.1:63881 (LISTEN)
