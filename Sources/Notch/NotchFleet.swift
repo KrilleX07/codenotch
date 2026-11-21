@@ -25,6 +25,11 @@ final class NotchFleet {
     private(set) var scope: NotchScreenScope
     private var edge: NotchEdge
     private var visibility: NotchVisibility = .onHover
+    private var keepsOpenWhileSessionActive = false
+    /// The preference is on and any provider has a session busy or waiting on you.
+    private var sessionActive: Bool {
+        keepsOpenWhileSessionActive && sessions.values.joined().contains { $0.state == .busy || $0.state == .waiting }
+    }
 
     private var snapshots: [ProviderSnapshot] = []
     private(set) var thinkingModels: [String: Date] = [:]
@@ -58,6 +63,7 @@ final class NotchFleet {
     private var colorTransitionStyle: ColorTransitionStyle = .hardStep
     private var progressBarMode: ProgressBarMode = .remaining
     private var busyIndicatorStyle: BusyIndicatorStyle = .arc
+    private var typographyScale: CGFloat = 1.0
     /// One choice for the whole fleet, like the edge and the size: a weekly
     /// ring on one display and not another would read as a bug.
     private var weeklyRing: WeeklyRing = .off
@@ -192,6 +198,14 @@ final class NotchFleet {
         }
     }
 
+    func apply(keepOpenWhileSessionActive: Bool) {
+        keepsOpenWhileSessionActive = keepOpenWhileSessionActive
+        let active = sessionActive
+        for controller in controllers.values {
+            controller.apply(sessionActive: active)
+        }
+    }
+
     /// Only `.mainDisplay` has a single, unassigned controller for this to
     /// mean anything to — reconciling picks it a screen using the new
     /// preference the same way it does on a screen-parameter change.
@@ -297,6 +311,14 @@ final class NotchFleet {
         self.busyIndicatorStyle = busyIndicatorStyle
         for controller in controllers.values {
             controller.model.busyIndicatorStyle = busyIndicatorStyle
+        controller.model.typographyScale = typographyScale
+        }
+    }
+
+    func apply(typographyScale: CGFloat) {
+        self.typographyScale = typographyScale
+        for controller in controllers.values {
+            controller.model.typographyScale = typographyScale
         }
     }
 
@@ -455,6 +477,10 @@ final class NotchFleet {
             }
             controller.model.now = now
         }
+        let active = sessionActive
+        for controller in controllers.values {
+            controller.apply(sessionActive: active)
+        }
     }
 
     // MARK: - Reconciliation
@@ -567,6 +593,7 @@ final class NotchFleet {
         controller.model.colorTransitionStyle = colorTransitionStyle
         controller.model.progressBarMode = progressBarMode
         controller.model.busyIndicatorStyle = busyIndicatorStyle
+        controller.model.typographyScale = typographyScale
         controller.model.weeklyRing = weeklyRing
         controller.model.weeklyRingDashed = weeklyRingDashed
         controller.model.showsNotchReadings = showsNotchReadings
@@ -602,6 +629,7 @@ final class NotchFleet {
         controller.model.refreshing = refreshing
         controller.model.sessions = sessions
         controller.model.now = Date()
+        controller.apply(sessionActive: sessionActive)
         controller.apply(visibility)
         controller.show()
         return controller

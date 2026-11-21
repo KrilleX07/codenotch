@@ -80,6 +80,8 @@ final class NotchViewModel: ObservableObject {
     /// the cursor is over it, so SwiftUI cannot see the crossing that turns
     /// event handling on in the first place.
     @Published var hoveredIndex: Int?
+    /// Frames reported by the rendered cells, in the panel's coordinates.
+    var renderedCellFrames: [String: CGRect] = [:]
     /// Ticked on refresh so the "Resets in N min" copy stays honest.
     @Published var now: Date = Date()
     @Published var resetTimeFormat: ResetTimeFormat = .automatic
@@ -218,6 +220,7 @@ final class NotchViewModel: ObservableObject {
     @Published var colorTransitionStyle: ColorTransitionStyle = .hardStep
     @Published var progressBarMode: ProgressBarMode = .remaining
     @Published var busyIndicatorStyle: BusyIndicatorStyle = .arc
+    @Published var typographyScale: CGFloat = 1.0
     /// Mirrors the persisted Appearance choice so the separate notch window
     /// redraws immediately when Settings changes it.
     @Published var surfaceStyle: NotchSurfaceStyle = .glass
@@ -654,8 +657,22 @@ final class NotchViewModel: ObservableObject {
         let e: CGFloat = 0.5
         let over = far > left - e && near < right + e
         // Clear of the hole, eased on the side it will come in from.
-        let before = near < left - e && far > left - e || !over && far <= left
-        let after = near < right + e && far > right + e || !over && near >= right
+        var before = near < left - e && far > left - e || !over && far <= left
+        var after = near < right + e && far > right + e || !over && near >= right
+        // **Joined, it is across the wall it is welded to however short it is
+        // drawn** — and folded it is drawn as short as nothing, back into the
+        // hole. Asked of where its ends are, a bar shorter than what is buried
+        // no longer reached the wall, so its welded end opened back up into a
+        // flare longer than the bar and the shape turned inside out across the
+        // Mac's corner. And these are not numbers SwiftUI eases: they are the
+        // folded state's from the first frame of the fold, while the bar is
+        // still its open length. Held at what they are open, the end that goes
+        // in puts the hole's outline on as it passes the wall — the same way the
+        // other copy does — and the fold is the bar drawing itself back in.
+        if mergesWithCutout {
+            before = carriedOnTheLeft
+            after = !carriedOnTheLeft
+        }
         let from = left - near, to = right - near
         let scale = max(sizeScale, 0.0001)
         return SideNotchShape.Dip(from: from / scale,
@@ -667,8 +684,12 @@ final class NotchViewModel: ObservableObject {
                                   // Measured: a circular arc of 31.2px on a 90px-deep cutout.
                                   corner: cutout.depth * 31.2 / 90 / scale,
                                   // Folded, the bar is the notch at rest and
-                                  // nothing of it squeezes anywhere.
-                                  amount: over && isExpanded ? 1 : 0,
+                                  // nothing of it squeezes anywhere — unless it
+                                  // is joined, and folds into the hole: then its
+                                  // end has to take the hole's outline on its
+                                  // way in. Joined, the bar is the hole's depth,
+                                  // so that is all the dip does.
+                                  amount: over && (isExpanded || mergesWithCutout) ? 1 : 0,
                                   closes: NotchGeometry.cutoutOverlap / scale)
     }
 
@@ -809,6 +830,79 @@ final class NotchViewModel: ObservableObject {
         return last.lead + last.length - first.lead
     }
 
+    /// **The joined notch as one shape**: from the outer end of one copy to
+    /// the outer end of the other, across the display's hole.
+    ///
+    /// Joined, the notch is two copies, each reaching a little into the hole,
+    /// with square ends there that only the housing makes right. On the display
+    /// that reads as one notch. A screenshot or a recording has no housing, so
+    /// it showed two black pieces with wallpaper between them — and landing,
+    /// the carried bar's square tip and the other copy cut off at the far wall.
+    ///
+    /// So joined, the black is this one span, drawn as the plain notch shape
+    /// with its flare at either end, and the copies only carry what is printed
+    /// on them. In the hand it is the carried bar's own span and is not shown;
+    /// let go onto the hole, it is shown from there and its ends ease out to
+    /// the copies' — the notch stretching across the hole, one shape the whole
+    /// way. Folded, it eases back into the hole and fades with it.
+    var mergedSpan: (lead: CGFloat, length: CGFloat, depth: CGFloat)? {
+        guard edge == .top, !floats, let cutout, cutout.width > 0 else { return nil }
+        let bar = cellWing
+        let drawn = wings.filter { $0.length > 0 }
+        guard mergesWithCutout, !holdsOffTheCutout else {
+            // Unseen until it joins — but already over everything that is
+            // drawn, so taking the hole grows it from there. From the bar
+            // alone, the other copy, already out of the hole on its far side,
+            // blinked out as the copies left their fill to it and grew back.
+            guard let first = drawn.min(by: { $0.lead < $1.lead }),
+                  let last = drawn.max(by: { $0.lead + $0.length < $1.lead + $1.length })
+            else { return (bar.lead, bar.length, bar.depth) }
+            return (first.lead, last.lead + last.length - first.lead, bar.depth)
+        }
+        guard isExpanded, let first = drawn.min(by: { $0.lead < $1.lead }),
+              let last = drawn.max(by: { $0.lead + $0.length < $1.lead + $1.length })
+        else {
+            // Folded into the hole: the span closes to the hole itself.
+            let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
+            return (middle - cutout.width / 2, cutout.width, bar.depth)
+        }
+        return (first.lead, last.lead + last.length - first.lead, bar.depth)
+    }
+
+    /// The outline `mergedSpan` is drawn with: the notch's plain shape, the one
+    /// it has on any edge with no hole — a flare and a corner at either end,
+    /// and nothing of the join, because joined there is nothing to hide.
+    var mergedShape: SideNotchShape {
+        var shape = SideNotchShape(edge: edge)
+        shape.cornerRadius = drawnCornerRadius
+        shape.bezelHidden = NotchRootView.bezelBleed / max(sizeScale, 0.0001)
+        return shape
+    }
+
+    /// Whether `mergedSpan` is the black that shows: joined, open, and not in
+    /// the hand. The copies leave their own fill to it then.
+    var drawsMergedNotch: Bool {
+        mergedSpan != nil && mergesWithCutout && !holdsOffTheCutout && isExpanded
+    }
+
+    /// **What wakes a notch joined to the display's own hole**, along the panel:
+    /// the hole, and whatever of the notch is drawn either side of it.
+    ///
+    /// Folded, nothing of it is drawn outside the hole — see `restingLength` —
+    /// so the drawn copies alone are no target at all, and the Mac's own notch
+    /// is the whole of it. Which is the right one anyway: it is where the app
+    /// is, and the one place on that edge with nothing else to click.
+    func joinedWakeAlong(in wings: [Wing]) -> (lead: CGFloat, length: CGFloat) {
+        let width = cutout?.width ?? 0
+        let middle = (cutoutSpan(cellCount: snapshots.count) + 2 * slack) / 2
+        var lead = middle - width / 2, end = middle + width / 2
+        for wing in wings where wing.length > 0 {
+            lead = min(lead, wing.lead)
+            end = max(end, wing.lead + wing.length)
+        }
+        return (lead, end - lead)
+    }
+
     /// How much of the hardware's own height a ring may use, as a fraction of
     /// the design ring.
     ///
@@ -900,7 +994,8 @@ final class NotchViewModel: ObservableObject {
         shape.emergesFrom = .init(
             buried: (mergesWithCutout ? cutout.overlap : NotchGeometry.cutoutOverlap) / scale,
             // Measured: a circular arc of 31.2px on a 90px-deep cutout.
-            corner: cutout.depth * 31.2 / 90 / scale)
+            corner: cutout.depth * 31.2 / 90 / scale,
+            holeDepth: cutout.depth / scale)
         return shape
     }
 
@@ -1425,12 +1520,16 @@ final class NotchViewModel: ObservableObject {
     /// What the notch folds away to, whether or not it is open right now —
     /// the hit region has to know that while the notch is still open.
     ///
-    /// The same pill on every edge, plus whatever of it is buried in the
-    /// display's hole, so that the part of it anybody can see is the same pill
-    /// too. Folded against the hole it is not a separate tab stuck to the
-    /// bezel: the bridge holds, and what shows is the hardware's own notch
-    /// carrying a shallow ledge out of one side.
-    var restingLength: CGFloat { NotchLayout.pillHeight + cutoutBleed }
+    /// The same pill on every edge — except joined to the display's own hole,
+    /// where it is **nothing**: both copies draw themselves all the way back
+    /// into the hole they came out of, and what is left on screen is the Mac's
+    /// own notch at exactly its own size.
+    ///
+    /// It used to keep a pill's length out either side, as a ledge to say the
+    /// app was there. Folded, that is the one thing it must not say: it read as
+    /// a notch wider than the machine's, there all day for nothing, and the
+    /// hole is already the target that wakes it — see `joinedWakeAlong`.
+    var restingLength: CGFloat { mergesWithCutout ? 0 : NotchLayout.pillHeight }
     var restingDepth: CGFloat { mergesWithCutout ? contentDepth : NotchLayout.pillWidth }
 
     /// What wakes the folded notch, in panel points: the resting shape and a

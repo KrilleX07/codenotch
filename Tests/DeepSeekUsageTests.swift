@@ -460,4 +460,179 @@ final class DeepSeekMultiWalletTests: XCTestCase {
         XCTAssertEqual(reading.currency, "CNY")
         XCTAssertEqual(reading.usedFraction, 9.20 / 20.07, accuracy: 0.001)
     }
+
+    /// Granted credit is spendable too, so it counts toward what is left.
+    func testGrantedBalanceCountsAsRemaining() throws {
+        let json = #"{"data":{"biz_data":{"normal_wallets":[{"currency":"CNY","balance":"8.75"}],"bonus_wallets":[{"currency":"CNY","balance":"2.25"}],"total_costs":[{"currency":"CNY","amount":"9"}]}}}"#
+        let reading = try DeepSeekUsage.reading(fromJSON: json)
+        XCTAssertEqual(reading.balance, 11, accuracy: 0.001)
+        XCTAssertEqual(reading.usedFraction, 9.0 / 20.0, accuracy: 0.001)
+    }
+}
+
+/// DeepSeek answers an expired or missing token with HTTP 200 and an error code
+/// in the body. That has to read as signed out, or the card keeps showing the
+/// last reading with no hint that a sign-in would fix it.
+@MainActor
+final class DeepSeekExpiredSessionTests: XCTestCase {
+    private func payload(summary: String) throws -> String {
+        let object: [String: Any] = ["summary": summary, "amount": "{}", "cost": "{}",
+                                     "start": 0, "end": 1, "time_zone_seconds": 28_800]
+        return String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+    }
+
+    func testAnInvalidTokenReadsAsSignedOut() throws {
+        let json = try payload(summary: #"{"code":40003,"msg":"Authorization Failed (invalid token)","data":null}"#)
+        XCTAssertThrowsError(try Sites.deepSeek.parse(json)) { error in
+            guard case UsageProviderError.needsAuth = error else {
+                return XCTFail("expected needsAuth, got \(error)")
+            }
+        }
+    }
+
+    func testAMissingTokenReadsAsSignedOut() throws {
+        let json = try payload(summary: #"{"code":40002,"msg":"Missing Token","data":null}"#)
+        XCTAssertThrowsError(try Sites.deepSeek.parse(json)) { error in
+            guard case UsageProviderError.needsAuth = error else {
+                return XCTFail("expected needsAuth, got \(error)")
+            }
+        }
+    }
+
+    func testTheSignInProbeRejectsAnExpiredToken() throws {
+        let probe = try XCTUnwrap(Sites.deepSeek.authProbeScript)
+        XCTAssertTrue(probe.contains("40002") && probe.contains("40003"))
+    }
+}
+
+@MainActor
+final class DeepSeekDisplayModeTests: XCTestCase {
+    func testReadingFormattedBalanceAndLeftText() {
+        let cnyReading = DeepSeekUsage.Reading(currency: "CNY", spent: 900, balance: 100, availableTokens: nil)
+        XCTAssertEqual(cnyReading.formattedBalance, "¥100.00")
+        XCTAssertEqual(cnyReading.balanceLeftText, "¥100.00 left")
+
+        let usdReading = DeepSeekUsage.Reading(currency: "USD", spent: 50, balance: 14.28, availableTokens: 100_000)
+        XCTAssertEqual(usdReading.formattedBalance, "$14.28")
+        XCTAssertEqual(usdReading.balanceLeftText, "$14.28 left")
+
+        let eurReading = DeepSeekUsage.Reading(currency: "EUR", spent: 0, balance: 5, availableTokens: nil)
+        XCTAssertEqual(eurReading.formattedBalance, "€5.00")
+        XCTAssertEqual(eurReading.balanceLeftText, "€5.00 left")
+
+        let otherReading = DeepSeekUsage.Reading(currency: "GBP", spent: 10, balance: 25.50, availableTokens: nil)
+        XCTAssertEqual(otherReading.formattedBalance, "GBP 25.50")
+        XCTAssertEqual(otherReading.balanceLeftText, "GBP 25.50 left")
+    }
+
+    func testBalanceDisplayModeBuildsBalanceAndHistoricalSpendWindows() {
+        let reading = DeepSeekUsage.Reading(currency: "CNY", spent: 900, balance: 100, availableTokens: 3_300_000)
+        let windows = DeepSeekUsage.windows(from: reading, displayMode: .balance)
+
+        XCTAssertEqual(windows.count, 3)
+
+        // Headline balance window
+        let balanceWindow = windows[0]
+        XCTAssertEqual(balanceWindow.id, "balance")
+        XCTAssertEqual(balanceWindow.label, "Credit balance")
+        XCTAssertNil(balanceWindow.usedFraction)
+        XCTAssertEqual(balanceWindow.usedText, "¥100.00 left")
+        XCTAssertEqual(balanceWindow.detail, "¥100.00 left")
+        XCTAssertEqual(balanceWindow.bandOverride, .ample)
+        XCTAssertTrue(balanceWindow.prefersUsedText)
+        XCTAssertNil(balanceWindow.money)
+
+        // Historical spend window (available in detailed card)
+        let spendWindow = windows[1]
+        XCTAssertEqual(spendWindow.id, "spend")
+        XCTAssertEqual(spendWindow.label, "Account usage (CNY)")
+        XCTAssertEqual(spendWindow.usedFraction, 900.0 / 1000.0)
+        XCTAssertEqual(spendWindow.money?.spent, 900)
+        XCTAssertEqual(spendWindow.money?.remaining, 100)
+        XCTAssertFalse(spendWindow.prefersUsedText)
+
+        // Available tokens window
+        let tokenWindow = windows[2]
+        XCTAssertEqual(tokenWindow.id, "available-tokens")
+        XCTAssertEqual(tokenWindow.detail, "3.3M available")
+    }
+
+    func testZeroBalanceInBalanceModeIsExhausted() {
+        let reading = DeepSeekUsage.Reading(currency: "CNY", spent: 100, balance: 0, availableTokens: nil)
+        let windows = DeepSeekUsage.windows(from: reading, displayMode: .balance)
+
+        XCTAssertEqual(windows[0].bandOverride, .exhausted)
+        XCTAssertEqual(windows[0].usedText, "¥0.00 left")
+    }
+
+    func testLifetimeSpendDisplayModeBuildsOnlySpendWindow() {
+        let reading = DeepSeekUsage.Reading(currency: "CNY", spent: 900, balance: 100, availableTokens: 3_300_000)
+        let windows = DeepSeekUsage.windows(from: reading, displayMode: .lifetimeSpend)
+
+        XCTAssertEqual(windows.count, 2)
+        XCTAssertEqual(windows[0].id, "spend")
+        XCTAssertEqual(windows[0].label, "Account usage (CNY)")
+        XCTAssertEqual(windows[0].usedFraction, 0.9)
+        XCTAssertEqual(windows[0].money?.spent, 900)
+        XCTAssertEqual(windows[0].money?.remaining, 100)
+        XCTAssertFalse(windows[0].prefersUsedText)
+
+        XCTAssertEqual(windows[1].id, "available-tokens")
+    }
+
+    func testSnapshotHeadlineTextInBalanceModeShowsBalanceLeft() {
+        let reading = DeepSeekUsage.Reading(currency: "CNY", spent: 900, balance: 100, availableTokens: nil)
+        let windows = DeepSeekUsage.windows(from: reading, displayMode: .balance)
+        let snapshot = ProviderSnapshot(
+            id: "deepseek",
+            displayName: "DeepSeek",
+            glyph: .deepseek,
+            fidelity: .derived,
+            status: .ok,
+            windows: windows
+        )
+
+        XCTAssertEqual(snapshot.headlineText, "¥100.00 left")
+        XCTAssertEqual(snapshot.headlineText(showingRemaining: true), "¥100.00 left")
+        XCTAssertNil(snapshot.usedFraction)
+        XCTAssertNil(snapshot.ringFraction)
+        XCTAssertFalse(snapshot.isDepleted)
+        XCTAssertEqual(snapshot.bandOverride, .ample)
+
+        let title = StatusItemController.headerTitle(for: snapshot, now: Date())
+        XCTAssertEqual(title, "DeepSeek — ¥100.00 left")
+    }
+
+    func testCardRendersWithBalanceDisplayMode() throws {
+        let reading = DeepSeekUsage.Reading(currency: "CNY", spent: 900, balance: 100, availableTokens: 3_300_000)
+        let windows = DeepSeekUsage.windows(from: reading, displayMode: .balance)
+        let snapshot = ProviderSnapshot(
+            id: "deepseek",
+            displayName: "DeepSeek",
+            glyph: .deepseek,
+            fidelity: .derived,
+            status: .ok,
+            windows: windows
+        )
+
+        let image = try XCTUnwrap(ImageRenderer(content: TooltipCard(snapshot: snapshot, now: Date())).nsImage)
+        XCTAssertGreaterThan(image.size.height, 0)
+    }
+
+    func testPreferencesPersistDeepSeekDisplayMode() {
+        let defaults = UserDefaults(suiteName: "DeepSeekDisplayModeTests")!
+        defaults.removePersistentDomain(forName: "DeepSeekDisplayModeTests")
+
+        let prefs = Preferences(defaults: defaults)
+        XCTAssertEqual(prefs.deepSeekDisplayMode, .balance)
+
+        prefs.deepSeekDisplayMode = .lifetimeSpend
+        XCTAssertEqual(prefs.deepSeekDisplayMode, .lifetimeSpend)
+        XCTAssertEqual(Preferences.storedDeepSeekDisplayMode(defaults: defaults), .lifetimeSpend)
+
+        let reloaded = Preferences(defaults: defaults)
+        XCTAssertEqual(reloaded.deepSeekDisplayMode, .lifetimeSpend)
+
+        defaults.removePersistentDomain(forName: "DeepSeekDisplayModeTests")
+    }
 }

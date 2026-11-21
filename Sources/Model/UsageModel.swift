@@ -367,6 +367,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// runtime that supplied it.
     var sourceProviderID: String?
     var customIconFilename: String?
+    var customStatusMessage: String?
 
     var providerID: String { sourceProviderID ?? id }
 
@@ -494,14 +495,43 @@ struct ProviderSnapshot: Identifiable, Equatable {
                           isWeeklyExhaustion: true)
     }
 
+    /// A window longer than the week — a monthly plan allowance — is spent.
+    /// It shuts the headline the way a spent week does: the shorter windows
+    /// can show room, but nothing on them is usable until it resets.
+    var spentLongWindowBlock: UsageBlock? {
+        guard block == nil, spentWeeklyBlock == nil,
+              let spent = spentLongWindow else { return nil }
+        return UsageBlock(reason: L10n.t("Monthly limit reached"), resetsAt: spent.resetsAt,
+                          isWeeklyExhaustion: true)
+    }
+
+    private var spentLongWindow: LimitWindow? {
+        windows.first {
+            $0.id != headlineID && $0.id != weeklyID
+                && ($0.duration ?? 0) > 7 * 24 * 3600
+                && ($0.usedFraction ?? 0) >= 1
+        }
+    }
+
     /// Nothing left to spend: the headline window or the weekly allowance is
     /// at 0% remaining, so the account cannot be used until a window resets.
     /// Stale readings never count — an old number is not proof the account
     /// is empty now; it may hold tokens the last fetch has not seen yet.
     var isDepleted: Bool {
         guard !status.isStale else { return false }
-        return (headline?.usedFraction ?? 0) >= 1
+        return headlineIsSpent
             || (weeklyLimitWindow?.usedFraction ?? 0) >= 1
+            || spentLongWindow != nil
+    }
+
+    /// A headline that carries a band override has already said whether it
+    /// is spent, and its fraction is not a share used: DeepSeek's balance has
+    /// none at all, and a custom endpoint showing what is left stores the
+    /// remaining share there, so a full fraction means an untouched budget.
+    private var headlineIsSpent: Bool {
+        guard let headline else { return false }
+        if let band = headline.bandOverride { return band == .exhausted }
+        return (headline.usedFraction ?? 0) >= 1
     }
 
     /// The snapshot with a spent week attached as a block, so every surface
@@ -509,9 +539,10 @@ struct ProviderSnapshot: Identifiable, Equatable {
     /// shut. Applied by the store on publication, before any derivation
     /// swaps the headline and weekly ids around.
     func blockingSpentWeek() -> ProviderSnapshot {
-        guard let spent = spentWeeklyBlock else { return self }
+        guard let spent = spentWeeklyBlock ?? spentLongWindowBlock else { return self }
         var snapshot = self
         snapshot.block = spent
+        if spentWeeklyBlock == nil, let long = spentLongWindow { snapshot.headlineID = long.id }
         return snapshot
     }
 
@@ -635,6 +666,9 @@ struct ProviderSnapshot: Identifiable, Equatable {
             let slug = CommandCodeProfile.slug(fromProviderID: id)!
             return L10n.t("Sign in to Command Code in ~/.commandcode-\(slug) to read your usage", locale: locale)
         case "kiro":       return L10n.t("Sign in with kiro-cli to read your usage", locale: locale)
+        // Missing or refused, the remedy is the same: a working key.
+        case "deepseek" where Preferences.storedDeepSeekSource() == .apiKey:
+            return L10n.t("Paste a valid DeepSeek API key in Settings, or export DEEPSEEK_API_KEY", locale: locale)
         case "amp":        return L10n.t("Run amp login in Terminal to read your usage", locale: locale)
         case "apify":      return L10n.t("Run apify login in Terminal, or paste an Apify API token in Settings", locale: locale)
         case "kilo":       return L10n.t("Sign in with the Kilo CLI to read your usage", locale: locale)
@@ -652,6 +686,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
 
     /// What the tooltip says instead of limit rows when there is nothing to show.
     var statusMessage: String? {
+        if let customStatusMessage { return customStatusMessage }
         if kind == .localRuntime {
             if localModel != nil { return nil }
             if let localRuntime {

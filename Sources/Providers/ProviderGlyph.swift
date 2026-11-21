@@ -50,6 +50,15 @@ enum ProviderGlyph: String, Codable, Equatable {
     case qianwenAI = "qianwenai"
     case higgsfield
     case krea
+    /// Xiaomi MiMo's platform mark — the real "M", flattened from the first M
+    /// of "MiMo" in Xiaomi's own wordmark SVG and dropped in as the
+    /// `glyph-mimo` asset (the way `.minimax` carries its own emblem). The
+    /// `.outline` is only a fallback; the asset wins at draw time.
+    case mimo
+    /// The Manual provider's tally: a count kept by hand, drawn here rather
+    /// than borrowed. It used to wear `.third`, which is Perplexity's mark —
+    /// read in Settings as Perplexity, a provider Manual has nothing to do with.
+    case manual
 
     /// If an asset with this name is in the bundle it wins over the traced
     /// outline — drop a PDF/SVG export from Figma in and it is picked up.
@@ -101,7 +110,10 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .qianwenAI, .qoder: return 0.97
         case .higgsfield: return 0.95
         case .krea: return 0.96
-        case .devin, .qwen, .gemma, .meta, .deepseek, .mistral: return 1.0
+        // The "M" fills its box the way Kimi's "K" does, so it takes the same
+        // evening-out.
+        case .mimo: return 0.95
+        case .devin, .qwen, .gemma, .meta, .deepseek, .mistral, .manual: return 1.0
         }
     }
 
@@ -127,6 +139,7 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .glm: return Color(hex: 0x2E7CF6)
         case .higgsfield: return Color(hex: 0xD1FE17)
         case .krea: return Color(hex: 0xFF4F00)
+        case .mimo: return Color(hex: 0xFF6900)
         default: return Palette.textPrimary
         }
     }
@@ -149,6 +162,12 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .commandcode: return GlyphOutline.commandcode
         case .copilot: return GlyphOutline.copilot
         case .kimi:   return GlyphOutline.kimi
+        // Fallback only: the `glyph-mimo` asset carries the real mark, so this
+        // geometric "M" is what shows if the asset is ever removed.
+        case .mimo:   return GlyphOutline.mimo
+        // Fallback only: glyph-manual adds the stroke through the four bars,
+        // which an even-odd outline would punch holes in where they cross.
+        case .manual: return GlyphOutline.manual
         case .kilo:   return GlyphOutline.kilo
         case .kiro:   return GlyphOutline.kiro
         // A fallback only: glyph-minimax in the asset catalogue is drawn instead.

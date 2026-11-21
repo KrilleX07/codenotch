@@ -79,7 +79,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .accounts:      return L10n.t("Choose which providers the notch reads.")
         case .phone:         return L10n.t("See your usage on your phone.")
-        case .deepseek:      return L10n.t("Peak and off-peak pricing for your DeepSeek spend.")
+        case .deepseek:      return L10n.t("Display options and peak/off-peak pricing for your DeepSeek spend.")
         case .ollama:        return L10n.t("Models running in Ollama on this Mac.")
         case .lmstudio:      return L10n.t("Models loaded in LM Studio on this Mac.")
         case .omlx:          return L10n.t("Models loaded in oMLX on this Mac.")
@@ -734,7 +734,7 @@ struct SettingsView: View {
         case .lmstudio:
             if let usageStore {
                 Form {
-                    Section("Connection") {
+                    Section(L10n.t("Connection")) {
                         LMStudioSettingsRow(preferences: preferences, store: usageStore, metrics: lmstudioMetrics)
                     }
                 }
@@ -743,7 +743,7 @@ struct SettingsView: View {
         case .omlx:
             if let usageStore {
                 Form {
-                    Section("Connection") {
+                    Section(L10n.t("Connection")) {
                         OMLXSettingsRow(preferences: preferences, store: usageStore, metrics: omlxMetrics)
                     }
                 }
@@ -972,6 +972,15 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                if preferences.notchVisibility == .onHover {
+                    Toggle(L10n.t("Keep open while a session is active"),
+                           isOn: $preferences.keepOpenWhileSessionActive)
+                    Text(L10n.t("The notch stays open while any session is working or waiting on you, and goes back to opening on hover once none is."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Picker(L10n.t("Auto-hide"), selection: $preferences.autoHideMode) {
                     ForEach(AutoHideMode.allCases) { Text($0.title).tag($0) }
                 }
@@ -1065,6 +1074,16 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                Picker(L10n.t("Font size"), selection: $preferences.fontSizeOption) {
+                    ForEach(FontSizeOption.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Text(preferences.fontSizeOption.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // The nudge has been draggable since the edge picker existed,
                 // and nothing on screen has ever said so — the only way to
@@ -1293,18 +1312,30 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Above the provider rows, because it decides what each of them
-            // costs in width — and width is what anyone ticking a fourth
-            // provider is actually spending.
-            Picker(L10n.t("Each reading shows"), selection: $preferences.menuBarReading) {
-                ForEach(MenuBarReading.allCases) { Text($0.title).tag($0) }
+            Picker(L10n.t("Visual mode"), selection: $preferences.menuBarVisualMode) {
+                ForEach(MenuBarVisualMode.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
 
-            Text(preferences.menuBarReading.explanation)
+            Text(preferences.menuBarVisualMode.explanation)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // Above the provider rows, because it decides what each of them
+            // costs in width — and width is what anyone ticking a fourth
+            // provider is actually spending.
+            if preferences.menuBarVisualMode == .text {
+                Picker(L10n.t("Each reading shows"), selection: $preferences.menuBarReading) {
+                    ForEach(MenuBarReading.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Text(preferences.menuBarReading.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             // The notch's own question, asked again here because the answers
             // are not the same ones: the bar has no ring for an arc to turn
@@ -2279,6 +2310,31 @@ private struct AccountRow: View {
             if isConnected, provider.id == "manual" {
                 manualProviderSettings
             }
+
+            if isConnected, provider.id == "deepseek" {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(L10n.t("Indicator reads"))
+                            .foregroundStyle(.secondary)
+                        Picker(L10n.t("Indicator reads"), selection: $preferences.deepSeekDisplayMode) {
+                            ForEach(DeepSeekDisplayMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 170)
+                    }
+                    Text(preferences.deepSeekDisplayMode.explanation)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, 2)
+                .onChange(of: preferences.deepSeekDisplayMode) { _ in
+                    refresh(provider.id)
+                }
+            }
             // Ollama owns its credential: the user enters an API key here, stored
             // in the keychain. The env var OLLAMA_API_KEY is checked first, so a
             // shell that exports one needs no entry here.
@@ -2306,6 +2362,9 @@ private struct AccountRow: View {
             }
             if provider.id == "minimax" {
                 minimaxEntry
+            }
+            if provider.id == "deepseek" {
+                deepSeekEntry
             }
 
             // Apify borrows the CLI's login when there is one; the token
@@ -2511,6 +2570,60 @@ private struct AccountRow: View {
             Text(L10n.t("Paste an API token from Krea › Settings › API Tokens. Not needed after krea auth login, or with KREA_API_KEY exported. Stored in your login keychain."))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 2)
+    }
+
+    /// Where DeepSeek is read from. The sign-in and a key can be different
+    /// accounts, so this is a choice rather than a fallback; the switch itself
+    /// discards the old reading (see `AppDelegate`).
+    @State private var deepSeekKey = ""
+    @State private var deepSeekKeySaved = false
+
+    private var deepSeekEntry: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.t("Read from"))
+                    .foregroundStyle(.secondary)
+                Picker(selection: $preferences.deepSeekSource) {
+                    Text(L10n.t("Sign-in (full detail)")).tag(DeepSeekSource.web)
+                    Text(L10n.t("API key (balance only)")).tag(DeepSeekSource.apiKey)
+                } label: {
+                    EmptyView()
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 200)
+            }
+
+            if preferences.deepSeekSource == .apiKey {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.t("DeepSeek API key"))
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        SecureField(L10n.t("Paste your key"), text: $deepSeekKey)
+                            .textContentType(.password)
+                            .textFieldStyle(.roundedBorder)
+                            .labelsHidden()
+                            .frame(maxWidth: 260)
+                        Button(L10n.t("Save")) {
+                            guard !deepSeekKey.isEmpty else { return }
+                            DeepSeekCredentials.storeAPIKey(deepSeekKey)
+                            deepSeekKey = ""
+                            deepSeekKeySaved = true
+                            _ = signIn(provider.id)
+                        }
+                        .disabled(deepSeekKey.isEmpty)
+                        if deepSeekKeySaved {
+                            Text(L10n.t("Saved"))
+                                .foregroundStyle(.green)
+                        }
+                    }
+                }
+                Text(L10n.t("Shows the balance only: spend and usage detail need the sign-in. DEEPSEEK_API_KEY, if exported, is used instead. Stored in your login keychain."))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(.top, 2)
     }
@@ -2749,7 +2862,7 @@ extension SettingsView {
         if let pairing = phoneLinkPairing, let registry = phoneLinkRegistry, let status = phoneLinkServerStatus {
             PhoneSettingsPane(preferences: preferences, pairing: pairing, registry: registry, serverStatus: status)
         } else {
-            Text("Phone linking is not available.")
+            Text(L10n.t("Phone linking is not available."))
         }
     }
 }

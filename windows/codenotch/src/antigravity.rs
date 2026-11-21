@@ -62,8 +62,8 @@ pub fn request_refresh() {
     }
 }
 
+#[cfg(test)]
 pub fn request_hover_refresh() {
-    // Hover must not wake the legacy adapter's periodic poller, except for a CLI read that is due.
     if let Some(sender) = REFRESH_CLI.lock().unwrap().as_ref() {
         let _ = sender.try_send(());
     } else {
@@ -270,7 +270,7 @@ fn local_agent() -> Option<ureq::Agent> {
         .danger_accept_invalid_hostnames(true)
         .build()
         .ok()?;
-    Some(ureq::AgentBuilder::new().tls_connector(Arc::new(tls)).timeout(Duration::from_secs(10)).build())
+    Some(ureq::AgentBuilder::new().try_proxy_from_env(false).tls_connector(Arc::new(tls)).timeout(Duration::from_secs(10)).build())
 }
 
 fn bridge_quota(ep: &Endpoint) -> Result<Vec<LimitWindow>, String> {
@@ -313,6 +313,7 @@ pub fn windows_from_bridge(v: &serde_json::Value) -> Vec<LimitWindow> {
     let Some(groups) = v.pointer("/response/groups").and_then(|g| g.as_array()) else { return out };
     for g in groups {
         let gname = g.get("displayName").and_then(|x| x.as_str());
+        let is_argon_group = gname.is_some_and(|n| n.to_lowercase().contains("argon"));
         let Some(buckets) = g.get("buckets").and_then(|b| b.as_array()) else { continue };
         for b in buckets {
             let Some(rem) = b.get("remainingFraction").and_then(|x| x.as_f64()) else { continue };
@@ -320,11 +321,29 @@ pub fn windows_from_bridge(v: &serde_json::Value) -> Vec<LimitWindow> {
                 continue;
             }
             let bname = b.get("displayName").and_then(|x| x.as_str());
-            let id = b.get("bucketId").and_then(|x| x.as_str()).or(gname).unwrap_or("quota").to_string();
+            let raw_id = b.get("bucketId").and_then(|x| x.as_str()).or(gname).unwrap_or("quota");
+            let is_argon = is_argon_group
+                || raw_id.to_lowercase().contains("argon")
+                || bname.is_some_and(|n| n.to_lowercase().contains("argon"));
+            let id = if is_argon {
+                "Claude and GPT models Argon Weekly Limit".to_string()
+            } else {
+                raw_id.to_string()
+            };
+            let label = if is_argon {
+                "Argon".to_string()
+            } else {
+                lane_name(&id).or(gname).or(bname).unwrap_or("Usage").to_string()
+            };
+            let group = if is_argon {
+                Some("Claude and GPT models".to_string())
+            } else {
+                gname.map(String::from)
+            };
             out.push(LimitWindow {
-                label: lane_name(&id).or(gname).or(bname).unwrap_or("Usage").to_string(),
-                group: gname.map(String::from),
-                duration_ms: quota_duration_ms(b),
+                label,
+                group,
+                duration_ms: quota_duration_ms(b).or(if is_argon { Some(SEVEN_DAYS_MS) } else { None }),
                 id,
                 used: (1.0 - rem).clamp(0.0, 1.0),
                 resets_at: parse_iso(b.get("resetTime")),
@@ -385,10 +404,16 @@ pub(crate) fn order_lanes(windows: &mut [LimitWindow]) {
             groups.push(w.group.clone());
         }
     }
-    let rank = |w: &LimitWindow| match lane_name(&w.id) {
-        Some("5-hour Limit") => 0,
-        Some(_) => 1,
-        None => 2,
+    let rank = |w: &LimitWindow| {
+        if w.id.to_lowercase().contains("argon") || w.label.to_lowercase().contains("argon") {
+            2
+        } else {
+            match lane_name(&w.id) {
+                Some("5-hour Limit") => 0,
+                Some(_) => 1,
+                None => 3,
+            }
+        }
     };
     windows.sort_by_key(|w| (groups.iter().position(|g| *g == w.group), rank(w)));
 }
@@ -779,7 +804,11 @@ fn start_cli(app: AppHandle) {
 
         let mut last_attempt: Option<Instant> = None;
 
-        while receiver.recv().is_ok() {
+        loop {
+            match receiver.recv_timeout(CLI_TTL) {
+                Ok(()) | Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+            }
             if last_attempt.is_some_and(|last| last.elapsed() < CLI_TTL) {
                 continue;
             }
@@ -900,6 +929,79 @@ fn legacy_probe() -> String {
 mod tests {
     use super::{requests_in, state_roots_in};
     use std::path::{Path, PathBuf};
+
+    // Environment changes stay in a child test process, away from parallel unit tests.
+    #[test]
+    fn local_bridge_proxy_transport() {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "antigravity::tests::proxy_transport_child", "--nocapture"])
+            .env("CODENOTCH_PROXY_TEST_CHILD", "1")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    }
+
+    #[test]
+    fn proxy_transport_child() {
+        if std::env::var_os("CODENOTCH_PROXY_TEST_CHILD").is_none() {
+            return;
+        }
+
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::thread;
+        use std::time::{Duration, Instant};
+
+        fn capture() -> (u16, thread::JoinHandle<Option<Vec<u8>>>) {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let port = listener.local_addr().unwrap().port();
+            listener.set_nonblocking(true).unwrap();
+            let handle = thread::spawn(move || {
+                let deadline = Instant::now() + Duration::from_secs(2);
+                while Instant::now() < deadline {
+                    match listener.accept() {
+                        Ok((mut stream, _)) => {
+                            stream.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
+                            let mut buf = [0; 1024];
+                            let len = stream.read(&mut buf).unwrap_or(0);
+                            let _ = stream.write_all(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n");
+                            return Some(buf[..len].to_vec());
+                        }
+                        Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => thread::sleep(Duration::from_millis(5)),
+                        Err(e) => panic!("local listener: {e}"),
+                    }
+                }
+                None
+            });
+            (port, handle)
+        }
+
+        for key in ["ALL_PROXY", "all_proxy", "HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "NO_PROXY", "no_proxy"] {
+            std::env::remove_var(key);
+        }
+        let (proxy_port, proxy) = capture();
+        let (bridge_port, bridge) = capture();
+        std::env::set_var("HTTPS_PROXY", format!("http://127.0.0.1:{proxy_port}"));
+        std::env::set_var("NO_PROXY", "localhost,127.0.0.1");
+        assert!(super::local_agent().is_some(), "local TLS setup failed");
+        let _ = super::bridge_quota(&super::Endpoint { ports: vec![bridge_port], csrf: "fixture".into() });
+        let bridge_bytes = bridge.join().unwrap();
+        let proxy_bytes = proxy.join().unwrap();
+        assert!(bridge_bytes.is_some(), "bridge did not connect directly; proxy CONNECT observed: {}",
+            proxy_bytes.as_deref().is_some_and(|b| b.starts_with(b"CONNECT 127.0.0.1:")));
+        assert!(proxy_bytes.is_none(), "bridge contacted the proxy");
+
+        let (proxy_port, proxy) = capture();
+        std::env::set_var("HTTPS_PROXY", format!("http://127.0.0.1:{proxy_port}"));
+        let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(2)).build();
+        let _ = agent.get("https://example.invalid/fixture").call();
+        assert!(proxy.join().unwrap().as_deref().is_some_and(|b| b.starts_with(b"CONNECT example.invalid:443 ")));
+
+        std::env::remove_var("HTTPS_PROXY");
+        let (bridge_port, bridge) = capture();
+        let _ = super::bridge_quota(&super::Endpoint { ports: vec![bridge_port], csrf: "fixture".into() });
+        assert!(bridge.join().unwrap().is_some());
+    }
 
     #[test]
     fn quota_sources_use_cadence_fields_and_keep_unknown_lanes_unknown() {

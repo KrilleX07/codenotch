@@ -139,6 +139,29 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             updateButton()
         }
     }
+    /// Visual mode: text figures, compact status markers, or short usage bars.
+    var visualMode: MenuBarVisualMode = .text {
+        didSet {
+            guard visualMode != oldValue else { return }
+            updateButton()
+        }
+    }
+    /// Watch and Critical from Appearance, for the markers' and bars' colour.
+    /// Held here rather than read off `model` at draw time: the face only
+    /// redraws when its summary changes, and these are part of it, so a new
+    /// threshold recolours the bar at once instead of at the next reading.
+    var watchLimit: Double = 0.50 {
+        didSet {
+            guard watchLimit != oldValue else { return }
+            updateButton()
+        }
+    }
+    var criticalLimit: Double = 0.70 {
+        didSet {
+            guard criticalLimit != oldValue else { return }
+            updateButton()
+        }
+    }
     /// Pulse, a still dot, or nothing at all while an agent works. Reduce
     /// Motion still has the last word over the pulse.
     var activityStyle: MenuBarActivityStyle = .pulse {
@@ -170,6 +193,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// second, independently tinted copy of each mark over AppKit's image.
     private let pulse = StatusItemPulse()
     private let waitingBadges = StatusItemWaitingBadges()
+    private let visualIndicators = StatusItemVisualIndicators()
     private var observers: [(center: NotificationCenter, token: NSObjectProtocol)] = []
     private weak var observedStatusWindow: NSWindow?
     private var statusWindowObserver: NSObjectProtocol?
@@ -264,6 +288,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         observe(NSView.frameDidChangeNotification, on: .default, object: button) { controller in
             controller.pulse.relayout()
             controller.waitingBadges.relayout()
+            controller.visualIndicators.relayout()
             controller.observeStatusWindow(of: button)
         }
         // AppKit drops layer animations while a window is off screen; the
@@ -291,6 +316,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         countdownTimer = nil
         pulse.clear()
         waitingBadges.clear()
+        visualIndicators.clear()
         // Owed to a bar that is no longer there: shown again later, it would
         // blink for work that ended while it was hidden.
         waitingSinceLastDraw.removeAll()
@@ -359,6 +385,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                                           showingRemaining: showsRemaining,
                                           hidingDepleted: hidesDepleted,
                                           reading: reading,
+                                          visualMode: visualMode,
+                                          watchLimit: watchLimit,
+                                          criticalLimit: criticalLimit,
                                           autoOrdering: autoOrders)
         scheduleCountdown(at: next.nextChange)
         guard next != summary else { return }
@@ -367,6 +396,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         if next.entries.isEmpty {
             pulse.clear()
             waitingBadges.clear()
+            visualIndicators.clear()
             item.length = NSStatusItem.squareLength
             button.image = Self.icon()
             button.toolTip = L10n.t("Codenotch")
@@ -471,6 +501,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         describe(button, summary: summary, waiting: waiting)
         // Still in either case: the dot is the signal, and it does not move.
         waitingBadges.update(view: button, imageSize: artwork.size, badges: artwork.waitingBadgeFrames)
+        visualIndicators.update(view: button, imageSize: artwork.size, mode: summary.visualMode,
+                                entries: summary.entries, frames: artwork.indicatorFrames,
+                                watchLimit: summary.watchLimit, criticalLimit: summary.criticalLimit)
         if !activityStyle.animates(reducesMotion: reducesMotion) {
             // Accessibility changes are synchronous: no fading settle after
             // Reduce Motion is enabled. The artwork above keeps activity

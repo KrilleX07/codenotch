@@ -139,6 +139,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // this app's own WKWebView. Unlike MiniMax's sheet below, its ring
             // *is* this adapter, so it belongs in `webProviders` — exactly once.
             let qianwen = WebSessionProvider(site: Sites.qianwen)
+            // MiMo's Token Plan is the same kind of provider: the plan's own
+            // gateway answers a `tp-` key only for inference, so the quota is
+            // read off the platform console with the browser session, exactly
+            // as QianwenAI's is — no usage API, a signed-in WebView.
+            let mimo = WebSessionProvider(site: Sites.mimo)
             let qoder = WebSessionProvider(site: Sites.qoder(region: preferences.qoderRegion))
             // MiniMax's ring is MiniMaxProvider. The sheet is the same kind of
             // WebView DeepSeek uses, but it must not join `webProviders`:
@@ -148,8 +153,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Settings changes it, because the fetch URLs live on the site.
             let miniMaxWeb = WebSessionProvider(site: Sites.minimax(region: preferences.minimaxRegion))
             self.miniMaxWeb = miniMaxWeb
-            let webProviders: [WebSessionProvider] = [deepSeek, qianwen, qoder]
-            fleet.signInItems = [deepSeek, miniMaxWeb, qianwen, qoder].map { provider in
+            // DeepSeek's ring is DeepSeekProvider, which reads either this
+            // sign-in or an API key, so the WebView is not a ring of its own.
+            let webProviders: [WebSessionProvider] = [qianwen, mimo, qoder]
+            fleet.signInItems = [deepSeek, miniMaxWeb, qianwen, mimo, qoder].map { provider in
                 let name = provider.displayName
                 return (title: L10n.t("Sign in to \(name)…"),
                         action: { [weak provider] in provider?.presentSignIn() })
@@ -218,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.manualProvider = manual
                     return [manual as UsageProvider]
                 }()
+                + [DeepSeekProvider(web: deepSeek)]
                 + webProviders
                 + customProviders
                 + remoteProviders
@@ -272,6 +280,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             qianwen.onAuthenticated = { [weak store] in
                 store?.providerAuthenticationChanged(providerID: "qianwenai")
+            }
+            mimo.onAuthenticated = { [weak store] in
+                store?.providerAuthenticationChanged(providerID: "mimo")
             }
             qoder.onAuthenticated = { [weak store] in
                 store?.providerAuthenticationChanged(providerID: "qoder")
@@ -574,6 +585,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem.clickAction = preferences.menuBarClickAction
             statusItem.autoOrders = preferences.ringOrder == .remaining
             statusItem.reading = preferences.menuBarReading
+            statusItem.visualMode = preferences.menuBarVisualMode
+            statusItem.watchLimit = preferences.watchLimit
+            statusItem.criticalLimit = preferences.criticalLimit
             statusItem.activityStyle = preferences.menuBarActivityStyle
 
             preferences.$appPresence
@@ -651,6 +665,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .sink { [weak statusItem] in statusItem?.reading = $0 }
                 .store(in: &cancellables)
 
+            preferences.$menuBarVisualMode
+                .removeDuplicates()
+                .receive(on: DispatchQueue.main)
+                .sink { [weak statusItem] in statusItem?.visualMode = $0 }
+                .store(in: &cancellables)
+
             preferences.$menuBarActivityStyle
                 .removeDuplicates()
                 .receive(on: DispatchQueue.main)
@@ -660,6 +680,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$notchVisibility
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply($0) }
+                .store(in: &cancellables)
+
+            preferences.$keepOpenWhileSessionActive
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(keepOpenWhileSessionActive: $0) }
                 .store(in: &cancellables)
 
             preferences.$autoHideMode
@@ -675,6 +700,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$deepSeekPricingSchedule
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(deepSeekPricingSchedule: $0) }
+                .store(in: &cancellables)
+
+            preferences.$deepSeekDisplayMode
+                .dropFirst()
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak store] _ in
+                    store?.refresh(providerID: "deepseek")
+                }
                 .store(in: &cancellables)
 
             preferences.$qoderRegion
@@ -700,6 +734,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     let active = enabled && schedule.offPeakOnChineseHolidays
                         && (preferences?.isConnected("deepseek") ?? false)
                     ChineseHolidays.shared.setActive(active)
+                }
+                .store(in: &cancellables)
+
+            // The sign-in and a key can be different accounts, so the old
+            // source's reading is discarded rather than shown under the new one.
+            preferences.$deepSeekSource
+                .dropFirst()
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { [weak store] _ in
+                    store?.providerContextChanged(providerID: "deepseek") {}
                 }
                 .store(in: &cancellables)
 
@@ -801,8 +846,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$watchLimit
                 .combineLatest(preferences.$criticalLimit)
                 .receive(on: RunLoop.main)
-                .sink { [weak fleet] watch, critical in
+                .sink { [weak fleet, weak statusItem] watch, critical in
                     fleet?.apply(watchLimit: watch, criticalLimit: critical)
+                    statusItem?.watchLimit = watch
+                    statusItem?.criticalLimit = critical
                 }
                 .store(in: &cancellables)
 
@@ -855,6 +902,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             preferences.$busyIndicatorStyle
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(busyIndicatorStyle: $0) }
+                .store(in: &cancellables)
+
+            preferences.$fontSizeOption
+                .receive(on: RunLoop.main)
+                .sink { [weak fleet] in fleet?.apply(typographyScale: $0.scale) }
                 .store(in: &cancellables)
 
             Publishers.CombineLatest(preferences.$connectedProviders, preferences.$disabledModels)
@@ -1023,9 +1075,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // and logs the API calls it makes — for finding an undocumented
             // endpoint by watching the site rather than guessing at path names.
             if let target = ProcessInfo.processInfo.environment["CODENOTCH_DISCOVER"],
-               let url = URL(string: target),
-               let provider = webProviders.first(where: { url.host?.contains($0.id) == true })
-                   ?? webProviders.first {
+               let url = URL(string: target) {
+                let provider = ([deepSeek] + webProviders).first(where: { url.host?.contains($0.id) == true })
+                    ?? deepSeek
                 Task {
                     let calls = await provider.recordCalls(on: url)
                     Log.usage.notice("discovered: \(calls.joined(separator: "  "), privacy: .public)")
@@ -1276,6 +1328,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(colorTransitionStyle: preferences.colorTransitionStyle)
         fleet.apply(progressBarMode: preferences.progressBarMode)
         fleet.apply(busyIndicatorStyle: preferences.busyIndicatorStyle)
+        fleet.apply(typographyScale: preferences.fontSizeOption.scale)
         fleet.apply(weeklyRing: preferences.weeklyRing)
         fleet.apply(weeklyRingDashed: preferences.weeklyRingDashed)
         fleet.apply(showsNotchReadings: preferences.showsNotchReadings)
@@ -1283,7 +1336,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fleet.apply(showsRemainingInNotch: preferences.showsRemainingInNotch)
         fleet.apply(shutRingsWhenSpent: preferences.shutRingsWhenSpent)
         fleet.apply(autoHideMode: preferences.autoHideMode)
-        fleet.apply(surfaceStyle: preferences.notchSurfaceStyle)
+        fleet.apply(keepOpenWhileSessionActive: preferences.keepOpenWhileSessionActive)
+        fleet.apply(surfaceStyle:preferences.notchSurfaceStyle)
         fleet.apply(deepSeekPricingEnabled: preferences.deepSeekPricingEnabled)
         fleet.apply(deepSeekPricingSchedule: preferences.deepSeekPricingSchedule)
         fleet.show()

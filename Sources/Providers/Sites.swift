@@ -103,6 +103,11 @@ enum Sites {
             if (response.status < 200 || response.status >= 300) {
                 return JSON.stringify({ authenticated: false });
             }
+            // An expired token still answers HTTP 200, with 40002 or 40003.
+            const envelope = await response.json().catch(() => null);
+            if (envelope && [40002, 40003].includes(envelope.code)) {
+                return JSON.stringify({ authenticated: false });
+            }
             const bytes = new TextEncoder().encode(token);
             const digest = await crypto.subtle.digest('SHA-256', bytes);
             const fingerprint = Array.from(new Uint8Array(digest))
@@ -115,20 +120,8 @@ enum Sites {
         parse: { json in
             let payload = try DeepSeekUsage.payload(fromJSON: json)
             let reading = try DeepSeekUsage.reading(fromJSON: payload.summary)
-            var windows = [LimitWindow(
-                id: "spend",
-                label: L10n.t("Account usage (\(reading.currency))"),
-                usedFraction: reading.usedFraction,
-                money: UsageMoneyBreakdown(currency: reading.currency,
-                                           spent: reading.spent,
-                                           remaining: reading.balance)
-            )]
-            if let availableTokens = reading.availableTokens {
-                windows.append(LimitWindow(id: "available-tokens",
-                                           label: "Available tokens (estimate)",
-                                           detail: "\(LimitWindow.compact(availableTokens)) available"))
-            }
-            return windows
+            let displayMode = Preferences.storedDeepSeekDisplayMode()
+            return DeepSeekUsage.windows(from: reading, displayMode: displayMode)
         }
     )
 
@@ -268,6 +261,120 @@ enum Sites {
         parse: { try QianwenUsage.windows(fromJSON: $0) }
     )
 
+    /// Xiaomi MiMo's Token Plan is read the same way QianwenAI's is: the plan's
+    /// own gateway (`token-plan-*.xiaomimimo.com/v1`) answers a `tp-` key only
+    /// for `/models` and `/chat/completions` and 404s every usage path, so the
+    /// numbers live on the platform console, authorized by the browser session
+    /// cookie. The user signs in inside Codenotch's own WKWebView, and the site
+    /// script reads the console's `tokenPlan/usage` (and `/detail` for the reset
+    /// moment) with that session — never the key, never `~/.mimo` off disk.
+    static let mimo = WebSessionProvider.Site(
+        id: "mimo",
+        displayName: "MiMo",
+        glyph: .mimo,
+        origin: URL(string: "https://platform.xiaomimimo.com/")!,
+        script: #"""
+        // The usage reading is the whole ring; `/detail` only names the reset
+        // moment and the plan, so a failure there must not cost the quota.
+        const usage = await fetch('/api/v1/tokenPlan/usage', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        let detailBody = '';
+        try {
+            const detail = await fetch('/api/v1/tokenPlan/detail', {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (detail.status >= 200 && detail.status < 300) detailBody = await detail.text();
+        } catch (_) {}
+        return JSON.stringify({
+            status: usage.status,
+            body: JSON.stringify({ usage: await usage.text(), detail: detailBody })
+        });
+        """#,
+        authProbeScript: #"""
+        try {
+            // Signed out is HTTP 401 here with a `loginUrl`, so the transport
+            // status is what decides; a 200 that carries `code` 401 is the same
+            // dead session one layer down.
+            const response = await fetch('/api/v1/tokenPlan/usage', {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (response.status < 200 || response.status >= 300) {
+                return JSON.stringify({ authenticated: false });
+            }
+            let envelope = null;
+            try { envelope = JSON.parse(await response.text()); } catch (_) {}
+            if (envelope && typeof envelope.code === 'number' && envelope.code !== 0) {
+                return JSON.stringify({ authenticated: false });
+            }
+            // The account identity a switch has to see change: the `userId`
+            // cookie the console session carries, digested. Two accounts would
+            // share a fingerprint only if that cookie were httpOnly and absent,
+            // which blunts account-switch detection but never the reading.
+            let fingerprint = null;
+            try {
+                const match = document.cookie.match(/(?:^|;\s*)userId=([^;]*)/);
+                let seed = match ? decodeURIComponent(match[1]) : null;
+                if (!seed) {
+                    const detail = await fetch('/api/v1/tokenPlan/detail', {
+                        credentials: 'include',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const body = JSON.parse(await detail.text());
+                    const plan = (body && body.data) || body;
+                    seed = String((plan && plan.planCode) || '') + '|'
+                         + String((plan && plan.currentPeriodEnd) || '');
+                }
+                const bytes = new TextEncoder().encode(seed);
+                const digest = await crypto.subtle.digest('SHA-256', bytes);
+                fingerprint = Array.from(new Uint8Array(digest))
+                    .map(byte => byte.toString(16).padStart(2, '0')).join('');
+            } catch (_) {}
+            return JSON.stringify({ authenticated: true, fingerprint });
+        } catch (_) { return JSON.stringify({ authenticated: false }); }
+        """#,
+        // Sign-out has to take Xiaomi's own SSO host with it: the session cookie
+        // that authorizes the console lives behind `account.xiaomi.com`, and
+        // `origin.host` is added by `signOut()`. Left behind, the next sign-in
+        // would go straight through as the old account.
+        associatedHosts: ["account.xiaomi.com"],
+        // Confirm once when the window closes, the way DeepSeek does. The login
+        // is a round-trip through Xiaomi's SSO host (`account.xiaomi.com`) and
+        // back to the console, and the sign-in poll cannot reliably see a
+        // logged-out -> logged-in change across that hop: it either samples the
+        // console just before it hands off to SSO, or SSO returns it to the very
+        // page it already probed (so the once-per-page dedup skips it). The final
+        // authenticated state is confirmed on close instead — dependable, and it
+        // keeps a request off the usage endpoint while a password is being typed.
+        pollsDuringSignIn: false,
+        // A refused read here is the site retiring its own console session
+        // cookie, not the user signing out: the SSO session behind the page
+        // still answers, so reloading the console mints a fresh cookie with no
+        // credentials — the sign-in window opens "already logged in" the moment
+        // after the ring went dark, and closing it brought the percentage back.
+        // One 401 used to flip `hasSignedIn`, which every later refresh then
+        // short-circuits on without touching the network, so the ring stayed
+        // dark until that manual cycle by hand. One silent reload and one more
+        // read automate it; if the reload is refused too, the session is
+        // genuinely gone and it asks the user just as before.
+        reloadsSessionOnAuthFailure: true,
+        // The coding-plan screen, under a real path — the origin alone lands on a
+        // marketing page that never offers the sign-in, and `/console/balance` is
+        // not where the Token Plan reports. Both the sign-in window and the
+        // manage link open this path. The origin itself stays the bare host: it
+        // is what cookie clearing and the probe's `matchesOrigin` key on.
+        managePath: "console/plan-manage",
+        initialPath: "console/plan-manage",
+        // The one allowance the Token Plan reports, under the plan's own period
+        // rather than a calendar month (see `MiMoUsage`), so it is the headline
+        // ring and there is no weekly one to declare.
+        headlineID: "month",
+        parse: { try MiMoUsage.windows(fromJSON: $0) }
+    )
+
     /// MiniMax is signed into from Codenotch's own WKWebView, the same way
     /// DeepSeek is. Login lives on the regional platform origin; coding-plan
     /// remains is a www host, so the fetch is absolute and sign-out has to
@@ -323,7 +430,10 @@ enum Sites {
                 return JSON.stringify({ authenticated: true, fingerprint });
             } catch (_) { return JSON.stringify({ authenticated: false }); }
             """,
-            associatedHosts: [region.remainsURL.host].compactMap { $0 },
+            // China's console lived on minimaxi.com before it moved to
+            // minimax.cn; a session from then is still cleared on sign-out.
+            associatedHosts: [region.remainsURL.host].compactMap { $0 }
+                + (region == .china ? ["platform.minimaxi.com", "www.minimaxi.com"] : []),
             parse: { try MiniMaxUsage.windows(fromJSON: $0) }
         )
     }

@@ -5,11 +5,13 @@ import os
 /// credential OpenCode itself stores on sign-in — see `OpenCodeCredentials`.
 ///
 /// Which credential that is decides the endpoint, because each route refuses
-/// the other's: the Go API key is for `zen/go`, while an OAuth sign-in is only
-/// accepted by the `inference/` route OpenCode itself uses. Both answer 401 to
-/// the wrong one, and that 401 is also what a valid account with no Go plan
-/// returns — so an OAuth 401 is checked against the console before it is called
-/// a sign-out.
+/// the other's: the Go API key, including an `oc_sk_` console key, is for
+/// `zen/go`, while an OAuth sign-in is only accepted by the `inference/` route
+/// OpenCode itself uses. Both answer 401 to the wrong one, and that 401 is also
+/// what a valid account with no Go plan returns — so an OAuth 401 is checked
+/// against the console before it is called a sign-out. A 401 whose body is
+/// `api_key_expired` is neither of those: the key is dead, and signing in
+/// again will not renew it.
 ///
 /// The numbers are OpenCode's, so this is `.official`. Like Claude's and
 /// GLM's, the endpoint throttles — so a 429 backs off on a schedule that
@@ -27,15 +29,26 @@ actor OpenCodeProvider: UsageProvider {
 
     private let session: URLSession
     private let archive: UsageArchive
+    /// Every sign-in OpenCode has on file, best first — see
+    /// `OpenCodeCredentials.candidates`. Injected so a test can hand the
+    /// provider a dead key beside a live sign-in without a database.
+    private let credentials: @Sendable () -> [OpenCodeCredentials.Credential]
     /// Set when the endpoint returns 429. Until it passes, refreshes are
     /// skipped without touching the network — the same bargain Claude's and
     /// GLM's make.
     private var retryNoEarlierThan: Date?
     private var consecutiveRateLimits = 0
+    /// Remember only which freshly read candidate last worked. Keeping the
+    /// identity actor-local avoids spending a known-dead Go key on every poll,
+    /// while rereading the stores still picks up rotations immediately.
+    private var lastGoodCredential: OpenCodeCredentials.Credential.Identity?
 
-    init(session: URLSession = .shared, archive: UsageArchive = UsageArchive()) {
+    init(session: URLSession = .shared, archive: UsageArchive = UsageArchive(),
+         credentials: @escaping @Sendable () -> [OpenCodeCredentials.Credential]
+            = { OpenCodeCredentials.candidates() }) {
         self.session = session
         self.archive = archive
+        self.credentials = credentials
         self.retryNoEarlierThan = archive.loadBackoffUntil(providerID: id)
     }
 
@@ -44,8 +57,8 @@ actor OpenCodeProvider: UsageProvider {
     }
 
     nonisolated func forgetCachedCredential() {
-        // Nothing is cached: the key is re-read from disk on every fetch,
-        // which is prompt-free, unlike a keychain read.
+        // Tokens are re-read on every fetch. The actor remembers only a
+        // preference among those current candidates, never a removed token.
     }
 
     nonisolated func account() -> ProviderAccount? {
@@ -67,12 +80,17 @@ actor OpenCodeProvider: UsageProvider {
 
         // Re-read on every fetch. This is an ordinary file, not a keychain
         // item: reading it puts no prompt in front of anyone.
-        guard let credential = OpenCodeCredentials.load() else {
+        var candidates = OpenCodeCredentials.unique(credentials())
+        if let lastGoodCredential,
+           let index = candidates.firstIndex(where: { $0.identity == lastGoodCredential }) {
+            candidates.insert(candidates.remove(at: index), at: 0)
+        }
+        guard !candidates.isEmpty else {
             throw UsageProviderError.needsAuth
         }
 
         do {
-            let data = try await fetch(credential)
+            let data = try await fetch(firstAcceptedOf: candidates)
             guard let text = String(data: data, encoding: .utf8) else {
                 throw UsageProviderError.badResponse(status: 0)
             }
@@ -104,11 +122,64 @@ actor OpenCodeProvider: UsageProvider {
         }
     }
 
+    /// **The usage, from the first credential the server accepts.**
+    ///
+    /// OpenCode 2.x keeps the Go key it imported from `auth.json` in its
+    /// database beside the OAuth sign-in it now makes, and the loader hands
+    /// the key over first. Once that key has expired at the console it answers
+    /// 401 while the sign-in beside it answers 200 — and a 401 on a key cannot
+    /// be told from a sign-out, so the ring read "connect the Go plan" on a
+    /// machine that was signed in and wiped the last good reading with it.
+    ///
+    /// A refused credential is not the verdict while another remains. A key's
+    /// 403 can likewise describe that key alone, so remember it and try the
+    /// login before calling the account planless. If nothing works, that
+    /// metering answer stands; otherwise the final authentication refusal
+    /// carries the OAuth expiry hint. Rate limits and broken responses stop
+    /// immediately because trying another token would spend the same limit
+    /// or hide an endpoint failure. The last successful candidate goes first
+    /// next time, without keeping credentials that disappeared from disk.
+    private func fetch(firstAcceptedOf candidates: [OpenCodeCredentials.Credential])
+    async throws -> Data {
+        var refusal: UsageProviderError = .needsAuth
+        var unmeteredKey: UsageProviderError?
+        for (index, credential) in candidates.enumerated() {
+            do {
+                let data = try await fetch(credential)
+                lastGoodCredential = credential.identity
+                return data
+            } catch let error as UsageProviderError {
+                switch error {
+                case .needsAuth, .credentialExpired:
+                    refusal = error
+                    if index < candidates.count - 1 {
+                        Log.usage.debug("opencode: credential \(index + 1) of \(candidates.count) refused, trying the next")
+                    }
+                case .nothingMetered where !credential.oauth:
+                    unmeteredKey = error
+                default:
+                    throw error
+                }
+            }
+        }
+        throw unmeteredKey ?? refusal
+    }
+
     /// The route this credential is for. Not a preference: each refuses the
     /// other's credential, and refuses it with the same 401 a planless account
     /// gets — so the wrong pairing is invisible from the response alone.
     static func endpoint(for credential: OpenCodeCredentials.Credential) -> URL {
         credential.oauth ? OpenCodeUsage.oauthEndpoint : OpenCodeUsage.endpoint
+    }
+
+    /// Whether this 401 body is OpenCode's dead console key
+    /// (`error.code == api_key_expired`). A different code, or a body that is
+    /// not that JSON, is false and the caller keeps today's 401 path.
+    static func isExpiredAPIKey(_ body: Data) -> Bool {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let error = object["error"] as? [String: Any]
+        else { return false }
+        return error["code"] as? String == "api_key_expired"
     }
 
     private func fetch(_ credential: OpenCodeCredentials.Credential) async throws -> Data {
@@ -129,11 +200,17 @@ actor OpenCodeProvider: UsageProvider {
         Log.usage.debug("go usage endpoint answered \(status)")
 
         if status == 401 {
+            // A retired console key answers 401 with this code. It must not
+            // become `needsAuth`: that status tells the user to run
+            // `opencode auth login`, and signing in again will not renew it.
+            if Self.isExpiredAPIKey(data) {
+                throw UsageProviderError.nothingMetered(
+                    L10n.t("This OpenCode key has expired. Create a new key in the OpenCode console"))
+            }
             // Upstream serves a missing Go plan as 401 through the same branch as
             // a bad credential — its join finds no plan row either way. Only the
-            // console can tell the two apart, and only for an OAuth sign-in: the
-            // Go key has no equivalent probe, so its 401 stays a sign-out, as
-            // before.
+            // console can tell the two apart, and only for an OAuth sign-in: any
+            // other Go-key 401 stays a sign-out, as before.
             if credential.oauth, await signedIn(credential) {
                 throw UsageProviderError.nothingMetered(
                     L10n.t("No OpenCode Go subscription on this account"))

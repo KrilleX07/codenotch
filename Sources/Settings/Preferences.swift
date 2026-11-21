@@ -187,6 +187,13 @@ final class Preferences: ObservableObject {
         usesCustomNotchScale ? CGFloat(customNotchScale) : notchSize.scale
     }
 
+    /// Configurable typography scaling for legibility on high-DPI and small displays.
+    @Published var fontSizeOption: FontSizeOption {
+        didSet { defaults.set(fontSizeOption.rawValue, forKey: Keys.fontSizeOption) }
+    }
+
+    var typographyScale: CGFloat { fontSizeOption.scale }
+
     /// The display the notch stays on, or the original focus-following behaviour.
     ///
     /// Only meaningful in `NotchScreenScope.main` — pinning a display and
@@ -302,6 +309,12 @@ final class Preferences: ObservableObject {
         deepSeekPricingSchedule = .current
     }
 
+    /// How DeepSeek's indicator is displayed: current usable credit balance
+    /// directly without lifetime spend percentage, or lifetime spend percentage.
+    @Published var deepSeekDisplayMode: DeepSeekDisplayMode {
+        didSet { defaults.set(deepSeekDisplayMode.rawValue, forKey: Keys.deepSeekDisplayMode) }
+    }
+
     /// Whether the weekly limit gets a ring of its own, and where it sits.
     /// Whether each ring carries its percentage under it, on every edge.
     ///
@@ -356,6 +369,12 @@ final class Preferences: ObservableObject {
     /// arrangement, and an empty ring is still information about the account.
     @Published var hideDepletedAccounts: Bool {
         didSet { defaults.set(hideDepletedAccounts, forKey: Keys.hideDepletedAccounts) }
+    }
+
+    /// In "Show on hover", holds the notch open while any session is busy or
+    /// waiting on you, and hands it back to the pointer once none is.
+    @Published var keepOpenWhileSessionActive: Bool {
+        didSet { defaults.set(keepOpenWhileSessionActive, forKey: Keys.keepOpenWhileSessionActive) }
     }
 
     @Published var weeklyRingDashed: Bool {
@@ -462,6 +481,12 @@ final class Preferences: ObservableObject {
     /// that — now answerable by whoever has to live with the width.
     @Published var menuBarReading: MenuBarReading {
         didSet { defaults.set(menuBarReading.rawValue, forKey: Keys.menuBarReading) }
+    }
+
+    /// Whether the menu bar presents text, compact markers, or usage bars.
+    /// `.text` is the default because it preserves the original layout.
+    @Published var menuBarVisualMode: MenuBarVisualMode {
+        didSet { defaults.set(menuBarVisualMode.rawValue, forKey: Keys.menuBarVisualMode) }
     }
 
     /// How the item shows that an agent is working. `.pulse` is what it has
@@ -723,6 +748,13 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(minimaxRegion.rawValue, forKey: Keys.minimaxRegion) }
     }
 
+    /// Where DeepSeek is read from: the Codenotch sign-in (balance, spend and
+    /// usage detail) or an API key (balance only). Absent means the sign-in,
+    /// which is what DeepSeek always used.
+    @Published var deepSeekSource: DeepSeekSource {
+        didSet { defaults.set(deepSeekSource.rawValue, forKey: Keys.deepSeekSource) }
+    }
+
     /// The version whose changes have already been shown.
     ///
     /// Written when the What's New dialogue is dismissed rather than when it
@@ -771,6 +803,7 @@ final class Preferences: ObservableObject {
         static let showsWeeklyLimitInMenuBar = "showsWeeklyLimitInMenuBar"
         static let menuBarActivityStyle = "menuBarActivityStyle"
         static let menuBarReading = "menuBarReading"
+        static let menuBarVisualMode = "menuBarVisualMode"
         static let menuBarClickAction = "menuBarClickAction"
         static let menuBarProviders = "menuBarProviders"
         static let expandedDetailProviders = "expandedDetailProviders"
@@ -779,6 +812,7 @@ final class Preferences: ObservableObject {
         static let size = "notchSize"
         static let usesCustomSize = "usesCustomNotchScale"
         static let customSize = "customNotchScale"
+        static let fontSizeOption = "fontSizeOption"
         static let display = "notchDisplay"
         static let resetTimeFormat = "resetTimeFormat"
         static let asksProviderOnLook = "asksProviderOnLook"
@@ -794,6 +828,7 @@ final class Preferences: ObservableObject {
         static let autoOrderByDeficit = "autoOrderByDeficit"
         static let ringOrder = "ringOrder"
         static let hideDepletedAccounts = "hideDepletedAccounts"
+        static let keepOpenWhileSessionActive = "keepOpenWhileSessionActive"
         static let claudeDailyPaceRing = "claudeDailyPaceRing"
         static let weeklyHeadline = "weeklyHeadline"
         static let notchSurfaceStyle = "notchSurfaceStyle"
@@ -833,11 +868,22 @@ final class Preferences: ObservableObject {
         static let antigravityHeadlineModel = "antigravityHeadlineModel"
         static let deepSeekPricingEnabled = "deepSeekPricingEnabled"
         static let deepSeekPricingSchedule = "deepSeekPricingSchedule"
+        static let deepSeekSource = "deepSeekSource"
+        static let deepSeekDisplayMode = "deepSeekDisplayMode"
         static let showCodexExtraLimits = "showCodexExtraLimits"
         static let planCeilingMode = "planCeilingMode"
         static let ceilingWarningThreshold = "ceilingWarningThreshold"
         static let manualPlanCeilings = "manualPlanCeilings"
         static let observedPeakUsage = "observedPeakUsage"
+    }
+
+    nonisolated static func storedDeepSeekDisplayMode(
+        defaults: UserDefaults = .standard
+    ) -> DeepSeekDisplayMode {
+        guard let value = defaults.string(forKey: Keys.deepSeekDisplayMode),
+              let mode = DeepSeekDisplayMode(rawValue: value)
+        else { return .balance }
+        return mode
     }
 
     /// The budget read straight from disk, off the main actor.
@@ -1026,6 +1072,14 @@ final class Preferences: ObservableObject {
         return []
     }
 
+    /// The DeepSeek source read straight from disk, off the main actor, for
+    /// the same reason as the MiniMax region below.
+    nonisolated static func storedDeepSeekSource(
+        defaults: UserDefaults = .standard
+    ) -> DeepSeekSource {
+        DeepSeekSource(rawValue: defaults.string(forKey: Keys.deepSeekSource) ?? "") ?? .web
+    }
+
     /// The MiniMax region read straight from disk, off the main actor.
     ///
     /// The provider is an actor and asks for this on every fetch, and
@@ -1190,6 +1244,8 @@ final class Preferences: ObservableObject {
             .flatMap(MenuBarActivityStyle.init(rawValue:)) ?? .pulse
         self.menuBarReading = defaults.string(forKey: Keys.menuBarReading)
             .flatMap(MenuBarReading.init(rawValue:)) ?? .automatic
+        self.menuBarVisualMode = defaults.string(forKey: Keys.menuBarVisualMode)
+            .flatMap(MenuBarVisualMode.init(rawValue:)) ?? .text
         self.menuBarClickAction = defaults.string(forKey: Keys.menuBarClickAction)
             .flatMap(MenuBarClickAction.init(rawValue:)) ?? .menu
         // Absent is kept distinct from empty: never chosen is not choosing none.
@@ -1212,6 +1268,8 @@ final class Preferences: ObservableObject {
         self.customNotchScale = stored.map {
             min(max($0, Self.customScaleRange.lowerBound), Self.customScaleRange.upperBound)
         } ?? 1
+        self.fontSizeOption = defaults.string(forKey: Keys.fontSizeOption)
+            .flatMap(FontSizeOption.init(rawValue:)) ?? .standard
         self.displayPreference = defaults.string(forKey: Keys.display)
             .map(DisplayPreference.display) ?? .followActiveWindow
         self.resetTimeFormat = defaults.string(forKey: Keys.resetTimeFormat)
@@ -1234,6 +1292,7 @@ final class Preferences: ObservableObject {
         } else {
             self.deepSeekPricingSchedule = .current
         }
+        self.deepSeekDisplayMode = Self.storedDeepSeekDisplayMode(defaults: defaults)
         // Absent means never chosen. Main display only, because that is what a
         // single-panel setup always did — all-displays on a fresh install
         // would put notches where none were expected.
@@ -1259,6 +1318,7 @@ final class Preferences: ObservableObject {
             ?? (defaults.bool(forKey: Keys.autoOrderByDeficit) ? .deficit
                 : defaults.bool(forKey: Keys.autoOrderByRemaining) ? .remaining : .manual)
         self.hideDepletedAccounts = defaults.bool(forKey: Keys.hideDepletedAccounts)
+        self.keepOpenWhileSessionActive = defaults.bool(forKey: Keys.keepOpenWhileSessionActive)
 
         self.weeklyRing = defaults.string(forKey: Keys.weeklyRing)
             .flatMap(WeeklyRing.init(rawValue:)) ?? .off
@@ -1318,6 +1378,7 @@ final class Preferences: ObservableObject {
         self.manualProviderLimit = Self.storedManualProviderLimit(defaults: defaults)
         self.manualProviderSchedule = defaults.string(forKey: Keys.manualProviderSchedule) ?? "3h"
         self.minimaxRegion = Self.storedMinimaxRegion(defaults: defaults)
+        self.deepSeekSource = Self.storedDeepSeekSource(defaults: defaults)
         self.qoderRegion = Sites.QoderRegion(rawValue: defaults.string(forKey: Keys.qoderRegion) ?? "") ?? .global
         if let data = defaults.data(forKey: Keys.customEndpoints),
            let list = try? JSONDecoder().decode([CustomEndpoint].self, from: data) {

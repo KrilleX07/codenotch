@@ -61,12 +61,17 @@ final class StatusItemSummaryTests: XCTestCase {
                          remaining: Bool = false,
                          hideDepleted: Bool = false,
                          reading: MenuBarReading = .automatic,
+                         visualMode: MenuBarVisualMode = .text,
+                         watchLimit: Double = 0.50,
+                         criticalLimit: Double = 0.70,
                          autoOrder: Bool = false) -> StatusItemSummary {
         StatusItemSummary.make(
             from: snapshots,
             showing: limits ?? MenuBarLimits(isOn: true, chosen: Set(snapshots.map(\.id))),
             now: now, format: format, showingWeeklyLimit: weekly,
             showingRemaining: remaining, hidingDepleted: hideDepleted, reading: reading,
+            visualMode: visualMode,
+            watchLimit: watchLimit, criticalLimit: criticalLimit,
             autoOrdering: autoOrder)
     }
 
@@ -1195,6 +1200,131 @@ final class StatusItemSummaryTests: XCTestCase {
         pulse.update(view: view, imageSize: artwork.size, glyphs: glyphs, working: ["codex"])
         XCTAssertNil(pulse.nudge(for: "codex"))
         XCTAssertEqual(pulse.pulsing, ["codex"])
+    }
+
+    // MARK: - Visual mode (Markers & Bars)
+
+    func testVisualModeDefaultsToTextAndSurvivesARestart() {
+        let defaults = scratchDefaults()
+        let prefs1 = Preferences(defaults: defaults)
+        XCTAssertEqual(prefs1.menuBarVisualMode, .text)
+
+        prefs1.menuBarVisualMode = .markers
+        let prefs2 = Preferences(defaults: defaults)
+        XCTAssertEqual(prefs2.menuBarVisualMode, .markers)
+
+        prefs2.menuBarVisualMode = .bars
+        let prefs3 = Preferences(defaults: defaults)
+        XCTAssertEqual(prefs3.menuBarVisualMode, .bars)
+    }
+
+    func testMarkersModeShowsCompactStatusPointAndNarrowsTheBar() throws {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        let snapshot = claude(0.72, resetIn: 2 * hour + 18 * minute)
+
+        let textSummary = summary([snapshot], visualMode: .text)
+        let textWidth = StatusItemArtwork(summary: textSummary, font: font, height: 22).size.width
+
+        let markersSummary = summary([snapshot], visualMode: .markers)
+        let markersArtwork = StatusItemArtwork(summary: markersSummary, font: font, height: 22)
+        let markersWidth = markersArtwork.size.width
+
+        XCTAssertLessThan(markersWidth, textWidth, "markers mode is noticeably more compact than text")
+        let frame = try XCTUnwrap(markersArtwork.indicatorFrame(for: "claude"))
+        XCTAssertEqual(frame.width, 8)
+        XCTAssertEqual(frame.height, 8)
+    }
+
+    func testBarsModeShowsFixedUsageBarTrack() throws {
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+        let low = summary([claude(0.01, resetIn: 2 * hour)], visualMode: .bars)
+        let high = summary([claude(0.71, resetIn: 2 * hour)], visualMode: .bars)
+
+        let lowArtwork = StatusItemArtwork(summary: low, font: font, height: 22)
+        let highArtwork = StatusItemArtwork(summary: high, font: font, height: 22)
+
+        XCTAssertEqual(lowArtwork.size.width, highArtwork.size.width,
+                       "bars mode holds a fixed width regardless of percentage figures")
+        let barFrame = try XCTUnwrap(lowArtwork.indicatorFrame(for: "claude"))
+        XCTAssertEqual(barFrame.width, 28)
+        XCTAssertEqual(barFrame.height, 5)
+    }
+
+    func testVisualModesPreserveClickTargetAndAccessibilityDetail() throws {
+        let snapshot = claude(0.72, resetIn: 2 * hour + 18 * minute)
+        let markersSummary = summary([snapshot], visualMode: .markers)
+        let entry = try XCTUnwrap(markersSummary.entries.first)
+        XCTAssertEqual(entry.usedFraction, 0.72)
+        XCTAssertTrue(entry.detail.contains("72%"))
+        XCTAssertTrue(entry.detail.contains("Claude"))
+
+        let indicators = StatusItemVisualIndicators()
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 60, height: 22))
+        let artwork = StatusItemArtwork(summary: markersSummary, height: 22)
+        indicators.update(view: view, imageSize: artwork.size, mode: .markers,
+                          entries: markersSummary.entries, frames: artwork.indicatorFrames)
+
+        XCTAssertEqual(indicators.showing, ["claude"])
+        let indicatorView = try XCTUnwrap(view.subviews.first)
+        XCTAssertNil(indicatorView.hitTest(NSPoint(x: 5, y: 5)),
+                     "indicator subview hitTest returns nil so whole button remains click target")
+
+        indicators.update(view: view, imageSize: artwork.size, mode: .text,
+                          entries: markersSummary.entries, frames: artwork.indicatorFrames)
+        XCTAssertTrue(indicators.showing.isEmpty)
+        XCTAssertTrue(view.subviews.isEmpty, "switching to text clears overlay views")
+    }
+
+    // MARK: - Visual indicator colour
+
+    /// The band each provider's indicator is drawn in, from the summary the
+    /// controller would hand the overlay.
+    private func bands(_ summary: StatusItemSummary, mode: MenuBarVisualMode) -> [String: UsageBand] {
+        let indicators = StatusItemVisualIndicators()
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 120, height: 22))
+        let artwork = StatusItemArtwork(summary: summary, height: 22)
+        indicators.update(view: view, imageSize: artwork.size, mode: mode,
+                          entries: summary.entries, frames: artwork.indicatorFrames,
+                          watchLimit: summary.watchLimit, criticalLimit: summary.criticalLimit)
+        var bands: [String: UsageBand] = [:]
+        for id in indicators.showing { bands[id] = indicators.band(for: id) }
+        return bands
+    }
+
+    /// Watch at 80% and Critical at 90%: a session 60% spent is still green on
+    /// the notch's ring and in the menu's card, so the marker beside the clock
+    /// must not be yellow.
+    func testMarkersTakeTheirColourFromTheUsersThresholds() {
+        for mode in [MenuBarVisualMode.markers, .bars] {
+            for (used, expected) in [(0.60, UsageBand.ample), (0.85, .watch), (0.95, .critical)] {
+                let s = summary([claude(used, resetIn: 2 * hour)], visualMode: mode,
+                                watchLimit: 0.80, criticalLimit: 0.90)
+                XCTAssertEqual(bands(s, mode: mode)["claude"], expected, "\(mode) at \(used)")
+            }
+        }
+    }
+
+    /// Lower thresholds than the shipped ones count too: Watch at 20% makes a
+    /// quarter-spent session yellow, which the fixed 50% would leave green.
+    func testLowerThresholdsWarnSooner() {
+        let s = summary([claude(0.25, resetIn: 2 * hour)], visualMode: .markers,
+                        watchLimit: 0.20, criticalLimit: 0.40)
+        XCTAssertEqual(bands(s, mode: .markers)["claude"], .watch)
+    }
+
+    /// Untouched Settings colour the indicators exactly as before.
+    func testShippedThresholdsKeepTheirColours() {
+        let s = summary([claude(0.60, resetIn: 2 * hour)], visualMode: .markers)
+        XCTAssertEqual(bands(s, mode: .markers)["claude"], .watch)
+    }
+
+    /// The face redraws only when its summary changes, so a threshold moved in
+    /// Settings has to change the summary, or the colour waits for the next
+    /// reading to land.
+    func testAThresholdChangeChangesTheSummary() {
+        let snapshot = claude(0.60, resetIn: 2 * hour)
+        XCTAssertNotEqual(summary([snapshot], visualMode: .markers),
+                          summary([snapshot], visualMode: .markers, watchLimit: 0.80, criticalLimit: 0.90))
     }
 }
 

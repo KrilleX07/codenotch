@@ -26,6 +26,16 @@ final class CursorGeometry {
         model.ringAlong(index: index, in: cellWing, spacing: cellSpacing)
     }
 
+    func cellIndex(at point: CGPoint) -> Int? {
+        if let drawn = model.snapshots.firstIndex(where: {
+            model.renderedCellFrames[$0.id]?.contains(point) == true
+        }) {
+            return drawn
+        }
+        guard notchRect.contains(point) else { return nil }
+        return cellIndex(along: placement.along(of: point))
+    }
+
     func cellIndex(along: CGFloat) -> Int? {
         guard model.alongWithin(along, of: cellWing) != nil else { return nil }
         let pitch = (NotchLayout.cellAlong(for: model.edge) + cellSpacing) * model.sizeScale
@@ -50,16 +60,33 @@ final class CursorGeometry {
     /// exactly the hardware notch when it is joined to one — see
     /// `NotchViewModel.wakeLength` for both halves of that.
     private(set) lazy var pillRect: CGRect = {
-        // Joined, that is both copies and the hole between them: the hardware's
-        // own notch is part of the target, which is the whole point of the
-        // notch being drawn as part of it.
-        let joined = model.mergesWithCutout
-        let length = joined ? model.drawnAlongExtent(in: wings) : model.wakeLength
-        let lead = joined
-            ? (wings.first?.lead ?? model.slack)
-            : model.restingAlongLead(in: wings)
-                + (model.restingLength * model.sizeScale - model.wakeLength) / 2
-        return placement.rect(along: lead, across: 0, length: length, depth: model.wakeDepth)
+        // Joined, that is the hardware's own notch, and both copies either side
+        // of it while they are drawn: the hole is part of the target, which is
+        // the whole point of the notch being drawn as part of it — and folded,
+        // the hole is all there is to see.
+        if model.mergesWithCutout {
+            let span = model.joinedWakeAlong(in: wings)
+            return placement.rect(along: span.lead, across: 0, length: span.length,
+                                  depth: model.wakeDepth)
+        }
+        let lead = model.restingAlongLead(in: wings)
+            + (model.restingLength * model.sizeScale - model.wakeLength) / 2
+        return placement.rect(along: lead, across: 0, length: model.wakeLength,
+                              depth: model.wakeDepth)
+    }()
+
+    /// The folded notch as drawn, from the screen's edge. Contact here opens
+    /// it at once. The band `pillRect` adds around it only opens it once the
+    /// pointer has rested there, see `NotchWindowController.bandDwell`.
+    /// Joined to the hardware notch there is no band, so the two are the same.
+    private(set) lazy var restingRect: CGRect = {
+        guard !model.mergesWithCutout else { return pillRect }
+        return placement.rect(
+            along: model.restingAlongLead(in: wings),
+            across: 0,
+            length: model.restingLength * model.sizeScale,
+            depth: model.restingDepth * model.sizeScale + model.edgeGap
+        )
     }()
 
     private lazy var orbHandleRect = handleRect(points: orbHandlePoints)
@@ -115,6 +142,13 @@ final class CursorGeometry {
         guard model.isExpanded else { return pillRect }
         // The orb hangs below the shape, so the live region is both together.
         return notchRect.union(handleRect(gripRevealed: gripRevealed))
+    }
+
+    /// What takes clicks. Folded, only the notch as drawn: the band around it
+    /// is for hovering, and a click inside the band belongs to whatever window
+    /// is under it, such as a close button on a window tiled against the edge.
+    func clickRect(gripRevealed: Bool) -> CGRect {
+        model.isExpanded ? liveRect(gripRevealed: gripRevealed) : restingRect
     }
 
     /// The card, its tail, and the gap between the tail and the notch — so

@@ -39,6 +39,12 @@ pub struct Appearance {
     pub color_transition: String,
     pub size: f32,
     pub shows_remaining: bool,
+    pub antialias: String,
+    pub antialias_border: String,
+    pub antialias_internal: String,
+    pub border_thickness: f32,
+    pub border_color: String,
+    pub border_opacity: f32,
 }
 
 impl Appearance {
@@ -46,7 +52,13 @@ impl Appearance {
         Self { weekly_ring:config::weekly_ring_or_off(&cfg.weekly_ring),
             weekly_dashed:cfg.weekly_ring_dashed,
             color_transition:config::color_transition_or_step(&cfg.color_transition),
-            size:config::snap_scale(cfg.scale) as f32, shows_remaining:cfg.notch_shows_remaining }
+            size:config::snap_scale(cfg.scale) as f32, shows_remaining:cfg.notch_shows_remaining,
+            antialias:config::antialias_border_or_default(&cfg.antialias_border),
+            antialias_border:config::antialias_border_or_default(&cfg.antialias_border),
+            antialias_internal:config::antialias_internal_or_default(&cfg.antialias_internal),
+            border_thickness:config::clamp_border_thickness(cfg.border_thickness) as f32,
+            border_color:config::border_color_or_default(&cfg.border_color),
+            border_opacity:config::clamp_border_opacity(cfg.border_opacity) as f32 }
     }
 }
 
@@ -94,15 +106,14 @@ fn by_id<'a>(windows: &'a [LimitWindow], id: &str) -> Option<&'a LimitWindow> {
     windows.iter().find(|window| window.id == id)
 }
 
-/// The notch's `weeklyOf`.
 fn weekly_window<'a>(provider: &str, windows: &'a [LimitWindow], model: &str) -> Option<&'a LimitWindow> {
-    let metered: Vec<&LimitWindow> = windows.iter().filter(|w| w.count.is_none()).collect();
+    let metered: Vec<&LimitWindow> = windows.iter().filter(|w| w.metered()).collect();
     let by_id = |id: &str| metered.iter().copied().find(|w| w.id == id);
     match provider {
         "claude" => by_id("seven_day").or_else(|| by_id("weekly_all")).or_else(|| by_id("weekly")),
         "codex" => by_id("secondary"),
         "glm" | "opencode" | "commandcode" => by_id("weekly"),
-        "cursor" | "grok" | "copilot" | "deepseek" | "qoder" => None,
+        "cursor" | "grok" | "copilot" | "deepseek" | "qoder" | "mistral" => None,
         _ => {
             let family: Vec<_> = metered.iter().copied().filter(|w| crate::lane_family(w) == model).collect();
             let lanes = if family.is_empty() { metered } else { family };
@@ -123,7 +134,7 @@ fn claude_current(snap: &UsageSnapshot, window: &LimitWindow, now: u64) -> bool 
 }
 
 fn used(window: &LimitWindow) -> Option<f32> {
-    (window.count.is_none() && window.used.is_finite()).then(|| window.used.clamp(0.0, 1.0) as f32)
+    (window.metered() && window.used.is_finite()).then(|| window.used.clamp(0.0, 1.0) as f32)
 }
 
 /// The notch's `smallPct`, `pctText` and `leftPctText`: whole percents, except where rounding
@@ -152,6 +163,7 @@ fn figure(snap: &UsageSnapshot, head: Option<&LimitWindow>, remaining: bool) -> 
     if snap.status == "needsAuth" || snap.status == "none" { return "—".into(); }
     match head {
         Some(LimitWindow { count: Some(count), .. }) => format!("~{count}"),
+        Some(LimitWindow { amount: Some(amount), .. }) => amount.clone(),
         Some(window) if window.used.is_finite() => format!("{}{}%", if window.derived { "~" } else { "" },
             if remaining { left_pct_text(window.used) } else { pct_text(window.used) }),
         // The declared window is missing from a reply: a dash, not a wait.
@@ -164,21 +176,41 @@ fn indicator(item: &Item, cfg: &Config, appearance: &Appearance, now: u64) -> In
     let snap = &item.snapshot;
     let current = |window: &&LimitWindow| item.provider != "claude" || claude_current(snap, window, now);
     let head = item.headline_id.as_deref().and_then(|id| by_id(&snap.windows, id)).filter(current);
+    let composite = if item.provider == "gemini" {
+        crate::antigravity_composite_fraction(&snap.windows).map(|used| LimitWindow {
+            id: "antigravity-total".into(),
+            label: "Total".into(),
+            used,
+            ..Default::default()
+        })
+    } else {
+        None
+    };
+    let effective_head = composite.as_ref().or(head);
     let work_state = match item.work_state.as_str() { "busy" => "busy", "waiting" => "waiting", _ => "idle" };
     // Inside, the weekly ring shares its gap with the activity arc, so it stands down while that shows.
     let ring_on = match appearance.weekly_ring.as_str() { "outside" => true, "inside" => work_state == "idle", _ => false };
     let weekly = ring_on.then(|| weekly_window(&item.provider, &snap.windows, &cfg.antigravity_model)).flatten()
         .filter(current)
-        .filter(|week| head.is_none_or(|head| head.id != week.id))
+        .filter(|week| effective_head.is_none_or(|head| head.id != week.id))
         .and_then(used);
+    // A Claude plan with no session and no spend window answers with its weeks
+    // alone. The ring is already drawn from the week, so the figure beside it
+    // prints the week too, as 1.24.0 did, rather than a dash (#533).
+    let weeks_only = item.provider == "claude"
+        && !snap.windows.iter().any(|w| w.id == "session" || w.id == "spend");
+    let shown = effective_head.or_else(|| weeks_only
+        .then(|| weekly_window(&item.provider, &snap.windows, &cfg.antigravity_model))
+        .flatten()
+        .filter(current));
     Indicator {
         id: item.id.clone(), provider: item.provider.clone(),
-        headline: head.and_then(used),
+        headline: effective_head.and_then(used),
         weekly,
-        text: figure(snap, head, appearance.shows_remaining),
+        text: figure(snap, shown, appearance.shows_remaining),
         work_state: work_state.into(),
         stale: stale(snap, now),
-        spent: head.is_some_and(|window| window.used >= 1.0),
+        spent: effective_head.is_some_and(|window| window.used >= 1.0),
     }
 }
 
@@ -313,6 +345,15 @@ mod tests {
         assert_eq!((shown.headline, shown.weekly, shown.text.as_str()), (Some(0.62), Some(0.18), "62%"));
     }
     #[test]
+    fn a_weeks_only_claude_plan_prints_the_week_beside_its_ring() {
+        let shown = indicator(item("claude", None, vec![window("weekly_all", 0.02), window("weekly_scoped", 0.0)]));
+        assert_eq!((shown.headline, shown.weekly, shown.text.as_str()), (None, Some(0.02), "2%"));
+        // A plan that has a session still prints the session, and a missing one stays a dash.
+        assert_eq!(indicator(claude()).text, "71%");
+        let shown = indicator(item("claude", Some("session"), vec![window("spend", 0.4), window("seven_day", 0.1)]));
+        assert_eq!(shown.text, "—");
+    }
+    #[test]
     fn a_count_window_keeps_its_track_and_prints_the_count() {
         let mut requests = window("requests", 0.0);
         requests.count = Some(1);
@@ -357,6 +398,7 @@ mod tests {
         assert_eq!(indicator(weekly_is_headline).weekly, None);
         assert_eq!(indicator(item("commandcode", Some("monthly"), vec![window("monthly", 0.1), window("weekly", 0.5)])).weekly, Some(0.5));
         assert_eq!(indicator(item("cursor", Some("included"), vec![window("included", 0.1), window("weekly", 0.5)])).weekly, None);
+        assert_eq!(indicator(item("mistral", Some("vibe"), vec![window("vibe", 0.5), window("weekly", 0.2)])).weekly, None);
     }
     #[test]
     fn antigravity_weekly_is_the_tightest_weekly_lane_of_the_chosen_family() {

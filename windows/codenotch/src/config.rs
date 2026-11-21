@@ -116,6 +116,8 @@ pub struct Config {
     /// The model family that choice looks at, as the Mac app's "Model data": "gemini" or "3p"
     #[serde(default = "default_antigravity_model")]
     pub antigravity_model: String,
+    #[serde(default = "default_deepseek_display")]
+    pub deepseek_display: String,
     /// One-shot migration flag: a config saved before the GLM ring existed gets GLM added to the
     /// notch once; an explicit later un-tick is respected and never overridden.
     #[serde(default)]
@@ -132,6 +134,9 @@ pub struct Config {
     /// The same one-shot migration for the Qoder ring.
     #[serde(default)]
     pub qoder_notch_fixed: bool,
+    /// Add Mistral to a previously saved notch selection once when a credential is present.
+    #[serde(default)]
+    pub mistral_notch_fixed: bool,
     /// false = the pill is kept off the screen edge entirely; the tray icon is then the only way in
     #[serde(default = "yes")]
     pub notch_visible: bool,
@@ -168,7 +173,18 @@ pub struct Config {
     /// Mac's usage pace setting. Off by default, as on the Mac.
     #[serde(default)]
     pub show_usage_pace: bool,
-    /// Require X-Codenotch-Token on /event requests (defense-in-depth, #165)
+    #[serde(default = "default_antialias")]
+    pub antialias: String,
+    #[serde(default = "default_antialias_border")]
+    pub antialias_border: String,
+    #[serde(default = "default_antialias_internal")]
+    pub antialias_internal: String,
+    #[serde(default = "default_border_thickness")]
+    pub border_thickness: f64,
+    #[serde(default = "default_border_color")]
+    pub border_color: String,
+    #[serde(default = "default_border_opacity")]
+    pub border_opacity: f64,
     #[serde(default = "yes")]
     pub require_event_token: bool,
 }
@@ -308,6 +324,72 @@ fn default_antigravity_limit() -> String {
 fn default_antigravity_model() -> String {
     "gemini".into()
 }
+pub fn default_deepseek_display() -> String {
+    "remaining".into()
+}
+pub fn deepseek_display_or_default(value: &str) -> String {
+    match value {
+        "spent" | "remaining" | "compact" => value.to_string(),
+        _ => default_deepseek_display(),
+    }
+}
+
+pub fn default_antialias() -> String {
+    "ssaa".into()
+}
+#[allow(dead_code)]
+pub fn antialias_or_default(value: &str) -> String {
+    antialias_border_or_default(value)
+}
+pub fn default_antialias_border() -> String {
+    "ssaa".into()
+}
+pub fn antialias_border_or_default(value: &str) -> String {
+    match value {
+        "off" | "subpixel" | "vector" | "ssaa" | "ssaa8x" | "ultra" => value.to_string(),
+        _ => default_antialias_border(),
+    }
+}
+pub fn default_antialias_internal() -> String {
+    "ssaa".into()
+}
+pub fn antialias_internal_or_default(value: &str) -> String {
+    match value {
+        "off" | "subpixel" | "ssaa" | "ssaa8x" | "ultra" => value.to_string(),
+        _ => default_antialias_internal(),
+    }
+}
+pub fn default_border_thickness() -> f64 {
+    2.5
+}
+pub fn clamp_border_thickness(value: f64) -> f64 {
+    if value.is_finite() {
+        (value.clamp(0.0, 3.0) * 20.0).round() / 20.0
+    } else {
+        default_border_thickness()
+    }
+}
+pub fn default_border_color() -> String {
+    "#ffffff".into()
+}
+pub fn border_color_or_default(value: &str) -> String {
+    let s = value.trim();
+    if s.len() == 7 && s.starts_with('#') && s[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+        s.to_lowercase()
+    } else {
+        default_border_color()
+    }
+}
+pub fn default_border_opacity() -> f64 {
+    0.15
+}
+pub fn clamp_border_opacity(value: f64) -> f64 {
+    if value.is_finite() {
+        (value.clamp(0.0, 1.0) * 100.0).round() / 100.0
+    } else {
+        default_border_opacity()
+    }
+}
 
 fn default_port() -> u16 {
     48666
@@ -342,11 +424,13 @@ impl Default for Config {
             notch_slots: Vec::new(),     // filled in by load(), from notch_providers
             antigravity_limit: default_antigravity_limit(),
             antigravity_model: default_antigravity_model(),
+            deepseek_display: default_deepseek_display(),
             glm_notch_fixed: true, // a fresh install picks from the full list already
             opencode_notch_fixed: true,
             commandcode_notch_fixed: true,
             copilot_notch_fixed: true,
             qoder_notch_fixed: true,
+            mistral_notch_fixed: true,
             notch_visible: true,
             notch_on_hover: true,
             tray_visible: true,
@@ -356,6 +440,12 @@ impl Default for Config {
             fold_for_full_screen: true,
             notch_shows_remaining: false,
             show_usage_pace: false,
+            antialias: default_antialias(),
+            antialias_border: default_antialias_border(),
+            antialias_internal: default_antialias_internal(),
+            border_thickness: default_border_thickness(),
+            border_color: default_border_color(),
+            border_opacity: default_border_opacity(),
             require_event_token: true,
         }
     }
@@ -424,6 +514,8 @@ pub fn load() -> Config {
     migrate_copilot_notch(&mut cfg, &raw);
     // And for Qoder.
     migrate_qoder_notch(&mut cfg, &raw);
+    // And for Mistral, only when a credential is already present.
+    migrate_mistral_notch(&mut cfg, &raw);
 
     // Both hidden would leave the app unreachable: no pill, no tray icon, no way to open settings.
     if !cfg.notch_visible && !cfg.tray_visible {
@@ -439,6 +531,25 @@ pub fn load() -> Config {
     // Mac's own init does: critical first, then watch below it.
     cfg.critical_limit = cfg.critical_limit.clamp(0.02, 1.0);
     cfg.watch_limit = clamp_watch_limit(cfg.watch_limit, cfg.critical_limit);
+    let has_split_aa = raw
+        .as_deref()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(t).ok())
+        .is_some_and(|v| v.get("antialias_border").is_some());
+    if !has_split_aa && cfg.antialias != default_antialias() {
+        cfg.antialias_border = cfg.antialias.clone();
+        cfg.antialias_internal = match cfg.antialias.as_str() {
+            "ultra" => "ultra".into(),
+            "ssaa8x" => "ssaa8x".into(),
+            "ssaa" => "ssaa".into(),
+            "vector" | "subpixel" => "subpixel".into(),
+            _ => default_antialias_internal(),
+        };
+    }
+    cfg.antialias_border = antialias_border_or_default(&cfg.antialias_border);
+    cfg.antialias_internal = antialias_internal_or_default(&cfg.antialias_internal);
+    cfg.border_thickness = clamp_border_thickness(cfg.border_thickness);
+    cfg.border_color = border_color_or_default(&cfg.border_color);
+    cfg.border_opacity = clamp_border_opacity(cfg.border_opacity);
     cfg
 }
 
@@ -518,6 +629,23 @@ fn migrate_qoder_notch(cfg: &mut Config, raw: &Option<String>) {
     cfg.qoder_notch_fixed = true;
 }
 
+fn migrate_mistral_notch(cfg: &mut Config, raw: &Option<String>) {
+    let predates = raw
+        .as_deref()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(t).ok())
+        .is_some_and(|v| v.get("mistral_notch_fixed").is_none());
+    if !predates {
+        return;
+    }
+    if crate::mistral::present()
+        && !cfg.notch_slots.is_empty()
+        && !cfg.notch_slots.iter().any(|s| s.provider == "mistral")
+    {
+        cfg.notch_slots.push(TraySlot { provider: "mistral".into() });
+    }
+    cfg.mistral_notch_fixed = true;
+}
+
 pub fn save(cfg: &Config) {
     let _ = save_checked(cfg);
 }
@@ -534,8 +662,9 @@ pub fn save_checked(cfg: &Config) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        carry_shared_position, clamp_critical_limit, clamp_watch_limit, color_transition_or_step,
-        keep_open_on_upgrade, snap_scale, theme_or_system, weekly_ring_or_off, without_bom, Config,
+        antialias_border_or_default, antialias_internal_or_default, carry_shared_position, clamp_critical_limit,
+        clamp_watch_limit, color_transition_or_step, keep_open_on_upgrade, snap_scale, theme_or_system,
+        weekly_ring_or_off, without_bom, Config,
     };
 
     #[test]
@@ -713,5 +842,20 @@ mod tests {
             saved.get("theme").and_then(|value| value.as_str()),
             Some("light")
         );
+    }
+
+    #[test]
+    fn antialias_options_include_ssaa8x_and_ultra() {
+        assert_eq!(antialias_border_or_default("ssaa8x"), "ssaa8x");
+        assert_eq!(antialias_border_or_default("ultra"), "ultra");
+        assert_eq!(antialias_border_or_default("invalid"), "ssaa");
+        assert_eq!(antialias_internal_or_default("ssaa8x"), "ssaa8x");
+        assert_eq!(antialias_internal_or_default("ultra"), "ultra");
+        assert_eq!(antialias_internal_or_default("vector"), "ssaa");
+        let def = Config::default();
+        assert_eq!(def.antialias_border, "ssaa");
+        assert_eq!(def.antialias_internal, "ssaa");
+        assert!((def.border_thickness - 2.5).abs() < 1e-6);
+        assert!((def.border_opacity - 0.15).abs() < 1e-6);
     }
 }

@@ -68,6 +68,20 @@ final class NotchWindowController {
     /// dismissing a tooltip, and doing it the instant the pointer strays feels
     /// twitchy rather than responsive.
     private let foldGrace: TimeInterval = 0.45
+    /// How long the pointer has to rest in the band around the folded pill
+    /// before the notch opens. Contact with the pill itself still opens it at
+    /// once. Without the wait, a pointer passing through the band on its way to
+    /// a button near the edge opened the notch on top of that button.
+    static let bandDwell: TimeInterval = 0.3
+    /// When the pointer came into the band, and whether a click there has
+    /// handed the band to the window underneath until the pointer leaves it.
+    private var bandEnteredAt: Date?
+    private var bandClaimedByClick = false
+    private var bandCheck: DispatchWorkItem?
+    /// The clock the band reads, and whether a mouse button is down. Tests
+    /// set both instead of waiting or pressing.
+    var bandClock: () -> Date = Date.init
+    var mouseButtonHeld: () -> Bool = { NSEvent.pressedMouseButtons != 0 }
     private var foldWork: DispatchWorkItem? {
         didSet {
             // A fold that is not going to happen after all — pinned, peeked,
@@ -98,6 +112,12 @@ final class NotchWindowController {
     private var peekUntil: Date?
     /// The standing visibility choice, so a peek never overrides Hidden.
     private var visibility: NotchVisibility = .onHover
+    /// Set by the fleet: "Keep open while a session is active" is on and some
+    /// session is busy or waiting. Kept apart from `isPinned` so a session
+    /// ending never undoes a "Keep open" made by hand.
+    private var sessionActive = false
+    /// Only "Show on hover" honours it; the other two modes already decide.
+    private var holdsForSession: Bool { sessionActive && visibility == .onHover }
     /// Whether we have pushed the pointing hand onto the cursor stack.
     private var shownCursor: NSCursor?
     /// Where the pointer let go of the notch by its dots, while it has not
@@ -211,7 +231,7 @@ final class NotchWindowController {
                 }
             }
             foldForFullScreen()
-        } else if (model.isAlwaysOn || model.isPinned) && !model.isExpanded {
+        } else if (model.isAlwaysOn || model.isPinned || holdsForSession) && !model.isExpanded {
             withAnimation(NotchMotion.unfold) {
                 model.isExpanded = true
             }
@@ -395,6 +415,7 @@ final class NotchWindowController {
         clockTimer?.invalidate()
         mouseMonitors.forEach(NSEvent.removeMonitor)
         mouseMonitors.removeAll()
+        resetBand()
         cancellables.removeAll()
     }
 
@@ -1289,7 +1310,7 @@ final class NotchWindowController {
 
     private func updateInteractiveRects(using evaluation: CursorGeometry? = nil) {
         let geometry = evaluation ?? cursorGeometry
-        var rects = [geometry.liveRect(gripRevealed: gripRevealed)]
+        var rects = [geometry.clickRect(gripRevealed: gripRevealed)]
         if let card = geometry.updateCardRect { rects.append(card) }
         if model.isExpanded, let event = model.activeResetAlert, let card = geometry.resetCardRect(event: event) {
             rects.append(card)
@@ -1373,6 +1394,59 @@ final class NotchWindowController {
         }) {
             mouseMonitors.append(local)
         }
+        // A click while the pointer waits in the band was aimed at the window
+        // underneath, which still gets it: the folded panel only takes clicks
+        // on the pill itself. Only the global monitor is needed for that.
+        let presses: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        if let press = NSEvent.addGlobalMonitorForEvents(matching: presses, handler: { [weak self] _ in
+            MainActor.assumeIsolated { self?.pointerPressed() }
+        }) {
+            mouseMonitors.append(press)
+        }
+    }
+
+    /// Not private: tests press inside the band through it.
+    func pointerPressed() {
+        guard !model.isExpanded, bandEnteredAt != nil else { return }
+        bandClaimedByClick = true
+        bandCheck?.cancel()
+        bandCheck = nil
+    }
+
+    private func resetBand() {
+        bandEnteredAt = nil
+        bandClaimedByClick = false
+        bandCheck?.cancel()
+        bandCheck = nil
+    }
+
+    /// Whether the pointer, in the wake region of the folded notch but off the
+    /// pill, has rested there long enough to open it.
+    private func bandDwellElapsed() -> Bool {
+        guard !bandClaimedByClick else { return false }
+        let now = bandClock()
+        guard let entered = bandEnteredAt else {
+            bandEnteredAt = now
+            // Arriving with a button already down is a drag from somewhere
+            // else, heading for a drop target near the edge: the same as a
+            // click in the band.
+            if mouseButtonHeld() {
+                bandClaimedByClick = true
+                return false
+            }
+            // A pointer that stops moving sends no more events, so look again
+            // once the wait is over rather than leave it to the slow poll.
+            let check = DispatchWorkItem { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.bandCheck = nil
+                    self?.cursorMoved()
+                }
+            }
+            bandCheck = check
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.bandDwell, execute: check)
+            return false
+        }
+        return now.timeIntervalSince(entered) >= Self.bandDwell
     }
 
     private func localCursor(in frame: CGRect) -> CGPoint {
@@ -1400,15 +1474,20 @@ final class NotchWindowController {
         // handleActiveSpaceOrAppChange: left ungated, the hover fold out-votes
         // "Always show" under a full-screen app while the other path keeps
         // restoring it — the notch ends up folding on every poll.
-        setExpanded(geometry.liveRect(gripRevealed: gripRevealed).contains(local) || overTooltip,
+        let inWake = geometry.liveRect(gripRevealed: gripRevealed).contains(local)
+        let onPill = model.isExpanded || geometry.restingRect.contains(local)
+        if !inWake || onPill { resetBand() }
+        let wakes = inWake && (onPill || bandDwellElapsed())
+        let overCell = wasExpanded && geometry.cellIndex(at: local) != nil
+        setExpanded(wakes || overTooltip || overCell,
                     ignoreAlwaysOn: shouldFoldForActiveAppOrWindow)
         // Opening calls onLook, which may change content, scale or placement
         // synchronously. Never carry the folded evaluation across that call.
         if !wasExpanded { geometry = cursorGeometry }
 
         var target: Int?
-        if model.isExpanded, geometry.notchRect.contains(local) {
-            target = geometry.cellIndex(along: geometry.placement.along(of: local))
+        if model.isExpanded, let cell = geometry.cellIndex(at: local) {
+            target = cell
         } else if model.isExpanded, let current = model.hoveredIndex,
                   let card = geometry.tooltipRect(index: current),
                   card.contains(local) {
@@ -1488,7 +1567,7 @@ final class NotchWindowController {
         // A peek holds the notch open for its own duration; only after that
         // does the pointer get a say again.
         if let peekUntil, peekUntil > Date() { return }
-        guard model.isExpanded, foldWork == nil, !model.isPinned else { return }
+        guard model.isExpanded, foldWork == nil, !model.isPinned, !holdsForSession else { return }
         // Pinned is settled above; what is left to decide is whether "Always
         // show" holds it, and only a frontmost full-screen app overrules that.
         let ignoresAlwaysOn = model.isAlwaysOn && ignoreAlwaysOn()
@@ -1496,7 +1575,7 @@ final class NotchWindowController {
         let work = DispatchWorkItem { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                let stillHoldsOpen = self.model.isPinned || (self.model.isAlwaysOn && !ignoresAlwaysOn)
+                let stillHoldsOpen = self.model.isPinned || self.holdsForSession || (self.model.isAlwaysOn && !ignoresAlwaysOn)
                 guard !stillHoldsOpen else {
                     self.foldWork = nil
                     return
@@ -1839,8 +1918,9 @@ final class NotchWindowController {
             // Fold now rather than waiting for the pointer to leave: it may
             // already be somewhere else, in which case nothing would arrive to
             // close it and "on hover" would look exactly like "always show".
+            // An active session, with its setting on, is the one exception.
             withAnimation(NotchMotion.unfold) {
-                model.isExpanded = false
+                model.isExpanded = holdsForSession
                 model.hoveredIndex = nil
             }
         case .hidden:
@@ -1853,6 +1933,23 @@ final class NotchWindowController {
             panel?.orderOut(nil)
         }
         setPointing(false)
+        updateInteractiveRects()
+    }
+
+    /// Opens the notch when a session becomes active, and lets the hover fold
+    /// close it once none is. A no-op outside "Show on hover".
+    func apply(sessionActive active: Bool) {
+        guard active != sessionActive else { return }
+        sessionActive = active
+        guard visibility == .onHover else { return }
+        if active {
+            // Same path that restores "Always show": opens unless a
+            // full-screen app or overlapping window says otherwise.
+            handleActiveSpaceOrAppChange()
+        } else {
+            // Scheduled, not immediate: honours the pointer, a pin and a peek.
+            setExpanded(false)
+        }
         updateInteractiveRects()
     }
 
@@ -1895,7 +1992,7 @@ final class NotchWindowController {
                 guard let self, let panel = self.panel else { return }
                 self.peekWork = nil
                 self.peekUntil = nil
-                let stillHoldsOpen = self.model.isPinned || (self.model.isAlwaysOn && !(self.foldsForFullScreen && self.isFullScreenActive()))
+                let stillHoldsOpen = self.model.isPinned || ((self.model.isAlwaysOn || self.holdsForSession) && !(self.foldsForFullScreen && self.isFullScreenActive()))
                 guard !stillHoldsOpen else { return }
                 // Left open if the peek did its job and the pointer is already
                 // there; the ordinary hover fold takes it from here.
