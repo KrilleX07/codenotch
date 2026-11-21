@@ -120,29 +120,24 @@ actor AntigravityProvider: UsageProvider {
 
         if profile.slug == nil {
             if let bridged = await localQuota(), !bridged.isEmpty {
-                everBridged = true
-                UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
-
-                // The language server's quota summary covers the groups it
-                // serves, which is not the whole account. Measured against one
-                // account: the server answered with the third-party group only,
-                // while Cloud Code PA answered with the Gemini group as well —
-                // and the Gemini group was where the usage actually was. Taking
-                // the server's answer as the account's would report a different
-                // allowance than the one asked for.
-                //
-                // So ask Cloud Code PA as well, but only when the answer so far
-                // cannot serve the family that was chosen. Where the server
-                // does report that family, nothing changes and the keychain is
-                // still never read.
                 let windows = await completedWindows(bridged) ?? bridged
+                let preferred = Preferences.storedAntigravityHeadlineModel()
 
-                let chosen = selection(for: windows)
-                return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
-                                        fidelity: .official, status: .ok, windows: chosen.windows,
-                                        headlineID: chosen.headlineID,
-                                        weeklyID: chosen.weeklyID,
-                                        plan: planString)
+                // Only treat bridged as a successful snapshot if it actually reported
+                // the preferred model family (e.g. Gemini Models). If the IDE is closed
+                // and the bridge only returned unauthenticated third-party models, do not
+                // overwrite the user's real quota with an empty/unavailable placeholder!
+                if windows.contains(where: { Self.matches(window: $0, model: preferred) }) {
+                    everBridged = true
+                    UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
+
+                    let chosen = selection(for: windows)
+                    return ProviderSnapshot(id: id, displayName: displayName, glyph: glyph,
+                                            fidelity: .official, status: .ok, windows: chosen.windows,
+                                            headlineID: chosen.headlineID,
+                                            weeklyID: chosen.weeklyID,
+                                            plan: planString)
+                }
             }
 
             if localQuotaOverride != nil && everBridged {
@@ -262,9 +257,12 @@ actor AntigravityProvider: UsageProvider {
         case .cli:
             if candidate.isRunning, let bridge = AntigravityBridge.discover(daemonDirectory: profile.configDirectory.appendingPathComponent("daemon"), processTable: processTable) {
                 if let windows = try? await AntigravityBridge.quota(from: bridge, session: localSession), !windows.isEmpty {
-                    everBridged = true
-                    UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
-                    return officialSnapshot(windows)
+                    let preferred = Preferences.storedAntigravityHeadlineModel()
+                    if windows.contains(where: { Self.matches(window: $0, model: preferred) }) {
+                        everBridged = true
+                        UserDefaults.standard.set(true, forKey: "AntigravityEverBridged")
+                        return officialSnapshot(windows)
+                    }
                 }
             }
             if let creds = candidate.credentials {
