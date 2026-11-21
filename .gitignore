@@ -13,3 +13,7 @@ xcuserdata/
 .forgeguard/
 .playwright-mcp/
 /plans/
+
+AGENTS.md
+CLAUDE.md
+GEMINI.md
