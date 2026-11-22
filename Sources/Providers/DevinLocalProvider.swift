@@ -71,7 +71,7 @@ actor DevinLocalProvider: UsageProvider {
         return ProviderSnapshot(
             id: id, displayName: displayName, glyph: glyph,
             fidelity: .official, status: .ok, windows: windows,
-            headlineID: windows.first?.id, weeklyID: "weekly",
+            headlineID: windows.first?.id, weeklyID: nil,
             plan: auth.email
         )
     }

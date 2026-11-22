@@ -17,7 +17,6 @@ import Foundation
 /// missing percent with a reset is therefore 0% remaining, not "not metered";
 /// only when both are absent is there no reading to fabricate.
 enum DevinUsage {
-    static var dailyLabel: String { L10n.t("Daily Limit") }
     static var weeklyLabel: String { L10n.t("Weekly Limit") }
     static var overageLabel: String { L10n.t("Extra usage balance") }
     static var usageGroup: String { L10n.t("Usage") }
@@ -30,23 +29,21 @@ enum DevinUsage {
         else { throw UsageProviderError.badResponse(status: 0) }
 
         var windows: [LimitWindow] = []
-        for (id, label) in [("daily", dailyLabel), ("weekly", weeklyLabel)] {
-            let hidden = id == "daily" ? "hideDailyQuota" : "hideWeeklyQuota"
-            guard plan[hidden] as? Bool != true else { continue }
-            let reset = number(plan["\(id)QuotaResetAtUnix"])
+        if plan["hideWeeklyQuota"] as? Bool != true {
+            let reset = number(plan["weeklyQuotaResetAtUnix"])
                 .flatMap { $0 > 0 ? Date(timeIntervalSince1970: $0) : nil }
             // The service omits *QuotaRemainingPercent at 0; a reset timestamp
             // without it means fully used, not unmetered.
-            let remaining: Double
-            if let r = number(plan["\(id)QuotaRemainingPercent"]), (0...100).contains(r) {
+            let remaining: Double?
+            if let r = number(plan["weeklyQuotaRemainingPercent"]), (0...100).contains(r) {
                 remaining = r
-            } else if reset != nil {
-                remaining = 0
             } else {
-                continue
+                remaining = reset != nil ? 0 : nil
             }
-            windows.append(LimitWindow(id: id, group: nil, label: label,
-                                       usedFraction: (100 - remaining) / 100, resetsAt: reset))
+            if let remaining {
+                windows.append(LimitWindow(id: "weekly", group: nil, label: weeklyLabel,
+                                           usedFraction: (100 - remaining) / 100, resetsAt: reset))
+            }
         }
         // Overage is appended before the empty guard so a response that reports
         // only an overage balance is still a valid reading, not a bad response.

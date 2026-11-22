@@ -73,24 +73,23 @@ final class DevinUsageTests: XCTestCase {
 
     func testReadsLiveResponseAndFormatsBalance() throws {
         let w = try windows(recorded)
-        XCTAssertEqual(w.map(\.id), ["daily", "weekly", "overage"])
-        XCTAssertEqual(try XCTUnwrap(w[0].usedFraction), 0.01, accuracy: 0.00001)
-        XCTAssertEqual(w[1].usedFraction, 0.50)
-        XCTAssertEqual(w[0].resetsAt, Date(timeIntervalSince1970: 1789113600))
-        XCTAssertEqual(w[2].usedText, "$14.28")
-        XCTAssertEqual(w[2].summary, "$14.28")
+        XCTAssertEqual(w.map(\.id), ["weekly", "overage"])
+        XCTAssertEqual(w[0].usedFraction, 0.50)
+        XCTAssertEqual(w[0].resetsAt, Date(timeIntervalSince1970: 1789286400))
+        XCTAssertEqual(w[1].usedText, "$14.28")
+        XCTAssertEqual(w[1].summary, "$14.28")
     }
 
     func testPastResetIsNotRolledForward() throws {
         // An expired timestamp must remain expired, not disguise an old reading.
-        let json = recorded.replacingOccurrences(of: "1789113600", with: "100")
+        let json = recorded.replacingOccurrences(of: "1789286400", with: "100")
         let w = try windows(json)
         XCTAssertEqual(w[0].resetsAt, Date(timeIntervalSince1970: 100))
-        XCTAssertEqual(try XCTUnwrap(w[0].usedFraction), 0.01, accuracy: 0.00001)
+        XCTAssertEqual(try XCTUnwrap(w[0].usedFraction), 0.50, accuracy: 0.00001)
     }
 
     func testFractionalPercentAndNumericTimestamps() throws {
-        let json = #"{"userStatus":{"planStatus":{"dailyQuotaRemainingPercent":99.5,"dailyQuotaResetAtUnix":1789113600}}}"#
+        let json = #"{"userStatus":{"planStatus":{"weeklyQuotaRemainingPercent":99.5,"weeklyQuotaResetAtUnix":1789113600}}}"#
         let w = try windows(json)
         XCTAssertEqual(try XCTUnwrap(w[0].usedFraction), 0.005, accuracy: 0.00001)
         XCTAssertEqual(w[0].resetsAt, Date(timeIntervalSince1970: 1789113600))
@@ -102,15 +101,17 @@ final class DevinUsageTests: XCTestCase {
     }
 
     func testHiddenQuotaAndMissingReset() throws {
-        let json = #"{"userStatus":{"planStatus":{"hideDailyQuota":true,"dailyQuotaRemainingPercent":99,"weeklyQuotaRemainingPercent":50}}}"#
+        let json = #"{"userStatus":{"planStatus":{"dailyQuotaRemainingPercent":99,"weeklyQuotaRemainingPercent":50}}}"#
         let w = try windows(json)
         XCTAssertEqual(w.map(\.id), ["weekly"])
         XCTAssertNil(w[0].resetsAt)
+        let hidden = #"{"userStatus":{"planStatus":{"hideWeeklyQuota":true,"weeklyQuotaRemainingPercent":50,"overageBalanceMicros":"0"}}}"#
+        XCTAssertEqual(try windows(hidden).map(\.id), ["overage"])
     }
 
     func testRejectsMissingOrInvalidQuotaInsteadOfInventingZero() {
         for value in ["null", "true", "-1", "101", #""NaN""#, #""Infinity""#] {
-            XCTAssertThrowsError(try windows("{\"userStatus\":{\"planStatus\":{\"dailyQuotaRemainingPercent\":\(value)}}}"))
+            XCTAssertThrowsError(try windows("{\"userStatus\":{\"planStatus\":{\"weeklyQuotaRemainingPercent\":\(value)}}}"))
         }
         XCTAssertThrowsError(try windows(#"{"dailyRemainingPercent":100}"#))
         XCTAssertThrowsError(try windows(#"{"userStatus":{"planStatus":{}}}"#))
@@ -120,7 +121,7 @@ final class DevinUsageTests: XCTestCase {
     func testInvalidBalanceDoesNotDiscardQuotaOrTrap() throws {
         for value in ["-1", "true", "1e100", #""Infinity""#] {
             let json = recorded.replacingOccurrences(of: #""14277951""#, with: value)
-            XCTAssertEqual(try windows(json).map(\.id), ["daily", "weekly"])
+            XCTAssertEqual(try windows(json).map(\.id), ["weekly"])
         }
     }
 
@@ -129,22 +130,21 @@ final class DevinUsageTests: XCTestCase {
     func testMissingRemainingWithResetMeansFullyUsed() throws {
         let json = #"{"userStatus":{"planStatus":{"dailyQuotaResetAtUnix":"1789113600","weeklyQuotaResetAtUnix":"1789286400","overageBalanceMicros":"4632524"}}}"#
         let w = try windows(json)
-        XCTAssertEqual(w.map(\.id), ["daily", "weekly", "overage"])
-        XCTAssertEqual(try XCTUnwrap(w[0].usedFraction), 1.0)    // daily 100% used
-        XCTAssertEqual(try XCTUnwrap(w[1].usedFraction), 1.0)    // weekly 100% used
-        XCTAssertEqual(w[0].resetsAt, Date(timeIntervalSince1970: 1789113600))
-        XCTAssertEqual(w[2].usedText, "$4.63")
+        XCTAssertEqual(w.map(\.id), ["weekly", "overage"])
+        XCTAssertEqual(try XCTUnwrap(w[0].usedFraction), 1.0)    // weekly 100% used
+        XCTAssertEqual(w[0].resetsAt, Date(timeIntervalSince1970: 1789286400))
+        XCTAssertEqual(w[1].usedText, "$4.63")
     }
 
     func testRefreshFetchesChangedUsageInsteadOfLocalCache() async throws {
         let database = try makeDatabase()
         defer { try? FileManager.default.removeItem(at: database) }
-        DevinEndpoint.reset([(200, recorded), (200, recorded.replacingOccurrences(of: ":99", with: ":98"))])
+        DevinEndpoint.reset([(200, recorded), (200, recorded.replacingOccurrences(of: "\"weeklyQuotaRemainingPercent\":50", with: "\"weeklyQuotaRemainingPercent\":49"))])
         let provider = makeProvider(database: database)
         let first = try await provider.fetchSnapshot()
         let second = try await provider.fetchSnapshot()
-        XCTAssertEqual(try XCTUnwrap(first.usedFraction), 0.01, accuracy: 0.00001)
-        XCTAssertEqual(try XCTUnwrap(second.usedFraction), 0.02, accuracy: 0.00001)
+        XCTAssertEqual(try XCTUnwrap(first.usedFraction), 0.50, accuracy: 0.00001)
+        XCTAssertEqual(try XCTUnwrap(second.usedFraction), 0.51, accuracy: 0.00001)
         XCTAssertEqual(second.status, .ok)
         XCTAssertEqual(DevinEndpoint.requestCount, 2)
     }
@@ -223,11 +223,23 @@ final class DevinUsageTests: XCTestCase {
         let snapshot = try await DevinLocalProvider().fetchSnapshot()
         XCTAssertEqual(snapshot.status, .ok)
         XCTAssertNotNil(snapshot.usedFraction)
-        XCTAssertNotNil(snapshot.weeklyFraction)
-        print("Devin live quota: daily \(snapshot.headlineText), weekly \(snapshot.weeklyFraction.map { Percent.text(for: $0) } ?? "missing")% used")
+        print("Devin live quota: weekly \(snapshot.headlineText)")
         for window in snapshot.windows {
             print("Devin live \(window.id): \(window.summary), reset \(window.resetsAt?.description ?? "none")")
         }
+    }
+
+    func testActivityStateFromLastConversationNode() {
+        let user = #"{"message_id":"a","role":"user","content":"hi"}"#
+        let tool = #"{"message_id":"a","role":"tool","content":"ok"}"#
+        let answer = #"{"message_id":"a","role":"assistant","content":"done","tool_calls":[]}"#
+        XCTAssertEqual(DevinActivity.turn(inLastNode: user), .inFlight)
+        XCTAssertEqual(DevinActivity.turn(inLastNode: tool), .inFlight)
+        XCTAssertEqual(DevinActivity.turn(inLastNode: answer + #""@tools""#), .inFlight)
+        XCTAssertEqual(DevinActivity.turn(inLastNode: answer), .finished)
+        let silent = #"{"message_id":"a","role":"assistant","content":"","tool_calls":[],"metadata":{}}"#
+        XCTAssertEqual(DevinActivity.turn(inLastNode: silent), .inFlight)
+        XCTAssertNil(DevinActivity.turn(inLastNode: ""))
     }
 
     private func makeProvider(database: URL) -> DevinLocalProvider {

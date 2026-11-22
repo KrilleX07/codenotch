@@ -72,15 +72,7 @@ struct AntigravityActivity: Equatable {
         for trajectory in trajectories {
             let transcript = trajectory
                 .appendingPathComponent(".system_generated/logs/transcript.jsonl")
-            guard let text = try? String(contentsOf: transcript, encoding: .utf8) else { continue }
-
-            for line in text.split(separator: "\n") {
-                guard let data = line.data(using: .utf8),
-                      let step = try? JSONDecoder().decode(Step.self, from: data),
-                      step.source == modelSource,
-                      let at = parse(step.created_at)
-                else { continue }
-
+            for at in modelStepDates(in: transcript) {
                 if latest == nil || at > latest! { latest = at }
                 // `created_at` is UTC — the trailing Z is not decoration. The
                 // comparison has to be against the *local* day, which is what
@@ -93,17 +85,54 @@ struct AntigravityActivity: Equatable {
         return AntigravityActivity(requestsToday: today, lastRequest: latest)
     }
 
+    /// Parsed transcripts, keyed by path and remembered while the file is
+    /// unchanged. Every refresh used to re-read and re-decode every transcript
+    /// ever written, and nearly all of them never change again.
+    private static let cacheLock = NSLock()
+    private nonisolated(unsafe) static var cache: [String: (stamp: Date, size: Int, dates: [Date])] = [:]
+
+    private static func modelStepDates(in transcript: URL) -> [Date] {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: transcript.path),
+              let stamp = attributes[.modificationDate] as? Date,
+              let size = (attributes[.size] as? NSNumber)?.intValue
+        else { return [] }
+        let cached = cacheLock.withLock { cache[transcript.path] }
+        if let cached, cached.stamp == stamp, cached.size == size { return cached.dates }
+        guard let text = try? String(contentsOf: transcript, encoding: .utf8) else { return [] }
+
+        let decoder = JSONDecoder()
+        var dates: [Date] = []
+        for line in text.split(separator: "\n") where line.contains(modelSource) {
+            guard let data = line.data(using: .utf8),
+                  let step = try? decoder.decode(Step.self, from: data),
+                  step.source == modelSource,
+                  let at = parse(step.created_at)
+            else { continue }
+            dates.append(at)
+        }
+        cacheLock.withLock { cache[transcript.path] = (stamp, size, dates) }
+        return dates
+    }
+
     private struct Step: Decodable {
         let created_at: String
         let source: String?
     }
 
-    static func parse(_ value: String) -> Date? {
+    private static let plainFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        if let date = formatter.date(from: value) { return date }
+        return formatter
+    }()
+
+    private static let fractionalFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.date(from: value)
+        return formatter
+    }()
+
+    static func parse(_ value: String) -> Date? {
+        plainFormatter.date(from: value) ?? fractionalFormatter.date(from: value)
     }
 
     /// What the cell says. Deliberately a count with the limit's absence stated,

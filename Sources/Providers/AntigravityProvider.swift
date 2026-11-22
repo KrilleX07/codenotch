@@ -212,7 +212,12 @@ actor AntigravityProvider: UsageProvider {
             }
         }
 
-        if everBridged { throw UsageProviderError.credentialExpired }
+        // A request count must not replace a real quota reading. Once a quota
+        // has been read on this machine, a miss (the IDE is closed and no
+        // token answers) keeps the last reading and lets it age to stale.
+        let everRead = everBridged
+            || (profile.slug == nil && UserDefaults.standard.bool(forKey: "AntigravityEverBridged"))
+        if everRead { throw UsageProviderError.credentialExpired }
 
         // 5. Final fallback: request count activity from transcripts
         let roots = profile.slug == nil ? AntigravityActivity.transcriptRoots : [profile.brainDirectory]

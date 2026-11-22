@@ -1092,6 +1092,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "cursor": CursorActivityMonitor(),
             "gemini-api": GeminiAPIActivityMonitor(),
             "kimi": KimiActivityMonitor(),
+            "devin": DevinActivityMonitor(),
         ]
         for profile in grokProfiles {
             monitors[profile.id] = GrokActivityMonitor(
