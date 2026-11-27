@@ -13,36 +13,53 @@ actor DevinLocalProvider: UsageProvider {
 
     nonisolated private let store: URL
     nonisolated private let cliCredentials: URL
+    nonisolated private let accountManager: DevinManagerLocator?
     private let session: URLSession
     private var retryNoEarlierThan: Date?
+    private var rateLimitedAccount: String?
 
     init(database: URL = DevinCredentials.storeURL,
          cliCredentials: URL = DevinCredentials.cliCredentialsURL,
          session: URLSession = URLSession(configuration: .ephemeral,
-                                          delegate: DevinRedirectPolicy(), delegateQueue: nil)) {
+                                          delegate: DevinRedirectPolicy(), delegateQueue: nil),
+         accountManager: DevinManagerLocator? = nil) {
         self.store = database
         self.cliCredentials = cliCredentials
+        let systemStores = database.path == DevinCredentials.storeURL.path
+            && cliCredentials.path == DevinCredentials.cliCredentialsURL.path
+        self.accountManager = accountManager ?? (systemStores ? .live : nil)
         self.session = session
     }
 
     nonisolated var isVisibleWhenAbsent: Bool {
-        DevinCredentials.anySourceExists(desktop: store, cli: cliCredentials)
+        DevinCredentials.anySourceExists(desktop: store, cli: cliCredentials, manager: accountManager)
     }
 
     nonisolated var signInRoute: SignInRoute {
-        DevinCredentials.signInRoute(
+        if accountManager?.activeDesktopSelection(standardStore: store) != nil {
+            return .openApp(bundleID: DevinManagerLocator.suiteName, name: "Devin Manager")
+        }
+        return DevinCredentials.signInRoute(
             desktopInstalled: FileManager.default.fileExists(atPath: store.path))
     }
 
     nonisolated func account() -> ProviderAccount? {
-        DevinCredentials.account(from: store, fallbackCLI: cliCredentials)
+        DevinCredentials.account(from: store, fallbackCLI: cliCredentials, manager: accountManager)
     }
 
     func fetchSnapshot() async throws -> ProviderSnapshot {
+        let auth = try DevinCredentials.load(from: store, fallbackCLI: cliCredentials, manager: accountManager)
+        // A 429 belongs to the account that received it, not to the provider
+        // adapter. Devin Manager can put another login in front of the same
+        // actor, and that login must not inherit the previous one's cool-down.
+        let accountKey = DevinManagerLocator.Selection.normalized(auth.email) ?? auth.apiKey
+        if rateLimitedAccount != accountKey {
+            retryNoEarlierThan = nil
+            rateLimitedAccount = nil
+        }
         if let retryNoEarlierThan, retryNoEarlierThan > Date() {
             throw UsageProviderError.rateLimited(retryAfter: retryNoEarlierThan.timeIntervalSinceNow)
         }
-        let auth = try DevinCredentials.load(from: store, fallbackCLI: cliCredentials)
         var request = URLRequest(
             url: URL(string: "https://server.self-serve.windsurf.com/exa.seat_management_pb.SeatManagementService/GetUserStatus")!,
             cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15
@@ -63,11 +80,13 @@ actor DevinLocalProvider: UsageProvider {
             let hint = http?.value(forHTTPHeaderField: "Retry-After").flatMap(Double.init) ?? 60
             let delay = hint.isFinite ? max(60, hint) : 60
             retryNoEarlierThan = Date().addingTimeInterval(delay)
+            rateLimitedAccount = accountKey
             throw UsageProviderError.rateLimited(retryAfter: delay)
         }
         guard (200..<300).contains(status) else { throw UsageProviderError.badResponse(status: status) }
         let windows = try DevinUsage.windows(fromJSON: String(decoding: data, as: UTF8.self))
         retryNoEarlierThan = nil
+        rateLimitedAccount = nil
         return ProviderSnapshot(
             id: id, displayName: displayName, glyph: glyph,
             fidelity: .official, status: .ok, windows: windows,

@@ -216,6 +216,240 @@ final class DevinUsageTests: XCTestCase {
         XCTAssertEqual(DevinEndpoint.requestCount, 1)
     }
 
+    func testDevinManagerFolderNameUsesRawUUIDBytes() {
+        let id = UUID(uuidString: "90A26BE2-DC30-41BD-AFB6-F4B2212AE963")!
+        XCTAssertEqual(DevinManagerLocator.profileFolderName(for: id), "kKJr4twwQb2vtvSyISrpYw")
+    }
+
+    /// Switching profiles in Devin Manager must switch the credential read by
+    /// the next poll; neither the token nor the account label may be cached.
+    func testManagerSelectionSwitchIsRereadOnEveryLoad() throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let firstID = UUID()
+        let secondID = UUID()
+        let firstEmail = "first@example.com"
+        let secondEmail = "second@example.com"
+        try writeManagerProfiles(root: root, profiles: [
+            managerProfile(id: firstID, email: firstEmail),
+            managerProfile(id: secondID, email: secondEmail),
+        ])
+        _ = try makeManagedDatabase(root: root, id: firstID, token: "first-token", email: firstEmail)
+        _ = try makeManagedDatabase(root: root, id: secondID, token: "second-token", email: secondEmail)
+        let standard = try makeDatabase(token: "standard-token", email: "standard@example.com",
+                                        at: root.appendingPathComponent("standard-state.vscdb"))
+        let cli = root.appendingPathComponent("missing-cli.toml")
+        let current = MutableString(firstID.uuidString)
+        let locator = DevinManagerLocator(folder: root) { current.value }
+
+        let first = try DevinCredentials.load(from: standard, fallbackCLI: cli, manager: locator)
+        XCTAssertEqual(first.apiKey, "first-token")
+        XCTAssertEqual(first.email, firstEmail)
+        XCTAssertEqual(first.source, "Devin Manager")
+
+        current.value = secondID.uuidString
+        let second = try DevinCredentials.load(from: standard, fallbackCLI: cli, manager: locator)
+        XCTAssertEqual(second.apiKey, "second-token")
+        XCTAssertEqual(second.email, secondEmail)
+    }
+
+    /// A switch is a change of profile identity, not any write to the
+    /// manager's metadata: quota refreshes in `profiles.json` must not throw
+    /// away a good reading, while a different selected profile must.
+    @MainActor
+    func testManagerMonitorFiresOnlyWhenSelectedProfileChanges() throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let firstID = UUID()
+        let secondID = UUID()
+        try writeManagerProfiles(root: root, profiles: [
+            managerProfile(id: firstID, email: "first@example.com"),
+            managerProfile(id: secondID, email: "second@example.com"),
+        ])
+        let current = MutableString(firstID.uuidString)
+        let locator = DevinManagerLocator(folder: root) { current.value }
+        var changes = 0
+        let monitor = DevinManagerMonitor(
+            locator: locator,
+            standardStore: root.appendingPathComponent("standard-state.vscdb"),
+            interval: 60
+        ) { changes += 1 }
+        monitor.start()
+        defer { monitor.stop() }
+
+        try writeManagerProfiles(root: root, profiles: [
+            managerProfile(id: firstID, email: "first@example.com"),
+            managerProfile(id: secondID, email: "second@example.com"),
+        ])
+        monitor.checkForTesting()
+        XCTAssertEqual(changes, 0)
+
+        current.value = secondID.uuidString
+        monitor.checkForTesting()
+        XCTAssertEqual(changes, 1)
+        monitor.checkForTesting()
+        XCTAssertEqual(changes, 1)
+    }
+
+    /// Once Devin Manager names a non-standard active profile, falling back to
+    /// the standard Desktop or shared CLI login would often mean falling back
+    /// to the wrong person. A missing managed login is signed-out instead.
+    func testManagedSelectionDoesNotFallBackToAnotherAccount() throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = UUID()
+        try writeManagerProfiles(root: root, profiles: [managerProfile(id: id, email: "managed@example.com")])
+        let standard = try makeDatabase(token: "standard-token", email: "standard@example.com",
+                                        at: root.appendingPathComponent("standard-state.vscdb"))
+        let cli = root.appendingPathComponent("credentials.toml")
+        try #"windsurf_api_key = "cli-token""#.write(to: cli, atomically: true, encoding: .utf8)
+        let locator = DevinManagerLocator(folder: root) { id.uuidString }
+
+        XCTAssertThrowsError(try DevinCredentials.load(from: standard, fallbackCLI: cli, manager: locator)) { error in
+            guard case UsageProviderError.needsAuth = error else {
+                return XCTFail("Expected needsAuth, got \(error)")
+            }
+        }
+    }
+
+    /// The built-in standard profile owns both standard locations. Losing its
+    /// Desktop database therefore does not also lose the shared CLI fallback.
+    func testManagedStandardProfileKeepsSharedCLIFallback() throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = UUID()
+        let email = "standard@example.com"
+        try writeManagerProfiles(root: root, profiles: [
+            managerProfile(id: id, email: email, usesStandard: true)
+        ])
+        let standard = root.appendingPathComponent("missing-standard-state.vscdb")
+        let cli = root.appendingPathComponent("credentials.toml")
+        try #"windsurf_api_key = "standard-cli-token""#.write(to: cli, atomically: true, encoding: .utf8)
+        let locator = DevinManagerLocator(folder: root) { id.uuidString }
+
+        let auth = try DevinCredentials.load(from: standard, fallbackCLI: cli, manager: locator)
+        XCTAssertEqual(auth.apiKey, "standard-cli-token")
+        XCTAssertEqual(auth.email, email)
+        XCTAssertEqual(auth.source, "Devin CLI")
+    }
+
+    /// The manager's current-profile preference is its freshest value, while
+    /// `lastLaunch` keeps older installs and relaunches meaningful.
+    func testManagerLastDesktopLaunchIsFallbackSelection() throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = UUID()
+        let email = "launched@example.com"
+        try writeManagerProfiles(
+            root: root,
+            profiles: [managerProfile(id: id, email: email)],
+            lastLaunch: ["profileID": id.uuidString, "target": "switchDesktop"]
+        )
+        _ = try makeManagedDatabase(root: root, id: id, token: "launched-token", email: email)
+        let standard = try makeDatabase(at: root.appendingPathComponent("standard-state.vscdb"))
+        let locator = DevinManagerLocator(folder: root) { nil }
+
+        let auth = try DevinCredentials.load(from: standard, fallbackCLI: root.appendingPathComponent("missing.toml"),
+                                             manager: locator)
+        XCTAssertEqual(auth.apiKey, "launched-token")
+        XCTAssertEqual(auth.email, email)
+    }
+
+    /// Duplicate cards can be merged by the manager. The stored current id may
+    /// be the merged-away id, and the surviving login may live in its folder.
+    func testManagerMergedProfileIDResolvesToCanonicalProfile() throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let canonicalID = UUID()
+        let mergedID = UUID()
+        let email = "merged@example.com"
+        try writeManagerProfiles(root: root, profiles: [
+            managerProfile(id: canonicalID, email: email, merged: [mergedID])
+        ])
+        _ = try makeManagedDatabase(root: root, id: mergedID, token: "merged-token", email: email)
+        let standard = try makeDatabase(at: root.appendingPathComponent("standard-state.vscdb"))
+        let locator = DevinManagerLocator(folder: root) { mergedID.uuidString }
+
+        let auth = try DevinCredentials.load(from: standard, fallbackCLI: root.appendingPathComponent("missing.toml"),
+                                             manager: locator)
+        XCTAssertEqual(auth.apiKey, "merged-token")
+        XCTAssertEqual(auth.email, email)
+    }
+
+    /// The provider passes the same managed selection to both the network
+    /// reading and the account row, so the email beside the ring cannot be
+    /// for a different login than the percentage.
+    func testProviderUsesActiveManagedProfileForSnapshotAndAccount() async throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = UUID()
+        let email = "active@example.com"
+        try writeManagerProfiles(root: root, profiles: [managerProfile(id: id, email: email)])
+        _ = try makeManagedDatabase(root: root, id: id, token: "active-token", email: email)
+        let standard = try makeDatabase(token: "standard-token", email: "standard@example.com",
+                                        at: root.appendingPathComponent("standard-state.vscdb"))
+        let locator = DevinManagerLocator(folder: root) { id.uuidString }
+        DevinEndpoint.reset([(200, recorded)])
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [DevinEndpoint.self]
+        let provider = DevinLocalProvider(
+            database: standard,
+            cliCredentials: root.appendingPathComponent("missing.toml"),
+            session: URLSession(configuration: configuration),
+            accountManager: locator
+        )
+
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.status, .ok)
+        XCTAssertEqual(snapshot.plan, email)
+        XCTAssertEqual(provider.account()?.label, email)
+        XCTAssertEqual(provider.account()?.source, "Devin Manager")
+        XCTAssertEqual(DevinEndpoint.requestCount, 1)
+    }
+
+    /// A 429 is a property of the account that received it. Switching Devin
+    /// Manager to another login must let that login ask immediately rather
+    /// than wait out the previous account's cool-down.
+    func testRateLimitDoesNotFollowManagedAccountSwitch() async throws {
+        let root = try makeManagerRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let firstID = UUID()
+        let secondID = UUID()
+        try writeManagerProfiles(root: root, profiles: [
+            managerProfile(id: firstID, email: "first@example.com"),
+            managerProfile(id: secondID, email: "second@example.com"),
+        ])
+        _ = try makeManagedDatabase(root: root, id: firstID, token: "first-token", email: "first@example.com")
+        _ = try makeManagedDatabase(root: root, id: secondID, token: "second-token", email: "second@example.com")
+        let current = MutableString(firstID.uuidString)
+        let locator = DevinManagerLocator(folder: root) { current.value }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [DevinEndpoint.self]
+        let provider = DevinLocalProvider(
+            database: root.appendingPathComponent("standard-state.vscdb"),
+            cliCredentials: root.appendingPathComponent("missing.toml"),
+            session: URLSession(configuration: configuration),
+            accountManager: locator
+        )
+        DevinEndpoint.reset([(429, ""), (200, recorded)])
+
+        do {
+            _ = try await provider.fetchSnapshot()
+            XCTFail("Expected the first account to be rate-limited")
+        } catch UsageProviderError.rateLimited {}
+        do {
+            _ = try await provider.fetchSnapshot()
+            XCTFail("Expected the same account to keep its cool-down")
+        } catch UsageProviderError.rateLimited {}
+        XCTAssertEqual(DevinEndpoint.requestCount, 1)
+
+        current.value = secondID.uuidString
+        let snapshot = try await provider.fetchSnapshot()
+        XCTAssertEqual(snapshot.status, .ok)
+        XCTAssertEqual(snapshot.plan, "second@example.com")
+        XCTAssertEqual(DevinEndpoint.requestCount, 2)
+    }
+
     func testLiveDevinUsageWhenExplicitlyEnabled() async throws {
         guard ProcessInfo.processInfo.environment["CODENOTCH_TEST_DEVIN_LIVE"] == "1" else {
             throw XCTSkip("Opt-in live check requires a signed-in Devin Desktop")
@@ -252,18 +486,104 @@ final class DevinUsageTests: XCTestCase {
                                   session: URLSession(configuration: configuration))
     }
 
-    private func makeDatabase() throws -> URL {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("devin-\(UUID().uuidString).sqlite")
+    private func makeDatabase(token: String = "test-only-key",
+                              email: String? = "user@example.com",
+                              at explicitURL: URL? = nil) throws -> URL {
+        let url = explicitURL ?? FileManager.default.temporaryDirectory
+            .appendingPathComponent("devin-\(UUID().uuidString).sqlite")
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        var auth: [String: Any] = ["apiKey": token]
+        if let email { auth["email"] = email }
+        let authJSON = try jsonString(auth)
+        var statements = [
+            "CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);",
+            "INSERT INTO ItemTable VALUES ('windsurfAuthStatus', '\(sqlEscape(authJSON))');",
+            "INSERT INTO ItemTable VALUES ('windsurf.reactSettings.cachedPlanInfoData:test', "
+                + "'{\"dailyRemainingPercent\":100,\"dailyResetAtUnix\":100,\"weeklyRemainingPercent\":50,\"weeklyResetAtUnix\":100}');",
+        ]
+        if let email {
+            let loginJSON = try jsonString(["lastLoginEmail": email])
+            statements.append("INSERT INTO ItemTable VALUES ('codeium.windsurf-auth', '\(sqlEscape(loginJSON))');")
+        }
+
         var db: OpaquePointer?
         XCTAssertEqual(sqlite3_open(url.path, &db), SQLITE_OK)
         defer { sqlite3_close(db) }
-        XCTAssertEqual(sqlite3_exec(db, """
-        CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT);
-        INSERT INTO ItemTable VALUES ('windsurfAuthStatus', '{"apiKey":"test-only-key","email":"user@example.com"}');
-        INSERT INTO ItemTable VALUES ('windsurf.reactSettings.cachedPlanInfoData:test',
-            '{"dailyRemainingPercent":100,"dailyResetAtUnix":100,"weeklyRemainingPercent":50,"weeklyResetAtUnix":100}');
-        """, nil, nil, nil), SQLITE_OK)
+        XCTAssertEqual(sqlite3_exec(db, statements.joined(separator: "\n"), nil, nil, nil), SQLITE_OK)
         return url
+    }
+
+    private func makeManagerRoot() throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("devin-manager-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    private func makeManagedDatabase(root: URL, id: UUID, token: String, email: String) throws -> URL {
+        let url = root
+            .appendingPathComponent(DevinManagerLocator.profileFolderName(for: id), isDirectory: true)
+            .appendingPathComponent("Desktop", isDirectory: true)
+            .appendingPathComponent("User", isDirectory: true)
+            .appendingPathComponent("globalStorage", isDirectory: true)
+            .appendingPathComponent("state.vscdb")
+        return try makeDatabase(token: token, email: email, at: url)
+    }
+
+    private func writeManagerProfiles(root: URL,
+                                      profiles: [[String: Any]],
+                                      lastLaunch: [String: Any]? = nil) throws {
+        var object: [String: Any] = ["version": 1, "profiles": profiles]
+        if let lastLaunch { object["lastLaunch"] = lastLaunch }
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: root.appendingPathComponent("profiles.json"), options: .atomic)
+    }
+
+    private func managerProfile(id: UUID,
+                                email: String,
+                                usesStandard: Bool = false,
+                                merged: [UUID]? = nil,
+                                archived: Bool = false) -> [String: Any] {
+        var profile: [String: Any] = [
+            "id": id.uuidString,
+            "email": email,
+            "usesStandardSessions": usesStandard,
+            "archived": archived,
+        ]
+        if let merged { profile["mergedProfileIDs"] = merged.map { $0.uuidString } }
+        return profile
+    }
+
+    private func jsonString(_ object: [String: Any]) throws -> String {
+        String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+    }
+
+    private func sqlEscape(_ value: String) -> String {
+        value.replacingOccurrences(of: "'", with: "''")
+    }
+}
+
+private final class MutableString: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: String?
+
+    init(_ value: String?) {
+        stored = value
+    }
+
+    var value: String? {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return stored
+        }
+        set {
+            lock.lock()
+            stored = newValue
+            lock.unlock()
+        }
     }
 }
 

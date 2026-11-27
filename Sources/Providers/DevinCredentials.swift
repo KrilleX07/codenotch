@@ -1,17 +1,25 @@
 import Foundation
 import SQLite3
 
-/// The session Devin keeps for itself — Devin Desktop's SQLite store first,
-/// then the CLI's `credentials.toml` if that store is missing or has no sign-in.
+/// The session Devin keeps for itself — the active Devin Manager Desktop
+/// profile when one is selected, otherwise Devin Desktop's SQLite store first
+/// and the CLI's `credentials.toml` if that store is missing or has no sign-in.
 ///
 /// Codenotch only ever reads it, the same bargain as Cursor and Claude Code:
-/// the owning tool mints and refreshes it, we borrow the current value. Both
-/// files hold the same kind of session token, and both answer the same
+/// the owning tool mints and refreshes it, we borrow the current value. These
+/// stores hold the same kind of session token and answer the same
 /// GetUserStatus call — the CLI path is only a fallback so the notch works on
 /// a machine that has never had the Desktop app.
 struct DevinCredentials {
     let apiKey: String
     let email: String?
+    let source: String
+
+    init(apiKey: String, email: String?, source: String = "Devin Desktop") {
+        self.apiKey = apiKey
+        self.email = email
+        self.source = source
+    }
 
     /// Devin Desktop (formerly Windsurf) keeps its auth in the app's own
     /// global-storage database, at `ItemTable.key = "windsurfAuthStatus"`.
@@ -26,23 +34,26 @@ struct DevinCredentials {
             .appendingPathComponent(".local/share/devin/credentials.toml")
     }
 
-    /// Identity, Desktop first.
+    /// Identity, using the same credential source as the quota fetch.
     static func account(from url: URL = storeURL,
-                        fallbackCLI cli: URL = cliCredentialsURL) -> ProviderAccount? {
-        guard let auth = try? load(from: url, fallbackCLI: cli) else { return nil }
-        let source = FileManager.default.fileExists(atPath: url.path) ? "Devin Desktop" : "Devin CLI"
+                        fallbackCLI cli: URL = cliCredentialsURL,
+                        manager: DevinManagerLocator? = nil) -> ProviderAccount? {
+        guard let auth = try? load(from: url, fallbackCLI: cli, manager: manager) else { return nil }
         return ProviderAccount(
             label: auth.email,
             plan: nil,
-            source: source,
+            source: auth.source,
             manageURL: URL(string: "https://app.devin.ai")
         )
     }
 
-    /// True when either source exists — the Desktop database or the CLI file.
+    /// True when any source exists — a selected Devin Manager profile, the
+    /// standard Desktop database, or the CLI file.
     static func anySourceExists(desktop url: URL = storeURL,
-                                cli: URL = cliCredentialsURL) -> Bool {
-        FileManager.default.fileExists(atPath: url.path)
+                                cli: URL = cliCredentialsURL,
+                                manager: DevinManagerLocator? = nil) -> Bool {
+        if manager?.activeDesktopSelection(standardStore: url) != nil { return true }
+        return FileManager.default.fileExists(atPath: url.path)
             || FileManager.default.fileExists(atPath: cli.path)
     }
 
@@ -54,14 +65,50 @@ struct DevinCredentials {
         return .guidance(L10n.t("Run `devin auth login` in a terminal to sign in."))
     }
 
-    /// Desktop store first. The CLI file is only reached when the database has
-    /// nothing to borrow — otherwise a laptop with both would flip between
-    /// accounts depending on which file we happened to read. Re-read on every
-    /// call so a sign-in or rotation takes effect without a restart.
+    /// Devin Manager's selected profile first when it exists. That choice is
+    /// deliberately strict: a missing or signed-out managed profile must not
+    /// fall through to the standard Desktop database or CLI file, because both
+    /// can belong to another account. Without a manager selection the legacy
+    /// order remains Desktop first, CLI second. Re-read on every call so a
+    /// sign-in, switch, or token rotation takes effect without a restart.
     static func load(from url: URL = storeURL,
-                     fallbackCLI cli: URL = cliCredentialsURL) throws -> DevinCredentials {
+                     fallbackCLI cli: URL = cliCredentialsURL,
+                     manager: DevinManagerLocator? = nil) throws -> DevinCredentials {
+        if let selection = manager?.activeDesktopSelection(standardStore: url) {
+            return try loadManaged(selection, fallbackCLI: cli)
+        }
         if let auth = try? load(fromDatabase: url) { return auth }
         return try load(fromCLI: cli)
+    }
+
+    /// The active managed profile's own Desktop stores. The manager already
+    /// knows the account email; use it only to reject a positive mismatch and
+    /// to fill the label when that database does not carry the address itself.
+    private static func loadManaged(_ selection: DevinManagerLocator.Selection,
+                                    fallbackCLI cli: URL) throws -> DevinCredentials {
+        for database in selection.databases {
+            guard let auth = try? load(fromDatabase: database),
+                  selection.allows(email: auth.email)
+            else { continue }
+            return DevinCredentials(
+                apiKey: auth.apiKey,
+                email: auth.email ?? selection.email,
+                source: "Devin Manager"
+            )
+        }
+        // The standard profile owns the shared CLI session too, so the old
+        // fallback remains valid there. For an isolated profile that shared
+        // file can belong to another account unless Devin Manager has just
+        // synchronized it, and reading it would be a cross-account guess.
+        if selection.usesStandardSessions,
+           let auth = try? load(fromCLI: cli) {
+            return DevinCredentials(
+                apiKey: auth.apiKey,
+                email: selection.email,
+                source: auth.source
+            )
+        }
+        throw UsageProviderError.needsAuth
     }
 
     /// Desktop store only. Tests, and the combined loader above, pin the path
@@ -107,6 +154,6 @@ struct DevinCredentials {
         else { throw UsageProviderError.needsAuth }
         let apiKey = String(value).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else { throw UsageProviderError.needsAuth }
-        return DevinCredentials(apiKey: apiKey, email: nil)
+        return DevinCredentials(apiKey: apiKey, email: nil, source: "Devin CLI")
     }
 }

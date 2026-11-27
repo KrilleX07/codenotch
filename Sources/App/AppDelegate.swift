@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var thresholdNotifier: ThresholdNotifier?
     private var resetWatcher: UsageResetWatcher?
     private var limitWatcher: UsageLimitWatcher?
+    private var devinManagerMonitor: DevinManagerMonitor?
     private var statusItem: StatusItemController?
     /// Keeps the Claude keychain token from ageing out on a Mac where the CLI
     /// is never run by hand. See `ClaudeTokenRefresher`.
@@ -239,6 +240,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // order for a frame and then visibly shuffles.
                 order: preferences.providerOrder
             )
+            devinManagerMonitor = DevinManagerMonitor {
+                store.providerContextChanged(providerID: "devin") {}
+            }
+            devinManagerMonitor?.start()
             self.manualProvider?.onChanged = { [weak store] in
                 Task { @MainActor in
                     _ = store?.refresh(providerID: "manual")
